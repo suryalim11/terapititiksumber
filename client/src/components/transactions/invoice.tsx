@@ -85,12 +85,73 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
   };
 
   const handleDownload = () => {
-    // In a real application, this would use a PDF generation library
-    // For this demo, we'll just show a toast
-    toast({
-      title: "Invoice diunduh",
-      description: "Invoice telah berhasil diunduh sebagai PDF",
-    });
+    if (invoiceRef.current) {
+      try {
+        // Buat string HTML dari invoice
+        const invoiceHTML = `
+          <html>
+            <head>
+              <title>Invoice - ${data.transaction.transactionId}</title>
+              <style>
+                body { font-family: 'Arial', sans-serif; margin: 0; padding: 20px; }
+                .invoice { max-width: 800px; margin: 0 auto; }
+                .invoice-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                .logo { font-size: 24px; font-weight: bold; color: #4F7CAC; }
+                .invoice-title { text-align: right; }
+                .invoice-info { margin-bottom: 20px; }
+                .invoice-info-row { display: flex; margin-bottom: 5px; }
+                .invoice-info-label { width: 150px; font-weight: bold; }
+                .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                .invoice-table th, .invoice-table td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+                .invoice-table th { background-color: #f5f5f5; }
+                .invoice-total { text-align: right; margin-top: 20px; }
+                .invoice-total-label { font-weight: bold; margin-right: 20px; }
+                .invoice-footer { margin-top: 40px; text-align: center; color: #666; }
+              </style>
+            </head>
+            <body>
+              <div class="invoice">
+                ${invoiceRef.current.innerHTML}
+                <div class="invoice-footer">
+                  <p>Terima kasih telah memilih Terapinya Terapi Titik Sumber</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `;
+        
+        // Buat Blob dari HTML
+        const blob = new Blob([invoiceHTML], { type: 'text/html' });
+        
+        // Buat URL dari Blob
+        const fileURL = URL.createObjectURL(blob);
+        
+        // Buat element <a> untuk download
+        const downloadLink = document.createElement('a');
+        downloadLink.href = fileURL;
+        downloadLink.download = `Invoice-${data.transaction.transactionId}.html`;
+        
+        // Tambahkan ke document, klik, dan hapus
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
+        // Bersihkan URL
+        URL.revokeObjectURL(fileURL);
+        
+        toast({
+          title: "Invoice berhasil diunduh",
+          description: "Invoice telah diunduh sebagai file HTML. Anda dapat membukanya di browser dan mencetak/simpan sebagai PDF.",
+        });
+      } catch (error) {
+        console.error("Error downloading invoice:", error);
+        toast({
+          title: "Gagal mengunduh invoice",
+          description: "Terjadi kesalahan saat mengunduh invoice. Silakan coba lagi.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const handleShareWhatsApp = () => {
@@ -198,7 +259,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Unduh PDF
+            Unduh Invoice
           </Button>
           <Button onClick={handleShareWhatsApp}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
