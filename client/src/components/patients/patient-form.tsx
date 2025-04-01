@@ -93,7 +93,17 @@ export function PatientForm({
 
   async function onSubmit(values: PatientFormValues) {
     try {
-      console.log("Submitting patient form with values:", values);
+      console.log("Form submission started with values:", values);
+      console.log("Form state:", form.formState);
+      
+      // Cek validasi form
+      const isValid = await form.trigger();
+      console.log("Form validation result:", isValid);
+      
+      if (!isValid) {
+        console.log("Form validation errors:", form.formState.errors);
+        return;
+      }
       
       if (isEditing && patientId) {
         console.log("Editing existing patient with ID:", patientId);
@@ -141,9 +151,34 @@ export function PatientForm({
     }
   }
 
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Manual form submission triggered");
+    try {
+      // Trigger validation
+      const isValid = await form.trigger();
+      if (!isValid) {
+        console.log("Form validation failed", form.formState.errors);
+        return;
+      }
+      
+      // Get current form values
+      const values = form.getValues();
+      console.log("Form values:", values);
+      
+      // Directly call the onSubmit handler
+      await onSubmit(values);
+    } catch (error) {
+      console.error("Error in manual form submission:", error);
+    }
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        handleFormSubmit(e);
+      }} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -258,12 +293,21 @@ export function PatientForm({
         />
         
         <div className="flex justify-end gap-2">
-          <DialogClose asChild>
-            <Button type="button" variant="outline">
-              Batal
-            </Button>
-          </DialogClose>
-          <Button type="submit" disabled={form.formState.isSubmitting}>
+          <Button type="button" variant="outline" onClick={(e) => {
+            e.preventDefault();
+            if (onSuccess) onSuccess(); // Close dialog by calling onSuccess 
+          }}>
+            Batal
+          </Button>
+          <Button 
+            type="button" 
+            disabled={form.formState.isSubmitting}
+            onClick={(e) => {
+              e.preventDefault();
+              console.log("Submit button clicked directly");
+              handleFormSubmit(e);
+            }}
+          >
             {form.formState.isSubmitting ? "Menyimpan..." : isEditing ? "Perbarui" : "Simpan"}
           </Button>
         </div>
