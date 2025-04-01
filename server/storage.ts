@@ -20,6 +20,11 @@ export interface RegistrationLink {
   createdBy: number; // User ID who created the link
 }
 
+import session from "express-session";
+import memorystore from "memorystore";
+
+const MemoryStore = memorystore(session);
+
 export interface IStorage {
   // Users
   getUser(id: number): Promise<User | undefined>;
@@ -80,6 +85,9 @@ export interface IStorage {
     activePackages: number;
   }>;
   getRecentActivities(limit?: number): Promise<any[]>;
+  
+  // Session store for authentication
+  sessionStore: session.Store;
 }
 
 // Memory Storage Implementation
@@ -102,6 +110,9 @@ export class MemStorage implements IStorage {
   private appointmentCurrentId: number;
   private registrationLinkCurrentId: number;
 
+  // Session store for authentication
+  sessionStore: session.Store;
+  
   constructor() {
     this.users = new Map();
     this.patients = new Map();
@@ -120,6 +131,11 @@ export class MemStorage implements IStorage {
     this.sessionCurrentId = 1;
     this.appointmentCurrentId = 1;
     this.registrationLinkCurrentId = 1;
+    
+    // Initialize session store
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
     
     // Initialize with default data
     this.initializeDefaultData();

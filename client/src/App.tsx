@@ -12,24 +12,27 @@ import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import Register from "@/pages/register";
 import RegistrationLinks from "@/pages/registration-links";
+import Login from "@/pages/login";
 import Layout from "@/components/layout/layout";
 import { AuthProvider } from "@/lib/auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/patients" component={Patients} />
-      <Route path="/transactions" component={Transactions} />
-      <Route path="/transactions/new" component={Transactions} />
-      <Route path="/schedule" component={Schedule} />
-      <Route path="/products" component={Products} />
-      <Route path="/reports" component={Reports} />
-      <Route path="/settings" component={Settings} />
+      <ProtectedRoute path="/" component={Dashboard} />
+      <ProtectedRoute path="/dashboard" component={Dashboard} />
+      <ProtectedRoute path="/patients" component={Patients} />
+      <ProtectedRoute path="/transactions" component={Transactions} />
+      <ProtectedRoute path="/transactions/new" component={Transactions} />
+      <ProtectedRoute path="/schedule" component={Schedule} />
+      <ProtectedRoute path="/products" component={Products} />
+      <ProtectedRoute path="/reports" component={Reports} />
+      <ProtectedRoute path="/settings" component={Settings} />
+      <ProtectedRoute path="/registration-links" component={RegistrationLinks} />
+      <Route path="/login" component={Login} />
       <Route path="/daftar" component={Register} />
       <Route path="/register" component={Register} />
-      <Route path="/registration-links" component={RegistrationLinks} />
       <Route component={NotFound} />
     </Switch>
   );

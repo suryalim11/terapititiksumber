@@ -10,6 +10,7 @@ import {
   insertAppointmentSchema,
   insertUserSchema
 } from "@shared/schema";
+import { setupAuth } from "./auth";
 
 // Tipe data untuk verifikasi link pendaftaran
 interface VerifyRegistrationLinkBody {
@@ -23,61 +24,11 @@ interface CreateRegistrationLinkBody {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication middleware
+  setupAuth(app);
+  
   // API routes
   const apiRouter = app.route("/api");
-
-  // Auth routes
-  app.post("/api/login", async (req: Request, res: Response) => {
-    try {
-      const { username, password } = req.body;
-      
-      if (!username || !password) {
-        return res.status(400).json({ message: "Username and password are required" });
-      }
-      
-      const user = await storage.getUserByUsername(username);
-      
-      if (!user || user.password !== password) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-      
-      // Create a session
-      req.session!.userId = user.id;
-      req.session!.username = user.username;
-      req.session!.role = user.role;
-      
-      return res.status(200).json({ 
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        role: user.role
-      });
-    } catch (error) {
-      console.error("Login error:", error);
-      return res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/logout", (req: Request, res: Response) => {
-    req.session!.destroy(() => {
-      res.status(200).json({ message: "Logged out successfully" });
-    });
-  });
-
-  // Check auth status
-  app.get("/api/auth/status", (req: Request, res: Response) => {
-    if (req.session && req.session.userId) {
-      return res.status(200).json({
-        isAuthenticated: true,
-        user: {
-          id: req.session.userId,
-          username: req.session.username,
-          role: req.session.role
-        }
-      });
-    }
-    return res.status(200).json({ isAuthenticated: false });
-  });
 
   // User routes
   app.post("/api/users", async (req: Request, res: Response) => {
