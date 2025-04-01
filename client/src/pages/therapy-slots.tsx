@@ -251,7 +251,7 @@ export default function TherapySlots() {
       
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Manajemen Slot Terapi</h1>
+          <h3 className="text-lg font-medium">Manajemen Slot Terapi</h3>
           <div className="flex gap-2">
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
