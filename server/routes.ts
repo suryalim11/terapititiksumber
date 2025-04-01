@@ -11,6 +11,17 @@ import {
   insertUserSchema
 } from "@shared/schema";
 
+// Tipe data untuk verifikasi link pendaftaran
+interface VerifyRegistrationLinkBody {
+  code: string;
+}
+
+// Tipe data untuk membuat link pendaftaran
+interface CreateRegistrationLinkBody {
+  expiryHours: number;
+  dailyLimit: number;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes
   const apiRouter = app.route("/api");
@@ -670,6 +681,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activities = await storage.getRecentActivities(limit);
       return res.status(200).json(activities);
     } catch (error) {
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Registration Link endpoints
+  app.post("/api/registration-links", async (req: Request, res: Response) => {
+    try {
+      // Check if user is authenticated and has admin role
+      if (!req.session || !req.session.userId || req.session.role !== 'admin') {
+        return res.status(403).json({ message: "Unauthorized, only admin can create registration links" });
+      }
+
+      const { expiryHours, dailyLimit } = req.body as CreateRegistrationLinkBody;
+      
+      if (!expiryHours || !dailyLimit || typeof expiryHours !== 'number' || typeof dailyLimit !== 'number') {
+        return res.status(400).json({ 
+          message: "Invalid request body, expiryHours and dailyLimit are required and must be numbers" 
+        });
+      }
+      
+      const registrationLink = await storage.createRegistrationLink(
+        req.session.userId,
+        expiryHours,
+        dailyLimit
+      );
+      
+      return res.status(201).json(registrationLink);
+    } catch (error) {
+      console.error("Error creating registration link:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/registration-links", async (req: Request, res: Response) => {
+    try {
+      // Check if user is authenticated and has admin role
+      if (!req.session || !req.session.userId || req.session.role !== 'admin') {
+        return res.status(403).json({ message: "Unauthorized, only admin can view registration links" });
+      }
+      
+      const links = await storage.getAllRegistrationLinks();
+      return res.status(200).json(links);
+    } catch (error) {
+      console.error("Error getting registration links:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/registration-links/deactivate/:id", async (req: Request, res: Response) => {
+    try {
+      // Check if user is authenticated and has admin role
+      if (!req.session || !req.session.userId || req.session.role !== 'admin') {
+        return res.status(403).json({ message: "Unauthorized, only admin can deactivate registration links" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const success = await storage.deactivateRegistrationLink(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Registration link not found" });
+      }
+      
+      return res.status(200).json({ message: "Registration link deactivated successfully" });
+    } catch (error) {
+      console.error("Error deactivating registration link:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/verify-registration-link", async (req: Request, res: Response) => {
+    try {
+      const { code } = req.body as VerifyRegistrationLinkBody;
+      
+      if (!code) {
+        return res.status(400).json({ message: "Registration code is required" });
+      }
+      
+      const link = await storage.getRegistrationLinkByCode(code);
+      
+      if (!link) {
+        return res.status(404).json({ message: "Invalid registration code" });
+      }
+      
+      // Check if link is active
+      if (!link.isActive) {
+        return res.status(400).json({ message: "Registration link is no longer active" });
+      }
+      
+      // Check if link is expired
+      const now = new Date();
+      if (now > link.expiryTime) {
+        return res.status(400).json({ message: "Registration link has expired" });
+      }
+      
+      // Check if daily limit has been reached
+      if (link.currentRegistrations >= link.dailyLimit) {
+        return res.status(400).json({ 
+          message: "Registration limit has been reached for today",
+          currentRegistrations: link.currentRegistrations,
+          dailyLimit: link.dailyLimit
+        });
+      }
+      
+      return res.status(200).json({ 
+        valid: true,
+        message: "Registration code is valid",
+        dailyLimit: link.dailyLimit,
+        currentRegistrations: link.currentRegistrations,
+        expiryTime: link.expiryTime
+      });
+    } catch (error) {
+      console.error("Error verifying registration link:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Endpoint to increment registration count after successful patient registration
+  app.post("/api/registration-links/increment", async (req: Request, res: Response) => {
+    try {
+      const { code } = req.body;
+      
+      if (!code) {
+        return res.status(400).json({ message: "Registration code is required" });
+      }
+      
+      const link = await storage.getRegistrationLinkByCode(code);
+      
+      if (!link) {
+        return res.status(404).json({ message: "Invalid registration code" });
+      }
+      
+      // Increment the registration count
+      const updatedLink = await storage.incrementRegistrationCount(code);
+      
+      if (!updatedLink) {
+        return res.status(400).json({ message: "Failed to update registration count" });
+      }
+      
+      return res.status(200).json({ 
+        success: true,
+        message: "Registration count updated successfully", 
+        currentRegistrations: updatedLink.currentRegistrations,
+        dailyLimit: updatedLink.dailyLimit
+      });
+    } catch (error) {
+      console.error("Error incrementing registration count:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });

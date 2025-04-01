@@ -10,6 +10,8 @@ import Schedule from "@/pages/schedule";
 import Products from "@/pages/products";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
+import Register from "@/pages/register";
+import RegistrationLinks from "@/pages/registration-links";
 import Layout from "@/components/layout/layout";
 import { AuthProvider } from "@/lib/auth";
 
@@ -25,6 +27,9 @@ function Router() {
       <Route path="/products" component={Products} />
       <Route path="/reports" component={Reports} />
       <Route path="/settings" component={Settings} />
+      <Route path="/daftar" component={Register} />
+      <Route path="/register" component={Register} />
+      <Route path="/registration-links" component={RegistrationLinks} />
       <Route component={NotFound} />
     </Switch>
   );

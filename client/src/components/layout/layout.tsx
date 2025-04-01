@@ -7,6 +7,7 @@ import {
   Calendar,
   ClipboardList,
   Home,
+  Link as LinkIcon,
   Menu,
   PackageIcon,
   Settings,
@@ -24,6 +25,7 @@ const navItems = [
   { name: "Products", href: "/products", icon: PackageIcon },
   { name: "Transactions", href: "/transactions", icon: ShoppingCart },
   { name: "Reports", href: "/reports", icon: BarChart3 },
+  { name: "Registration Links", href: "/registration-links", icon: LinkIcon },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 

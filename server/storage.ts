@@ -8,6 +8,18 @@ import {
 import { format } from "date-fns";
 
 // Storage interface
+// Interface for registration link
+export interface RegistrationLink {
+  id: number;
+  code: string;
+  expiryTime: Date;
+  dailyLimit: number;
+  currentRegistrations: number;
+  createdAt: Date;
+  isActive: boolean;
+  createdBy: number; // User ID who created the link
+}
+
 export interface IStorage {
   // Users
   getUser(id: number): Promise<User | undefined>;
@@ -53,6 +65,13 @@ export interface IStorage {
   createAppointment(appointment: InsertAppointment): Promise<Appointment>;
   updateAppointmentStatus(id: number, status: string): Promise<Appointment | undefined>;
   
+  // Registration Links
+  createRegistrationLink(userId: number, expiryHours: number, dailyLimit: number): Promise<RegistrationLink>;
+  getRegistrationLinkByCode(code: string): Promise<RegistrationLink | undefined>;
+  getAllRegistrationLinks(): Promise<RegistrationLink[]>;
+  incrementRegistrationCount(code: string): Promise<RegistrationLink | undefined>;
+  deactivateRegistrationLink(id: number): Promise<boolean>;
+  
   // Dashboard data
   getDailyStats(): Promise<{
     patientsToday: number;
@@ -72,6 +91,7 @@ export class MemStorage implements IStorage {
   private transactions: Map<number, Transaction>;
   private therapySessions: Map<number, Session>;
   private appointments: Map<number, Appointment>;
+  private registrationLinks: Map<number, RegistrationLink>;
   
   private userCurrentId: number;
   private patientCurrentId: number;
@@ -80,6 +100,7 @@ export class MemStorage implements IStorage {
   private transactionCurrentId: number;
   private sessionCurrentId: number;
   private appointmentCurrentId: number;
+  private registrationLinkCurrentId: number;
 
   constructor() {
     this.users = new Map();
@@ -89,6 +110,7 @@ export class MemStorage implements IStorage {
     this.transactions = new Map();
     this.therapySessions = new Map();
     this.appointments = new Map();
+    this.registrationLinks = new Map();
     
     this.userCurrentId = 1;
     this.patientCurrentId = 1;
@@ -97,6 +119,7 @@ export class MemStorage implements IStorage {
     this.transactionCurrentId = 1;
     this.sessionCurrentId = 1;
     this.appointmentCurrentId = 1;
+    this.registrationLinkCurrentId = 1;
     
     // Initialize with default data
     this.initializeDefaultData();
@@ -542,7 +565,74 @@ export class MemStorage implements IStorage {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, limit);
   }
+  
+  // Registration Link methods
+  async createRegistrationLink(userId: number, expiryHours: number, dailyLimit: number): Promise<RegistrationLink> {
+    const id = this.registrationLinkCurrentId++;
+    const createdAt = new Date();
+    
+    // Membuat tanggal kedaluwarsa
+    const expiryTime = new Date(createdAt);
+    expiryTime.setHours(expiryTime.getHours() + expiryHours);
+    
+    // Membuat kode unik acak alphanumeric
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    
+    const registrationLink: RegistrationLink = {
+      id,
+      code,
+      expiryTime,
+      dailyLimit,
+      currentRegistrations: 0,
+      createdAt,
+      isActive: true,
+      createdBy: userId
+    };
+    
+    this.registrationLinks.set(id, registrationLink);
+    return registrationLink;
+  }
+
+  async getRegistrationLinkByCode(code: string): Promise<RegistrationLink | undefined> {
+    return Array.from(this.registrationLinks.values()).find(link => link.code === code);
+  }
+
+  async getAllRegistrationLinks(): Promise<RegistrationLink[]> {
+    return Array.from(this.registrationLinks.values());
+  }
+
+  async incrementRegistrationCount(code: string): Promise<RegistrationLink | undefined> {
+    const link = await this.getRegistrationLinkByCode(code);
+    if (!link) return undefined;
+    
+    const updatedLink: RegistrationLink = {
+      ...link,
+      currentRegistrations: link.currentRegistrations + 1
+    };
+    
+    this.registrationLinks.set(link.id, updatedLink);
+    return updatedLink;
+  }
+
+  async deactivateRegistrationLink(id: number): Promise<boolean> {
+    const link = this.registrationLinks.get(id);
+    if (!link) return false;
+    
+    const updatedLink: RegistrationLink = {
+      ...link,
+      isActive: false
+    };
+    
+    this.registrationLinks.set(id, updatedLink);
+    return true;
+  }
 }
 
 // Export a singleton instance
+
+
 export const storage = new MemStorage();
