@@ -103,12 +103,15 @@ export function ProductForm({
       // Clean up price value to only contain digits
       const cleanPrice = values.price.replace(/\D/g, "");
       
+      // Menangani nilai description untuk kompatibilitas dengan backend
+      const description = values.description === "" ? null : values.description;
+      
       // Siapkan data produk dengan memastikan semua field wajib terisi
       const productData = {
         name: values.name,
         price: cleanPrice,
         stock: typeof values.stock === 'number' ? values.stock : 0,
-        description: values.description || null
+        description: description
       };
       
       console.log("Data produk yang akan dikirim:", productData);
@@ -226,6 +229,7 @@ export function ProductForm({
                   placeholder="Masukkan deskripsi produk" 
                   className="resize-none" 
                   {...field} 
+                  value={field.value || ""}
                 />
               </FormControl>
               <FormMessage />
