@@ -9,6 +9,7 @@ import {
   insertSessionSchema,
   insertAppointmentSchema,
   insertUserSchema,
+  insertTherapySlotSchema,
   User
 } from "@shared/schema";
 import { setupAuth } from "./auth";
@@ -863,6 +864,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error("Error deleting registration link:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Therapy Slot routes
+  app.get("/api/therapy-slots", async (req: Request, res: Response) => {
+    try {
+      const dateParam = req.query.date as string;
+      const activeOnly = req.query.active === 'true';
+      
+      if (dateParam) {
+        const date = new Date(dateParam);
+        if (isNaN(date.getTime())) {
+          return res.status(400).json({ message: "Invalid date format" });
+        }
+        
+        const slots = await storage.getTherapySlotsByDate(date);
+        return res.status(200).json(slots);
+      } else if (activeOnly) {
+        const slots = await storage.getActiveTherapySlots();
+        return res.status(200).json(slots);
+      } else {
+        const slots = await storage.getAllTherapySlots();
+        return res.status(200).json(slots);
+      }
+    } catch (error) {
+      console.error("Error ketika mengambil therapy slots:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/therapy-slots/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const slot = await storage.getTherapySlot(id);
+      
+      if (!slot) {
+        return res.status(404).json({ message: "Therapy slot not found" });
+      }
+      
+      return res.status(200).json(slot);
+    } catch (error) {
+      console.error("Error ketika mengambil therapy slot:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/therapy-slots", async (req: Request, res: Response) => {
+    try {
+      console.log("Menerima permintaan POST /api/therapy-slots dengan data:", req.body);
+      
+      // Parsify date string to Date object if it's a string
+      const data = {
+        ...req.body,
+        date: req.body.date ? new Date(req.body.date) : new Date(),
+        maxQuota: req.body.maxQuota || 6,
+        currentCount: req.body.currentCount || 0,
+        isActive: req.body.isActive !== undefined ? req.body.isActive : true
+      };
+      
+      const validatedData = insertTherapySlotSchema.parse(data);
+      console.log("Data therapy slot tervalidasi:", validatedData);
+      
+      const newSlot = await storage.createTherapySlot(validatedData);
+      console.log("Therapy slot baru dibuat:", newSlot);
+      
+      return res.status(201).json(newSlot);
+    } catch (error) {
+      console.error("Error ketika membuat therapy slot:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.put("/api/therapy-slots/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`Menerima permintaan PUT /api/therapy-slots/${id} dengan data:`, req.body);
+      
+      // Parsify date string to Date object if it's a string
+      const data = {
+        ...req.body,
+        date: req.body.date ? new Date(req.body.date) : undefined
+      };
+      
+      const slot = await storage.getTherapySlot(id);
+      if (!slot) {
+        return res.status(404).json({ message: "Therapy slot not found" });
+      }
+      
+      const updatedSlot = await storage.updateTherapySlot(id, data);
+      console.log("Therapy slot diperbarui:", updatedSlot);
+      
+      return res.status(200).json(updatedSlot);
+    } catch (error) {
+      console.error("Error ketika memperbarui therapy slot:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/therapy-slots/:id/increment", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`Incrementing usage count for therapy slot ${id}`);
+      
+      const slot = await storage.getTherapySlot(id);
+      if (!slot) {
+        return res.status(404).json({ message: "Therapy slot not found" });
+      }
+      
+      // Periksa apakah slot masih aktif
+      if (!slot.isActive) {
+        return res.status(400).json({ message: "Therapy slot is not active" });
+      }
+      
+      // Periksa apakah kuota sudah penuh
+      if (slot.currentCount >= slot.maxQuota) {
+        return res.status(400).json({ message: "Therapy slot is already full" });
+      }
+      
+      const updatedSlot = await storage.incrementTherapySlotUsage(id);
+      console.log("Therapy slot count incremented:", updatedSlot);
+      
+      return res.status(200).json(updatedSlot);
+    } catch (error) {
+      console.error("Error ketika increment therapy slot usage:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/therapy-slots/:id/deactivate", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`Deactivating therapy slot ${id}`);
+      
+      const slot = await storage.getTherapySlot(id);
+      if (!slot) {
+        return res.status(404).json({ message: "Therapy slot not found" });
+      }
+      
+      const deactivated = await storage.deactivateTherapySlot(id);
+      
+      if (deactivated) {
+        return res.status(200).json({ success: true, message: "Therapy slot deactivated successfully" });
+      } else {
+        return res.status(500).json({ success: false, message: "Failed to deactivate therapy slot" });
+      }
+    } catch (error) {
+      console.error("Error ketika deactivate therapy slot:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });

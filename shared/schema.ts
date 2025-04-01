@@ -107,12 +107,34 @@ export const insertSessionSchema = createInsertSchema(sessions).pick({
   totalSessions: true,
 });
 
+// Therapy Schedule Schema (Slot Terapi)
+export const therapySlots = pgTable("therapy_slots", {
+  id: serial("id").primaryKey(),
+  date: timestamp("date").notNull(), // Tanggal sesi
+  timeSlot: text("time_slot").notNull(), // Contoh: "10:00-11:00"
+  maxQuota: integer("max_quota").notNull().default(6), // Jumlah maksimal pasien per sesi
+  currentCount: integer("current_count").notNull().default(0), // Jumlah pasien yang sudah mendaftar
+  isActive: boolean("is_active").notNull().default(true), // Status slot (aktif/non-aktif)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertTherapySlotSchema = createInsertSchema(therapySlots).pick({
+  date: true,
+  timeSlot: true,
+  maxQuota: true,
+  currentCount: true,
+  isActive: true,
+});
+
 // Appointment Schema
 export const appointments = pgTable("appointments", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").notNull(),
   sessionId: integer("session_id"),
+  therapySlotId: integer("therapy_slot_id"), // Referensi ke slot terapi yang dipilih
   date: timestamp("date").notNull(),
+  timeSlot: text("time_slot"), // Menyimpan time_slot yang dipilih
+  registrationNumber: text("registration_number"), // Nomor registrasi unik
   status: text("status").notNull().default("scheduled"), // scheduled, completed, cancelled
   notes: text("notes"),
 });
@@ -120,7 +142,10 @@ export const appointments = pgTable("appointments", {
 export const insertAppointmentSchema = createInsertSchema(appointments).pick({
   patientId: true,
   sessionId: true,
+  therapySlotId: true,
   date: true,
+  timeSlot: true,
+  registrationNumber: true,
   notes: true,
   status: true,
 });
@@ -142,6 +167,9 @@ export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 
 export type Session = typeof sessions.$inferSelect;
 export type InsertSession = z.infer<typeof insertSessionSchema>;
+
+export type TherapySlot = typeof therapySlots.$inferSelect;
+export type InsertTherapySlot = z.infer<typeof insertTherapySlotSchema>;
 
 export type Appointment = typeof appointments.$inferSelect;
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;

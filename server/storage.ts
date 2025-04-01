@@ -1,9 +1,9 @@
 import { 
-  users, patients, products, packages, transactions, sessions, appointments,
+  users, patients, products, packages, transactions, sessions, appointments, therapySlots,
   type User, type InsertUser, type Patient, type InsertPatient,
   type Product, type InsertProduct, type Package, type Transaction,
   type InsertTransaction, type Session, type InsertSession,
-  type Appointment, type InsertAppointment
+  type Appointment, type InsertAppointment, type TherapySlot, type InsertTherapySlot
 } from "@shared/schema";
 import { format } from "date-fns";
 
@@ -62,11 +62,22 @@ export interface IStorage {
   createSession(session: InsertSession): Promise<Session>;
   updateSessionUsage(id: number, sessionsUsed?: number): Promise<Session | undefined>;
   
+  // Therapy Slots
+  getTherapySlot(id: number): Promise<TherapySlot | undefined>;
+  getTherapySlotsByDate(date: Date): Promise<TherapySlot[]>;
+  getAllTherapySlots(): Promise<TherapySlot[]>;
+  getActiveTherapySlots(): Promise<TherapySlot[]>;
+  createTherapySlot(slot: InsertTherapySlot): Promise<TherapySlot>;
+  updateTherapySlot(id: number, slot: Partial<InsertTherapySlot>): Promise<TherapySlot | undefined>;
+  incrementTherapySlotUsage(id: number): Promise<TherapySlot | undefined>;
+  deactivateTherapySlot(id: number): Promise<boolean>;
+  
   // Appointments
   getAppointment(id: number): Promise<Appointment | undefined>;
   getAllAppointments(): Promise<Appointment[]>;
   getAppointmentsByDate(date: Date): Promise<Appointment[]>;
   getAppointmentsByPatient(patientId: number): Promise<Appointment[]>;
+  getAppointmentsByTherapySlot(therapySlotId: number): Promise<Appointment[]>;
   createAppointment(appointment: InsertAppointment): Promise<Appointment>;
   updateAppointmentStatus(id: number, status: string): Promise<Appointment | undefined>;
   
@@ -98,6 +109,7 @@ export class MemStorage implements IStorage {
   private packageList: Map<number, Package>;
   private transactions: Map<number, Transaction>;
   private therapySessions: Map<number, Session>;
+  private therapySlots: Map<number, TherapySlot>;
   private appointments: Map<number, Appointment>;
   private registrationLinks: Map<number, RegistrationLink>;
   
@@ -107,6 +119,7 @@ export class MemStorage implements IStorage {
   private packageCurrentId: number;
   private transactionCurrentId: number;
   private sessionCurrentId: number;
+  private therapySlotCurrentId: number;
   private appointmentCurrentId: number;
   private registrationLinkCurrentId: number;
 
@@ -120,6 +133,7 @@ export class MemStorage implements IStorage {
     this.packageList = new Map();
     this.transactions = new Map();
     this.therapySessions = new Map();
+    this.therapySlots = new Map();
     this.appointments = new Map();
     this.registrationLinks = new Map();
     
@@ -129,6 +143,7 @@ export class MemStorage implements IStorage {
     this.packageCurrentId = 1;
     this.transactionCurrentId = 1;
     this.sessionCurrentId = 1;
+    this.therapySlotCurrentId = 1;
     this.appointmentCurrentId = 1;
     this.registrationLinkCurrentId = 1;
     
@@ -188,11 +203,15 @@ export class MemStorage implements IStorage {
     // Initialize packages and products
     this.initPackagesAndProducts();
     
+    // Initialize default therapy slots
+    this.initDefaultTherapySlots();
+    
     console.log("Default data initialized:", {
       admins: Array.from(this.users.values()),
       registrationLinks: Array.from(this.registrationLinks.values()),
       packages: Array.from(this.packageList.values()),
-      products: Array.from(this.products.values())
+      products: Array.from(this.products.values()),
+      therapySlots: Array.from(this.therapySlots.values())
     });
   }
 
@@ -253,6 +272,33 @@ export class MemStorage implements IStorage {
     });
     
     console.log("Paket dan produk default diinisialisasi");
+  }
+  
+  // Inisialisasi slot terapi
+  private initDefaultTherapySlots() {
+    // Membuat slot terapi untuk hari ini dan 7 hari ke depan
+    const today = new Date();
+    
+    // Membuat 7 hari slot terapi
+    for (let i = 0; i < 7; i++) {
+      const slotDate = new Date(today);
+      slotDate.setDate(slotDate.getDate() + i);
+      
+      // Default time slot (10:00 - 11:00)
+      const therapySlot: TherapySlot = {
+        id: this.therapySlotCurrentId++,
+        date: slotDate,
+        timeSlot: "10:00-11:00",
+        maxQuota: 6,
+        currentCount: 0,
+        isActive: true,
+        createdAt: new Date()
+      };
+      
+      this.therapySlots.set(therapySlot.id, therapySlot);
+    }
+    
+    console.log(`Slot terapi default diinisialisasi untuk 7 hari ke depan`);
   }
 
   // User methods
@@ -440,6 +486,91 @@ export class MemStorage implements IStorage {
     this.therapySessions.set(id, updatedSession);
     return updatedSession;
   }
+  
+  // Therapy Slot methods
+  async getTherapySlot(id: number): Promise<TherapySlot | undefined> {
+    return this.therapySlots.get(id);
+  }
+  
+  async getTherapySlotsByDate(date: Date): Promise<TherapySlot[]> {
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    return Array.from(this.therapySlots.values())
+      .filter(slot => {
+        const slotDate = new Date(slot.date);
+        slotDate.setHours(0, 0, 0, 0);
+        return slotDate.getTime() === targetDate.getTime();
+      });
+  }
+  
+  async getAllTherapySlots(): Promise<TherapySlot[]> {
+    return Array.from(this.therapySlots.values());
+  }
+  
+  async getActiveTherapySlots(): Promise<TherapySlot[]> {
+    return Array.from(this.therapySlots.values())
+      .filter(slot => slot.isActive && slot.currentCount < slot.maxQuota);
+  }
+  
+  async createTherapySlot(insertSlot: InsertTherapySlot): Promise<TherapySlot> {
+    const id = this.therapySlotCurrentId++;
+    const createdAt = new Date();
+    
+    const slot: TherapySlot = {
+      ...insertSlot,
+      id,
+      createdAt
+    };
+    
+    this.therapySlots.set(id, slot);
+    return slot;
+  }
+  
+  async updateTherapySlot(id: number, updateData: Partial<InsertTherapySlot>): Promise<TherapySlot | undefined> {
+    const existingSlot = this.therapySlots.get(id);
+    if (!existingSlot) return undefined;
+    
+    const updatedSlot: TherapySlot = {
+      ...existingSlot,
+      ...updateData
+    };
+    
+    this.therapySlots.set(id, updatedSlot);
+    return updatedSlot;
+  }
+  
+  async incrementTherapySlotUsage(id: number): Promise<TherapySlot | undefined> {
+    const slot = this.therapySlots.get(id);
+    if (!slot) return undefined;
+    
+    // Jika kuota sudah penuh, tidak bisa increment lagi
+    if (slot.currentCount >= slot.maxQuota) {
+      console.error(`[storage] Tidak bisa increment slot terapi ${id}, kuota sudah penuh (${slot.currentCount}/${slot.maxQuota})`);
+      return slot;
+    }
+    
+    const updatedSlot: TherapySlot = {
+      ...slot,
+      currentCount: slot.currentCount + 1
+    };
+    
+    this.therapySlots.set(id, updatedSlot);
+    return updatedSlot;
+  }
+  
+  async deactivateTherapySlot(id: number): Promise<boolean> {
+    const slot = this.therapySlots.get(id);
+    if (!slot) return false;
+    
+    const updatedSlot: TherapySlot = {
+      ...slot,
+      isActive: false
+    };
+    
+    this.therapySlots.set(id, updatedSlot);
+    return true;
+  }
 
   // Appointment methods
   async getAppointment(id: number): Promise<Appointment | undefined> {
@@ -465,6 +596,11 @@ export class MemStorage implements IStorage {
   async getAppointmentsByPatient(patientId: number): Promise<Appointment[]> {
     return Array.from(this.appointments.values())
       .filter(appointment => appointment.patientId === patientId);
+  }
+  
+  async getAppointmentsByTherapySlot(therapySlotId: number): Promise<Appointment[]> {
+    return Array.from(this.appointments.values())
+      .filter(appointment => appointment.therapySlotId === therapySlotId);
   }
 
   async createAppointment(insertAppointment: InsertAppointment): Promise<Appointment> {

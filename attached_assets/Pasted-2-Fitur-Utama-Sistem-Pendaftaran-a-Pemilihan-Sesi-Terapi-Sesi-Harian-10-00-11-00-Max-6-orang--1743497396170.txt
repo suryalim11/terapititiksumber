@@ -1,0 +1,92 @@
+2. Fitur Utama Sistem Pendaftaran
+a. Pemilihan Sesi Terapi
+Sesi Harian:
+10:00-11:00 (Max 6 orang)
+11:00-12:00 (Max 6 orang)
+13:00-14:00 (Max 6 orang)
+14:00-15:00 (Max 6 orang)
+15:00-16:00 (Max 6 orang)
+Tampilan di Form Pendaftaran:
+Copy
+1
+2
+[ ] 10:00-11:00 → Sisa 4/6 kursi  
+[x] 11:00-12:00 → PENUH  
+Sesi penuh otomatis dinonaktifkan.
+b. Manajemen Kuota
+Backend Logic:
+Cek kuota sesi sebelum submit.
+Update current_count di tabel sessions setiap kali ada pendaftaran.
+Tangani race condition dengan transaksi database atau lock.
+Admin Dashboard:
+Reset kuota harian/mingguan.
+Lihat jadwal terisi dalam bentuk tabel/kalender.
+c. Konfirmasi ke Pasien
+Setelah submit, pasien menerima:
+Nomor Registrasi (contoh: REG-20230821-001).
+Detail Jadwal (tanggal & sesi).
+Notifikasi WhatsApp:
+Copy
+1
+"Pendaftaran berhasil! Anda terdaftar di sesi 14:00-15:00, 21 Agustus 2023."  
+3. Teknis Implementasi
+a. Database Schema
+Tabel patients:
+sql
+Copy
+1
+id | name | birthdate | address | phone | registration_number  
+Tabel sessions:
+sql
+Copy
+1
+2
+⌄
+id | date       | time_slot    | max_quota | current_count  
+1  | 2023-08-21 | 10:00-11:00 | 6         | 4  
+b. Backend (Node.js/Express.js)
+Endpoint Pendaftaran:
+javascript
+Copy
+1
+2
+3
+4
+5
+6
+⌄
+app.post('/api/register', async (req, res) => {
+  const { name, birthdate, address, phone, selectedTime } = req.body;
+  // Validasi kuota sesi
+  // Simpan data ke tabel `patients` dan update `sessions`
+  res.json({ registrationNumber: "REG-20230821-001" });
+});
+c. Frontend (React.js)
+Form Pendaftaran:
+jsx
+Copy
+1
+2
+3
+4
+5
+6
+7
+<select name="selectedTime">
+  {sessions.map(session => (
+    <option disabled={session.current_count >= 6}>
+      {session.time_slot} (Sisa {6 - session.current_count})
+    </option>
+  ))}
+</select>
+4. Workflow Penggunaan
+Pasien Baru/Lama:
+Buka link pendaftaran → isi biodata (baru) / masukkan nomor registrasi (lama).
+Pilih sesi dengan kuota tersedia → submit.
+Admin:
+Pantau jadwal di dashboard → reset kuota jika perlu.
+Export laporan harian ke Excel.
+5. Catatan Penting
+Pastikan validasi realtime untuk kuota sesi (hindari overbooking).
+Gunakan WebSocket/Firebase untuk update sisa kuota di form pendaftaran.
+Uji coba sistem dengan skenario race condition (dua pasien booking di detik yang sama).
