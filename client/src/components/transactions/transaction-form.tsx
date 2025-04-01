@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { Command as CommandPrimitive } from "cmdk";
 
 import {
   Dialog,
@@ -33,6 +34,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
+import { CommandCombobox } from "./command-combobox";
 import PaymentMethods from "./payment-methods";
 import Invoice from "./invoice";
 
@@ -415,33 +418,34 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Patient Selection */}
+            {/* Patient Selection with Searchable Combobox */}
             <FormField
               control={form.control}
               name="patientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Pilih Pasien</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+              render={({ field }) => {
+                // Convert patients data to CommandCombobox format
+                const patientOptions = patients?.map((patient: Patient) => ({
+                  value: patient.id.toString(),
+                  label: `${patient.name} (ID: ${patient.patientId})`
+                })) || [];
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Pilih Pasien</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih pasien..." />
-                      </SelectTrigger>
+                      <CommandCombobox
+                        options={patientOptions}
+                        value={field.value}
+                        onSelect={field.onChange}
+                        placeholder="Cari dan pilih pasien..."
+                        emptyMessage="Tidak ada pasien ditemukan."
+                        className="w-full"
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {patients?.map((patient: Patient) => (
-                        <SelectItem key={patient.id} value={patient.id.toString()}>
-                          {patient.name} (ID: {patient.patientId})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             {/* Package Selection */}
