@@ -93,17 +93,17 @@ export default function TransactionForm({ isOpen, onClose }: TransactionFormProp
   const { toast } = useToast();
 
   // Fetch patients
-  const { data: patients } = useQuery({
+  const { data: patients = [] } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
   });
 
   // Fetch packages
-  const { data: packages } = useQuery({
+  const { data: packages = [] } = useQuery<Package[]>({
     queryKey: ["/api/packages"],
   });
 
   // Fetch products
-  const { data: products } = useQuery({
+  const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
 
@@ -302,14 +302,59 @@ export default function TransactionForm({ isOpen, onClose }: TransactionFormProp
 
   // Handle form submission
   const onSubmit = (values: TransactionFormValues) => {
+    console.log("Form submission triggered with values:", values);
+    
+    // Validasi input
+    if (!values.patientId) {
+      console.log("Validasi gagal: patientId kosong");
+      toast({
+        title: "Gagal memproses pembayaran",
+        description: "Silakan pilih pasien terlebih dahulu",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (cartItems.length === 0) {
+      console.log("Validasi gagal: keranjang kosong");
+      toast({
+        title: "Gagal memproses pembayaran",
+        description: "Silakan pilih minimal satu paket atau produk",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Prepare items data
     values.items = cartItems.map(item => ({
       id: item.id,
       type: item.type,
       quantity: item.quantity,
     }));
-
+    
+    console.log("Mengirim data transaksi:", values);
     mutation.mutate(values);
+  };
+  
+  // Handler untuk submit form secara manual
+  const handleSubmitForm = () => {
+    console.log("Manual submit triggered");
+    const formValues = form.getValues();
+    console.log("Form values:", formValues);
+    
+    // Siapkan data
+    const submissionData: TransactionFormValues = {
+      patientId: formValues.patientId || "",
+      paymentMethod: formValues.paymentMethod,
+      items: cartItems.map(item => ({
+        id: item.id,
+        type: item.type,
+        quantity: item.quantity,
+      })),
+    };
+    
+    // Eksekusi onSubmit
+    onSubmit(submissionData);
   };
 
   if (showInvoice && invoiceData) {
@@ -514,7 +559,8 @@ export default function TransactionForm({ isOpen, onClose }: TransactionFormProp
                 Batal
               </Button>
               <Button
-                type="submit"
+                type="button"
+                onClick={handleSubmitForm}
                 disabled={mutation.isPending || cartItems.length === 0}
               >
                 {mutation.isPending ? "Memproses..." : "Proses Pembayaran"}
