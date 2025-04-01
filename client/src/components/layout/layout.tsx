@@ -4,7 +4,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useState } from "react";
 import {
   BarChart3,
-  Calendar,
   ClipboardList,
   Home,
   Link as LinkIcon,
@@ -22,7 +21,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Patients", href: "/patients", icon: UserRound },
-  { name: "Schedule", href: "/schedule", icon: Calendar },
+
   { name: "Therapy Slots", href: "/therapy-slots", icon: CalendarRange },
   { name: "Products", href: "/products", icon: PackageIcon },
   { name: "Transactions", href: "/transactions", icon: ShoppingCart },

@@ -7,7 +7,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Patients from "@/pages/patients";
 import Transactions from "@/pages/transactions";
-import Schedule from "@/pages/schedule";
+
 import Products from "@/pages/products";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
@@ -27,7 +27,7 @@ function Router() {
       <ProtectedRoute path="/patients" component={Patients} />
       <ProtectedRoute path="/transactions" component={Transactions} />
       <ProtectedRoute path="/transactions/new" component={Transactions} />
-      <ProtectedRoute path="/schedule" component={Schedule} />
+
       <ProtectedRoute path="/products" component={Products} />
       <ProtectedRoute path="/reports" component={Reports} />
       <ProtectedRoute path="/settings" component={Settings} />
