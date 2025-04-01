@@ -80,8 +80,33 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const [isWhatsappEnabled, setIsWhatsappEnabled] = useState(false);
-  const [isEmailNotificationsEnabled, setIsEmailNotificationsEnabled] = useState(false);
+  
+  // Load application settings from localStorage
+  const [isWhatsappEnabled, setIsWhatsappEnabled] = useState(() => {
+    try {
+      const savedSettings = localStorage.getItem('app_settings');
+      if (savedSettings) {
+        const settings = JSON.parse(savedSettings);
+        return settings.isWhatsappEnabled || false;
+      }
+    } catch (error) {
+      console.error("Error loading WhatsApp settings:", error);
+    }
+    return false;
+  });
+  
+  const [isEmailNotificationsEnabled, setIsEmailNotificationsEnabled] = useState(() => {
+    try {
+      const savedSettings = localStorage.getItem('app_settings');
+      if (savedSettings) {
+        const settings = JSON.parse(savedSettings);
+        return settings.isEmailNotificationsEnabled || false;
+      }
+    } catch (error) {
+      console.error("Error loading email notification settings:", error);
+    }
+    return false;
+  });
 
   // Profile form
   const profileForm = useForm<ProfileFormValues>({
@@ -95,15 +120,34 @@ export default function SettingsPage() {
     },
   });
 
-  // Store settings form
+  // Store settings form - load default values from localStorage if available
   const storeSettingsForm = useForm<StoreSettingsValues>({
     resolver: zodResolver(storeSettingsSchema),
-    defaultValues: {
-      clinicName: "Terapinya Terapi Titik Sumber",
-      address: "Jl. Contoh No. 123, Jakarta",
-      phone: "08123456789",
-      email: "info@terapititiksumber.com",
-      operationalHours: "Senin-Jumat: 08:00-17:00, Sabtu: 08:00-15:00",
+    defaultValues: () => {
+      try {
+        const savedSettings = localStorage.getItem('clinic_settings');
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
+          return {
+            clinicName: settings.clinicName || "Terapinya Terapi Titik Sumber",
+            address: settings.address || "Jl. Contoh No. 123, Jakarta",
+            phone: settings.phone || "08123456789",
+            email: settings.email || "info@terapititiksumber.com",
+            operationalHours: settings.operationalHours || "Senin-Jumat: 08:00-17:00, Sabtu: 08:00-15:00",
+          };
+        }
+      } catch (error) {
+        console.error("Error loading clinic settings:", error);
+      }
+      
+      // Default values jika tidak ada data tersimpan
+      return {
+        clinicName: "Terapinya Terapi Titik Sumber",
+        address: "Jl. Contoh No. 123, Jakarta",
+        phone: "08123456789",
+        email: "info@terapititiksumber.com",
+        operationalHours: "Senin-Jumat: 08:00-17:00, Sabtu: 08:00-15:00",
+      };
     },
   });
 
@@ -139,11 +183,23 @@ export default function SettingsPage() {
   // Handle store settings form submission
   const onSubmitStoreSettings = async (values: StoreSettingsValues) => {
     try {
+      console.log("Menyimpan pengaturan klinik:", values);
+      
+      // Simpan pengaturan ke localStorage karena kita belum menggunakan database untuk pengaturan
+      localStorage.setItem('clinic_settings', JSON.stringify(values));
+      
+      // Simpan juga di state global jika nanti akan dibuat
+      // dispatch({ type: 'UPDATE_CLINIC_SETTINGS', payload: values });
+      
+      // Invalidate cache jika diperlukan
+      // queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
+      
       toast({
         title: "Pengaturan disimpan",
         description: "Pengaturan klinik telah diperbarui",
       });
     } catch (error: any) {
+      console.error("Error saat menyimpan pengaturan klinik:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan pengaturan",
@@ -460,10 +516,32 @@ export default function SettingsPage() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  toast({
-                    title: "Pengaturan disimpan",
-                    description: "Pengaturan aplikasi telah diperbarui",
-                  });
+                  try {
+                    // Simpan ke localStorage untuk sementara
+                    localStorage.setItem('app_settings', JSON.stringify({
+                      theme,
+                      isWhatsappEnabled,
+                      isEmailNotificationsEnabled
+                    }));
+                    
+                    console.log("Menyimpan pengaturan aplikasi:", {
+                      theme,
+                      isWhatsappEnabled,
+                      isEmailNotificationsEnabled
+                    });
+                    
+                    toast({
+                      title: "Pengaturan disimpan",
+                      description: "Pengaturan aplikasi telah diperbarui",
+                    });
+                  } catch (error) {
+                    console.error("Error saat menyimpan pengaturan aplikasi:", error);
+                    toast({
+                      variant: "destructive",
+                      title: "Gagal menyimpan pengaturan",
+                      description: "Terjadi kesalahan saat menyimpan pengaturan aplikasi",
+                    });
+                  }
                 }}
               >
                 Simpan Pengaturan
