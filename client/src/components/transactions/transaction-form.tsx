@@ -5,6 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 
 import {
   Dialog,
@@ -33,7 +35,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, Info, AlertCircle, Package } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Switch } from "@/components/ui/switch";
 
 import PaymentMethods from "./payment-methods";
 import Invoice from "./invoice";
@@ -62,6 +69,25 @@ type Product = {
   name: string;
   price: string;
   stock: number;
+};
+
+// Tipe data untuk paket terapi aktif pasien
+type ActiveSession = {
+  id: number;
+  patientId: number;
+  packageId: number;
+  status: string;
+  totalSessions: number;
+  sessionsUsed: number;
+  startDate: Date;
+  lastSessionDate: Date | null;
+  package?: {
+    id: number;
+    name: string;
+    sessions: number;
+    price: string;
+  };
+  remainingSessions: number;
 };
 
 type CartItem = {
@@ -93,7 +119,18 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const [selectedPackage, setSelectedPackage] = useState<string>("");
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
+  const [selectedSession, setSelectedSession] = useState<ActiveSession | null>(null);
+  const [useExistingPackage, setUseExistingPackage] = useState(false);
   const { toast } = useToast();
+
+  const form = useForm<TransactionFormValues>({
+    resolver: zodResolver(transactionFormSchema),
+    defaultValues: {
+      patientId: "",
+      paymentMethod: "cash",
+      items: [],
+    },
+  });
 
   // Fetch patients
   const { data: patients = [] } = useQuery<Patient[]>({
@@ -110,13 +147,21 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     queryKey: ["/api/products"],
   });
 
-  const form = useForm<TransactionFormValues>({
-    resolver: zodResolver(transactionFormSchema),
-    defaultValues: {
-      patientId: "",
-      paymentMethod: "cash",
-      items: [],
+  // Fetch active sessions for a patient
+  const { data: activeSessions = [], refetch: refetchActiveSessions } = useQuery<ActiveSession[]>({
+    queryKey: ["/api/sessions", form.watch("patientId"), "active"],
+    queryFn: async () => {
+      const patientId = form.watch("patientId");
+      if (!patientId) return [];
+      
+      const response = await fetch(`/api/sessions?patientId=${patientId}&active=true`);
+      if (!response.ok) throw new Error("Failed to fetch active sessions");
+      
+      const data = await response.json();
+      console.log("Active sessions data:", data);
+      return data;
     },
+    enabled: !!form.watch("patientId"), // hanya jalankan jika patientId ada
   });
 
   // Reset cart when form is closed
@@ -223,6 +268,64 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       });
     }
   });
+
+  // Fungsi untuk menggunakan sesi dari paket aktif
+  const useSessionFromPackage = async (session: ActiveSession) => {
+    try {
+      console.log("Memproses penggunaan sesi dari paket aktif:", session);
+      
+      if (session.remainingSessions <= 0) {
+        toast({
+          title: "Paket tidak memiliki sesi tersisa",
+          description: `Paket ${session.package?.name} sudah digunakan semua sesinya`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Kirim permintaan ke API untuk menggunakan sesi
+      const newSessionsUsed = session.sessionsUsed + 1;
+      const response = await fetch(`/api/sessions/${session.id}/use`, {
+        method: "PUT",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sessionsUsed: newSessionsUsed
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Gagal menggunakan sesi paket");
+      }
+      
+      const result = await response.json();
+      console.log("Hasil penggunaan sesi:", result);
+      
+      // Tampilkan notifikasi sukses
+      toast({
+        title: "Sesi paket berhasil digunakan",
+        description: `Tersisa ${session.remainingSessions - 1} sesi dari paket ${session.package?.name}`,
+      });
+      
+      // Refresh data sesi aktif
+      refetchActiveSessions();
+      
+      // Set selected session ke null
+      setSelectedSession(null);
+      
+      // Reset switch
+      setUseExistingPackage(false);
+    } catch (error: any) {
+      console.error("Error menggunakan sesi paket:", error);
+      toast({
+        title: "Gagal menggunakan sesi paket",
+        description: error.message || "Terjadi kesalahan saat menggunakan sesi paket",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Add package to cart
   const handlePackageSelect = (packageId: string) => {
@@ -353,11 +456,23 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       return;
     }
     
-    if (cartItems.length === 0) {
+    // Jika dalam mode 'Gunakan sesi' kita skip validasi keranjang kosong
+    if (!useExistingPackage && cartItems.length === 0) {
       console.log("Validasi gagal: keranjang kosong");
       toast({
         title: "Gagal memproses pembayaran",
         description: "Silakan pilih minimal satu paket atau produk",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Jika dalam mode 'Gunakan sesi' tapi tidak ada sesi yang dipilih
+    if (useExistingPackage && selectedSession === null && cartItems.length === 0) {
+      console.log("Validasi gagal: tidak ada sesi yang dipilih");
+      toast({
+        title: "Gagal memproses pembayaran",
+        description: "Pilih sesi terapi yang ingin digunakan atau tambahkan produk ke keranjang",
         variant: "destructive",
       });
       return;
@@ -496,13 +611,110 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
               )}
             />
 
+            {/* Active Packages Section */}
+            {form.watch("patientId") && activeSessions && activeSessions.length > 0 && (
+              <div className="border border-muted rounded-md p-4 bg-muted/10">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <Package className="h-4 w-4 text-primary" />
+                    Paket Terapi Aktif
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Gunakan sesi?</span>
+                    <Switch 
+                      checked={useExistingPackage} 
+                      onCheckedChange={setUseExistingPackage}
+                    />
+                  </div>
+                </div>
+                
+                {useExistingPackage ? (
+                  <Accordion type="single" collapsible className="w-full">
+                    {activeSessions.map(session => (
+                      <AccordionItem value={`session-${session.id}`} key={session.id}>
+                        <AccordionTrigger className="py-2 text-sm hover:no-underline">
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <span>{session.package?.name}</span>
+                              <Badge variant={session.remainingSessions > 1 ? 'default' : 'destructive'} className="ml-2">
+                                {session.remainingSessions} sesi tersisa
+                              </Badge>
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <Card className="border-0 shadow-none">
+                            <CardContent className="p-2 space-y-3">
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <p className="text-muted-foreground">Mulai tanggal:</p>
+                                  <p className="font-medium">{format(new Date(session.startDate), 'dd MMMM yyyy', {locale: id})}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Sesi terakhir:</p>
+                                  <p className="font-medium">
+                                    {session.lastSessionDate 
+                                      ? format(new Date(session.lastSessionDate), 'dd MMMM yyyy', {locale: id})
+                                      : '-'}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Total sesi:</p>
+                                  <p className="font-medium">{session.totalSessions}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Sesi digunakan:</p>
+                                  <p className="font-medium">{session.sessionsUsed}</p>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-xs">
+                                  <span>Progress</span>
+                                  <span>{Math.floor((session.sessionsUsed / session.totalSessions) * 100)}%</span>
+                                </div>
+                                <Progress 
+                                  value={(session.sessionsUsed / session.totalSessions) * 100} 
+                                  className="h-2"
+                                />
+                              </div>
+                              
+                              <Button 
+                                onClick={() => {
+                                  setSelectedSession(session);
+                                  useSessionFromPackage(session);
+                                }}
+                                disabled={session.remainingSessions <= 0}
+                                className="w-full"
+                                size="sm"
+                              >
+                                Gunakan 1 Sesi
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                ) : (
+                  <div className="text-sm text-muted-foreground border border-dashed rounded-md p-3 flex items-center gap-2">
+                    <Info className="h-4 w-4" />
+                    <span>Pasien memiliki {activeSessions.length} paket terapi aktif. Aktifkan switch untuk menggunakan sesi dari paket yang ada.</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Package Selection */}
             <div>
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Paket Terapi</h4>
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                {useExistingPackage ? 'Beli Paket Terapi Baru' : 'Paket Terapi'}
+              </h4>
               <div className="space-y-4">
                 <Select
                   value={selectedPackage}
                   onValueChange={handlePackageSelect}
+                  disabled={useExistingPackage}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -517,6 +729,12 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                     ))}
                   </SelectContent>
                 </Select>
+                {useExistingPackage && (
+                  <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>Nonaktifkan mode "Gunakan sesi" untuk menambahkan paket baru</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -649,7 +867,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
               <Button
                 type="button"
                 onClick={handleSubmitForm}
-                disabled={mutation.isPending || cartItems.length === 0}
+                disabled={mutation.isPending || (!useExistingPackage && cartItems.length === 0)}
               >
                 {mutation.isPending ? "Memproses..." : "Proses Pembayaran"}
               </Button>

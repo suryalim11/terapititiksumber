@@ -444,7 +444,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (patientId) {
         if (active === 'true') {
           const activeSessions = await storage.getActiveSessionsByPatient(parseInt(patientId as string));
-          return res.status(200).json(activeSessions);
+          
+          // Untuk setiap sesi aktif, ambil informasi paket
+          const enrichedSessions = await Promise.all(
+            activeSessions.map(async (session) => {
+              const pkg = await storage.getPackage(session.packageId);
+              return {
+                ...session,
+                package: pkg || undefined,
+                remainingSessions: session.totalSessions - session.sessionsUsed
+              };
+            })
+          );
+          
+          return res.status(200).json(enrichedSessions);
         } else {
           const patientSessions = await storage.getSessionsByPatient(parseInt(patientId as string));
           return res.status(200).json(patientSessions);
@@ -454,6 +467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // No patientId specified, return error for now since we're in memory
       return res.status(400).json({ message: "Patient ID is required" });
     } catch (error) {
+      console.error("Error fetching patient sessions:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -491,14 +505,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const { sessionsUsed } = req.body;
       
-      const updatedSession = await storage.updateSessionUsage(id, sessionsUsed);
-      
-      if (!updatedSession) {
+      // Dapatkan sesi terlebih dahulu untuk validasi
+      const session = await storage.getSession(id);
+      if (!session) {
         return res.status(404).json({ message: "Session not found" });
       }
       
-      return res.status(200).json(updatedSession);
+      // Periksa apakah session masih aktif
+      if (session.status !== 'active') {
+        return res.status(400).json({ 
+          message: "Tidak dapat menggunakan sesi dari paket yang tidak aktif",
+          status: session.status
+        });
+      }
+      
+      // Periksa apakah masih ada sesi tersisa
+      const remainingSessions = session.totalSessions - session.sessionsUsed;
+      if (remainingSessions <= 0) {
+        return res.status(400).json({ 
+          message: "Tidak ada sesi tersisa pada paket ini",
+          remainingSessions
+        });
+      }
+      
+      // Update penggunaan sesi
+      const updatedSession = await storage.updateSessionUsage(id, sessionsUsed);
+      
+      if (!updatedSession) {
+        return res.status(500).json({ message: "Gagal memperbarui penggunaan sesi" });
+      }
+      
+      return res.status(200).json({
+        success: true,
+        message: "Penggunaan sesi berhasil diperbarui",
+        session: updatedSession,
+        remainingSessions: updatedSession.totalSessions - updatedSession.sessionsUsed
+      });
     } catch (error) {
+      console.error("Error updating session usage:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });
