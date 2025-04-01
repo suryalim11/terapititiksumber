@@ -419,6 +419,9 @@ export default function SettingsPage() {
                         isEmailNotificationsEnabled
                       }));
                       
+                      // Para debug
+                      console.log('Switch toggle: Tema alterado para:', newTheme);
+                      
                       toast({
                         title: "Tema diperbarui",
                         description: checked ? "Mode gelap diaktifkan" : "Mode terang diaktifkan",

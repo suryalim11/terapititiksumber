@@ -26,15 +26,30 @@ export function ThemeProvider({
   storageKey = "ui-theme",
   ...props
 }: ThemeProviderProps) {
+  // Inicializa o tema a partir do localStorage ou usa o padrão
   const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
+    () => {
+      // Verifica se existe um tema salvo no localStorage
+      const savedTheme = localStorage.getItem(storageKey);
+      
+      // Se existe e é válido, use-o
+      if (savedTheme && ["dark", "light", "system"].includes(savedTheme)) {
+        return savedTheme as Theme;
+      }
+      
+      // Caso contrário, use o tema padrão
+      return defaultTheme;
+    }
   );
 
+  // Aplica o tema ao documento HTML
   useEffect(() => {
     const root = window.document.documentElement;
-
+    
+    // Remove classes anteriores de tema
     root.classList.remove("light", "dark");
 
+    // Se o tema for "system", determine baseado nas preferências do sistema
     if (theme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
         .matches
@@ -42,17 +57,31 @@ export function ThemeProvider({
         : "light";
 
       root.classList.add(systemTheme);
+      
+      // Log para depuração
+      console.log("Tema do sistema aplicado:", systemTheme);
       return;
     }
 
+    // Adiciona a classe correspondente ao tema
     root.classList.add(theme);
+    
+    // Log para depuração
+    console.log("Tema aplicado:", theme);
   }, [theme]);
 
+  // Fornece os valores e funções para o contexto
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
+    setTheme: (newTheme: Theme) => {
+      // Salva no localStorage
+      localStorage.setItem(storageKey, newTheme);
+      
+      // Atualiza o estado
+      setTheme(newTheme);
+      
+      // Log para depuração
+      console.log("Tema alterado para:", newTheme);
     },
   };
 
