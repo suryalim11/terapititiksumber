@@ -1,0 +1,67 @@
+Berikut adalah prompt untuk pengembang Replit yang mencakup semua kebutuhan Anda:
+
+---
+
+**Judul Proyek:** Pembuatan Web App Terapi "Terapinya Terapi Titik Sumber"  
+
+**Fitur Utama yang Dibutuhkan:**  
+1. **Sistem Pendaftaran & Manajemen Pasien**  
+   - Formulir pendaftaran online dengan field:  
+     - Nama  
+     - Tanggal Lahir (otomatis hitung umur)  
+     - Alamat  
+     - Keluhan  
+   - Link pendaftaran yang bisa dibagikan via Instagram (integrated dengan sistem)  
+   - Notifikasi ke admin untuk konfirmasi penerimaan pasien  
+
+2. **Paket Terapi & Produk**  
+   - Dua jenis paket:  
+     - 1 Sesi: Rp150.000  
+     - 12 Sesi: Rp1.500.000 (dengan fitur tracking sisa sesi)  
+   - Katalog produk yang bisa diupdate admin (nama, harga, stok)  
+
+3. **Sistem Pembayaran & Invoice**  
+   - Metode pembayaran: QRIS, Transfer Bank, Cash  
+   - Generate invoice otomatis (PDF) yang bisa di-download dan dikirim via WhatsApp  
+   - Halaman transaksi terpadu untuk kasir (pilih paket/produk + metode bayar)  
+
+4. **Manajemen Jadwal & Toko**  
+   - Admin bisa atur jadwal buka/tutup layanan  
+   - Notifikasi ke pasien jika jadwal tidak tersedia  
+   - Dashboard admin untuk monitor:  
+     - Jumlah pasien hari ini  
+     - Pendapatan harian/bulanan  
+     - Stok produk  
+
+5. **Pelacakan Paket & Laporan**  
+   - Tracking sisa sesi terapi untuk paket 12x  
+   - Laporan keuangan bulanan (export ke Excel/CSV)  
+   - Riwayat transaksi pasien (paket yang dibeli, produk yang dibeli, sisa sesi)  
+
+6. **Desain & Kemudahan Penggunaan**  
+   - Tampilan modern responsif (mobile-friendly)  
+   - Panel admin dengan UI intuitif  
+   - Mode gelap/terang untuk kenyamanan  
+
+**Workflow Utama:**  
+1. Pasien klik link pendaftaran dari Instagram → isi data → submit.  
+2. Admin terima notifikasi → konfirmasi jadwal via dashboard.  
+3. Saat pasien datang:  
+   - Admin buka halaman transaksi → pilih paket/produk → proses pembayaran.  
+   - Invoice otomatis terkirim ke WA pasien.  
+4. Sistem update sisa sesi paket 12x setiap kali pasien datang.  
+
+**Teknologi yang Direkomendasikan:**  
+- Frontend: React.js + Tailwind CSS  
+- Backend: Node.js/Express.js + Firebase/Auth  
+- Database: PostgreSQL/MongoDB  
+- Integrasi: WhatsApp API (Twilio/Cloud API), QRIS Payment Gateway  
+
+**Catatan Tambahan:**  
+- Prioritaskan keamanan data pasien (enkripsi).  
+- Sediakan panduan penggunaan untuk admin.  
+- Optimalkan untuk deployment di Replit dengan database terintegrasi.  
+
+--- 
+
+Anda bisa menambahkan detail teknis spesifik atau preferensi desain jika diperlukan.
