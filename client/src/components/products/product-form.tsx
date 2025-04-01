@@ -117,8 +117,12 @@ export function ProductForm({
       console.log("Data produk yang akan dikirim:", productData);
 
       if (isEditing && productId) {
+        // Update data dengan header yang benar
         const response = await apiRequest(`/api/products/${productId}`, {
           method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify(productData),
         });
         
@@ -129,8 +133,12 @@ export function ProductForm({
           description: "Data produk berhasil diperbarui",
         });
       } else {
+        // Simpan data dengan menentukan header content-type
         const response = await apiRequest("/api/products", {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify(productData),
         });
         
