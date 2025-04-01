@@ -244,7 +244,7 @@ export default function TherapySlots() {
 
   // Render komponen
   return (
-    <Layout>
+    <>
       <Helmet>
         <title>Manajemen Slot Terapi | Terapi Titik Sumber</title>
       </Helmet>
@@ -581,6 +581,6 @@ export default function TherapySlots() {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
+    </>
   );
 }
