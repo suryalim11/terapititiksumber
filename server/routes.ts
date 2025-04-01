@@ -567,8 +567,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/appointments", async (req: Request, res: Response) => {
     try {
       console.log("Menerima permintaan POST /api/appointments dengan data:", req.body);
-      const validatedData = insertAppointmentSchema.parse(req.body);
+      
+      // Convert ISO string date to Date object if necessary
+      let appointmentData = { ...req.body };
+      if (typeof appointmentData.date === 'string') {
+        appointmentData.date = new Date(appointmentData.date);
+      }
+      
+      // Tambahkan log untuk melihat data setelah konversi
+      console.log("Data appointment setelah konversi:", appointmentData);
+      
+      const validatedData = insertAppointmentSchema.parse(appointmentData);
       console.log("Data appointment tervalidasi:", validatedData);
+      
       const newAppointment = await storage.createAppointment(validatedData);
       console.log("Appointment baru dibuat:", newAppointment);
       return res.status(201).json(newAppointment);

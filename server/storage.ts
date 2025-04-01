@@ -372,11 +372,22 @@ export class MemStorage implements IStorage {
 
   async createAppointment(insertAppointment: InsertAppointment): Promise<Appointment> {
     const id = this.appointmentCurrentId++;
+    
+    // Memastikan bahwa sessionId adalah null jika tidak disediakan
+    const sessionId = insertAppointment.sessionId ?? null;
+    
+    // Memastikan bahwa notes adalah null jika tidak disediakan
+    const notes = insertAppointment.notes ?? null;
+    
     const appointment: Appointment = { 
-      ...insertAppointment, 
+      ...insertAppointment,
+      sessionId,
+      notes, 
       id, 
-      status: 'scheduled' 
+      status: insertAppointment.status || 'scheduled' 
     };
+    
+    console.log("Menyimpan appointment ke penyimpanan:", appointment);
     this.appointments.set(id, appointment);
     return appointment;
   }

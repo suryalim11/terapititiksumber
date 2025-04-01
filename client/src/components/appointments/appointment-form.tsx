@@ -131,7 +131,10 @@ export function AppointmentForm({
   useEffect(() => {
     if (defaultValues) {
       Object.entries(defaultValues).forEach(([key, value]) => {
-        form.setValue(key as any, value as any);
+        if (value !== undefined) {
+          console.log(`Setting form value for ${key}:`, value);
+          form.setValue(key as any, value as any);
+        }
       });
       
       if (defaultValues.patientId) {
@@ -146,6 +149,27 @@ export function AppointmentForm({
 
   async function onSubmit(values: AppointmentFormValues) {
     try {
+      console.log("Form submission started with values:", values);
+      
+      // Validasi form terlebih dahulu
+      if (!values.patientId) {
+        toast({
+          title: "Data tidak lengkap",
+          description: "Pastikan Anda memilih pasien",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!values.date || !values.time) {
+        toast({
+          title: "Data tidak lengkap",
+          description: "Pastikan Anda memilih tanggal dan waktu",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Combine date and time
       const combinedDate = new Date(`${values.date}T${values.time}`);
       
@@ -156,9 +180,14 @@ export function AppointmentForm({
         date: combinedDate.toISOString(),
       };
       
+      console.log("Mengirim data jadwal:", requestBody);
+
       if (isEditing && appointmentId) {
         await apiRequest(`/api/appointments/${appointmentId}`, {
           method: "PUT",
+          headers: {
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(requestBody),
         });
         
@@ -167,10 +196,15 @@ export function AppointmentForm({
           description: "Data janji temu berhasil diperbarui",
         });
       } else {
-        await apiRequest("/api/appointments", {
+        const response = await apiRequest("/api/appointments", {
           method: "POST",
+          headers: {
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(requestBody),
         });
+        
+        console.log("Appointment response:", response);
         
         toast({
           title: "Janji temu baru dibuat",
@@ -188,11 +222,11 @@ export function AppointmentForm({
       if (onSuccess) {
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving appointment:", error);
       toast({
         title: "Gagal menyimpan data",
-        description: "Terjadi kesalahan, silakan coba lagi",
+        description: error.message || "Terjadi kesalahan, silakan coba lagi",
         variant: "destructive",
       });
     }
