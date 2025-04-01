@@ -129,6 +129,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Internal server error" });
     }
   });
+  
+  app.put("/api/patients/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`Menerima permintaan PUT /api/patients/${id} dengan data:`, req.body);
+      
+      // Validate the data
+      const validatedData = insertPatientSchema.parse(req.body);
+      console.log("Data pasien tervalidasi:", validatedData);
+      
+      // Check if patient exists
+      const patient = await storage.getPatient(id);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      // Update the patient using storage.updatePatient()
+      const updatedPatient = await storage.updatePatient(id, validatedData);
+      console.log("Pasien diperbarui:", updatedPatient);
+      
+      return res.status(200).json(updatedPatient);
+    } catch (error) {
+      console.error("Error ketika memperbarui pasien:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
 
   // Product routes
   app.get("/api/products", async (req: Request, res: Response) => {

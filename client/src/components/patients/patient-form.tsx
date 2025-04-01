@@ -93,21 +93,27 @@ export function PatientForm({
 
   async function onSubmit(values: PatientFormValues) {
     try {
+      console.log("Submitting patient form with values:", values);
+      
       if (isEditing && patientId) {
-        await apiRequest(`/api/patients/${patientId}`, {
+        console.log("Editing existing patient with ID:", patientId);
+        const response = await apiRequest(`/api/patients/${patientId}`, {
           method: "PUT",
           body: JSON.stringify(values),
         });
+        console.log("Update response:", response);
         
         toast({
           title: "Pasien diperbarui",
           description: "Data pasien berhasil diperbarui",
         });
       } else {
-        await apiRequest("/api/patients", {
+        console.log("Creating new patient");
+        const response = await apiRequest("/api/patients", {
           method: "POST",
           body: JSON.stringify(values),
         });
+        console.log("Create response:", response);
         
         toast({
           title: "Pasien baru ditambahkan",

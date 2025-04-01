@@ -18,6 +18,7 @@ export interface IStorage {
   getPatient(id: number): Promise<Patient | undefined>;
   getAllPatients(): Promise<Patient[]>;
   createPatient(patient: InsertPatient): Promise<Patient>;
+  updatePatient(id: number, patient: InsertPatient): Promise<Patient | undefined>;
   
   // Products
   getProduct(id: number): Promise<Product | undefined>;
@@ -190,6 +191,19 @@ export class MemStorage implements IStorage {
     const patient: Patient = { ...insertPatient, id, patientId, createdAt };
     this.patients.set(id, patient);
     return patient;
+  }
+  
+  async updatePatient(id: number, updateData: InsertPatient): Promise<Patient | undefined> {
+    const existingPatient = this.patients.get(id);
+    if (!existingPatient) return undefined;
+    
+    const updatedPatient: Patient = { 
+      ...existingPatient, 
+      ...updateData 
+    };
+    
+    this.patients.set(id, updatedPatient);
+    return updatedPatient;
   }
 
   // Product methods
