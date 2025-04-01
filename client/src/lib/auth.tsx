@@ -45,7 +45,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       try {
         const response = await apiRequest("GET", "/api/user");
         const userData = await response.json();
-        setUser(userData);
+        if (userData && userData.success && userData.user) {
+          setUser(userData.user);
+        } else {
+          setUser(null);
+        }
       } catch (error) {
         console.error("Auth status check failed:", error);
         setUser(null);
@@ -69,7 +73,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
       
       const userData = await response.json();
-      setUser(userData);
+      if (userData && userData.success && userData.user) {
+        setUser(userData.user);
+      } else {
+        setUser(null);
+      }
     } catch (error) {
       console.error("Login error:", error);
       throw error;
