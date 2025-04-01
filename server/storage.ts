@@ -24,7 +24,9 @@ export interface IStorage {
   getProduct(id: number): Promise<Product | undefined>;
   getAllProducts(): Promise<Product[]>;
   createProduct(product: InsertProduct): Promise<Product>;
+  updateProduct(id: number, product: InsertProduct): Promise<Product | undefined>;
   updateProductStock(id: number, stockChange: number): Promise<Product | undefined>;
+  deleteProduct(id: number): Promise<boolean>;
   
   // Packages
   getPackage(id: number): Promise<Package | undefined>;
@@ -223,6 +225,19 @@ export class MemStorage implements IStorage {
     return product;
   }
 
+  async updateProduct(id: number, updateData: InsertProduct): Promise<Product | undefined> {
+    const existingProduct = this.products.get(id);
+    if (!existingProduct) return undefined;
+    
+    const updatedProduct: Product = {
+      ...existingProduct,
+      ...updateData
+    };
+    
+    this.products.set(id, updatedProduct);
+    return updatedProduct;
+  }
+  
   async updateProductStock(id: number, stockChange: number): Promise<Product | undefined> {
     const product = this.products.get(id);
     if (!product) return undefined;
@@ -233,6 +248,14 @@ export class MemStorage implements IStorage {
     };
     this.products.set(id, updatedProduct);
     return updatedProduct;
+  }
+  
+  async deleteProduct(id: number): Promise<boolean> {
+    const exists = this.products.has(id);
+    if (!exists) return false;
+    
+    this.products.delete(id);
+    return true;
   }
 
   // Package methods

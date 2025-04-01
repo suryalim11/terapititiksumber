@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatRupiah } from "@/lib/utils";
 import { ProductForm } from "@/components/products/product-form";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 import {
   Card,
@@ -25,8 +27,16 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { PlusIcon, PencilIcon, EyeIcon } from "lucide-react";
+import { 
+  PlusIcon, 
+  PencilIcon, 
+  EyeIcon, 
+  TrashIcon,
+  AlertTriangleIcon
+} from "lucide-react";
 
 type Product = {
   id: number;
@@ -40,6 +50,12 @@ export default function Products() {
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: products = [], isLoading, error } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -60,6 +76,44 @@ export default function Products() {
   // Handle form success
   const handleFormSuccess = () => {
     handleCloseForm();
+  };
+  
+  // Open delete confirmation dialog
+  const handleDeleteClick = (product: Product) => {
+    setProductToDelete(product);
+    setDeleteConfirmOpen(true);
+  };
+  
+  // Delete product
+  const handleDeleteConfirm = async () => {
+    if (!productToDelete) return;
+    
+    try {
+      setIsDeleting(true);
+      await apiRequest(`/api/products/${productToDelete.id}`, {
+        method: "DELETE",
+      });
+      
+      // Invalidate products cache to refetch the data
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      
+      toast({
+        title: "Produk dihapus",
+        description: `${productToDelete.name} telah dihapus dari inventaris`,
+      });
+      
+      setDeleteConfirmOpen(false);
+      setProductToDelete(null);
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      toast({
+        title: "Gagal menghapus produk",
+        description: "Terjadi kesalahan, silakan coba lagi",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Filter products
@@ -167,6 +221,15 @@ export default function Products() {
                           >
                             <PencilIcon className="h-4 w-4" />
                           </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteClick(product)}
+                            title="Hapus produk"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -193,6 +256,40 @@ export default function Products() {
             isEditing={!!editingProduct}
             productId={editingProduct?.id}
           />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangleIcon className="h-5 w-5 text-red-500" />
+              Konfirmasi Hapus Produk
+            </DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus produk <strong>{productToDelete?.name}</strong>? 
+              Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between sm:space-x-0">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setDeleteConfirmOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button 
+              type="button" 
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Menghapus..." : "Hapus Produk"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

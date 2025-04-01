@@ -284,10 +284,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Product not found" });
       }
       
-      // Implementasi updateProduct di storage untuk memperbarui produk
-      // Untuk sementara, kita hanya akan memperbarui stok saja karena endpoint utama sudah ada
-      const stockChange = (validatedData.stock ?? 0) - product.stock;
-      const updatedProduct = await storage.updateProductStock(id, stockChange);
+      // Sekarang menggunakan fungsi updateProduct untuk memperbarui semua data produk
+      const updatedProduct = await storage.updateProduct(id, validatedData);
       console.log("Produk diperbarui:", updatedProduct);
       
       return res.status(200).json(updatedProduct);
@@ -296,6 +294,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.delete("/api/products/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`Menerima permintaan DELETE /api/products/${id}`);
+      
+      const product = await storage.getProduct(id);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      const deleted = await storage.deleteProduct(id);
+      
+      if (deleted) {
+        console.log(`Produk dengan ID ${id} berhasil dihapus`);
+        return res.status(200).json({ success: true, message: "Product deleted successfully" });
+      } else {
+        console.log(`Gagal menghapus produk dengan ID ${id}`);
+        return res.status(500).json({ success: false, message: "Failed to delete product" });
+      }
+    } catch (error) {
+      console.error("Error ketika menghapus produk:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });
