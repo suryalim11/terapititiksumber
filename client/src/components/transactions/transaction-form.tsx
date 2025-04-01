@@ -35,7 +35,24 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { CommandCombobox } from "./command-combobox";
+
+// Command UI components
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 import PaymentMethods from "./payment-methods";
 import Invoice from "./invoice";
 
@@ -418,30 +435,82 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Patient Selection with Searchable Combobox */}
+            {/* Patient Selection with Searchable Command Combobox */}
             <FormField
               control={form.control}
               name="patientId"
               render={({ field }) => {
-                // Convert patients data to CommandCombobox format
+                const [open, setOpen] = useState(false);
+                const [searchQuery, setSearchQuery] = useState("");
+                
+                // Extract patient options
                 const patientOptions = patients?.map((patient: Patient) => ({
                   value: patient.id.toString(),
                   label: `${patient.name} (ID: ${patient.patientId})`
                 })) || [];
                 
+                // Find selected patient
+                const selectedPatient = patientOptions.find(
+                  option => option.value === field.value
+                );
+                
+                // Filter patients based on search query
+                const filteredPatients = patientOptions.filter(patient => 
+                  patient.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  patient.value.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+                
                 return (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Pilih Pasien</FormLabel>
-                    <FormControl>
-                      <CommandCombobox
-                        options={patientOptions}
-                        value={field.value}
-                        onSelect={field.onChange}
-                        placeholder="Cari dan pilih pasien..."
-                        emptyMessage="Tidak ada pasien ditemukan."
-                        className="w-full"
-                      />
-                    </FormControl>
+                    <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="justify-between w-full"
+                          >
+                            {selectedPatient ? selectedPatient.label : "Cari dan pilih pasien..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-0 w-full min-w-[300px]">
+                        <Command>
+                          <CommandInput 
+                            placeholder="Cari pasien..."
+                            value={searchQuery}
+                            onValueChange={setSearchQuery}
+                          />
+                          <CommandEmpty>Tidak ada pasien ditemukan.</CommandEmpty>
+                          <CommandList>
+                            <CommandGroup>
+                              {filteredPatients.map(patient => (
+                                <CommandItem
+                                  key={patient.value}
+                                  value={patient.value}
+                                  onSelect={(value) => {
+                                    field.onChange(value);
+                                    setOpen(false);
+                                    setSearchQuery("");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === patient.value ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {patient.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 );
