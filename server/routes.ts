@@ -14,14 +14,6 @@ import {
 } from "@shared/schema";
 import { setupAuth } from "./auth";
 
-// Middleware to require authentication
-const requireAuth = (req: Request, res: Response, next: any) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  next();
-};
-
 // Tipe data untuk verifikasi link pendaftaran
 interface VerifyRegistrationLinkBody {
   code: string;
@@ -1357,84 +1349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create an HTTP server to attach Express
-  // API untuk pengaturan
-  // Get semua pengaturan
-  app.get("/api/settings", requireAuth, async (req, res) => {
-    try {
-      const settings = await storage.getAllSettings();
-      res.json(settings);
-    } catch (error) {
-      console.error("Error getting settings:", error);
-      res.status(500).json({ error: "Failed to get settings" });
-    }
-  });
-  
-  // Get pengaturan berdasarkan key
-  app.get("/api/settings/:key", async (req, res) => {
-    try {
-      const { key } = req.params;
-      const setting = await storage.getSetting(key);
-      if (!setting) {
-        return res.status(404).json({ error: "Setting not found" });
-      }
-      res.json(setting);
-    } catch (error) {
-      console.error("Error getting setting:", error);
-      res.status(500).json({ error: "Failed to get setting" });
-    }
-  });
-  
-  // Tambah atau update pengaturan
-  app.post("/api/settings", requireAuth, async (req, res) => {
-    try {
-      const { key, value, description } = req.body;
-      if (!key || !value) {
-        return res.status(400).json({ error: "Key and value are required" });
-      }
-      
-      let setting = await storage.getSetting(key);
-      
-      if (setting) {
-        // Update pengaturan yang sudah ada
-        const userId = req.user?.id;
-        if (!userId) {
-          return res.status(401).json({ error: "User ID not found" });
-        }
-        
-        setting = await storage.updateSetting(key, value, userId);
-      } else {
-        // Buat pengaturan baru
-        setting = await storage.createSetting({
-          key,
-          value,
-          description: description || "",
-          updatedBy: req.user?.id || 1
-        });
-      }
-      
-      res.json(setting);
-    } catch (error) {
-      console.error("Error updating setting:", error);
-      res.status(500).json({ error: "Failed to update setting" });
-    }
-  });
-  
-  // Hapus pengaturan
-  app.delete("/api/settings/:key", requireAuth, async (req, res) => {
-    try {
-      const { key } = req.params;
-      const success = await storage.deleteSetting(key);
-      if (!success) {
-        return res.status(404).json({ error: "Setting not found" });
-      }
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting setting:", error);
-      res.status(500).json({ error: "Failed to delete setting" });
-    }
-  });
-
+  // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);
 
   return httpServer;

@@ -175,23 +175,3 @@ export type InsertTherapySlot = z.infer<typeof insertTherapySlotSchema>;
 
 export type Appointment = typeof appointments.$inferSelect;
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
-
-// Settings Schema untuk harga terapi dan pengaturan lainnya
-export const settings = pgTable("settings", {
-  id: serial("id").primaryKey(),
-  key: text("key").notNull().unique(),
-  value: text("value").notNull(),
-  description: text("description"),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  updatedBy: integer("updated_by").notNull(), // User ID yang melakukan update
-});
-
-export const insertSettingSchema = createInsertSchema(settings).pick({
-  key: true,
-  value: true,
-  description: true,
-  updatedBy: true,
-});
-
-export type Setting = typeof settings.$inferSelect;
-export type InsertSetting = z.infer<typeof insertSettingSchema>;

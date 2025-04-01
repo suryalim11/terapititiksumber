@@ -138,9 +138,9 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {activities.length > 0 ? (
-                activities.map((activity, index) => (
+                activities.map((activity) => (
                   <div
-                    key={`activity-${activity.id || index}`}
+                    key={activity.id}
                     className="flex items-start gap-3 rounded-lg border p-3"
                   >
                     <div className="rounded-full bg-primary/10 p-2">
