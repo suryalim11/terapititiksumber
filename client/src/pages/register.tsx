@@ -47,7 +47,6 @@ const registerFormSchema = z.object({
   }),
   address: z.string().min(5, "Alamat harus minimal 5 karakter"),
   complaints: z.string().min(5, "Keluhan harus minimal 5 karakter"),
-  medicalHistory: z.string().nullable().optional(),
 });
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
@@ -136,7 +135,6 @@ export default function RegisterPage() {
       gender: "Laki-laki",
       address: "",
       complaints: "",
-      medicalHistory: "",
     },
   });
 
@@ -148,7 +146,6 @@ export default function RegisterPage() {
         ...values, 
         // Convert fields as needed to match schema
         email: values.email || null,
-        medicalHistory: values.medicalHistory || null,
         // Add registration code as metadata
         registrationCode
       };
@@ -427,22 +424,7 @@ export default function RegisterPage() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="medicalHistory"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Riwayat Kesehatan (Opsional)</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Ceritakan riwayat kesehatan atau pengobatan yang pernah Anda jalani"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+
 
                   <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700">
                     Daftar Sekarang

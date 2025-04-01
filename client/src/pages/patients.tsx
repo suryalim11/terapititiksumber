@@ -19,7 +19,6 @@ interface Patient {
   address?: string;
   gender: string;
   complaints: string;
-  medicalHistory?: string;
   createdAt: string;
 }
 
@@ -189,7 +188,6 @@ export default function Patients() {
                 gender: selectedPatient.gender as "Laki-laki" | "Perempuan",
                 address: selectedPatient.address || "",
                 complaints: selectedPatient.complaints || "",
-                medicalHistory: selectedPatient.medicalHistory || "",
               }}
               isEditing={true}
               patientId={selectedPatient.id}
@@ -252,13 +250,6 @@ export default function Patients() {
                 <div className="text-sm font-medium text-muted-foreground">Keluhan Pasien</div>
                 <div className="rounded-md border p-3 mt-1">
                   {selectedPatient.complaints || "Tidak ada keluhan yang tercatat."}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">Riwayat Medis</div>
-                <div className="rounded-md border p-3 mt-1">
-                  {selectedPatient.medicalHistory || "Tidak ada riwayat medis yang tercatat."}
                 </div>
               </div>
 

@@ -51,7 +51,6 @@ const patientFormSchema = insertPatientSchema.extend({
     message: "Email tidak valid",
   }).optional().or(z.literal("")),
   address: z.string().optional().or(z.literal("")),
-  medicalHistory: z.string().optional().or(z.literal("")),
   complaints: z.string().min(3, {
     message: "Keluhan harus minimal 3 karakter",
   }),
@@ -84,7 +83,6 @@ export function PatientForm({
       gender: "Laki-laki",
       email: "",
       address: "",
-      medicalHistory: "",
       complaints: "", // Tambahkan field keluhan yang wajib
     },
   });
@@ -119,8 +117,7 @@ export function PatientForm({
         gender: values.gender,
         address: values.address || "",
         complaints: values.complaints,
-        email: values.email || null,
-        medicalHistory: values.medicalHistory || null
+        email: values.email || null
       };
       
       console.log("Data yang akan dikirim ke server:", dataToSend);
@@ -322,20 +319,6 @@ export function PatientForm({
               <FormLabel>Keluhan Pasien</FormLabel>
               <FormControl>
                 <Textarea placeholder="Keluhan yang dirasakan pasien saat ini" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="medicalHistory"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Riwayat Medis (opsional)</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Riwayat penyakit, alergi, dll." {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -30,7 +30,6 @@ export const patients = pgTable("patients", {
   gender: text("gender").notNull(),
   address: text("address").notNull(),
   complaints: text("complaints").notNull(),
-  medicalHistory: text("medical_history"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -42,7 +41,6 @@ export const insertPatientSchema = createInsertSchema(patients).pick({
   gender: true,
   address: true,
   complaints: true,
-  medicalHistory: true,
 });
 
 // Product Schema

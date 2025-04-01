@@ -108,8 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           birthDate: "1990-01-01",
           gender: "Laki-laki",
           address: "Alamat Test",
-          complaints: "Keluhan Test",
-          medicalHistory: null
+          complaints: "Keluhan Test"
         };
         
         console.log("Menggunakan data contoh:", dummyData);
@@ -130,8 +129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         birthDate: req.body.birthDate || "",
         gender: req.body.gender || "Laki-laki",
         address: req.body.address || "",
-        complaints: req.body.complaints || "",
-        medicalHistory: req.body.medicalHistory || null
+        complaints: req.body.complaints || ""
       };
       
       console.log("Data yang akan divalidasi:", patientData);
@@ -162,8 +160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         birthDate: req.body.birthDate,
         gender: req.body.gender,
         address: req.body.address || "",
-        complaints: req.body.complaints,
-        medicalHistory: req.body.medicalHistory || null
+        complaints: req.body.complaints
       };
       
       console.log("Data yang akan divalidasi untuk update:", patientData);
