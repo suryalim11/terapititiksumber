@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/components/ui/theme-provider";
 import { useForm } from "react-hook-form";
+import { THEME_STORAGE_KEY } from "../main";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -80,6 +81,27 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+
+  // Sincronizar com o tema atual quando o componente é montado
+  useEffect(() => {
+    // Carregar configurações do aplicativo ao iniciar
+    try {
+      const savedSettings = localStorage.getItem('app_settings');
+      if (savedSettings) {
+        const settings = JSON.parse(savedSettings);
+        // Atualizar as configurações do app para usar o tema atual do ThemeProvider
+        // para manter a consistência entre os sistemas
+        if (theme !== settings.theme) {
+          localStorage.setItem('app_settings', JSON.stringify({
+            ...settings,
+            theme: theme
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao sincronizar tema:", error);
+    }
+  }, [theme]);
   
   // Load application settings from localStorage
   const [isWhatsappEnabled, setIsWhatsappEnabled] = useState(() => {
@@ -384,11 +406,13 @@ export default function SettingsPage() {
                     id="theme-toggle"
                     checked={theme === "dark"}
                     onCheckedChange={(checked) => {
-                      // Ubah tema dan simpan langsung
+                      // Simpan tema dalam variabel untuk uso nos toasts
                       const newTheme = checked ? "dark" : "light";
+                      
+                      // Aplicar a mudança no tema - setTheme já salva no localStorage usando a chave THEME_STORAGE_KEY 
                       setTheme(newTheme);
                       
-                      // Simpan ke localStorage untuk sementara
+                      // Também salvar nas configurações do app para manter compatibilidade
                       localStorage.setItem('app_settings', JSON.stringify({
                         theme: newTheme,
                         isWhatsappEnabled,
