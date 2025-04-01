@@ -595,12 +595,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/appointments/:id/status", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Log raw request body untuk debugging
+      console.log("Request body raw:", req.body);
+      
+      // Pastikan body ada dan memiliki format yang benar
+      if (!req.body || typeof req.body !== 'object') {
+        return res.status(400).json({ message: "Invalid request body" });
+      }
+      
       const { status } = req.body;
+      
+      // Log nilai status yang diterima
+      console.log(`Received status update for appointment ${id}, status value: "${status}", type: ${typeof status}`);
       
       // Validasi status
       const validStatuses = ['scheduled', 'completed', 'cancelled'];
-      if (!validStatuses.includes(status)) {
-        return res.status(400).json({ message: "Invalid status. Status must be one of: scheduled, completed, cancelled" });
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ 
+          message: "Invalid status. Status must be one of: scheduled, completed, cancelled",
+          receivedStatus: status
+        });
       }
       
       // Log untuk debugging

@@ -402,12 +402,22 @@ export class MemStorage implements IStorage {
     const appointment = this.appointments.get(id);
     if (!appointment) return undefined;
     
+    // Validasi status lagi untuk keamanan extra
+    const validStatuses = ['scheduled', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      console.error(`Status tidak valid: ${status}. Status harus salah satu dari: ${validStatuses.join(', ')}`);
+      return undefined;
+    }
+    
+    console.log(`[storage] Updating appointment ${id} status from '${appointment.status}' to '${status}'`);
+    
     const updatedAppointment: Appointment = {
       ...appointment,
       status
     };
     
     this.appointments.set(id, updatedAppointment);
+    console.log(`[storage] Appointment updated successfully: `, updatedAppointment);
     return updatedAppointment;
   }
 

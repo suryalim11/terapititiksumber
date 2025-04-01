@@ -92,10 +92,18 @@ export default function Schedule() {
 
   const handleChangeStatus = async (appointment: Appointment, newStatus: string) => {
     try {
-      await apiRequest(`/api/appointments/${appointment.id}/status`, {
+      console.log(`Mencoba mengubah status appointment ${appointment.id} menjadi: ${newStatus}`);
+      
+      // Tambahkan header untuk memastikan body JSON diproses dengan benar
+      const response = await apiRequest(`/api/appointments/${appointment.id}/status`, {
         method: "PUT",
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ status: newStatus }),
       });
+      
+      console.log("Response dari server:", response);
       
       toast({
         title: "Status diperbarui",
@@ -104,6 +112,11 @@ export default function Schedule() {
       
       // Invalidate appointments queries to refetch the data
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+      
+      // Invalidate specific date query to ensure calendar view is updated
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/appointments', format(selectedDate, 'yyyy-MM-dd')] 
+      });
     } catch (error) {
       console.error("Error updating appointment status:", error);
       toast({
