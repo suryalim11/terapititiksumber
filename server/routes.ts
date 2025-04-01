@@ -133,11 +133,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         complaints: req.body.complaints || ""
       };
       
+      // Simpan therapySlotId untuk digunakan nanti
+      const therapySlotId = req.body.therapySlotId ? parseInt(req.body.therapySlotId) : null;
+      
       console.log("Data yang akan divalidasi:", patientData);
       const validatedData = insertPatientSchema.parse(patientData);
       console.log("Data pasien tervalidasi:", validatedData);
       const newPatient = await storage.createPatient(validatedData);
       console.log("Pasien baru dibuat:", newPatient);
+      
+      // Jika therapySlotId ada, buat appointment dan perbarui slot terapi
+      if (therapySlotId) {
+        try {
+          // Cek apakah slot terapi valid dan masih tersedia
+          const therapySlot = await storage.getTherapySlot(therapySlotId);
+          
+          if (therapySlot && therapySlot.isActive && therapySlot.currentCount < therapySlot.maxQuota) {
+            // Tingkatkan jumlah penggunaan slot terapi
+            await storage.incrementTherapySlotUsage(therapySlotId);
+            console.log(`Slot terapi dengan ID ${therapySlotId} diperbarui: ${therapySlot.currentCount + 1}/${therapySlot.maxQuota}`);
+            
+            // Buat appointment baru
+            const appointmentData = {
+              patientId: newPatient.id,
+              therapySlotId: therapySlotId,
+              notes: validatedData.complaints,
+              status: "booked"
+            };
+            
+            const appointment = await storage.createAppointment(appointmentData);
+            console.log("Appointment dibuat:", appointment);
+          }
+        } catch (error) {
+          console.error("Error saat memproses slot terapi:", error);
+          // Lanjutkan meskipun ada error saat memproses slot terapi
+          // Pasien tetap dibuat, tapi appointment mungkin gagal
+        }
+      }
+      
       return res.status(201).json(newPatient);
     } catch (error) {
       console.error("Error ketika membuat pasien:", error);
@@ -873,6 +906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const dateParam = req.query.date as string;
       const activeOnly = req.query.active === 'true';
+      const availableOnly = req.query.available === 'true';
       
       if (dateParam) {
         const date = new Date(dateParam);
@@ -881,12 +915,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         const slots = await storage.getTherapySlotsByDate(date);
+        
+        // Filter slots by availability if requested
+        if (availableOnly) {
+          const availableSlots = slots.filter(slot => 
+            slot.isActive && slot.currentCount < slot.maxQuota
+          );
+          return res.status(200).json(availableSlots);
+        }
+        
         return res.status(200).json(slots);
       } else if (activeOnly) {
         const slots = await storage.getActiveTherapySlots();
+        
+        // Filter slots by availability if requested
+        if (availableOnly) {
+          const availableSlots = slots.filter(slot => 
+            slot.currentCount < slot.maxQuota
+          );
+          return res.status(200).json(availableSlots);
+        }
+        
         return res.status(200).json(slots);
       } else {
         const slots = await storage.getAllTherapySlots();
+        
+        // Filter slots by availability if requested
+        if (availableOnly) {
+          const availableSlots = slots.filter(slot => 
+            slot.isActive && slot.currentCount < slot.maxQuota
+          );
+          return res.status(200).json(availableSlots);
+        }
+        
         return res.status(200).json(slots);
       }
     } catch (error) {

@@ -333,8 +333,24 @@ export class MemStorage implements IStorage {
     const id = this.patientCurrentId++;
     const patientId = `P-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
     const createdAt = new Date();
-    const patient: Patient = { ...insertPatient, id, patientId, createdAt };
+    
+    // Create patient with appropriate null values for optional fields
+    const patient: Patient = { 
+      ...insertPatient, 
+      id, 
+      patientId, 
+      createdAt,
+      email: insertPatient.email || null,
+      therapySlotId: insertPatient.therapySlotId || null 
+    };
+    
     this.patients.set(id, patient);
+    
+    // Jika pasien terkait dengan slot terapi, increment jumlah penggunaan slot
+    if (patient.therapySlotId) {
+      await this.incrementTherapySlotUsage(patient.therapySlotId);
+    }
+    
     return patient;
   }
   

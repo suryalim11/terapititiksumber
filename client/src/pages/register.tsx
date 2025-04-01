@@ -5,6 +5,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { format, parseISO } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 import {
   Form,
@@ -30,8 +33,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Calendar, Clock, CheckCircle, Search } from "lucide-react";
-import { format } from "date-fns";
+import { 
+  AlertCircle, 
+  Calendar, 
+  Clock, 
+  CheckCircle, 
+  Search, 
+  Users 
+} from "lucide-react";
 
 // Form validation schema
 const registerFormSchema = z.object({
@@ -47,6 +56,10 @@ const registerFormSchema = z.object({
   }),
   address: z.string().min(5, "Alamat harus minimal 5 karakter"),
   complaints: z.string().min(5, "Keluhan harus minimal 5 karakter"),
+  therapySlotId: z.number({
+    required_error: "Pilih sesi terapi",
+    invalid_type_error: "Pilih sesi terapi",
+  }).optional(),
 });
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
@@ -65,6 +78,19 @@ export default function RegisterPage() {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [patientFound, setPatientFound] = useState<boolean>(false);
   const [foundPatient, setFoundPatient] = useState<any>(null);
+  
+  // Mendapatkan data slot terapi yang tersedia
+  const { data: therapySlots, isLoading: isLoadingSlots } = useQuery({
+    queryKey: ['/api/therapy-slots', { available: true, active: true }],
+    queryFn: async () => {
+      const response = await fetch('/api/therapy-slots?available=true&active=true');
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data slot terapi');
+      }
+      return response.json();
+    },
+    enabled: registrationStatus === "idle" && !!registrationCode
+  });
 
   // Parse the URL for registration code
   useEffect(() => {
@@ -210,13 +236,25 @@ export default function RegisterPage() {
   // Handle form submission
   const onSubmit = async (values: RegisterFormValues) => {
     try {
+      // Validasi apakah pasien telah memilih sesi terapi
+      if (!values.therapySlotId) {
+        toast({
+          variant: "destructive",
+          title: "Sesi Terapi Diperlukan",
+          description: "Silakan pilih sesi terapi yang tersedia",
+        });
+        return;
+      }
+      
       // Create the patient payload
       const payload = {
         ...values, 
         // Convert fields as needed to match schema
         email: values.email || null,
         // Add registration code as metadata
-        registrationCode
+        registrationCode,
+        // Pastikan therapySlotId dikirim dengan benar
+        therapySlotId: values.therapySlotId
       };
 
       // Submit the form data to patients endpoint
@@ -441,7 +479,11 @@ export default function RegisterPage() {
                         <FormItem>
                           <FormLabel>Email (Opsional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="email@contoh.com" {...field} />
+                            <Input 
+                              placeholder="email@contoh.com" 
+                              {...field} 
+                              value={field.value || ''} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -507,6 +549,67 @@ export default function RegisterPage() {
                             placeholder="Masukkan alamat lengkap Anda"
                             {...field}
                           />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="therapySlotId"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel className="text-base">Pilih Sesi Terapi</FormLabel>
+                        <FormDescription>
+                          Pilih jadwal sesi terapi yang tersedia sesuai dengan kebutuhan Anda
+                        </FormDescription>
+                        <FormControl>
+                          <div className="space-y-4">
+                            {isLoadingSlots ? (
+                              <div className="w-full py-8 flex items-center justify-center">
+                                <div className="animate-spin h-6 w-6 border-2 border-teal-500 rounded-full border-t-transparent"></div>
+                              </div>
+                            ) : therapySlots && therapySlots.length > 0 ? (
+                              <RadioGroup 
+                                onValueChange={(value) => field.onChange(parseInt(value))}
+                                className="flex flex-col space-y-3"
+                              >
+                                {therapySlots.map((slot: any) => {
+                                  // Format tanggal dan waktu
+                                  const slotDate = parseISO(slot.date);
+                                  const formattedDate = format(slotDate, "EEEE, dd MMMM yyyy", { locale: idLocale });
+                                  
+                                  return (
+                                    <div key={slot.id} className="flex items-center space-x-2 border rounded-md p-3 hover:bg-teal-50 cursor-pointer">
+                                      <RadioGroupItem value={String(slot.id)} id={`slot-${slot.id}`} />
+                                      <div className="grid gap-1.5 leading-none">
+                                        <FormLabel htmlFor={`slot-${slot.id}`} className="font-medium text-sm text-teal-700">
+                                          {formattedDate}
+                                        </FormLabel>
+                                        <div className="flex items-center space-x-2 text-sm text-gray-500">
+                                          <Clock className="h-3.5 w-3.5" />
+                                          <span>{slot.timeSlot}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2 text-xs text-amber-700">
+                                          <Users className="h-3 w-3" />
+                                          <span>Tersedia: {slot.maxQuota - slot.currentCount} dari {slot.maxQuota} kursi</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </RadioGroup>
+                            ) : (
+                              <Alert className="bg-amber-50 border-amber-200">
+                                <AlertCircle className="h-4 w-4 text-amber-700" />
+                                <AlertTitle className="text-amber-700">Tidak ada sesi tersedia</AlertTitle>
+                                <AlertDescription className="text-amber-600">
+                                  Maaf, saat ini tidak ada sesi terapi yang tersedia. Silakan hubungi admin untuk informasi lebih lanjut.
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>

@@ -31,6 +31,7 @@ export const patients = pgTable("patients", {
   address: text("address").notNull(),
   complaints: text("complaints").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  therapySlotId: integer("therapy_slot_id"), // Foreign key to therapy_slots
 });
 
 export const insertPatientSchema = createInsertSchema(patients).pick({
@@ -41,6 +42,7 @@ export const insertPatientSchema = createInsertSchema(patients).pick({
   gender: true,
   address: true,
   complaints: true,
+  therapySlotId: true,
 });
 
 // Product Schema
