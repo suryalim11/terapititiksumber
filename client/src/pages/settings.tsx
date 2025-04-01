@@ -237,9 +237,8 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="profile">Profil</TabsTrigger>
-          <TabsTrigger value="clinic">Klinik</TabsTrigger>
           <TabsTrigger value="invoice">Invoice</TabsTrigger>
           <TabsTrigger value="app">Aplikasi</TabsTrigger>
         </TabsList>
@@ -353,99 +352,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        {/* Clinic Settings */}
-        <TabsContent value="clinic">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl font-heading">Informasi Klinik</CardTitle>
-              <CardDescription>
-                Atur detail dan operasional klinik Anda
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...storeSettingsForm}>
-                <form onSubmit={storeSettingsForm.handleSubmit(onSubmitStoreSettings)} className="space-y-6">
-                  <FormField
-                    control={storeSettingsForm.control}
-                    name="clinicName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nama Klinik</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Masukkan nama klinik" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
-                  <FormField
-                    control={storeSettingsForm.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Alamat</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Masukkan alamat klinik" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={storeSettingsForm.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nomor Telepon</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Masukkan nomor telepon" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={storeSettingsForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Masukkan email klinik" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={storeSettingsForm.control}
-                    name="operationalHours"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Jam Operasional</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Masukkan jam operasional" />
-                        </FormControl>
-                        <FormDescription>
-                          Contoh: Senin-Jumat: 08:00-17:00, Sabtu: 08:00-15:00
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit">Simpan Pengaturan</Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* Application Settings */}
         <TabsContent value="invoice">
@@ -476,7 +383,23 @@ export default function SettingsPage() {
                   <Switch
                     id="theme-toggle"
                     checked={theme === "dark"}
-                    onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+                    onCheckedChange={(checked) => {
+                      // Ubah tema dan simpan langsung
+                      const newTheme = checked ? "dark" : "light";
+                      setTheme(newTheme);
+                      
+                      // Simpan ke localStorage untuk sementara
+                      localStorage.setItem('app_settings', JSON.stringify({
+                        theme: newTheme,
+                        isWhatsappEnabled,
+                        isEmailNotificationsEnabled
+                      }));
+                      
+                      toast({
+                        title: "Tema diperbarui",
+                        description: checked ? "Mode gelap diaktifkan" : "Mode terang diaktifkan",
+                      });
+                    }}
                   />
                 </div>
               </div>
