@@ -32,7 +32,7 @@ const productFormSchema = insertProductSchema.extend({
   stock: z.coerce.number().min(0, {
     message: "Stok tidak boleh negatif",
   }),
-  description: z.string().optional().or(z.literal("")),
+  description: z.string().optional().or(z.literal("")).nullable(),
 });
 
 type ProductFormValues = z.infer<typeof productFormSchema>;
@@ -65,6 +65,10 @@ export function ProductForm({
 
   useEffect(() => {
     if (defaultValues) {
+      // Log untuk debugging
+      console.log("Setting default values:", defaultValues);
+      
+      // Atur nilai form berdasarkan prop defaultValues
       Object.entries(defaultValues).forEach(([key, value]) => {
         form.setValue(key as any, value as any);
       });
@@ -82,25 +86,52 @@ export function ProductForm({
 
   async function onSubmit(values: ProductFormValues) {
     try {
+      // Log seluruh nilai form untuk debugging
+      console.log("Form values pada submit:", values);
+      
+      // Pastikan semua field yang diperlukan ada
+      if (!values.name || !values.price) {
+        console.error("Missing required fields:", { name: values.name, price: values.price });
+        toast({
+          title: "Data tidak lengkap",
+          description: "Nama produk dan harga harus diisi",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Clean up price value to only contain digits
       const cleanPrice = values.price.replace(/\D/g, "");
-      const productData = { ...values, price: cleanPrice };
+      
+      // Siapkan data produk dengan memastikan semua field wajib terisi
+      const productData = {
+        name: values.name,
+        price: cleanPrice,
+        stock: typeof values.stock === 'number' ? values.stock : 0,
+        description: values.description || null
+      };
+      
+      console.log("Data produk yang akan dikirim:", productData);
 
       if (isEditing && productId) {
-        await apiRequest(`/api/products/${productId}`, {
+        const response = await apiRequest(`/api/products/${productId}`, {
           method: "PUT",
           body: JSON.stringify(productData),
         });
+        
+        console.log("Respons update produk:", response);
         
         toast({
           title: "Produk diperbarui",
           description: "Data produk berhasil diperbarui",
         });
       } else {
-        await apiRequest("/api/products", {
+        const response = await apiRequest("/api/products", {
           method: "POST",
           body: JSON.stringify(productData),
         });
+        
+        console.log("Respons produk baru:", response);
         
         toast({
           title: "Produk baru ditambahkan",
