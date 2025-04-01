@@ -134,12 +134,8 @@ export default function TransactionForm({ isOpen, onClose }: TransactionFormProp
         0
       );
 
-      const response = await apiRequest("/api/transactions", {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      try {
+        console.log("Mengirim request ke API dengan data:", {
           patientId: parseInt(values.patientId),
           totalAmount: totalAmount.toString(),
           paymentMethod: values.paymentMethod,
@@ -149,19 +145,43 @@ export default function TransactionForm({ isOpen, onClose }: TransactionFormProp
             quantity: item.quantity,
             price: item.price
           }))
-        })
-      });
-
-      return response.json();
+        });
+        
+        const response = await apiRequest("/api/transactions", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            patientId: parseInt(values.patientId),
+            totalAmount: totalAmount.toString(),
+            paymentMethod: values.paymentMethod,
+            items: cartItems.map(item => ({
+              id: item.id,
+              type: item.type,
+              quantity: item.quantity,
+              price: item.price
+            }))
+          })
+        });
+        
+        // apiRequest sudah meng-handle response JSON, jadi tidak perlu .json() lagi
+        return response;
+      } catch (error) {
+        console.error("Error during transaction submission:", error);
+        throw error;
+      }
     },
     onSuccess: async (data) => {
+      console.log("Transaction created successfully, response:", data);
+      
       await queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activities"] });
 
       // Prepare invoice data
-      const patient = patients?.find((p: Patient) => p.id === parseInt(form.getValues().patientId));
+      const patient = patients.find((p: Patient) => p.id === parseInt(form.getValues().patientId));
       
       setInvoiceData({
         transaction: data,
@@ -177,7 +197,8 @@ export default function TransactionForm({ isOpen, onClose }: TransactionFormProp
         description: "Transaksi telah disimpan dan invoice telah dibuat",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Error in mutation:", error);
       toast({
         title: "Gagal membuat transaksi",
         description: error.message || "Terjadi kesalahan saat memproses transaksi",
