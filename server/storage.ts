@@ -137,27 +137,67 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000 // prune expired entries every 24h
     });
     
-    // Initialize with default data
-    this.initializeDefaultData();
+    // Initialize with default data - synchronous initialization
+    this.initDefaultData();
   }
-
-  private initializeDefaultData() {
-    // Create a default admin user
-    this.createUser({
+  
+  // Synchronous initialization for default data
+  private initDefaultData() {
+    // Create default admin user
+    const admin: User = {
+      id: 1,
       username: "admin",
       password: "admin123", // In a real app, would be hashed
       name: "Administrator",
-      role: "admin"
-    });
+      role: "admin",
+      createdAt: new Date()
+    };
+    this.users.set(admin.id, admin);
+    this.userCurrentId++;
     
-    // Tambahkan admin baru sesuai permintaan
-    this.createUser({
+    // Create second admin user
+    const admin2: User = {
+      id: 2,
       username: "suryalim11",
       password: "admin123456", // In a real app, would be hashed
       name: "Surya Lim",
-      role: "admin"
-    });
+      role: "admin",
+      createdAt: new Date()
+    };
+    this.users.set(admin2.id, admin2);
+    this.userCurrentId++;
     
+    // Create default registration link
+    const now = new Date();
+    const expiryTime = new Date(now);
+    expiryTime.setHours(expiryTime.getHours() + 168); // 7 days
+    
+    const registrationLink: RegistrationLink = {
+      id: 1,
+      code: "TTS-REG",
+      expiryTime,
+      dailyLimit: 5,
+      currentRegistrations: 0,
+      createdAt: now,
+      isActive: true,
+      createdBy: 1 // Admin user ID
+    };
+    this.registrationLinks.set(registrationLink.id, registrationLink);
+    this.registrationLinkCurrentId++;
+    
+    // Initialize packages and products
+    this.initPackagesAndProducts();
+    
+    console.log("Default data initialized:", {
+      admins: Array.from(this.users.values()),
+      registrationLinks: Array.from(this.registrationLinks.values()),
+      packages: Array.from(this.packageList.values()),
+      products: Array.from(this.products.values())
+    });
+  }
+
+  // Menginisialisasi paket dan produk
+  private initPackagesAndProducts() {
     // Create default packages
     this.packageList.set(1, {
       id: 1,
@@ -176,33 +216,43 @@ export class MemStorage implements IStorage {
     });
     
     // Create some default products
-    this.createProduct({
-      name: "Minyak Pijat Herbal",
-      price: "85000",
-      stock: 25,
-      description: "Minyak pijat dengan bahan herbal alami"
+    const products = [
+      {
+        name: "Minyak Pijat Herbal",
+        price: "85000",
+        stock: 25,
+        description: "Minyak pijat dengan bahan herbal alami"
+      },
+      {
+        name: "Bantal Terapi",
+        price: "120000",
+        stock: 15,
+        description: "Bantal khusus untuk terapi"
+      },
+      {
+        name: "Krim Pijat",
+        price: "65000",
+        stock: 30,
+        description: "Krim pijat untuk relaksasi"
+      },
+      {
+        name: "Minyak Esensial Lavender",
+        price: "95000",
+        stock: 20,
+        description: "Minyak esensial lavender untuk aromaterapi"
+      }
+    ];
+    
+    products.forEach((product, index) => {
+      this.products.set(index + 1, {
+        ...product,
+        id: index + 1,
+        createdAt: new Date()
+      });
+      this.productCurrentId = index + 2;
     });
     
-    this.createProduct({
-      name: "Bantal Terapi",
-      price: "120000",
-      stock: 15,
-      description: "Bantal khusus untuk terapi"
-    });
-    
-    this.createProduct({
-      name: "Krim Pijat",
-      price: "65000",
-      stock: 30,
-      description: "Krim pijat untuk relaksasi"
-    });
-    
-    this.createProduct({
-      name: "Minyak Esensial Lavender",
-      price: "95000",
-      stock: 20,
-      description: "Minyak esensial lavender untuk aromaterapi"
-    });
+    console.log("Paket dan produk default diinisialisasi");
   }
 
   // User methods
@@ -653,6 +703,37 @@ export class MemStorage implements IStorage {
     
     this.registrationLinks.set(id, updatedLink);
     return true;
+  }
+  
+  // Method ini sudah tidak diperlukan lagi karena kita membuat link pendaftaran default
+  // pada method initDefaultData secara sinkron
+  // Metode ini disimpan hanya untuk referensi
+  private _unusedCreateDefaultRegistrationLink(userId: number, expiryHours: number, dailyLimit: number): RegistrationLink {
+    const id = this.registrationLinkCurrentId++;
+    const createdAt = new Date();
+    
+    // Membuat tanggal kedaluwarsa
+    const expiryTime = new Date(createdAt);
+    expiryTime.setHours(expiryTime.getHours() + expiryHours);
+    
+    // Membuat kode default yang mudah diingat untuk link default
+    const code = 'TTS-REG';
+    
+    const registrationLink: RegistrationLink = {
+      id,
+      code,
+      expiryTime,
+      dailyLimit,
+      currentRegistrations: 0,
+      createdAt,
+      isActive: true,
+      createdBy: userId
+    };
+    
+    // Simpan ke Map
+    this.registrationLinks.set(id, registrationLink);
+    console.log("Link pendaftaran default dibuat:", registrationLink);
+    return registrationLink;
   }
 }
 
