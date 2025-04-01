@@ -152,11 +152,11 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Today's Appointments */}
+        {/* Slot Tracker */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <span>Today's Appointments</span>
+              <span>Slot Tracker</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -206,10 +206,10 @@ export default function Dashboard() {
                   <Calendar className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="mt-4 text-lg font-semibold">
-                  No Appointments Today
+                  Belum Ada Janji Hari Ini
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Patient appointments will appear here. Go to the Schedule page to add new appointments.
+                  Janji pasien akan muncul di sini. Kunjungi halaman Therapy Slots untuk mengatur slot terapi baru.
                 </p>
               </div>
             )}
