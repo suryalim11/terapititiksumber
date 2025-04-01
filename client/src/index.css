@@ -9,5 +9,61 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Better input elements for mobile */
+  input, 
+  textarea, 
+  select, 
+  button {
+    @apply text-base;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  /* Touch-friendly target sizes */
+  button, 
+  .button, 
+  a {
+    @apply outline-none;
+  }
+}
+
+@layer components {
+  /* Mobile friendly cards */
+  .mobile-card {
+    @apply p-3 rounded-lg border shadow-sm;
+  }
+
+  /* Touch-friendly buttons */
+  .touch-target {
+    @apply min-h-[48px] min-w-[48px] flex items-center justify-center;
+  }
+
+  /* Responsive headings */
+  .mobile-heading {
+    @apply text-lg md:text-xl lg:text-2xl font-bold;
+  }
+
+  /* Responsive tables */
+  .table-to-cards {
+    @apply w-full;
+  }
+
+  .table-to-cards thead {
+    @apply hidden md:table-header-group;
+  }
+
+  .table-to-cards tbody tr {
+    @apply block mb-3 border rounded-lg md:table-row md:mb-0 md:border-none;
+  }
+
+  .table-to-cards td {
+    @apply block px-3 py-2 relative md:table-cell;
+  }
+
+  .table-to-cards td::before {
+    content: attr(data-label);
+    @apply font-medium md:hidden text-sm text-muted-foreground;
   }
 }

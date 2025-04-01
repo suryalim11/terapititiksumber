@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { insertPatientSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import {
   Form,
@@ -206,6 +207,8 @@ export function PatientForm({
     }
   };
 
+  const isMobile = useIsMobile();
+  
   return (
     <Form {...form}>
       <form onSubmit={(e) => {
@@ -219,7 +222,12 @@ export function PatientForm({
             <FormItem>
               <FormLabel>Nama Lengkap</FormLabel>
               <FormControl>
-                <Input placeholder="Masukkan nama lengkap" {...field} />
+                <Input 
+                  placeholder="Masukkan nama lengkap" 
+                  autoComplete="name" 
+                  className="h-12 px-4 md:h-10" 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -234,7 +242,13 @@ export function PatientForm({
               <FormItem>
                 <FormLabel>Nomor Telepon</FormLabel>
                 <FormControl>
-                  <Input placeholder="08xxxxxxxxxx" {...field} />
+                  <Input 
+                    placeholder="08xxxxxxxxxx" 
+                    autoComplete="tel"
+                    inputMode="numeric"
+                    className="h-12 px-4 md:h-10" 
+                    {...field} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -248,7 +262,13 @@ export function PatientForm({
               <FormItem>
                 <FormLabel>Email (opsional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="email@example.com" {...field} />
+                  <Input 
+                    placeholder="email@example.com" 
+                    autoComplete="email"
+                    inputMode="email"
+                    className="h-12 px-4 md:h-10" 
+                    {...field} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -264,7 +284,12 @@ export function PatientForm({
               <FormItem>
                 <FormLabel>Tanggal Lahir</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                  <Input 
+                    type="date" 
+                    autoComplete="bday"
+                    className="h-12 px-4 md:h-10"
+                    {...field} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -282,7 +307,7 @@ export function PatientForm({
                   defaultValue={field.value}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 md:h-10">
                       <SelectValue placeholder="Pilih jenis kelamin" />
                     </SelectTrigger>
                   </FormControl>
@@ -304,7 +329,12 @@ export function PatientForm({
             <FormItem>
               <FormLabel>Alamat (opsional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Masukkan alamat" {...field} />
+                <Textarea 
+                  placeholder="Masukkan alamat" 
+                  autoComplete="street-address"
+                  className="min-h-[80px] p-4"
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -318,22 +348,32 @@ export function PatientForm({
             <FormItem>
               <FormLabel>Keluhan Pasien</FormLabel>
               <FormControl>
-                <Textarea placeholder="Keluhan yang dirasakan pasien saat ini" {...field} />
+                <Textarea 
+                  placeholder="Keluhan yang dirasakan pasien saat ini" 
+                  className="min-h-[100px] p-4"
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={(e) => {
-            e.preventDefault();
-            if (onSuccess) onSuccess(); // Close dialog by calling onSuccess 
-          }}>
+        <div className={`${isMobile ? 'grid grid-cols-2 gap-2' : 'flex justify-end gap-2'}`}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="h-12 md:h-10"
+            onClick={(e) => {
+              e.preventDefault();
+              if (onSuccess) onSuccess(); // Close dialog by calling onSuccess 
+            }}
+          >
             Batal
           </Button>
           <Button 
             type="button" 
+            className="h-12 md:h-10"
             disabled={form.formState.isSubmitting}
             onClick={(e) => {
               e.preventDefault();
