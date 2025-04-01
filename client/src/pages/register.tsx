@@ -573,27 +573,30 @@ export default function RegisterPage() {
                             ) : therapySlots && therapySlots.length > 0 ? (
                               <RadioGroup 
                                 onValueChange={(value) => field.onChange(parseInt(value))}
-                                className="flex flex-col space-y-3"
+                                className="grid grid-cols-1 md:grid-cols-2 gap-3"
                               >
                                 {therapySlots.map((slot: any) => {
                                   // Format tanggal dan waktu
                                   const slotDate = parseISO(slot.date);
-                                  const formattedDate = format(slotDate, "EEEE, dd MMMM yyyy", { locale: idLocale });
+                                  const formattedDate = format(slotDate, "EEE, dd MMM", { locale: idLocale });
+                                  const availableSeats = slot.maxQuota - slot.currentCount;
+                                  const isAlmostFull = availableSeats <= 2;
                                   
                                   return (
-                                    <div key={slot.id} className="flex items-center space-x-2 border rounded-md p-3 hover:bg-teal-50 cursor-pointer">
+                                    <div key={slot.id} className="flex items-center space-x-2 border rounded-md p-2 hover:bg-teal-50 cursor-pointer transition-colors">
                                       <RadioGroupItem value={String(slot.id)} id={`slot-${slot.id}`} />
-                                      <div className="grid gap-1.5 leading-none">
-                                        <FormLabel htmlFor={`slot-${slot.id}`} className="font-medium text-sm text-teal-700">
-                                          {formattedDate}
-                                        </FormLabel>
-                                        <div className="flex items-center space-x-2 text-sm text-gray-500">
-                                          <Clock className="h-3.5 w-3.5" />
-                                          <span>{slot.timeSlot}</span>
+                                      <div className="grid gap-0.5 leading-none">
+                                        <div className="flex items-center justify-between">
+                                          <FormLabel htmlFor={`slot-${slot.id}`} className="font-medium text-sm text-teal-700">
+                                            {formattedDate}
+                                          </FormLabel>
+                                          <span className="text-sm text-gray-600 font-medium">{slot.timeSlot}</span>
                                         </div>
-                                        <div className="flex items-center space-x-2 text-xs text-amber-700">
+                                        <div className="flex items-center space-x-1 text-xs">
                                           <Users className="h-3 w-3" />
-                                          <span>Tersedia: {slot.maxQuota - slot.currentCount} dari {slot.maxQuota} kursi</span>
+                                          <span className={`${isAlmostFull ? 'text-red-600 font-medium' : 'text-amber-700'}`}>
+                                            {availableSeats} kursi tersedia
+                                          </span>
                                         </div>
                                       </div>
                                     </div>
