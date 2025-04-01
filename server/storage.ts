@@ -705,6 +705,14 @@ export class MemStorage implements IStorage {
     return true;
   }
   
+  async deleteRegistrationLink(id: number): Promise<boolean> {
+    const exists = this.registrationLinks.has(id);
+    if (!exists) return false;
+    
+    this.registrationLinks.delete(id);
+    return true;
+  }
+  
   // Method ini sudah tidak diperlukan lagi karena kita membuat link pendaftaran default
   // pada method initDefaultData secara sinkron
   // Metode ini disimpan hanya untuk referensi

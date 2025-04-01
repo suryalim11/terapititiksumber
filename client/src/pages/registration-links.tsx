@@ -87,6 +87,8 @@ export default function RegistrationLinksPage() {
   const [dailyLimit, setDailyLimit] = useState(10);
   const [linkToDeactivate, setLinkToDeactivate] = useState<number | null>(null);
   const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
+  const [linkToDelete, setLinkToDelete] = useState<number | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Query to fetch registration links
   const { data: links, isLoading, error } = useQuery({
@@ -142,6 +144,30 @@ export default function RegistrationLinksPage() {
         variant: "destructive",
         title: "Gagal Menonaktifkan Link",
         description: error.message || "Terjadi kesalahan saat menonaktifkan link pendaftaran.",
+      });
+    }
+  });
+  
+  // Mutation to delete a registration link
+  const deleteLinkMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/registration-links/${id}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/registration-links'] });
+      setIsDeleteDialogOpen(false);
+      toast({
+        title: "Link Pendaftaran Dihapus",
+        description: "Link pendaftaran berhasil dihapus permanen.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Gagal Menghapus Link",
+        description: error.message || "Terjadi kesalahan saat menghapus link pendaftaran.",
       });
     }
   });
@@ -358,7 +384,7 @@ export default function RegistrationLinksPage() {
                             Salin Link
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="text-red-600"
+                            className="text-amber-600"
                             onClick={() => {
                               setLinkToDeactivate(link.id);
                               setIsDeactivateDialogOpen(true);
@@ -367,6 +393,16 @@ export default function RegistrationLinksPage() {
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Nonaktifkan
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => {
+                              setLinkToDelete(link.id);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Hapus Permanen
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -417,9 +453,40 @@ export default function RegistrationLinksPage() {
                   deactivateLinkMutation.mutate(linkToDeactivate);
                 }
               }}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-amber-600 hover:bg-amber-700"
             >
               {deactivateLinkMutation.isPending ? "Menonaktifkan..." : "Nonaktifkan"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Delete Link Dialog */}
+      <AlertDialog 
+        open={isDeleteDialogOpen} 
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Link Pendaftaran Permanen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Link pendaftaran akan dihapus secara permanen dari sistem.
+              Tindakan ini tidak dapat dibatalkan dan semua data terkait link ini akan hilang.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (linkToDelete) {
+                  deleteLinkMutation.mutate(linkToDelete);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteLinkMutation.isPending ? "Menghapus..." : "Hapus Permanen"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

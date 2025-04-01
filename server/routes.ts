@@ -8,7 +8,8 @@ import {
   insertTransactionSchema,
   insertSessionSchema,
   insertAppointmentSchema,
-  insertUserSchema
+  insertUserSchema,
+  User
 } from "@shared/schema";
 import { setupAuth } from "./auth";
 
@@ -790,6 +791,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error incrementing registration count:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Endpoint to delete registration link
+  app.delete("/api/registration-links/:id", async (req: Request, res: Response) => {
+    try {
+      // Log session for debugging
+      console.log("Session for DELETE registration-links:", req.session);
+      
+      // Check authentication status
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = req.user as User;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Forbidden: Admin access required" });
+      }
+      
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ID format" });
+      }
+      
+      // Delete the registration link
+      const deleted = await storage.deleteRegistrationLink(id);
+      
+      if (deleted) {
+        return res.status(200).json({ 
+          success: true, 
+          message: "Registration link deleted successfully" 
+        });
+      } else {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Registration link not found or could not be deleted" 
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting registration link:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });
