@@ -14,7 +14,10 @@ import {
   UserRound,
   X,
   CalendarRange,
+  LogOut,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 // Navigation items configuration
@@ -37,11 +40,31 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
-  const [location] = useLocation();
-  const { isAuthenticated, user } = useAuth();
+  const [location, navigate] = useLocation();
+  const { isAuthenticated, user, logout } = useAuth();
+  const { toast } = useToast();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+  
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logout berhasil",
+        description: "Anda telah keluar dari sistem",
+      });
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        variant: "destructive",
+        title: "Logout gagal",
+        description: "Terjadi kesalahan saat logout",
+      });
+    }
   };
 
   return (
@@ -94,6 +117,20 @@ export default function Layout({ children }: LayoutProps) {
               </Link>
             );
           })}
+          
+          {/* Logout button in sidebar for mobile */}
+          {isAuthenticated && isMobile && (
+            <div
+              onClick={() => {
+                setSidebarOpen(false);
+                handleLogout();
+              }}
+              className="mt-4 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-100 hover:text-red-600 cursor-pointer"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Logout</span>
+            </div>
+          )}
         </nav>
       </aside>
 
@@ -124,18 +161,29 @@ export default function Layout({ children }: LayoutProps) {
           )}
           <div className="ml-auto flex items-center gap-4">
             {isAuthenticated && user ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {user.name}
-                </span>
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  {user.name
-                    .split(" ")
-                    .map((n: string) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .substring(0, 2)}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {user.name}
+                  </span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    {user.name
+                      .split(" ")
+                      .map((n: string) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .substring(0, 2)}
+                  </div>
                 </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleLogout}
+                  className="flex items-center gap-1"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
               </div>
             ) : (
               <Link href="/login">
