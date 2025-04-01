@@ -116,7 +116,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/patients", async (req: Request, res: Response) => {
     try {
       console.log("Menerima permintaan POST /api/patients dengan data:", req.body);
-      const validatedData = insertPatientSchema.parse(req.body);
+      console.log("Skema yang diharapkan:", insertPatientSchema.shape);
+      
+      // Konversi data yang dikirim dari form menjadi format yang diharapkan oleh skema
+      const patientData = {
+        name: req.body.name,
+        phoneNumber: req.body.phoneNumber,
+        email: req.body.email || null,
+        birthDate: req.body.birthDate,
+        gender: req.body.gender,
+        address: req.body.address || "",
+        complaints: req.body.complaints,
+        medicalHistory: req.body.medicalHistory || null
+      };
+      
+      console.log("Data yang akan divalidasi:", patientData);
+      const validatedData = insertPatientSchema.parse(patientData);
       console.log("Data pasien tervalidasi:", validatedData);
       const newPatient = await storage.createPatient(validatedData);
       console.log("Pasien baru dibuat:", newPatient);
@@ -135,8 +150,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       console.log(`Menerima permintaan PUT /api/patients/${id} dengan data:`, req.body);
       
+      // Konversi data yang dikirim dari form menjadi format yang diharapkan oleh skema
+      const patientData = {
+        name: req.body.name,
+        phoneNumber: req.body.phoneNumber,
+        email: req.body.email || null,
+        birthDate: req.body.birthDate,
+        gender: req.body.gender,
+        address: req.body.address || "",
+        complaints: req.body.complaints,
+        medicalHistory: req.body.medicalHistory || null
+      };
+      
+      console.log("Data yang akan divalidasi untuk update:", patientData);
+      
       // Validate the data
-      const validatedData = insertPatientSchema.parse(req.body);
+      const validatedData = insertPatientSchema.parse(patientData);
       console.log("Data pasien tervalidasi:", validatedData);
       
       // Check if patient exists
