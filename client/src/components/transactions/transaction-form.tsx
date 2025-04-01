@@ -134,16 +134,22 @@ export default function TransactionForm({ isOpen, onClose }: TransactionFormProp
         0
       );
 
-      const response = await apiRequest("POST", "/api/transactions", {
-        patientId: parseInt(values.patientId),
-        totalAmount: totalAmount.toString(),
-        paymentMethod: values.paymentMethod,
-        items: cartItems.map(item => ({
-          id: item.id,
-          type: item.type,
-          quantity: item.quantity,
-          price: item.price
-        })),
+      const response = await apiRequest("/api/transactions", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          patientId: parseInt(values.patientId),
+          totalAmount: totalAmount.toString(),
+          paymentMethod: values.paymentMethod,
+          items: cartItems.map(item => ({
+            id: item.id,
+            type: item.type,
+            quantity: item.quantity,
+            price: item.price
+          }))
+        })
       });
 
       return response.json();
@@ -184,8 +190,19 @@ export default function TransactionForm({ isOpen, onClose }: TransactionFormProp
   const handlePackageSelect = (packageId: string) => {
     if (!packageId) return;
 
+    // Log untuk debugging
+    console.log("Package selected with ID:", packageId);
+    
+    // Simpan nilai packageId yang dipilih
+    setSelectedPackage(packageId);
+
     const pkg = packages?.find((p: Package) => p.id === parseInt(packageId));
-    if (!pkg) return;
+    if (!pkg) {
+      console.log("Package not found for ID:", packageId);
+      return;
+    }
+
+    console.log("Found package:", pkg);
 
     // Check if package already in cart
     const existingPackageIndex = cartItems.findIndex(
@@ -201,18 +218,26 @@ export default function TransactionForm({ isOpen, onClose }: TransactionFormProp
       return;
     }
 
+    const newCartItem = {
+      id: pkg.id,
+      type: "package" as const,
+      name: pkg.name,
+      price: pkg.price,
+      quantity: 1,
+    };
+    
+    console.log("Adding to cart:", newCartItem);
+    
     setCartItems([
       ...cartItems,
-      {
-        id: pkg.id,
-        type: "package",
-        name: pkg.name,
-        price: pkg.price,
-        quantity: 1,
-      },
+      newCartItem,
     ]);
-
-    setSelectedPackage("");
+    
+    // Setelah menambahkan ke keranjang, kita reset pilihan paket
+    // untuk memungkinkan pemilihan paket lain
+    setTimeout(() => {
+      setSelectedPackage("");
+    }, 500);
   };
 
   // Add/remove product from cart
@@ -346,9 +371,11 @@ export default function TransactionForm({ isOpen, onClose }: TransactionFormProp
                   value={selectedPackage}
                   onValueChange={handlePackageSelect}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih paket terapi..." />
-                  </SelectTrigger>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih paket terapi..." />
+                    </SelectTrigger>
+                  </FormControl>
                   <SelectContent>
                     {packages?.map((pkg: Package) => (
                       <SelectItem key={pkg.id} value={pkg.id.toString()}>
