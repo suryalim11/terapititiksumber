@@ -64,10 +64,11 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { CalendarIcon, PlusCircle, RefreshCw, Trash2 } from "lucide-react";
+import { CalendarIcon, PencilIcon, PlusCircle, RefreshCw, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import Layout from "@/components/layout/layout";
 
 // Form Schema
@@ -92,12 +93,26 @@ type TherapySlotFormValues = z.infer<typeof therapySlotSchema>;
 export default function TherapySlots() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<TherapySlot | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deletingSlotId, setDeletingSlotId] = useState<number | null>(null);
 
   // Form untuk membuat slot terapi baru
   const form = useForm<TherapySlotFormValues>({
+    resolver: zodResolver(therapySlotSchema),
+    defaultValues: {
+      date: new Date(),
+      startTime: "10:00",
+      endTime: "11:00",
+      maxQuota: 6,
+      isActive: true,
+    },
+  });
+  
+  // Form untuk mengedit slot terapi
+  const editForm = useForm<TherapySlotFormValues>({
     resolver: zodResolver(therapySlotSchema),
     defaultValues: {
       date: new Date(),
@@ -316,6 +331,65 @@ export default function TherapySlots() {
       isActive: !slot.isActive,
     });
   };
+  
+  // Handler untuk edit form
+  const openEditDialog = (slot: TherapySlot) => {
+    // Parse timeSlot ke startTime dan endTime
+    const [startTime, endTime] = slot.timeSlot.split('-');
+    
+    // Set default values pada edit form
+    editForm.reset({
+      date: new Date(slot.date),
+      startTime,
+      endTime,
+      maxQuota: slot.maxQuota,
+      isActive: slot.isActive
+    });
+    
+    // Set selected slot dan buka dialog
+    setSelectedSlot(slot);
+    setEditDialogOpen(true);
+  };
+  
+  // Handler untuk submit edit form
+  const onSubmitEdit = (data: TherapySlotFormValues) => {
+    if (!selectedSlot) return;
+    
+    // Gabungkan startTime dan endTime menjadi timeSlot
+    const timeSlot = `${data.startTime}-${data.endTime}`;
+    
+    // Kirim request update
+    fetch(`/api/therapy-slots/${selectedSlot.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: data.date,
+        timeSlot: timeSlot,
+        maxQuota: data.maxQuota,
+        isActive: data.isActive
+      })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to update therapy slot');
+      return res.json();
+    })
+    .then(() => {
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      toast({
+        title: "Berhasil!",
+        description: "Slot terapi telah diperbarui.",
+      });
+      setEditDialogOpen(false);
+      setSelectedSlot(null);
+    })
+    .catch(error => {
+      toast({
+        title: "Gagal memperbarui slot terapi",
+        description: error.message,
+        variant: "destructive",
+      });
+    });
+  };
 
   // Format tanggal untuk ditampilkan
   const formatSlotDate = (dateStr: string) => {
@@ -365,6 +439,145 @@ export default function TherapySlots() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Dialog untuk edit slot terapi */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Slot Terapi</DialogTitle>
+            <DialogDescription>
+              Edit detail untuk slot terapi ini.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Tanggal</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pilih tanggal</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editForm.control}
+                name="startTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Waktu Mulai</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="time"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editForm.control}
+                name="endTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Waktu Selesai</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="time"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editForm.control}
+                name="maxQuota"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kuota Maksimal</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Jumlah maksimal pasien per sesi
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editForm.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Aktif
+                      </FormLabel>
+                      <FormDescription>
+                        Slot terapi aktif dapat dipilih oleh pasien
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button type="submit">
+                  Simpan Perubahan
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
       
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
@@ -582,6 +795,14 @@ export default function TherapySlots() {
                                 <Button 
                                   variant="outline"
                                   size="sm"
+                                  className="border-amber-200 text-amber-600 hover:bg-amber-50"
+                                  onClick={() => openEditDialog(slot)}
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline"
+                                  size="sm"
                                   className="text-red-600 border-red-200 hover:bg-red-50"
                                   onClick={() => setDeletingSlotId(slot.id)}
                                 >
@@ -704,6 +925,14 @@ export default function TherapySlots() {
                                 disabled={toggleStatusMutation.isPending}
                               >
                                 {slot.isActive ? "Nonaktifkan" : "Aktifkan"}
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                size="sm"
+                                className="border-amber-200 text-amber-600 hover:bg-amber-50"
+                                onClick={() => openEditDialog(slot)}
+                              >
+                                <PencilIcon className="h-4 w-4" />
                               </Button>
                               <Button 
                                 variant="outline"
