@@ -711,6 +711,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Search for patients by name or phone number
+  app.get("/api/search-patient", async (req: Request, res: Response) => {
+    try {
+      const { query } = req.query;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ success: false, message: "Parameter pencarian diperlukan" });
+      }
+
+      // Search for patients whose name or phone number matches the query
+      const patients = await storage.getAllPatients();
+      const matchingPatients = patients.filter(patient => 
+        patient.name.toLowerCase().includes(query.toLowerCase()) || 
+        patient.phoneNumber.includes(query)
+      );
+
+      if (matchingPatients.length > 0) {
+        return res.status(200).json({ 
+          success: true, 
+          found: true, 
+          patient: matchingPatients[0] // Return the first match for simplicity
+        });
+      } else {
+        return res.status(200).json({ 
+          success: true, 
+          found: false
+        });
+      }
+    } catch (error) {
+      console.error("Error searching for patient:", error);
+      return res.status(500).json({ success: false, message: "Server error" });
+    }
+  });
+  
   app.post("/api/verify-registration-link", async (req: Request, res: Response) => {
     try {
       const { code } = req.body as VerifyRegistrationLinkBody;

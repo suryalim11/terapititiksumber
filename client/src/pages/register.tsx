@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Calendar, Clock, CheckCircle } from "lucide-react";
+import { AlertCircle, Calendar, Clock, CheckCircle, Search } from "lucide-react";
 import { format } from "date-fns";
 
 // Form validation schema
@@ -59,6 +59,12 @@ export default function RegisterPage() {
   const [registrationLimit, setRegistrationLimit] = useState<number | null>(null);
   const [currentRegistrations, setCurrentRegistrations] = useState<number | null>(null);
   const [expiryTime, setExpiryTime] = useState<Date | null>(null);
+  
+  // State untuk pencarian pasien
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [patientFound, setPatientFound] = useState<boolean>(false);
+  const [foundPatient, setFoundPatient] = useState<any>(null);
 
   // Parse the URL for registration code
   useEffect(() => {
@@ -121,6 +127,69 @@ export default function RegisterPage() {
     } catch (error) {
       console.error("Error verifying registration code:", error);
       setRegistrationStatus("error");
+    }
+  };
+
+  // Fungsi untuk mencari pasien berdasarkan nama atau nomor HP
+  const searchPatient = async () => {
+    if (!searchQuery.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Input diperlukan",
+        description: "Silakan masukkan nama atau nomor telepon untuk pencarian",
+      });
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await apiRequest(`/api/search-patient?query=${encodeURIComponent(searchQuery)}`, {
+        method: "GET",
+      });
+
+      if (response.success) {
+        if (response.found) {
+          setPatientFound(true);
+          setFoundPatient(response.patient);
+          
+          // Prefill form dengan data pasien yang ditemukan
+          form.setValue("name", response.patient.name);
+          form.setValue("phoneNumber", response.patient.phoneNumber);
+          form.setValue("email", response.patient.email || "");
+          form.setValue("birthDate", response.patient.birthDate);
+          form.setValue("gender", response.patient.gender);
+          form.setValue("address", response.patient.address);
+          
+          toast({
+            title: "Pasien Ditemukan",
+            description: `Selamat datang kembali, ${response.patient.name}! Data Anda telah terisi otomatis.`,
+            className: "bg-teal-50 border-teal-200 text-teal-800",
+          });
+        } else {
+          setPatientFound(false);
+          setFoundPatient(null);
+          toast({
+            title: "Pasien Baru",
+            description: "Kami tidak menemukan data Anda. Silakan isi formulir pendaftaran.",
+            className: "bg-amber-50 border-amber-200 text-amber-800",
+          });
+        }
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Pencarian Gagal",
+          description: response.message || "Terjadi kesalahan saat mencari data pasien.",
+        });
+      }
+    } catch (error) {
+      console.error("Error searching for patient:", error);
+      toast({
+        variant: "destructive",
+        title: "Pencarian Gagal",
+        description: "Terjadi kesalahan saat mencari data pasien.",
+      });
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -294,6 +363,43 @@ export default function RegisterPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
+              {/* Search box for existing patients */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <h3 className="text-lg font-medium mb-3">Sudah pernah terapi di Titik Sumber?</h3>
+                <div className="flex gap-2">
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Masukkan nama atau nomor WA Anda"
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        searchPatient();
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={searchPatient}
+                    disabled={isSearching}
+                    type="button"
+                    variant="outline"
+                    className="flex items-center gap-1"
+                  >
+                    <Search className="h-4 w-4" />
+                    {isSearching ? 'Mencari...' : 'Cari Data'}
+                  </Button>
+                </div>
+                {patientFound && foundPatient && (
+                  <Alert className="mt-4 bg-teal-50 border-teal-200">
+                    <CheckCircle className="h-4 w-4 text-teal-600" />
+                    <AlertTitle>Pasien Ditemukan!</AlertTitle>
+                    <AlertDescription>
+                      Selamat datang kembali, {foundPatient.name}! Data Anda telah terisi otomatis.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <FormField
