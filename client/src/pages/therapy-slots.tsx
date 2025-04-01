@@ -240,27 +240,34 @@ export default function TherapySlots() {
   });
 
   // Membuat slot terapi untuk beberapa hari ke depan
-  const createBatchSlots = async (days: number, timeSlot: string, maxQuota: number) => {
+  const createBatchSlots = async (days: number, timeSlots: {time: string, quota: number}[]) => {
     try {
       const baseDate = date || new Date();
       const creationPromises = [];
 
       for (let i = 0; i < days; i++) {
         const slotDate = addDays(baseDate, i);
-        const slotData = {
-          date: slotDate,
-          timeSlot,
-          maxQuota,
-          isActive: true,
-        };
+        
+        // Skip Sundays (0 = Sunday, 1 = Monday, etc.)
+        if (slotDate.getDay() === 0) continue;
+        
+        // Create all time slots for this day
+        for (const slot of timeSlots) {
+          const slotData = {
+            date: slotDate,
+            timeSlot: slot.time,
+            maxQuota: slot.quota,
+            isActive: true,
+          };
 
-        creationPromises.push(
-          fetch("/api/therapy-slots", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(slotData)
-          })
-        );
+          creationPromises.push(
+            fetch("/api/therapy-slots", {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(slotData)
+            })
+          );
+        }
       }
 
       const results = await Promise.all(creationPromises);
@@ -275,7 +282,7 @@ export default function TherapySlots() {
       queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
       toast({
         title: "Berhasil!",
-        description: `${days} slot terapi baru telah dibuat.`,
+        description: `Slot terapi untuk ${days} hari ke depan telah dibuat.`,
       });
     } catch (error) {
       toast({
@@ -399,9 +406,27 @@ export default function TherapySlots() {
 
   // Quick actions untuk membuat batch slot
   const quickActions = [
-    { days: 7, label: "7 hari", timeSlot: "10:00-11:00", quota: 6 },
-    { days: 14, label: "14 hari", timeSlot: "10:00-11:00", quota: 6 },
-    { days: 30, label: "30 hari", timeSlot: "10:00-11:00", quota: 6 },
+    { days: 7, label: "7 hari", timeSlots: [
+      { time: "10:00-11:00", quota: 5 },
+      { time: "11:00-12:00", quota: 5 },
+      { time: "13:00-14:00", quota: 5 },
+      { time: "15:00-16:00", quota: 5 },
+      { time: "16:00-17:00", quota: 5 }
+    ]},
+    { days: 14, label: "14 hari", timeSlots: [
+      { time: "10:00-11:00", quota: 5 },
+      { time: "11:00-12:00", quota: 5 },
+      { time: "13:00-14:00", quota: 5 },
+      { time: "15:00-16:00", quota: 5 },
+      { time: "16:00-17:00", quota: 5 }
+    ]},
+    { days: 30, label: "30 hari", timeSlots: [
+      { time: "10:00-11:00", quota: 5 },
+      { time: "11:00-12:00", quota: 5 },
+      { time: "13:00-14:00", quota: 5 },
+      { time: "15:00-16:00", quota: 5 },
+      { time: "16:00-17:00", quota: 5 }
+    ]},
   ];
 
   // Render komponen
@@ -853,16 +878,23 @@ export default function TherapySlots() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <p>Waktu: {action.timeSlot}</p>
-                        <p>Kuota: {action.quota} orang per sesi</p>
-                        <p>Mulai dari: {date ? format(date, "dd MMMM yyyy") : "hari ini"}</p>
+                        <p className="font-medium">5 sesi per hari:</p>
+                        <ul className="list-disc pl-5 mt-2 space-y-1 text-sm">
+                          {action.timeSlots.map((slot, i) => (
+                            <li key={i}>
+                              {slot.time} ({slot.quota} orang)
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-3">Mulai dari: {date ? format(date, "dd MMMM yyyy") : "hari ini"}</p>
+                        <p className="text-muted-foreground text-xs mt-1">Minggu libur, tidak ada sesi.</p>
                       </CardContent>
                       <CardFooter>
                         <Button 
                           className="w-full"
-                          onClick={() => createBatchSlots(action.days, action.timeSlot, action.quota)}
+                          onClick={() => createBatchSlots(action.days, action.timeSlots)}
                         >
-                          Buat {action.days} Hari
+                          Buat Jadwal {action.days} Hari
                         </Button>
                       </CardFooter>
                     </Card>

@@ -130,7 +130,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         birthDate: req.body.birthDate || "",
         gender: req.body.gender || "Laki-laki",
         address: req.body.address || "",
-        complaints: req.body.complaints || ""
+        complaints: req.body.complaints || "",
+        therapySlotId: req.body.therapySlotId ? parseInt(req.body.therapySlotId) : undefined
       };
       
       // Simpan therapySlotId untuk digunakan nanti
@@ -158,7 +159,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               patientId: newPatient.id,
               therapySlotId: therapySlotId,
               notes: validatedData.complaints,
-              status: "booked"
+              status: "booked",
+              date: new Date() // Menggunakan tanggal hari ini untuk appointment
             };
             
             const appointment = await storage.createAppointment(appointmentData);

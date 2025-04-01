@@ -280,23 +280,37 @@ export class MemStorage implements IStorage {
     // Membuat slot terapi untuk hari ini dan 7 hari ke depan
     const today = new Date();
     
+    // Definisi slot waktu default
+    const timeSlots = [
+      { time: "10:00-11:00", quota: 5 },
+      { time: "11:00-12:00", quota: 5 },
+      { time: "13:00-14:00", quota: 5 },
+      { time: "15:00-16:00", quota: 5 },
+      { time: "16:00-17:00", quota: 5 }
+    ];
+    
     // Membuat 7 hari slot terapi
     for (let i = 0; i < 7; i++) {
       const slotDate = new Date(today);
       slotDate.setDate(slotDate.getDate() + i);
       
-      // Default time slot (10:00 - 11:00)
-      const therapySlot: TherapySlot = {
-        id: this.therapySlotCurrentId++,
-        date: slotDate,
-        timeSlot: "10:00-11:00",
-        maxQuota: 6,
-        currentCount: 0,
-        isActive: true,
-        createdAt: new Date()
-      };
+      // Skip minggu (0 = Minggu, 1 = Senin, dsb)
+      if (slotDate.getDay() === 0) continue;
       
-      this.therapySlots.set(therapySlot.id, therapySlot);
+      // Buat semua slot waktu untuk hari ini
+      for (const slot of timeSlots) {
+        const therapySlot: TherapySlot = {
+          id: this.therapySlotCurrentId++,
+          date: slotDate,
+          timeSlot: slot.time,
+          maxQuota: slot.quota,
+          currentCount: 0,
+          isActive: true,
+          createdAt: new Date()
+        };
+        
+        this.therapySlots.set(therapySlot.id, therapySlot);
+      }
     }
     
     console.log(`Slot terapi default diinisialisasi untuk 7 hari ke depan`);
