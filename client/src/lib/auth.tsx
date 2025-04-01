@@ -43,15 +43,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const response = await apiRequest<AuthResponse>("/api/auth/status", {
-          method: "GET",
-        });
-        
-        if (response.authenticated && response.user) {
-          setUser(response.user);
-        } else {
-          setUser(null);
-        }
+        const response = await apiRequest("GET", "/api/user");
+        const userData = await response.json();
+        setUser(userData);
       } catch (error) {
         console.error("Auth status check failed:", error);
         setUser(null);
@@ -68,19 +62,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest<AuthResponse>("/api/login", {
-        method: "POST",
-        body: JSON.stringify({ username, password, remember_me: rememberMe }),
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await apiRequest("POST", "/api/login", { 
+        username, 
+        password, 
+        remember_me: rememberMe 
       });
       
-      if (response.success && response.user) {
-        setUser(response.user);
-      } else {
-        throw new Error(response.message || "Login failed");
-      }
+      const userData = await response.json();
+      setUser(userData);
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -94,9 +83,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     
     try {
-      await apiRequest<{ success: boolean }>("/api/logout", {
-        method: "POST",
-      });
+      await apiRequest("POST", "/api/logout");
       setUser(null);
     } catch (error) {
       console.error("Logout error:", error);

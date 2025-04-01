@@ -46,9 +46,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
         <AuthProvider>
-          <Layout>
-            <Router />
-          </Layout>
+          <Router />
         </AuthProvider>
       </HelmetProvider>
       <Toaster />

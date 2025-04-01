@@ -1,9 +1,10 @@
 import { 
-  users, patients, products, packages, transactions, sessions, appointments, therapySlots,
+  users, patients, products, packages, transactions, sessions, appointments, therapySlots, settings,
   type User, type InsertUser, type Patient, type InsertPatient,
   type Product, type InsertProduct, type Package, type Transaction,
   type InsertTransaction, type Session, type InsertSession,
-  type Appointment, type InsertAppointment, type TherapySlot, type InsertTherapySlot
+  type Appointment, type InsertAppointment, type TherapySlot, type InsertTherapySlot,
+  type Setting, type InsertSetting
 } from "@shared/schema";
 import { format } from "date-fns";
 
@@ -90,6 +91,13 @@ export interface IStorage {
   incrementRegistrationCount(code: string): Promise<RegistrationLink | undefined>;
   deactivateRegistrationLink(id: number): Promise<boolean>;
   
+  // Settings
+  getSetting(key: string): Promise<Setting | undefined>;
+  getAllSettings(): Promise<Setting[]>;
+  createSetting(setting: InsertSetting): Promise<Setting>;
+  updateSetting(key: string, value: string, userId: number): Promise<Setting | undefined>;
+  deleteSetting(key: string): Promise<boolean>;
+  
   // Dashboard data
   getDailyStats(): Promise<{
     patientsToday: number;
@@ -114,6 +122,7 @@ export class MemStorage implements IStorage {
   private therapySlots: Map<number, TherapySlot>;
   private appointments: Map<number, Appointment>;
   private registrationLinks: Map<number, RegistrationLink>;
+  private settings: Map<string, Setting>;
   
   private userCurrentId: number;
   private patientCurrentId: number;
@@ -124,6 +133,7 @@ export class MemStorage implements IStorage {
   private therapySlotCurrentId: number;
   private appointmentCurrentId: number;
   private registrationLinkCurrentId: number;
+  private settingCurrentId: number;
 
   // Session store for authentication
   sessionStore: session.Store;
@@ -138,6 +148,7 @@ export class MemStorage implements IStorage {
     this.therapySlots = new Map();
     this.appointments = new Map();
     this.registrationLinks = new Map();
+    this.settings = new Map();
     
     this.userCurrentId = 1;
     this.patientCurrentId = 1;
@@ -148,6 +159,7 @@ export class MemStorage implements IStorage {
     this.therapySlotCurrentId = 1;
     this.appointmentCurrentId = 1;
     this.registrationLinkCurrentId = 1;
+    this.settingCurrentId = 1;
     
     // Initialize session store
     this.sessionStore = new MemoryStore({
@@ -160,6 +172,9 @@ export class MemStorage implements IStorage {
   
   // Synchronous initialization for default data
   private initDefaultData() {
+    // Initialize default settings
+    this.initDefaultSettings();
+    
     // Create default admin user
     const admin: User = {
       id: 1,
@@ -220,6 +235,39 @@ export class MemStorage implements IStorage {
     });
   }
 
+  // Metode inisialisasi pengaturan
+  private initDefaultSettings() {
+    // Pengaturan untuk harga sesi terapi
+    const therapySinglePrice: Setting = {
+      id: 1,
+      key: "therapy.single.price",
+      value: "150000",
+      description: "Harga untuk sesi terapi tunggal",
+      updatedAt: new Date(),
+      updatedBy: 1 // Admin user ID
+    };
+    
+    const therapyPackagePrice: Setting = {
+      id: 2,
+      key: "therapy.package.price",
+      value: "1500000",
+      description: "Harga untuk paket 12 sesi terapi",
+      updatedAt: new Date(),
+      updatedBy: 1
+    };
+    
+    this.settings.set(therapySinglePrice.key, therapySinglePrice);
+    this.settings.set(therapyPackagePrice.key, therapyPackagePrice);
+    
+    console.log("Default settings initialized:", {
+      therapySinglePrice: therapySinglePrice.value,
+      therapyPackagePrice: therapyPackagePrice.value
+    });
+    this.settingCurrentId = 3;
+    
+    console.log("Pengaturan default diinisialisasi");
+  }
+  
   // Menginisialisasi paket dan produk
   private initPackagesAndProducts() {
     // Create default packages
@@ -486,10 +534,13 @@ export class MemStorage implements IStorage {
   async createSession(insertSession: InsertSession): Promise<Session> {
     const id = this.sessionCurrentId++;
     const startDate = new Date();
+    const lastSessionDate = null;
+    
     const session: Session = { 
       ...insertSession, 
       id, 
-      startDate, 
+      startDate,
+      lastSessionDate,
       sessionsUsed: 0, 
       status: 'active' 
     };
@@ -555,7 +606,10 @@ export class MemStorage implements IStorage {
     const slot: TherapySlot = {
       ...insertSlot,
       id,
-      createdAt
+      createdAt,
+      maxQuota: insertSlot.maxQuota || 5,
+      currentCount: insertSlot.currentCount || 0,
+      isActive: insertSlot.isActive !== undefined ? insertSlot.isActive : true
     };
     
     this.therapySlots.set(id, slot);
@@ -690,16 +744,34 @@ export class MemStorage implements IStorage {
       ? insertAppointment.status 
       : 'scheduled';
     
-    const appointment: Appointment = { 
+    // Memastikan bahwa therapySlotId adalah null jika tidak disediakan
+    const therapySlotId = insertAppointment.therapySlotId ?? null;
+    
+    // Memastikan bahwa timeSlot adalah null jika tidak disediakan
+    const timeSlot = insertAppointment.timeSlot ?? null;
+    
+    // Memastikan bahwa registrationNumber adalah null jika tidak disediakan
+    const registrationNumber = insertAppointment.registrationNumber ?? null;
+    
+    const appointment: Appointment = {
       ...insertAppointment,
+      id,
+      status,
       sessionId,
-      notes, 
-      id, 
-      status
+      notes,
+      therapySlotId,
+      timeSlot,
+      registrationNumber
     };
     
-    console.log("Menyimpan appointment ke penyimpanan:", appointment);
     this.appointments.set(id, appointment);
+    
+    // Jika appointment terkait dengan slot terapi dan statusnya bukan cancelled,
+    // increment jumlah penggunaan slot
+    if (therapySlotId && status !== 'cancelled') {
+      await this.incrementTherapySlotUsage(therapySlotId);
+    }
+    
     return appointment;
   }
 
@@ -707,14 +779,10 @@ export class MemStorage implements IStorage {
     const appointment = this.appointments.get(id);
     if (!appointment) return undefined;
     
-    // Validasi status lagi untuk keamanan extra
-    const validStatuses = ['scheduled', 'completed', 'cancelled'];
-    if (!validStatuses.includes(status)) {
-      console.error(`Status tidak valid: ${status}. Status harus salah satu dari: ${validStatuses.join(', ')}`);
-      return undefined;
-    }
-    
-    console.log(`[storage] Updating appointment ${id} status from '${appointment.status}' to '${status}'`);
+    // Jika status diubah dari aktif ke cancelled dan appointment terkait dengan slot terapi,
+    // decrement jumlah penggunaan slot
+    const wasActive = appointment.status !== 'cancelled';
+    const nowCancelled = status === 'cancelled';
     
     const updatedAppointment: Appointment = {
       ...appointment,
@@ -722,8 +790,53 @@ export class MemStorage implements IStorage {
     };
     
     this.appointments.set(id, updatedAppointment);
-    console.log(`[storage] Appointment updated successfully: `, updatedAppointment);
+    
+    // Handle therapy slot usage update
+    if (wasActive && nowCancelled && appointment.therapySlotId) {
+      await this.decrementTherapySlotUsage(appointment.therapySlotId);
+    }
+    
     return updatedAppointment;
+  }
+
+  // Setting methods
+  async getSetting(key: string): Promise<Setting | undefined> {
+    return this.settings.get(key);
+  }
+  
+  async getAllSettings(): Promise<Setting[]> {
+    return Array.from(this.settings.values());
+  }
+  
+  async createSetting(insertSetting: InsertSetting): Promise<Setting> {
+    const id = this.settingCurrentId++;
+    const updatedAt = new Date();
+    const setting: Setting = { ...insertSetting, id, updatedAt };
+    this.settings.set(setting.key, setting);
+    return setting;
+  }
+  
+  async updateSetting(key: string, value: string, userId: number): Promise<Setting | undefined> {
+    const existingSetting = this.settings.get(key);
+    if (!existingSetting) return undefined;
+    
+    const updatedSetting: Setting = {
+      ...existingSetting,
+      value,
+      updatedAt: new Date(),
+      updatedBy: userId
+    };
+    
+    this.settings.set(key, updatedSetting);
+    return updatedSetting;
+  }
+  
+  async deleteSetting(key: string): Promise<boolean> {
+    const exists = this.settings.has(key);
+    if (!exists) return false;
+    
+    this.settings.delete(key);
+    return true;
   }
 
   // Dashboard data methods
@@ -736,37 +849,32 @@ export class MemStorage implements IStorage {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Count patients with appointments today
-    const appointmentsToday = await this.getAppointmentsByDate(today);
-    const patientsToday = new Set(appointmentsToday.map(a => a.patientId)).size;
+    // Hitung jumlah pasien hari ini (dari appointment)
+    const todayAppointments = await this.getAppointmentsByDate(today);
+    const patientsToday = todayAppointments.length;
     
-    // Sum up income from transactions made today
-    const todaysTransactions = Array.from(this.transactions.values())
+    // Hitung pendapatan hari ini (dari transaksi)
+    const todayTransactions = Array.from(this.transactions.values())
       .filter(transaction => {
         const transactionDate = new Date(transaction.createdAt);
         transactionDate.setHours(0, 0, 0, 0);
         return transactionDate.getTime() === today.getTime();
       });
     
-    const incomeToday = todaysTransactions.reduce(
-      (sum, transaction) => sum + Number(transaction.totalAmount), 
-      0
-    );
-    
-    // Count products sold today (from transaction items)
-    let productsSold = 0;
-    todaysTransactions.forEach(transaction => {
-      const items = transaction.items as any[];
-      items.forEach(item => {
-        if (item.type === 'product') {
-          productsSold += item.quantity || 1;
-        }
-      });
+    let incomeToday = 0;
+    todayTransactions.forEach(transaction => {
+      incomeToday += parseInt(transaction.totalAmount, 10);
     });
     
-    // Count active therapy packages
+    // Hitung jumlah produk terjual hari ini
+    const productsSold = todayTransactions
+      .filter(transaction => transaction.type === 'product')
+      .length;
+    
+    // Hitung jumlah paket aktif
     const activePackages = Array.from(this.therapySessions.values())
-      .filter(session => session.status === 'active').length;
+      .filter(session => session.status === 'active')
+      .length;
     
     return {
       patientsToday,
@@ -775,102 +883,57 @@ export class MemStorage implements IStorage {
       activePackages
     };
   }
-
+  
   async getRecentActivities(limit: number = 5): Promise<any[]> {
-    // Combine transactions, appointments and session updates to create activity feed
-    const activities: any[] = [];
-    
-    // Add recent transactions
+    // Ambil transaksi terbaru
     const recentTransactions = Array.from(this.transactions.values())
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, limit);
-      
-    for (const transaction of recentTransactions) {
-      const patient = await this.getPatient(transaction.patientId);
-      if (patient) {
-        activities.push({
-          type: 'transaction',
-          date: transaction.createdAt,
-          patient: patient.name,
-          patientId: patient.id,
-          amount: transaction.totalAmount,
-          description: `melakukan pembayaran sebesar ${transaction.totalAmount}`
-        });
-      }
-    }
+      .slice(0, limit)
+      .map(transaction => ({
+        type: 'transaction',
+        data: transaction,
+        timestamp: transaction.createdAt
+      }));
     
-    // Add recent appointments
+    // Ambil appointment terbaru
     const recentAppointments = Array.from(this.appointments.values())
-      .filter(a => a.status === 'scheduled')
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(0, limit);
-      
-    for (const appointment of recentAppointments) {
-      const patient = await this.getPatient(appointment.patientId);
-      if (patient) {
-        activities.push({
-          type: 'appointment',
-          date: appointment.date,
-          patient: patient.name,
-          patientId: patient.id,
-          description: `dijadwalkan untuk sesi terapi`
-        });
-      }
-    }
-    
-    // Add session updates
-    const recentSessionUpdates = Array.from(this.therapySessions.values())
-      .filter(s => s.lastSessionDate)
-      .sort((a, b) => {
-        if (!a.lastSessionDate || !b.lastSessionDate) return 0;
-        return new Date(b.lastSessionDate).getTime() - new Date(a.lastSessionDate).getTime();
-      })
-      .slice(0, limit);
-      
-    for (const session of recentSessionUpdates) {
-      const patient = await this.getPatient(session.patientId);
-      if (patient && session.lastSessionDate) {
-        activities.push({
-          type: 'session',
-          date: session.lastSessionDate,
-          patient: patient.name,
-          patientId: patient.id,
-          sessionsUsed: session.sessionsUsed,
-          totalSessions: session.totalSessions,
-          description: `menyelesaikan sesi terapi ke-${session.sessionsUsed}`
-        });
-      }
-    }
-    
-    // Sort by date and limit
-    return activities
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, limit)
+      .map(appointment => ({
+        type: 'appointment',
+        data: appointment,
+        timestamp: appointment.date
+      }));
+    
+    // Gabungkan dan urutkan berdasarkan timestamp
+    const activities = [...recentTransactions, ...recentAppointments]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, limit);
+    
+    return activities;
   }
-  
-  // Registration Link methods
+
+  // Registration Links methods
   async createRegistrationLink(userId: number, expiryHours: number, dailyLimit: number): Promise<RegistrationLink> {
     const id = this.registrationLinkCurrentId++;
-    const createdAt = new Date();
-    
-    // Membuat tanggal kedaluwarsa
-    const expiryTime = new Date(createdAt);
+    const now = new Date();
+    const expiryTime = new Date(now);
     expiryTime.setHours(expiryTime.getHours() + expiryHours);
     
-    // Membuat kode unik acak alphanumeric
+    // Generate a random code
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 6; i++) {
       code += characters.charAt(Math.floor(Math.random() * characters.length));
     }
     
     const registrationLink: RegistrationLink = {
       id,
-      code,
+      code: `TTS-${code}`,
       expiryTime,
       dailyLimit,
       currentRegistrations: 0,
-      createdAt,
+      createdAt: now,
       isActive: true,
       createdBy: userId
     };
@@ -878,15 +941,16 @@ export class MemStorage implements IStorage {
     this.registrationLinks.set(id, registrationLink);
     return registrationLink;
   }
-
+  
   async getRegistrationLinkByCode(code: string): Promise<RegistrationLink | undefined> {
-    return Array.from(this.registrationLinks.values()).find(link => link.code === code);
+    return Array.from(this.registrationLinks.values())
+      .find(link => link.code === code);
   }
-
+  
   async getAllRegistrationLinks(): Promise<RegistrationLink[]> {
     return Array.from(this.registrationLinks.values());
   }
-
+  
   async incrementRegistrationCount(code: string): Promise<RegistrationLink | undefined> {
     const link = await this.getRegistrationLinkByCode(code);
     if (!link) return undefined;
@@ -899,7 +963,7 @@ export class MemStorage implements IStorage {
     this.registrationLinks.set(link.id, updatedLink);
     return updatedLink;
   }
-
+  
   async deactivateRegistrationLink(id: number): Promise<boolean> {
     const link = this.registrationLinks.get(id);
     if (!link) return false;
@@ -912,160 +976,124 @@ export class MemStorage implements IStorage {
     this.registrationLinks.set(id, updatedLink);
     return true;
   }
-  
-  async deleteRegistrationLink(id: number): Promise<boolean> {
-    const exists = this.registrationLinks.has(id);
-    if (!exists) return false;
-    
-    this.registrationLinks.delete(id);
-    return true;
-  }
-  
-  // Inisialisasi data pasien dan janji temu untuk pengujian
+
+  // Initialize sample patients and appointments for testing
   private initSamplePatientsAndAppointments() {
-    // Buat 3 pasien contoh
+    // Create sample patients
     const patient1: Patient = {
       id: 1,
-      name: "Budi Santoso",
-      phoneNumber: "081234567890",
-      email: "budi@example.com",
-      address: "Jl. Pahlawan No. 123, Jakarta",
-      patientId: "P-2025-001",
+      name: "Ahmad Santoso",
+      phoneNumber: "08123456789",
+      email: "ahmad@example.com",
+      birthDate: "1985-05-12",
+      gender: "Laki-laki",
+      address: "Jl. Kebon Jeruk No. 15, Jakarta Barat",
+      complaints: "Nyeri punggung dan pinggang",
+      patientId: `P-${new Date().getFullYear()}-001`,
       createdAt: new Date(),
       therapySlotId: null
     };
-    
+    this.patients.set(patient1.id, patient1);
+    this.patientCurrentId++;
+
     const patient2: Patient = {
       id: 2,
       name: "Siti Rahayu",
-      phoneNumber: "082345678901",
+      phoneNumber: "08234567890",
       email: "siti@example.com",
-      address: "Jl. Merdeka No. 45, Bandung",
-      patientId: "P-2025-002",
+      birthDate: "1990-08-21",
+      gender: "Perempuan",
+      address: "Jl. Melati No. 7, Jakarta Selatan",
+      complaints: "Sakit kepala dan pundak kaku",
+      patientId: `P-${new Date().getFullYear()}-002`,
       createdAt: new Date(),
       therapySlotId: null
     };
-    
+    this.patients.set(patient2.id, patient2);
+    this.patientCurrentId++;
+
     const patient3: Patient = {
       id: 3,
-      name: "Ahmad Rizki",
-      phoneNumber: "083456789012",
-      email: "ahmad@example.com",
-      address: "Jl. Sudirman No. 67, Surabaya",
-      patientId: "P-2025-003",
+      name: "Budi Hartono",
+      phoneNumber: "08345678901",
+      email: "budi@example.com",
+      birthDate: "1978-11-03",
+      gender: "Laki-laki",
+      address: "Jl. Kamboja No. 25, Jakarta Timur",
+      complaints: "Kesemutan di tangan dan kaki",
+      patientId: `P-${new Date().getFullYear()}-003`,
       createdAt: new Date(),
       therapySlotId: null
     };
-    
-    this.patients.set(patient1.id, patient1);
-    this.patients.set(patient2.id, patient2);
     this.patients.set(patient3.id, patient3);
-    this.patientCurrentId = 4;
-    
-    // Buat appointment untuk slot terapi hari ini
-    const todaySlots = Array.from(this.therapySlots.values()).filter(slot => {
-      const slotDate = new Date(slot.date);
-      const today = new Date();
-      return slotDate.getDate() === today.getDate() &&
-             slotDate.getMonth() === today.getMonth() &&
-             slotDate.getFullYear() === today.getFullYear();
-    });
-    
-    if (todaySlots.length > 0) {
-      // Buat appointment untuk slot pertama hari ini
+    this.patientCurrentId++;
+
+    // Get the first therapy slots of today for sample appointments
+    const today = new Date();
+    const slots = Array.from(this.therapySlots.values())
+      .filter(slot => {
+        const slotDate = new Date(slot.date);
+        slotDate.setHours(0, 0, 0, 0);
+        const todayDate = new Date(today);
+        todayDate.setHours(0, 0, 0, 0);
+        return slotDate.getTime() === todayDate.getTime();
+      })
+      .slice(0, 3);
+
+    if (slots.length > 0) {
+      // Create sample appointments for today
       const appointment1: Appointment = {
         id: 1,
+        date: today,
+        status: "Active",
         patientId: 1,
-        therapySlotId: todaySlots[0].id,
-        date: new Date(todaySlots[0].date),
-        status: "Active",
-        notes: "Pasien pertama kali terapi",
-        createdAt: new Date(),
-        sessionId: null
+        therapySlotId: slots[0].id,
+        timeSlot: slots[0].timeSlot,
+        sessionId: null,
+        registrationNumber: `REG-${format(today, 'yyyyMMdd')}-001`,
+        notes: "Pasien baru, perlu pemeriksaan menyeluruh"
       };
-      
-      const appointment2: Appointment = {
-        id: 2,
-        patientId: 2,
-        therapySlotId: todaySlots[0].id,
-        date: new Date(todaySlots[0].date),
-        status: "Active",
-        notes: "Sesi ke-2",
-        createdAt: new Date(),
-        sessionId: null
-      };
-      
-      // Jika ada lebih dari satu slot untuk hari ini
-      if (todaySlots.length > 1) {
+      this.appointments.set(appointment1.id, appointment1);
+      this.appointmentCurrentId++;
+      this.incrementTherapySlotUsage(slots[0].id);
+
+      if (slots.length > 1) {
+        const appointment2: Appointment = {
+          id: 2,
+          date: today,
+          status: "Active",
+          patientId: 2,
+          therapySlotId: slots[1].id,
+          timeSlot: slots[1].timeSlot,
+          sessionId: null,
+          registrationNumber: `REG-${format(today, 'yyyyMMdd')}-002`,
+          notes: "Pasien rutin, telah melakukan 3 sesi sebelumnya"
+        };
+        this.appointments.set(appointment2.id, appointment2);
+        this.appointmentCurrentId++;
+        this.incrementTherapySlotUsage(slots[1].id);
+      }
+
+      if (slots.length > 2) {
         const appointment3: Appointment = {
           id: 3,
-          patientId: 3,
-          therapySlotId: todaySlots[1].id,
-          date: new Date(todaySlots[1].date),
+          date: today,
           status: "Active",
-          notes: "Pasien baru dirujuk",
-          createdAt: new Date(),
-          sessionId: null
+          patientId: 3,
+          therapySlotId: slots[2].id,
+          timeSlot: slots[2].timeSlot,
+          sessionId: null,
+          registrationNumber: `REG-${format(today, 'yyyyMMdd')}-003`,
+          notes: "Terapi lanjutan untuk masalah kesemutan"
         };
-        
         this.appointments.set(appointment3.id, appointment3);
-        
-        // Update jumlah penggunaan slot
-        const slot2 = this.therapySlots.get(todaySlots[1].id);
-        if (slot2) {
-          slot2.currentCount += 1;
-          this.therapySlots.set(slot2.id, slot2);
-        }
-      }
-      
-      this.appointments.set(appointment1.id, appointment1);
-      this.appointments.set(appointment2.id, appointment2);
-      this.appointmentCurrentId = 4;
-      
-      // Update jumlah penggunaan slot
-      const slot1 = this.therapySlots.get(todaySlots[0].id);
-      if (slot1) {
-        slot1.currentCount += 2;
-        this.therapySlots.set(slot1.id, slot1);
+        this.appointmentCurrentId++;
+        this.incrementTherapySlotUsage(slots[2].id);
       }
     }
-    
-    console.log("Data pasien dan janji temu contoh diinisialisasi");
-  }
-  
-  // Method ini sudah tidak diperlukan lagi karena kita membuat link pendaftaran default
-  // pada method initDefaultData secara sinkron
-  // Metode ini disimpan hanya untuk referensi
-  private _unusedCreateDefaultRegistrationLink(userId: number, expiryHours: number, dailyLimit: number): RegistrationLink {
-    const id = this.registrationLinkCurrentId++;
-    const createdAt = new Date();
-    
-    // Membuat tanggal kedaluwarsa
-    const expiryTime = new Date(createdAt);
-    expiryTime.setHours(expiryTime.getHours() + expiryHours);
-    
-    // Membuat kode default yang mudah diingat untuk link default
-    const code = 'TTS-REG';
-    
-    const registrationLink: RegistrationLink = {
-      id,
-      code,
-      expiryTime,
-      dailyLimit,
-      currentRegistrations: 0,
-      createdAt,
-      isActive: true,
-      createdBy: userId
-    };
-    
-    // Simpan ke Map
-    this.registrationLinks.set(id, registrationLink);
-    console.log("Link pendaftaran default dibuat:", registrationLink);
-    return registrationLink;
+
+    console.log("Sample patients and appointments diinisialisasi");
   }
 }
-
-// Export a singleton instance
-
 
 export const storage = new MemStorage();
