@@ -115,10 +115,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/patients", async (req: Request, res: Response) => {
     try {
+      console.log("Menerima permintaan POST /api/patients dengan data:", req.body);
       const validatedData = insertPatientSchema.parse(req.body);
+      console.log("Data pasien tervalidasi:", validatedData);
       const newPatient = await storage.createPatient(validatedData);
+      console.log("Pasien baru dibuat:", newPatient);
       return res.status(201).json(newPatient);
     } catch (error) {
+      console.error("Error ketika membuat pasien:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
@@ -153,10 +157,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/products", async (req: Request, res: Response) => {
     try {
+      console.log("Menerima permintaan POST /api/products dengan data:", req.body);
       const validatedData = insertProductSchema.parse(req.body);
+      console.log("Data produk tervalidasi:", validatedData);
       const newProduct = await storage.createProduct(validatedData);
+      console.log("Produk baru dibuat:", newProduct);
       return res.status(201).json(newProduct);
     } catch (error) {
+      console.error("Error ketika membuat produk:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.put("/api/products/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`Menerima permintaan PUT /api/products/${id} dengan data:`, req.body);
+      
+      const validatedData = insertProductSchema.parse(req.body);
+      console.log("Data produk tervalidasi:", validatedData);
+      
+      const product = await storage.getProduct(id);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      // Implementasi updateProduct di storage untuk memperbarui produk
+      // Untuk sementara, kita hanya akan memperbarui stok saja karena endpoint utama sudah ada
+      const stockChange = (validatedData.stock ?? 0) - product.stock;
+      const updatedProduct = await storage.updateProductStock(id, stockChange);
+      console.log("Produk diperbarui:", updatedProduct);
+      
+      return res.status(200).json(updatedProduct);
+    } catch (error) {
+      console.error("Error ketika memperbarui produk:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
@@ -407,10 +444,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/appointments", async (req: Request, res: Response) => {
     try {
+      console.log("Menerima permintaan POST /api/appointments dengan data:", req.body);
       const validatedData = insertAppointmentSchema.parse(req.body);
+      console.log("Data appointment tervalidasi:", validatedData);
       const newAppointment = await storage.createAppointment(validatedData);
+      console.log("Appointment baru dibuat:", newAppointment);
       return res.status(201).json(newAppointment);
     } catch (error) {
+      console.error("Error ketika membuat appointment:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
