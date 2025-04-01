@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   BarChart3, 
@@ -11,6 +12,7 @@ import {
 import { cn, formatRupiah } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
+import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
 
 interface DashboardStats {
   patientsToday: number;
@@ -27,6 +29,9 @@ interface RecentActivity {
 }
 
 export default function Dashboard() {
+  const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
   // Format today's date to YYYY-MM-DD for API query
   const today = new Date();
   const formattedToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -83,6 +88,15 @@ export default function Dashboard() {
       bgColor: "bg-purple-100",
     },
   ];
+  
+  const handleSlotClick = (slotId: number) => {
+    setSelectedSlotId(slotId);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -184,7 +198,11 @@ export default function Dashboard() {
                   </thead>
                   <tbody className="divide-y">
                     {todaySlots.map((slot: any) => (
-                      <tr key={slot.id} className="py-2">
+                      <tr 
+                        key={slot.id} 
+                        className="py-2 hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => handleSlotClick(slot.id)}
+                      >
                         <td className="py-3 text-left">{slot.timeSlot}</td>
                         <td className="py-3 text-center">{slot.maxQuota}</td>
                         <td className="py-3 text-center">{slot.currentCount}</td>
@@ -235,6 +253,13 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Dialog untuk melihat pasien yang terdaftar di slot */}
+      <SlotPatientsDialog 
+        slotId={selectedSlotId} 
+        isOpen={isDialogOpen} 
+        onClose={handleCloseDialog} 
+      />
     </div>
   );
 }

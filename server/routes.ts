@@ -691,6 +691,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Failed to get today's therapy slots" });
     }
   });
+  
+  // Endpoint untuk mendapatkan daftar pasien berdasarkan slot terapi
+  app.get("/api/therapy-slots/:id/patients", async (req: Request, res: Response) => {
+    try {
+      const slotId = parseInt(req.params.id);
+      
+      if (isNaN(slotId)) {
+        return res.status(400).json({ message: "Invalid slot ID" });
+      }
+      
+      // Dapatkan slot terapi
+      const slot = await storage.getTherapySlot(slotId);
+      
+      if (!slot) {
+        return res.status(404).json({ message: "Therapy slot not found" });
+      }
+      
+      // Dapatkan semua appointment untuk slot terapi ini
+      const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+      
+      // Dapatkan informasi pasien dari tiap appointment
+      const patientPromises = appointments.map(async (appointment) => {
+        const patient = await storage.getPatient(appointment.patientId);
+        return {
+          ...appointment,
+          patient: patient || { name: "Unknown Patient" },
+        };
+      });
+      
+      const patientsData = await Promise.all(patientPromises);
+      
+      return res.status(200).json({
+        slot,
+        appointments: patientsData
+      });
+    } catch (error) {
+      console.error(`Error getting patients for therapy slot: ${error}`);
+      return res.status(500).json({ message: "Failed to get patients for therapy slot" });
+    }
+  });
 
   // Registration Link endpoints
   app.post("/api/registration-links", async (req: Request, res: Response) => {
