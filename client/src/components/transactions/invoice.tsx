@@ -272,7 +272,7 @@ Tim ${settings.companyName}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold font-heading">Invoice</DialogTitle>
         </DialogHeader>
