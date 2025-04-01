@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/components/ui/theme-provider";
 import { useForm } from "react-hook-form";
 import { THEME_STORAGE_KEY } from "../main";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -402,46 +403,11 @@ export default function SettingsPage() {
                       Aktifkan tampilan gelap untuk kenyamanan
                     </p>
                   </div>
-                  <Switch
-                    id="theme-toggle"
-                    checked={theme === "dark"}
-                    onCheckedChange={(checked) => {
-                      try {
-                        // Tema yang baru berdasarkan toggle switch
-                        const newTheme = checked ? "dark" : "light";
-                        
-                        // Aplicar a mudança no tema - setTheme agora aplica diretamente sem precisar de refresh!
-                        setTheme(newTheme);
-                        
-                        // Salvamos nas configurações do app para manter compatibilidade com outras partes do sistema
-                        localStorage.setItem('app_settings', JSON.stringify({
-                          theme: newTheme,
-                          isWhatsappEnabled,
-                          isEmailNotificationsEnabled
-                        }));
-                        
-                        // Forçar re-render das classes css para o tema
-                        document.documentElement.classList.remove("light", "dark");
-                        document.documentElement.classList.add(newTheme);
-                        
-                        // Para debug
-                        console.log('Switch toggle: Tema alterado para:', newTheme, 'Aplicado diretamente');
-                        
-                        // Notificação amigável para o usuário
-                        toast({
-                          title: "Tema diperbarui",
-                          description: checked ? "Mode gelap diaktifkan" : "Mode terang diaktifkan",
-                        });
-                      } catch (error) {
-                        console.error("Erro ao alternar tema:", error);
-                        toast({
-                          variant: "destructive",
-                          title: "Gagal mengubah tema",
-                          description: "Terjadi kesalahan saat mengubah tema"
-                        });
-                      }
-                    }}
-                  />
+                  
+                  {/* Menggunakan komponen ThemeToggle yang baru */}
+                  <div className="flex items-center">
+                    <ThemeToggle />
+                  </div>
                 </div>
               </div>
 
