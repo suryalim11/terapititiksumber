@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import Layout from "../components/layout/layout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -92,73 +91,71 @@ const Settings = () => {
   };
   
   return (
-    <Layout>
-      <div className="container mx-auto py-6">
-        <h1 className="text-3xl font-bold mb-6">Pengaturan Aplikasi</h1>
-        
-        <div className="grid gap-6">
-          {/* Therapy Pricing Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Harga Terapi</CardTitle>
-              <CardDescription>
-                Atur harga untuk berbagai jenis paket terapi
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isLoading ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="h-10 w-32" />
+    <div className="container mx-auto py-6">
+      <h1 className="text-3xl font-bold mb-6">Pengaturan Aplikasi</h1>
+      
+      <div className="grid gap-6">
+        {/* Therapy Pricing Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Harga Terapi</CardTitle>
+            <CardDescription>
+              Atur harga untuk berbagai jenis paket terapi
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="singlePrice">Harga Sesi Tunggal</Label>
+                  <div className="flex space-x-2 items-center">
+                    <Input
+                      id="singlePrice"
+                      type="number"
+                      value={therapySinglePrice}
+                      onChange={(e) => setTherapySinglePrice(e.target.value)}
+                      placeholder="Masukkan harga sesi tunggal"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {formatRupiah(Number(therapySinglePrice))}
+                    </span>
+                  </div>
                 </div>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="singlePrice">Harga Sesi Tunggal</Label>
-                    <div className="flex space-x-2 items-center">
-                      <Input
-                        id="singlePrice"
-                        type="number"
-                        value={therapySinglePrice}
-                        onChange={(e) => setTherapySinglePrice(e.target.value)}
-                        placeholder="Masukkan harga sesi tunggal"
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        {formatRupiah(Number(therapySinglePrice))}
-                      </span>
-                    </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="packagePrice">Harga Paket 12 Sesi</Label>
+                  <div className="flex space-x-2 items-center">
+                    <Input
+                      id="packagePrice"
+                      type="number"
+                      value={therapyPackagePrice}
+                      onChange={(e) => setTherapyPackagePrice(e.target.value)}
+                      placeholder="Masukkan harga paket 12 sesi"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {formatRupiah(Number(therapyPackagePrice))}
+                    </span>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="packagePrice">Harga Paket 12 Sesi</Label>
-                    <div className="flex space-x-2 items-center">
-                      <Input
-                        id="packagePrice"
-                        type="number"
-                        value={therapyPackagePrice}
-                        onChange={(e) => setTherapyPackagePrice(e.target.value)}
-                        placeholder="Masukkan harga paket 12 sesi"
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        {formatRupiah(Number(therapyPackagePrice))}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    onClick={handleSaveTherapyPricing}
-                    disabled={updateSetting.isPending}
-                  >
-                    {updateSetting.isPending ? "Menyimpan..." : "Simpan Perubahan"}
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                </div>
+                
+                <Button 
+                  onClick={handleSaveTherapyPricing}
+                  disabled={updateSetting.isPending}
+                >
+                  {updateSetting.isPending ? "Menyimpan..." : "Simpan Perubahan"}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </Layout>
+    </div>
   );
 };
 

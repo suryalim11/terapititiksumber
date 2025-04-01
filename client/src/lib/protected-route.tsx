@@ -2,6 +2,7 @@ import { useContext } from "react";
 import { AuthContext } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
+import Layout from "@/components/layout/layout";
 
 export function ProtectedRoute({
   path,
@@ -30,5 +31,11 @@ export function ProtectedRoute({
     );
   }
 
-  return <Route path={path}><Component /></Route>;
+  return (
+    <Route path={path}>
+      <Layout>
+        <Component />
+      </Layout>
+    </Route>
+  );
 }
