@@ -1082,6 +1082,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Internal server error" });
     }
   });
+  
+  app.delete("/api/therapy-slots/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`Attempting to delete therapy slot ${id}`);
+      
+      const slot = await storage.getTherapySlot(id);
+      if (!slot) {
+        return res.status(404).json({ message: "Therapy slot not found" });
+      }
+      
+      // Periksa apakah slot memiliki pasien yang terdaftar
+      if (slot.currentCount > 0) {
+        return res.status(400).json({ 
+          message: "Cannot delete therapy slot with registered patients",
+          success: false
+        });
+      }
+      
+      const deleted = await storage.deleteTherapySlot(id);
+      
+      if (deleted) {
+        return res.status(200).json({ 
+          success: true, 
+          message: "Therapy slot deleted successfully" 
+        });
+      } else {
+        return res.status(500).json({ 
+          success: false, 
+          message: "Failed to delete therapy slot" 
+        });
+      }
+    } catch (error) {
+      console.error("Error ketika menghapus therapy slot:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
 
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);

@@ -71,6 +71,7 @@ export interface IStorage {
   updateTherapySlot(id: number, slot: Partial<InsertTherapySlot>): Promise<TherapySlot | undefined>;
   incrementTherapySlotUsage(id: number): Promise<TherapySlot | undefined>;
   deactivateTherapySlot(id: number): Promise<boolean>;
+  deleteTherapySlot(id: number): Promise<boolean>;
   
   // Appointments
   getAppointment(id: number): Promise<Appointment | undefined>;
@@ -585,6 +586,23 @@ export class MemStorage implements IStorage {
     };
     
     this.therapySlots.set(id, updatedSlot);
+    return true;
+  }
+  
+  async deleteTherapySlot(id: number): Promise<boolean> {
+    // Check if therapy slot exists
+    const exists = this.therapySlots.has(id);
+    if (!exists) return false;
+    
+    // Check if the slot has any registered patients (currentCount > 0)
+    const slot = this.therapySlots.get(id);
+    if (slot && slot.currentCount > 0) {
+      // Can't delete slot with registered patients
+      return false;
+    }
+    
+    // Delete the slot
+    this.therapySlots.delete(id);
     return true;
   }
 

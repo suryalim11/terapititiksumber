@@ -27,6 +27,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Form,
   FormControl,
   FormDescription,
@@ -54,7 +64,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { CalendarIcon, PlusCircle, RefreshCw } from "lucide-react";
+import { CalendarIcon, PlusCircle, RefreshCw, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -65,8 +75,11 @@ const therapySlotSchema = z.object({
   date: z.date({
     required_error: "Tanggal diperlukan",
   }),
-  timeSlot: z.string({
-    required_error: "Waktu sesi diperlukan",
+  startTime: z.string({
+    required_error: "Waktu mulai sesi diperlukan",
+  }),
+  endTime: z.string({
+    required_error: "Waktu selesai sesi diperlukan",
   }),
   maxQuota: z.coerce.number().int().min(1, {
     message: "Kuota minimal 1 orang",
@@ -81,13 +94,15 @@ export default function TherapySlots() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [deletingSlotId, setDeletingSlotId] = useState<number | null>(null);
 
   // Form untuk membuat slot terapi baru
   const form = useForm<TherapySlotFormValues>({
     resolver: zodResolver(therapySlotSchema),
     defaultValues: {
       date: new Date(),
-      timeSlot: "10:00-11:00",
+      startTime: "10:00",
+      endTime: "11:00",
       maxQuota: 6,
       isActive: true,
     },
@@ -175,6 +190,39 @@ export default function TherapySlots() {
       });
     },
   });
+  
+  // Mutation untuk menghapus slot terapi
+  const deleteSlotMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/therapy-slots/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to delete therapy slot');
+      }
+      
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      toast({
+        title: "Slot dihapus",
+        description: "Slot terapi berhasil dihapus.",
+      });
+      setDeletingSlotId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Gagal menghapus slot",
+        description: error.message,
+        variant: "destructive",
+      });
+      setDeletingSlotId(null);
+    },
+  });
 
   // Membuat slot terapi untuk beberapa hari ke depan
   const createBatchSlots = async (days: number, timeSlot: string, maxQuota: number) => {
@@ -200,7 +248,14 @@ export default function TherapySlots() {
         );
       }
 
-      await Promise.all(creationPromises);
+      const results = await Promise.all(creationPromises);
+      
+      // Check if any request failed
+      for (const res of results) {
+        if (!res.ok) {
+          throw new Error('Failed to create one or more therapy slots');
+        }
+      }
       
       queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
       toast({
@@ -218,7 +273,40 @@ export default function TherapySlots() {
 
   // Handler untuk submit form
   const onSubmit = (data: TherapySlotFormValues) => {
-    createSlotMutation.mutate(data);
+    // Gabungkan startTime dan endTime menjadi timeSlot
+    const timeSlot = `${data.startTime}-${data.endTime}`;
+    
+    // Menggunakan fetch API langsung karena mutation tidak mendukung properti timeSlot
+    fetch("/api/therapy-slots", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: data.date,
+        timeSlot: timeSlot,
+        maxQuota: data.maxQuota,
+        isActive: data.isActive
+      })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to create therapy slot');
+      return res.json();
+    })
+    .then(() => {
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      toast({
+        title: "Berhasil!",
+        description: "Slot terapi baru telah dibuat.",
+      });
+      setDialogOpen(false);
+      form.reset();
+    })
+    .catch(error => {
+      toast({
+        title: "Gagal membuat slot terapi",
+        description: error.message,
+        variant: "destructive",
+      });
+    });
   };
 
   // Handler untuk mengaktifkan/nonaktifkan slot
@@ -248,6 +336,35 @@ export default function TherapySlots() {
       <Helmet>
         <title>Manajemen Slot Terapi | Terapi Titik Sumber</title>
       </Helmet>
+      
+      {/* AlertDialog untuk konfirmasi hapus */}
+      <AlertDialog open={deletingSlotId !== null} onOpenChange={(open) => !open && setDeletingSlotId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Slot Terapi</AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda yakin ingin menghapus slot terapi ini? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingSlotId && deleteSlotMutation.mutate(deletingSlotId)}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteSlotMutation.isPending}
+            >
+              {deleteSlotMutation.isPending ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Menghapus...
+                </>
+              ) : (
+                "Hapus"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
@@ -311,26 +428,33 @@ export default function TherapySlots() {
                     
                     <FormField
                       control={form.control}
-                      name="timeSlot"
+                      name="startTime"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Waktu Sesi</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pilih waktu sesi" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="10:00-11:00">10:00 - 11:00</SelectItem>
-                              <SelectItem value="13:00-14:00">13:00 - 14:00</SelectItem>
-                              <SelectItem value="15:00-16:00">15:00 - 16:00</SelectItem>
-                              <SelectItem value="19:00-20:00">19:00 - 20:00</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Waktu Mulai</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="time"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="endTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Waktu Selesai</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="time"
+                              {...field}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -446,14 +570,24 @@ export default function TherapySlots() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Button
-                                variant={slot.isActive ? "destructive" : "outline"}
-                                size="sm"
-                                onClick={() => handleToggleStatus(slot)}
-                                disabled={toggleStatusMutation.isPending}
-                              >
-                                {slot.isActive ? "Nonaktifkan" : "Aktifkan"}
-                              </Button>
+                              <div className="flex space-x-2">
+                                <Button
+                                  variant={slot.isActive ? "destructive" : "outline"}
+                                  size="sm"
+                                  onClick={() => handleToggleStatus(slot)}
+                                  disabled={toggleStatusMutation.isPending}
+                                >
+                                  {slot.isActive ? "Nonaktifkan" : "Aktifkan"}
+                                </Button>
+                                <Button 
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 border-red-200 hover:bg-red-50"
+                                  onClick={() => setDeletingSlotId(slot.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -562,14 +696,24 @@ export default function TherapySlots() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant={slot.isActive ? "destructive" : "outline"}
-                              size="sm"
-                              onClick={() => handleToggleStatus(slot)}
-                              disabled={toggleStatusMutation.isPending}
-                            >
-                              {slot.isActive ? "Nonaktifkan" : "Aktifkan"}
-                            </Button>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant={slot.isActive ? "destructive" : "outline"}
+                                size="sm"
+                                onClick={() => handleToggleStatus(slot)}
+                                disabled={toggleStatusMutation.isPending}
+                              >
+                                {slot.isActive ? "Nonaktifkan" : "Aktifkan"}
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 border-red-200 hover:bg-red-50"
+                                onClick={() => setDeletingSlotId(slot.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
