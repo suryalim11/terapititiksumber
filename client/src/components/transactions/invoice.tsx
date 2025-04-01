@@ -196,12 +196,56 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
   };
 
   const handleShareWhatsApp = () => {
-    // In a real application, this would integrate with WhatsApp API
-    // For this demo, we'll just show a toast
-    toast({
-      title: "Invoice dibagikan",
-      description: "Invoice telah dikirim melalui WhatsApp",
-    });
+    try {
+      if (!data.patient || !data.transaction) {
+        toast({
+          title: "Gagal membagikan invoice",
+          description: "Data pasien atau transaksi tidak lengkap",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Format pesan WhatsApp
+      const message = `*INVOICE ${data.transaction.transactionId}*
+Yth. ${data.patient.name},
+
+Terima kasih telah mengunjungi Klinik Terapi Titik Sumber.
+Total Pembayaran: ${formatPrice(data.transaction.totalAmount)}
+
+Detail transaksi telah dikirim melalui invoice ini.
+Semoga sehat selalu!
+
+Salam,
+Tim Terapi Titik Sumber`;
+
+      // Encode pesan untuk URL WhatsApp
+      const encodedMessage = encodeURIComponent(message);
+      
+      // Dapatkan nomor telepon pasien dan hapus karakter non-numerik
+      let phoneNumber = data.patient.phoneNumber.replace(/\D/g, '');
+      
+      // Pastikan format nomor telepon benar (tambahkan 62 jika dimulai dengan 0)
+      if (phoneNumber.startsWith('0')) {
+        phoneNumber = '62' + phoneNumber.substring(1);
+      }
+      
+      // Buka WhatsApp Web dengan pesan yang sudah disiapkan
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+      window.open(whatsappUrl, '_blank');
+      
+      toast({
+        title: "WhatsApp terbuka",
+        description: "Invoice telah disiapkan untuk dikirim melalui WhatsApp",
+      });
+    } catch (error) {
+      console.error("Error sending WhatsApp message:", error);
+      toast({
+        title: "Gagal membagikan invoice",
+        description: "Terjadi kesalahan saat mengirim pesan WhatsApp",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -296,7 +340,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
             </svg>
             Cetak
           </Button>
-          <Button variant="outline" onClick={handleDownload}>
+          <Button variant="outline" onClick={handleDownload} data-action="download-pdf">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>

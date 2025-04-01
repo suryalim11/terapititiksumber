@@ -28,6 +28,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import TransactionForm from "@/components/transactions/transaction-form";
+import Invoice from "@/components/transactions/invoice";
+import { useToast } from "@/hooks/use-toast";
 
 type Transaction = {
   id: number;
@@ -45,10 +47,13 @@ type Transaction = {
 
 export default function Transactions() {
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false);
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
+  const [invoiceData, setInvoiceData] = useState<any>(null);
   const [location] = useLocation();
+  const { toast } = useToast();
 
   // Check URL for patientId parameter
   useEffect(() => {
@@ -71,6 +76,14 @@ export default function Transactions() {
 
   const { data: patients } = useQuery({
     queryKey: ["/api/patients"],
+  });
+  
+  const { data: packages } = useQuery({
+    queryKey: ["/api/packages"],
+  });
+  
+  const { data: products } = useQuery({
+    queryKey: ["/api/products"],
   });
 
   const getPatientName = (patientId: number) => {
@@ -121,6 +134,98 @@ export default function Transactions() {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         })
     : [];
+
+  // Fungsi untuk melihat detail transaksi dan membuka invoice
+  const handleViewTransaction = (transaction: any) => {
+    try {
+      // Cari data pasien untuk transaksi ini
+      const patient = patients?.find((p: any) => p.id === transaction.patientId);
+      
+      if (!patient) {
+        toast({
+          title: "Data tidak lengkap",
+          description: "Data pasien tidak ditemukan",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Siapkan data item untuk invoice
+      const items = (transaction.items || []).map((item: any) => ({
+        id: item.id,
+        type: item.type,
+        name: item.type === 'package' ? 
+          (packages?.find((p: any) => p.id === item.id)?.name || 'Paket Terapi') :
+          (products?.find((p: any) => p.id === item.id)?.name || 'Produk'),
+        price: item.price,
+        quantity: item.quantity
+      }));
+      
+      // Set data untuk invoice
+      setInvoiceData({
+        transaction,
+        patient,
+        items,
+        paymentMethod: transaction.paymentMethod
+      });
+      
+      // Buka dialog invoice
+      setIsInvoiceOpen(true);
+    } catch (error) {
+      console.error("Error viewing transaction:", error);
+      toast({
+        title: "Gagal menampilkan invoice",
+        description: "Terjadi kesalahan saat memuat data transaksi",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Fungsi untuk mencetak/mengunduh invoice langsung
+  const handlePrintTransaction = (transaction: any) => {
+    try {
+      // Cari data pasien untuk transaksi ini
+      const patient = patients?.find((p: any) => p.id === transaction.patientId);
+      
+      if (!patient) {
+        toast({
+          title: "Data tidak lengkap",
+          description: "Data pasien tidak ditemukan",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Siapkan data item untuk invoice
+      const items = (transaction.items || []).map((item: any) => ({
+        id: item.id,
+        type: item.type,
+        name: item.type === 'package' ? 
+          (packages?.find((p: any) => p.id === item.id)?.name || 'Paket Terapi') :
+          (products?.find((p: any) => p.id === item.id)?.name || 'Produk'),
+        price: item.price,
+        quantity: item.quantity
+      }));
+      
+      // Set data untuk invoice
+      setInvoiceData({
+        transaction,
+        patient,
+        items,
+        paymentMethod: transaction.paymentMethod
+      });
+      
+      // Buka dialog invoice
+      setIsInvoiceOpen(true);
+    } catch (error) {
+      console.error("Error printing transaction:", error);
+      toast({
+        title: "Gagal mencetak invoice",
+        description: "Terjadi kesalahan saat memuat data transaksi",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -218,13 +323,25 @@ export default function Transactions() {
                       <TableCell>{formatPrice(transaction.totalAmount)}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleViewTransaction(transaction)}
+                            title="Lihat Invoice"
+                          >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0"
+                            onClick={() => handlePrintTransaction(transaction)}
+                            title="Cetak Invoice"
+                          >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                             </svg>
@@ -248,6 +365,15 @@ export default function Transactions() {
         }}
         selectedPatientId={selectedPatientId}
       />
+      
+      {/* Tambahkan Invoice component */}
+      {invoiceData && (
+        <Invoice 
+          isOpen={isInvoiceOpen}
+          onClose={() => setIsInvoiceOpen(false)}
+          data={invoiceData}
+        />
+      )}
     </div>
   );
 }
