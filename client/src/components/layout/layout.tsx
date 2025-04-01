@@ -80,7 +80,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="flex h-16 items-center justify-between border-b px-4">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold">TerapiKlinik</h1>
+            <h1 className="text-xl font-bold">Terapi Titik Sumber</h1>
           </div>
           {isMobile && (
             <button

@@ -1,0 +1,175 @@
+Berikut **prompt lengkap** untuk memperbaiki fungsi ganti kata sandi, menghilangkan halaman "Klinik", dan memperbaiki mode gelap:
+
+---
+
+### **1. Perbaikan Fungsi Ganti Kata Sandi**  
+**Masalah:** Form ubah kata sandi tidak menyimpan perubahan ke database.  
+
+**Solusi:**  
+- **Backend (Node.js/Express):**  
+  ```javascript
+  // Endpoint untuk ubah password
+  app.post('/api/change-password', async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    
+    // Validasi password lama
+    const user = await db.query(`
+      SELECT * FROM users WHERE username = $1 AND password = $2
+    `, [req.user.username, currentPassword]);
+    
+    if (!user) {
+      return res.status(400).json({ error: 'Password lama salah!' });
+    }
+    
+    // Update password baru
+    await db.query(`
+      UPDATE users 
+      SET password = $1 
+      WHERE id = $2
+    `, [newPassword, req.user.id]);
+    
+    res.json({ success: true });
+  });
+  ```
+
+- **Frontend (React.js):**  
+  ```jsx
+  import { useState } from 'react';
+
+  function ChangePasswordForm() {
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      
+      try {
+        const response = await fetch('/api/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentPassword,
+            newPassword
+          })
+        });
+        
+        if (response.ok) {
+          alert('Password berhasil diubah!');
+        } else {
+          alert('Gagal mengubah password.');
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    return (
+      <form onSubmit={handleSubmit}>
+        {/* ... input fields ... */}
+        <button type="submit">Simpan</button>
+      </form>
+    );
+  }
+  ```
+
+---
+
+### **2. Menghilangkan Halaman "Klinik"**  
+**Langkah:**  
+1. **Hapus Tab "Klinik" dari Navigasi:**  
+   ```html
+   <!-- Sebelumnya -->
+   <nav>
+     <a href="#profil">Profil</a>
+     <a href="#klinik">Klinik</a> <!-- Hapus ini -->
+     <a href="#invoice">Invoice</a>
+   </nav>
+
+   <!-- Setelah Dihapus -->
+   <nav>
+     <a href="#profil">Profil</a>
+     <a href="#invoice">Invoice</a>
+   </nav>
+   ```
+
+2. **Nonaktifkan Rute "Klinik":**  
+   - Jika menggunakan React Router:  
+     ```jsx
+     // Sebelumnya
+     <Route path="/settings/klinik" component={KlinikSettings} />
+     
+     // Setelah Dihapus
+     // Hapus baris di atas
+     ```
+
+3. **Hapus File Komponen "Klinik":**  
+   - Contoh: `src/components/KlinikSettings.js`  
+
+---
+
+### **3. Memperbaiki Mode Gelap**  
+**Masalah:** Toggle mode gelap tidak berfungsi.  
+
+**Solusi:**  
+- **Tambahkan CSS Variabel:**  
+  ```css
+  :root {
+    --bg-color: #fff;
+    --text-color: #333;
+  }
+
+  .dark-mode {
+    --bg-color: #222;
+    --text-color: #eee;
+  }
+  ```
+
+- **Update JavaScript untuk Toggle Mode:**  
+  ```javascript
+  // Di file pengaturan
+  document.getElementById('darkModeToggle').addEventListener('change', () => {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+  });
+
+  // Load tema saat page load
+  window.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      document.body.classList.add('dark-mode');
+    }
+  });
+  ```
+
+- **Contoh Penggunaan di HTML:**  
+  ```html
+  <div class="container" style="background-color: var(--bg-color); color: var(--text-color);">
+    <!-- Konten aplikasi -->
+  </div>
+  ```
+
+---
+
+### **4. Testing Langkah-langkah**  
+1. **Ubah Password:**  
+   - Isi form dengan password lama yang benar → klik "Simpan".  
+   - Pastikan pesan sukses muncul dan password berubah di database.  
+
+2. **Cek Mode Gelap:**  
+   - Aktifkan toggle → tampilan harus berubah ke warna gelap.  
+   - Refresh halaman → mode tetap aktif (dikirim via Local Storage).  
+
+3. **Verifikasi Halaman "Klinik":**  
+   - Coba akses URL `/settings/klinik` → harus menampilkan error 404 atau redirect ke halaman lain.  
+
+---
+
+### **5. Tools Bantuan**  
+- **Chrome DevTools:**  
+  - Inspeksi elemen untuk melihat apakah CSS diterapkan.  
+  - Gunakan Network tab untuk cek apakah API `/api/change-password` dipanggil.  
+
+- **Postman:**  
+  - Uji endpoint `/api/change-password` secara manual.  
+
+Jika ada bagian yang masih bermasalah, beri tahu detail errornya! 🛠️

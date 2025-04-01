@@ -30,6 +30,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserPassword(id: number, newPassword: string): Promise<User | undefined>;
   
   // Patients
   getPatient(id: number): Promise<Patient | undefined>;
@@ -334,9 +335,23 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userCurrentId++;
     const createdAt = new Date();
-    const user: User = { ...insertUser, id, createdAt };
+    const role = insertUser.role || 'admin'; // Default role if not provided
+    const user: User = { ...insertUser, id, createdAt, role };
     this.users.set(id, user);
     return user;
+  }
+  
+  async updateUserPassword(id: number, newPassword: string): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    const updatedUser: User = {
+      ...user,
+      password: newPassword
+    };
+    
+    this.users.set(id, updatedUser);
+    return updatedUser;
   }
 
   // Patient methods

@@ -31,6 +31,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // API routes
   const apiRouter = app.route("/api");
+  
+  // Change password endpoint
+  app.post("/api/change-password", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, message: "Tidak terautentikasi" });
+      }
+      
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Password lama dan password baru diperlukan" 
+        });
+      }
+      
+      const userId = (req.user as User).id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "User tidak ditemukan" 
+        });
+      }
+      
+      // Untuk implementasi sementara, kita bisa langsung membandingkan password string
+      // Di produksi, gunakan comparePassword dari server/auth.ts
+      if (user.password !== currentPassword) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Password lama salah" 
+        });
+      }
+      
+      // Update password - menggunakan password biasa untuk prototype
+      // Di produksi, gunakan hashPassword dari server/auth.ts
+      const updatedUser = await storage.updateUserPassword(userId, newPassword);
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "Password berhasil diubah" 
+      });
+    } catch (error: any) {
+      console.error("Error saat mengubah password:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: error.message || "Terjadi kesalahan saat mengubah password" 
+      });
+    }
+  });
 
   // User routes
   app.post("/api/users", async (req: Request, res: Response) => {

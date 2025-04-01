@@ -142,10 +142,46 @@ export default function SettingsPage() {
       };
 
       if (values.currentPassword) {
-        Object.assign(payload, {
-          currentPassword: values.currentPassword,
-          newPassword: values.newPassword,
-        });
+        // Jika password diisi, gunakan API untuk mengubah password
+        try {
+          const passwordResponse = await apiRequest('/api/change-password', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              currentPassword: values.currentPassword,
+              newPassword: values.newPassword,
+            }),
+          });
+          
+          console.log('Password berhasil diperbarui:', passwordResponse);
+          
+          toast({
+            title: "Kata sandi diperbarui",
+            description: "Kata sandi baru berhasil disimpan",
+          });
+        } catch (passwordError: any) {
+          console.error('Error saat mengubah password:', passwordError);
+          
+          toast({
+            variant: "destructive",
+            title: "Gagal memperbarui kata sandi",
+            description: passwordError.message || "Kata sandi lama mungkin salah",
+          });
+          
+          // Return early since password update failed
+          return;
+        }
+      }
+
+      // Perbarui profil lainnya jika diperlukan
+      // Saat ini hanya nama yang disimpan di localStorage untuk prototipe
+      if (user) {
+        localStorage.setItem('user_profile', JSON.stringify({
+          ...user,
+          name: values.name,
+        }));
       }
 
       toast({
