@@ -639,8 +639,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Registration Link endpoints
   app.post("/api/registration-links", async (req: Request, res: Response) => {
     try {
+      console.log("Session untuk registration-links:", req.session);
+      console.log("User authenticated:", req.isAuthenticated());
+      console.log("User:", req.user);
+      
       // Check if user is authenticated and has admin role
-      if (!req.session || !req.session.userId || req.session.role !== 'admin') {
+      if (!req.isAuthenticated() || !req.user || req.user.role !== 'admin') {
         return res.status(403).json({ message: "Unauthorized, only admin can create registration links" });
       }
 
@@ -653,7 +657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const registrationLink = await storage.createRegistrationLink(
-        req.session.userId,
+        req.user.id, // Menggunakan req.user.id bukan req.session.userId
         expiryHours,
         dailyLimit
       );
@@ -667,8 +671,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/registration-links", async (req: Request, res: Response) => {
     try {
+      console.log("Session for GET registration-links:", req.session);
+      console.log("User authenticated:", req.isAuthenticated());
+      console.log("User:", req.user);
+      
       // Check if user is authenticated and has admin role
-      if (!req.session || !req.session.userId || req.session.role !== 'admin') {
+      if (!req.isAuthenticated() || !req.user || req.user.role !== 'admin') {
         return res.status(403).json({ message: "Unauthorized, only admin can view registration links" });
       }
       
@@ -682,8 +690,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/registration-links/deactivate/:id", async (req: Request, res: Response) => {
     try {
+      console.log("Session for deactivate registration-links:", req.session);
+      console.log("User authenticated:", req.isAuthenticated());
+      console.log("User:", req.user);
+      
       // Check if user is authenticated and has admin role
-      if (!req.session || !req.session.userId || req.session.role !== 'admin') {
+      if (!req.isAuthenticated() || !req.user || req.user.role !== 'admin') {
         return res.status(403).json({ message: "Unauthorized, only admin can deactivate registration links" });
       }
       
