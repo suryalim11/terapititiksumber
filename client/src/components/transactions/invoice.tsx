@@ -1,9 +1,10 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import jsPDF from "jspdf";
 
 type InvoiceProps = {
   isOpen: boolean;
@@ -87,67 +88,107 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
   const handleDownload = () => {
     if (invoiceRef.current) {
       try {
-        // Buat string HTML dari invoice
-        const invoiceHTML = `
-          <html>
-            <head>
-              <title>Invoice - ${data.transaction.transactionId}</title>
-              <style>
-                body { font-family: 'Arial', sans-serif; margin: 0; padding: 20px; }
-                .invoice { max-width: 800px; margin: 0 auto; }
-                .invoice-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-                .logo { font-size: 24px; font-weight: bold; color: #4F7CAC; }
-                .invoice-title { text-align: right; }
-                .invoice-info { margin-bottom: 20px; }
-                .invoice-info-row { display: flex; margin-bottom: 5px; }
-                .invoice-info-label { width: 150px; font-weight: bold; }
-                .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                .invoice-table th, .invoice-table td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-                .invoice-table th { background-color: #f5f5f5; }
-                .invoice-total { text-align: right; margin-top: 20px; }
-                .invoice-total-label { font-weight: bold; margin-right: 20px; }
-                .invoice-footer { margin-top: 40px; text-align: center; color: #666; }
-              </style>
-            </head>
-            <body>
-              <div class="invoice">
-                ${invoiceRef.current.innerHTML}
-                <div class="invoice-footer">
-                  <p>Terima kasih telah memilih Terapinya Terapi Titik Sumber</p>
-                </div>
-              </div>
-            </body>
-          </html>
-        `;
+        // Buat instance jsPDF
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4',
+        });
         
-        // Buat Blob dari HTML
-        const blob = new Blob([invoiceHTML], { type: 'text/html' });
+        // Judul invoice
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        doc.text("Terapinya Terapi Titik Sumber", 14, 20);
         
-        // Buat URL dari Blob
-        const fileURL = URL.createObjectURL(blob);
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.text("Klinik Terapi Holistik", 14, 26);
         
-        // Buat element <a> untuk download
-        const downloadLink = document.createElement('a');
-        downloadLink.href = fileURL;
-        downloadLink.download = `Invoice-${data.transaction.transactionId}.html`;
+        // Detail invoice
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("INVOICE", 180, 20, { align: 'right' });
         
-        // Tambahkan ke document, klik, dan hapus
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        document.body.removeChild(downloadLink);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(data.transaction.transactionId, 180, 26, { align: 'right' });
         
-        // Bersihkan URL
-        URL.revokeObjectURL(fileURL);
+        const formattedDate = format(new Date(data.transaction.createdAt), "d MMMM yyyy", { locale: id });
+        doc.text(formattedDate, 180, 32, { align: 'right' });
+        
+        // Garis pemisah
+        doc.setLineWidth(0.3);
+        doc.line(14, 35, 196, 35);
+        
+        // Informasi pasien dan pembayaran
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("Detail Pasien:", 14, 45);
+        doc.text("Pembayaran:", 120, 45);
+        
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Nama: ${data.patient?.name || '-'}`, 14, 52);
+        doc.text(`ID Pasien: ${data.patient?.patientId || '-'}`, 14, 58);
+        
+        doc.text(`Metode: ${getPaymentMethodName(data.paymentMethod)}`, 120, 52);
+        doc.text("Status: Lunas", 120, 58);
+        
+        // Header tabel item
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        const tableTop = 70;
+        doc.text("Item", 14, tableTop);
+        doc.text("Jumlah", 100, tableTop, { align: 'right' });
+        doc.text("Harga", 140, tableTop, { align: 'right' });
+        doc.text("Total", 195, tableTop, { align: 'right' });
+        
+        // Garis header tabel
+        doc.setLineWidth(0.3);
+        doc.line(14, tableTop + 2, 196, tableTop + 2);
+        
+        // Isi tabel
+        doc.setFont("helvetica", "normal");
+        let y = tableTop + 10;
+        
+        data.items.forEach((item, index) => {
+          doc.text(item.name, 14, y);
+          doc.text(item.quantity.toString(), 100, y, { align: 'right' });
+          doc.text(formatPrice(item.price), 140, y, { align: 'right' });
+          doc.text(formatPrice((parseFloat(item.price) * item.quantity).toString()), 195, y, { align: 'right' });
+          y += 8;
+        });
+        
+        // Garis sebelum total
+        doc.setLineWidth(0.3);
+        doc.line(14, y + 2, 196, y + 2);
+        
+        // Total
+        doc.setFont("helvetica", "bold");
+        doc.text("Total:", 140, y + 10, { align: 'right' });
+        doc.text(formatPrice(data.transaction.totalAmount), 195, y + 10, { align: 'right' });
+        
+        // Catatan
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.text("Catatan: Terima kasih atas kepercayaan Anda. Paket terapi yang telah dibeli dapat digunakan sesuai jadwal yang telah disepakati.", 14, y + 25);
+        
+        // Footer
+        doc.setFontSize(9);
+        doc.text("Terima kasih telah memilih Terapinya Terapi Titik Sumber", 105, 280, { align: 'center' });
+        
+        // Simpan PDF
+        doc.save(`Invoice-${data.transaction.transactionId}.pdf`);
         
         toast({
           title: "Invoice berhasil diunduh",
-          description: "Invoice telah diunduh sebagai file HTML. Anda dapat membukanya di browser dan mencetak/simpan sebagai PDF.",
+          description: "Invoice telah berhasil diunduh sebagai file PDF.",
         });
       } catch (error) {
-        console.error("Error downloading invoice:", error);
+        console.error("Error downloading invoice as PDF:", error);
         toast({
           title: "Gagal mengunduh invoice",
-          description: "Terjadi kesalahan saat mengunduh invoice. Silakan coba lagi.",
+          description: "Terjadi kesalahan saat membuat PDF. Silakan coba lagi.",
           variant: "destructive",
         });
       }
@@ -259,7 +300,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Unduh Invoice
+            Unduh PDF
           </Button>
           <Button onClick={handleShareWhatsApp}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
