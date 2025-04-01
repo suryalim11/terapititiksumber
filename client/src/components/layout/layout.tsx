@@ -75,9 +75,9 @@ export default function Layout({ children }: LayoutProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => isMobile && setSidebarOpen(false)}
               >
-                <a
+                <div
+                  onClick={() => isMobile && setSidebarOpen(false)}
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     isActive
@@ -87,7 +87,7 @@ export default function Layout({ children }: LayoutProps) {
                 >
                   <Icon className="h-5 w-5" />
                   <span>{item.name}</span>
-                </a>
+                </div>
               </Link>
             );
           })}
@@ -136,7 +136,7 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             ) : (
               <Link href="/login">
-                <a className="text-sm text-primary hover:underline">Login</a>
+                <div className="text-sm text-primary hover:underline cursor-pointer">Login</div>
               </Link>
             )}
           </div>

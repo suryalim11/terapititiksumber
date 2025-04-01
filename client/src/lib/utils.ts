@@ -13,30 +13,29 @@ export function cn(...inputs: ClassValue[]) {
  * Format a price value as Indonesian Rupiah currency
  */
 export function formatRupiah(price: string | number): string {
-  const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
-  return `Rp${numericPrice.toLocaleString('id-ID')}`;
+  const numPrice = typeof price === "string" ? parseFloat(price) : price;
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(numPrice);
 }
 
 /**
  * Calculate age from a birthday date string
  */
 export function calculateAge(birthDateString: string): number {
-  try {
-    const birthDate = new Date(birthDateString);
-    const today = new Date();
-    
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    
-    return age;
-  } catch (error) {
-    console.error("Error calculating age:", error);
-    return 0;
+  const birthDate = new Date(birthDateString);
+  const today = new Date();
+  
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
   }
+  
+  return age;
 }
 
 /**
@@ -44,8 +43,8 @@ export function calculateAge(birthDateString: string): number {
  */
 export function generatePatientId(id: number): string {
   const year = new Date().getFullYear();
-  const sequenceNumber = String(id).padStart(3, '0');
-  return `P-${year}-${sequenceNumber}`;
+  const paddedId = String(id).padStart(3, "0");
+  return `P-${year}-${paddedId}`;
 }
 
 /**
@@ -54,35 +53,39 @@ export function generatePatientId(id: number): string {
 export function generateTransactionId(id: number): string {
   const now = new Date();
   const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const sequenceNumber = String(id).padStart(3, '0');
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const paddedId = String(id).padStart(3, "0");
   
-  return `T-${year}${month}${day}-${sequenceNumber}`;
+  return `T-${year}${month}${day}-${paddedId}`;
 }
 
 /**
  * Get formatted payment method name
  */
 export function getPaymentMethodName(method: string): string {
-  switch (method) {
-    case "bank_transfer": return "Transfer Bank";
-    case "qris": return "QRIS";
-    case "cash": return "Tunai";
-    default: return method;
-  }
+  const methods: Record<string, string> = {
+    cash: "Tunai",
+    transfer: "Transfer Bank",
+    qris: "QRIS",
+    card: "Kartu Kredit/Debit",
+  };
+  
+  return methods[method.toLowerCase()] || method;
 }
 
 /**
  * Get initial letters from a name (up to 2 characters)
  */
 export function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .substring(0, 2);
+  if (!name) return "";
+  
+  const parts = name.split(" ");
+  if (parts.length === 1) {
+    return parts[0].substring(0, 2).toUpperCase();
+  }
+  
+  return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
 /**
@@ -98,14 +101,14 @@ export function isValidDate(dateString: string): boolean {
  */
 export function generateTimeSlots(startHour: number = 8, endHour: number = 17, interval: number = 30): string[] {
   const slots: string[] = [];
+  
   for (let hour = startHour; hour <= endHour; hour++) {
     for (let minute = 0; minute < 60; minute += interval) {
-      if (hour === endHour && minute > 0) continue; // Don't go past end hour
-      
-      const formattedHour = hour.toString().padStart(2, "0");
-      const formattedMinute = minute.toString().padStart(2, "0");
+      const formattedHour = String(hour).padStart(2, "0");
+      const formattedMinute = String(minute).padStart(2, "0");
       slots.push(`${formattedHour}:${formattedMinute}`);
     }
   }
+  
   return slots;
 }
