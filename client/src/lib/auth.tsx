@@ -12,7 +12,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: User | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -64,13 +64,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   // Login function
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, rememberMe: boolean = false) => {
     setIsLoading(true);
     
     try {
       const response = await apiRequest<AuthResponse>("/api/login", {
         method: "POST",
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, remember_me: rememberMe }),
         headers: {
           "Content-Type": "application/json",
         },

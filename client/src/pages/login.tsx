@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ClipboardList, Loader2 } from "lucide-react";
 
 // Login form validation schema
@@ -35,6 +36,7 @@ const loginFormSchema = z.object({
   password: z.string().min(6, {
     message: "Password harus minimal 6 karakter",
   }),
+  rememberMe: z.boolean().optional().default(false),
 });
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
@@ -58,6 +60,7 @@ export default function LoginPage() {
     defaultValues: {
       username: "",
       password: "",
+      rememberMe: false,
     },
   });
 
@@ -66,7 +69,7 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      await login(values.username, values.password);
+      await login(values.username, values.password, values.rememberMe);
       
       toast({
         title: "Login berhasil",
@@ -127,6 +130,29 @@ export default function LoginPage() {
                       <Input type="password" placeholder="Masukkan password" {...field} />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="rememberMe"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md p-4 border">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Ingat Saya
+                      </FormLabel>
+                      <FormDescription>
+                        Tetap login selama 30 hari
+                      </FormDescription>
+                    </div>
                   </FormItem>
                 )}
               />

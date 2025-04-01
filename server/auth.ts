@@ -35,7 +35,9 @@ export function setupAuth(app: Express) {
     saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 24 // 24 hours
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 hari (dalam milidetik)
     }
   };
 
@@ -107,7 +109,7 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) return next(err);
       if (!user) {
         return res.status(401).json({ 
@@ -115,8 +117,18 @@ export function setupAuth(app: Express) {
           message: "Username atau password salah" 
         });
       }
+      
+      // Gunakan opsi remember_me jika disediakan
+      const rememberMe = req.body.remember_me === true;
+      
       req.login(user, (err) => {
         if (err) return next(err);
+        
+        // Jika remember_me dicentang, perpanjang masa cookie session
+        if (rememberMe && req.session.cookie) {
+          req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 hari
+        }
+        
         res.status(200).json({ success: true, user });
       });
     })(req, res, next);
