@@ -1,9 +1,10 @@
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, CalendarIcon, X } from "lucide-react";
+import { Loader2, CalendarIcon, ShoppingCart, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useLocation } from "wouter";
 
 interface SlotPatientsDialogProps {
   slotId: number | null;
@@ -12,6 +13,8 @@ interface SlotPatientsDialogProps {
 }
 
 export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDialogProps) {
+  const [, navigate] = useLocation();
+  
   const { data, isLoading, error } = useQuery({
     queryKey: ['/api/therapy-slots', slotId, 'patients'],
     queryFn: async () => {
@@ -28,6 +31,14 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return format(date, 'dd MMMM yyyy');
+  };
+  
+  // Fungsi untuk mengarahkan ke halaman transaksi baru dengan data pasien
+  const navigateToTransaction = (patient: any) => {
+    // Tutup dialog terlebih dahulu
+    onClose();
+    // Arahkan ke halaman transaksi baru dengan ID pasien
+    navigate(`/transactions/new?patientId=${patient.id}`);
   };
 
   if (!isOpen) return null;
@@ -83,21 +94,46 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             </div>
             
             <div>
-              <h3 className="text-sm font-medium mb-2">Daftar Pasien</h3>
+              <h3 className="text-sm font-medium mb-2">Daftar Pasien Aktif</h3>
               {data.appointments.length === 0 ? (
                 <p className="text-center py-4 text-sm text-muted-foreground border rounded">
                   Belum ada pasien terdaftar
                 </p>
               ) : (
-                <div className="border rounded-md divide-y">
-                  {data.appointments.map((appointment: any) => (
-                    <div key={appointment.id} className="p-3 text-sm">
-                      <div className="font-medium">{appointment.patient.name}</div>
-                      <div className="text-muted-foreground text-xs">
-                        {appointment.patient.phoneNumber} | {appointment.status}
+                <div>
+                  {/* Filter hanya pasien dengan status 'scheduled' (aktif) */}
+                  {(() => {
+                    const activeAppointments = data.appointments.filter(
+                      (appointment: any) => appointment.status === 'scheduled'
+                    );
+                    
+                    return activeAppointments.length === 0 ? (
+                      <p className="text-center py-4 text-sm text-muted-foreground border rounded">
+                        Belum ada pasien aktif
+                      </p>
+                    ) : (
+                      <div className="border rounded-md divide-y">
+                        {activeAppointments.map((appointment: any) => (
+                          <div 
+                            key={appointment.id} 
+                            className="p-3 text-sm hover:bg-teal-50 cursor-pointer transition-colors"
+                            onClick={() => navigateToTransaction(appointment.patient)}
+                          >
+                            <div className="font-medium flex items-center">
+                              {appointment.patient.name}
+                              <ShoppingCart className="h-3.5 w-3.5 ml-2 text-teal-600" />
+                            </div>
+                            <div className="text-muted-foreground text-xs">
+                              {appointment.patient.phoneNumber}
+                              <span className="inline-block ml-1 text-xs text-teal-600">
+                                Klik untuk buat transaksi
+                              </span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })()}
                 </div>
               )}
             </div>
