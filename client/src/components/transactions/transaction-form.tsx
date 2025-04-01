@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Command as CommandPrimitive } from "cmdk";
 
 import {
   Dialog,
@@ -35,23 +34,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-
-// Command UI components
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 import PaymentMethods from "./payment-methods";
 import Invoice from "./invoice";
@@ -435,86 +417,83 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Patient Selection with Searchable Command Combobox */}
+            {/* Patient Selection - Simple Approach */}
             <FormField
               control={form.control}
               name="patientId"
-              render={({ field }) => {
-                const [open, setOpen] = useState(false);
-                const [searchQuery, setSearchQuery] = useState("");
-                
-                // Extract patient options
-                const patientOptions = patients?.map((patient: Patient) => ({
-                  value: patient.id.toString(),
-                  label: `${patient.name} (ID: ${patient.patientId})`
-                })) || [];
-                
-                // Find selected patient
-                const selectedPatient = patientOptions.find(
-                  option => option.value === field.value
-                );
-                
-                // Filter patients based on search query
-                const filteredPatients = patientOptions.filter(patient => 
-                  patient.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  patient.value.toLowerCase().includes(searchQuery.toLowerCase())
-                );
-                
-                return (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Pilih Pasien</FormLabel>
-                    <Popover open={open} onOpenChange={setOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={open}
-                            className="justify-between w-full"
-                          >
-                            {selectedPatient ? selectedPatient.label : "Cari dan pilih pasien..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="p-0 w-full min-w-[300px]">
-                        <Command>
-                          <CommandInput 
-                            placeholder="Cari pasien..."
-                            value={searchQuery}
-                            onValueChange={setSearchQuery}
-                          />
-                          <CommandEmpty>Tidak ada pasien ditemukan.</CommandEmpty>
-                          <CommandList>
-                            <CommandGroup>
-                              {filteredPatients.map(patient => (
-                                <CommandItem
-                                  key={patient.value}
-                                  value={patient.value}
-                                  onSelect={(value) => {
-                                    field.onChange(value);
-                                    setOpen(false);
-                                    setSearchQuery("");
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      field.value === patient.value ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  {patient.label}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Pilih Pasien</FormLabel>
+                  <FormControl>
+                    <div className="space-y-2">
+                      <div className="mb-2">
+                        <Input 
+                          type="text"
+                          placeholder="Cari nama pasien..."
+                          onChange={(e) => {
+                            // Reset form value when searching
+                            if (e.target.value === '') {
+                              field.onChange('');
+                            }
+                          }}
+                          onKeyUp={(e) => {
+                            const searchTerm = e.currentTarget.value.toLowerCase();
+                            
+                            // Find matching patient
+                            const matchingPatient = patients.find((patient: Patient) => 
+                              patient.name.toLowerCase().includes(searchTerm) || 
+                              patient.patientId.toLowerCase().includes(searchTerm)
+                            );
+                            
+                            // Auto-select if we have a match
+                            if (matchingPatient && searchTerm.length > 2) {
+                              field.onChange(matchingPatient.id.toString());
+                              console.log("Auto-selected patient:", matchingPatient.name);
+                            }
+                          }}
+                        />
+                      </div>
+                      
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Pilih pasien dari daftar..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {patients?.length === 0 ? (
+                            <div className="px-2 py-4 text-center text-sm">
+                              Belum ada data pasien
+                            </div>
+                          ) : (
+                            patients?.map((patient: Patient) => (
+                              <SelectItem 
+                                key={patient.id} 
+                                value={patient.id.toString()}
+                              >
+                                {patient.name} (ID: {patient.patientId})
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      
+                      {/* Show selected patient info */}
+                      {field.value && (
+                        <div className="text-sm p-2 border rounded-md bg-muted/40">
+                          <p className="font-medium">
+                            Pasien terpilih: {
+                              patients.find((p: Patient) => p.id.toString() === field.value)?.name
+                            }
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
 
             {/* Package Selection */}
