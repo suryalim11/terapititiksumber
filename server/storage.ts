@@ -207,6 +207,9 @@ export class MemStorage implements IStorage {
     // Initialize default therapy slots
     this.initDefaultTherapySlots();
     
+    // Initialize sample patients and appointments for testing
+    this.initSamplePatientsAndAppointments();
+    
     console.log("Default data initialized:", {
       admins: Array.from(this.users.values()),
       registrationLinks: Array.from(this.registrationLinks.values()),
@@ -895,6 +898,118 @@ export class MemStorage implements IStorage {
     
     this.registrationLinks.delete(id);
     return true;
+  }
+  
+  // Inisialisasi data pasien dan janji temu untuk pengujian
+  private initSamplePatientsAndAppointments() {
+    // Buat 3 pasien contoh
+    const patient1: Patient = {
+      id: 1,
+      name: "Budi Santoso",
+      phoneNumber: "081234567890",
+      email: "budi@example.com",
+      address: "Jl. Pahlawan No. 123, Jakarta",
+      patientId: "P-2025-001",
+      createdAt: new Date(),
+      therapySlotId: null
+    };
+    
+    const patient2: Patient = {
+      id: 2,
+      name: "Siti Rahayu",
+      phoneNumber: "082345678901",
+      email: "siti@example.com",
+      address: "Jl. Merdeka No. 45, Bandung",
+      patientId: "P-2025-002",
+      createdAt: new Date(),
+      therapySlotId: null
+    };
+    
+    const patient3: Patient = {
+      id: 3,
+      name: "Ahmad Rizki",
+      phoneNumber: "083456789012",
+      email: "ahmad@example.com",
+      address: "Jl. Sudirman No. 67, Surabaya",
+      patientId: "P-2025-003",
+      createdAt: new Date(),
+      therapySlotId: null
+    };
+    
+    this.patients.set(patient1.id, patient1);
+    this.patients.set(patient2.id, patient2);
+    this.patients.set(patient3.id, patient3);
+    this.patientCurrentId = 4;
+    
+    // Buat appointment untuk slot terapi hari ini
+    const todaySlots = Array.from(this.therapySlots.values()).filter(slot => {
+      const slotDate = new Date(slot.date);
+      const today = new Date();
+      return slotDate.getDate() === today.getDate() &&
+             slotDate.getMonth() === today.getMonth() &&
+             slotDate.getFullYear() === today.getFullYear();
+    });
+    
+    if (todaySlots.length > 0) {
+      // Buat appointment untuk slot pertama hari ini
+      const appointment1: Appointment = {
+        id: 1,
+        patientId: 1,
+        therapySlotId: todaySlots[0].id,
+        date: new Date(todaySlots[0].date),
+        status: "scheduled",
+        notes: "Pasien pertama kali terapi",
+        createdAt: new Date(),
+        sessionId: null
+      };
+      
+      const appointment2: Appointment = {
+        id: 2,
+        patientId: 2,
+        therapySlotId: todaySlots[0].id,
+        date: new Date(todaySlots[0].date),
+        status: "scheduled",
+        notes: "Sesi ke-2",
+        createdAt: new Date(),
+        sessionId: null
+      };
+      
+      // Jika ada lebih dari satu slot untuk hari ini
+      if (todaySlots.length > 1) {
+        const appointment3: Appointment = {
+          id: 3,
+          patientId: 3,
+          therapySlotId: todaySlots[1].id,
+          date: new Date(todaySlots[1].date),
+          status: "scheduled",
+          notes: "Pasien baru dirujuk",
+          createdAt: new Date(),
+          sessionId: null
+        };
+        
+        this.appointments.set(appointment3.id, appointment3);
+        
+        // Update jumlah penggunaan slot
+        const slot2 = this.therapySlots.get(todaySlots[1].id);
+        if (slot2) {
+          slot2.currentCount += 1;
+          this.therapySlots.set(slot2.id, slot2);
+        }
+      }
+      
+      this.appointments.set(appointment1.id, appointment1);
+      this.appointments.set(appointment2.id, appointment2);
+      this.appointmentCurrentId = 4;
+      
+      // Update jumlah penggunaan slot
+      const slot1 = this.therapySlots.get(todaySlots[0].id);
+      if (slot1) {
+        slot1.currentCount += 2;
+        this.therapySlots.set(slot1.id, slot1);
+      }
+    }
+    
+    console.log("Data pasien dan janji temu contoh diinisialisasi");
   }
   
   // Method ini sudah tidak diperlukan lagi karena kita membuat link pendaftaran default
