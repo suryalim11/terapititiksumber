@@ -134,6 +134,14 @@ export class MemStorage implements IStorage {
       role: "admin"
     });
     
+    // Tambahkan admin baru sesuai permintaan
+    this.createUser({
+      username: "suryalim11",
+      password: "admin123456", // In a real app, would be hashed
+      name: "Surya Lim",
+      role: "admin"
+    });
+    
     // Create default packages
     this.packageList.set(1, {
       id: 1,

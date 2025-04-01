@@ -123,31 +123,12 @@ export default function SettingsPage() {
   // Store settings form - load default values from localStorage if available
   const storeSettingsForm = useForm<StoreSettingsValues>({
     resolver: zodResolver(storeSettingsSchema),
-    defaultValues: () => {
-      try {
-        const savedSettings = localStorage.getItem('clinic_settings');
-        if (savedSettings) {
-          const settings = JSON.parse(savedSettings);
-          return {
-            clinicName: settings.clinicName || "Terapinya Terapi Titik Sumber",
-            address: settings.address || "Jl. Contoh No. 123, Jakarta",
-            phone: settings.phone || "08123456789",
-            email: settings.email || "info@terapititiksumber.com",
-            operationalHours: settings.operationalHours || "Senin-Jumat: 08:00-17:00, Sabtu: 08:00-15:00",
-          };
-        }
-      } catch (error) {
-        console.error("Error loading clinic settings:", error);
-      }
-      
-      // Default values jika tidak ada data tersimpan
-      return {
-        clinicName: "Terapinya Terapi Titik Sumber",
-        address: "Jl. Contoh No. 123, Jakarta",
-        phone: "08123456789",
-        email: "info@terapititiksumber.com",
-        operationalHours: "Senin-Jumat: 08:00-17:00, Sabtu: 08:00-15:00",
-      };
+    defaultValues: {
+      clinicName: "",
+      address: "",
+      phone: "",
+      email: "",
+      operationalHours: "",
     },
   });
 
