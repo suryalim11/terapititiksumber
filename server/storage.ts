@@ -70,6 +70,7 @@ export interface IStorage {
   createTherapySlot(slot: InsertTherapySlot): Promise<TherapySlot>;
   updateTherapySlot(id: number, slot: Partial<InsertTherapySlot>): Promise<TherapySlot | undefined>;
   incrementTherapySlotUsage(id: number): Promise<TherapySlot | undefined>;
+  decrementTherapySlotUsage(id: number): Promise<TherapySlot | undefined>;
   deactivateTherapySlot(id: number): Promise<boolean>;
   deleteTherapySlot(id: number): Promise<boolean>;
   
@@ -590,6 +591,26 @@ export class MemStorage implements IStorage {
     };
     
     this.therapySlots.set(id, updatedSlot);
+    return updatedSlot;
+  }
+  
+  async decrementTherapySlotUsage(id: number): Promise<TherapySlot | undefined> {
+    const slot = this.therapySlots.get(id);
+    if (!slot) return undefined;
+    
+    // Pastikan currentCount tidak menjadi negatif
+    if (slot.currentCount <= 0) {
+      console.error(`[storage] Tidak bisa decrement slot terapi ${id}, kuota sudah 0`);
+      return slot;
+    }
+    
+    const updatedSlot: TherapySlot = {
+      ...slot,
+      currentCount: slot.currentCount - 1
+    };
+    
+    this.therapySlots.set(id, updatedSlot);
+    console.log(`[storage] Decremented slot terapi ${id} from ${slot.currentCount} to ${updatedSlot.currentCount}`);
     return updatedSlot;
   }
   

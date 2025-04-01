@@ -636,10 +636,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log untuk debugging
       console.log(`Updating appointment ${id} status to: ${status}`);
       
+      // Get appointment untuk mendapatkan therapy slot id jika status cancelled
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+      
       const updatedAppointment = await storage.updateAppointmentStatus(id, status);
       
       if (!updatedAppointment) {
-        return res.status(404).json({ message: "Appointment not found" });
+        return res.status(404).json({ message: "Failed to update appointment" });
+      }
+      
+      // Jika status menjadi cancelled, kurangi jumlah current count di therapy slot
+      if (status === 'cancelled' && appointment.status !== 'cancelled') {
+        await storage.decrementTherapySlotUsage(appointment.therapySlotId);
+        console.log(`Therapy slot ${appointment.therapySlotId} usage decremented after cancellation`);
       }
       
       console.log(`Appointment updated successfully:`, updatedAppointment);
@@ -891,6 +903,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Endpoint to increment registration count after successful patient registration
+  // Endpoint untuk membatalkan janji temu - versi singkat untuk pendaftar
+  app.post("/api/appointments/:id/cancel", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Untuk pendaftar, kita perlu validasi akses
+      // Pada aplikasi sebenarnya, kita akan memeriksa token atau identitas pendaftar
+      // Tapi untuk demonstrasi, kita akan memperbolehkan semua permintaan
+      
+      const appointment = await storage.getAppointment(id);
+      
+      if (!appointment) {
+        return res.status(404).json({ message: "Janji temu tidak ditemukan" });
+      }
+      
+      // Periksa apakah status sudah cancelled
+      if (appointment.status === 'cancelled') {
+        return res.status(400).json({ message: "Janji temu sudah dibatalkan sebelumnya" });
+      }
+      
+      // Periksa apakah status completed
+      if (appointment.status === 'completed') {
+        return res.status(400).json({ message: "Tidak dapat membatalkan janji temu yang sudah selesai" });
+      }
+      
+      // Update status menjadi cancelled
+      const updatedAppointment = await storage.updateAppointmentStatus(id, 'cancelled');
+      
+      // Kurangi jumlah current count di therapy slot
+      await storage.decrementTherapySlotUsage(appointment.therapySlotId);
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "Janji temu berhasil dibatalkan", 
+        appointment: updatedAppointment 
+      });
+    } catch (error) {
+      console.error("Error saat membatalkan janji temu:", error);
+      return res.status(500).json({ message: "Terjadi kesalahan server" });
+    }
+  });
+  
   app.post("/api/registration-links/increment", async (req: Request, res: Response) => {
     try {
       const { code } = req.body;
@@ -1180,6 +1234,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error("Error ketika menghapus therapy slot:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Endpoint untuk mendapatkan semua janji temu untuk pasien tertentu
+  app.get("/api/patients/:id/appointments", async (req: Request, res: Response) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      console.log(`Mengambil janji temu untuk pasien ID: ${patientId}`);
+      
+      // Validasi pasien
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      // Ambil semua janji temu pasien
+      const appointments = await storage.getAppointmentsByPatient(patientId);
+      
+      // Tambahkan informasi slot terapi ke setiap janji temu
+      const enrichedAppointments = await Promise.all(
+        appointments.map(async (appointment) => {
+          if (appointment.therapySlotId) {
+            const therapySlot = await storage.getTherapySlot(appointment.therapySlotId);
+            return {
+              ...appointment,
+              therapySlot: therapySlot || undefined
+            };
+          }
+          return appointment;
+        })
+      );
+      
+      return res.status(200).json(enrichedAppointments);
+    } catch (error) {
+      console.error("Error ketika mengambil janji temu pasien:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Endpoint untuk membatalkan janji temu
+  app.post("/api/appointments/:id/cancel", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`Membatalkan janji temu dengan ID: ${id}`);
+      
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+      
+      if (appointment.status === "cancelled") {
+        return res.status(400).json({ message: "Appointment is already cancelled" });
+      }
+      
+      // Perbarui status appointment menjadi cancelled
+      const updatedAppointment = await storage.updateAppointmentStatus(id, "cancelled");
+      
+      // Jika appointment terkait dengan therapy slot, kurangi current count
+      if (appointment.therapySlotId !== null) {
+        await storage.decrementTherapySlotUsage(appointment.therapySlotId);
+        console.log(`Therapy slot ${appointment.therapySlotId} usage decremented after cancellation`);
+      }
+      
+      return res.status(200).json(updatedAppointment);
+    } catch (error) {
+      console.error("Error membatalkan janji temu:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });
