@@ -1,0 +1,226 @@
+Pengembangan Widget Slot Tracker pada Dashboard Admin
+
+1. Fitur Utama
+Tampilkan jumlah pasien yang telah mendaftar untuk setiap slot terapi hari ini .
+Jika tidak ada slot hari ini, tampilkan pesan "Belum Ada Janji Hari Ini" .
+2. Teknis Implementasi
+a. Backend (Node.js/Express)
+Endpoint untuk Mengambil Data Slot Hari Ini:
+javascript
+Copy
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+⌄
+app.get('/api/today-slots', async (req, res) => {
+  const today = new Date().toISOString().split('T')[0]; // Ambil tanggal hari ini
+
+  const slots = await db.query(`
+    SELECT 
+      time_slot, 
+      max_quota, 
+      current_count,
+      (current_count * 100 / max_quota) AS percentage
+    FROM therapy_slots
+    WHERE date = $1
+  `, [today]);
+
+  res.json(slots);
+});
+b. Frontend (React.js)
+Komponen SlotTracker.js
+jsx
+Copy
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+⌄
+⌄
+import { useEffect, useState } from 'react';
+
+function SlotTracker() {
+  const [slots, setSlots] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/today-slots')
+      .then(response => response.json())
+      .then(data => setSlots(data));
+  }, []);
+
+  return (
+    <div className="slot-tracker">
+      {slots.length > 0 ? (
+        <table>
+          <thead>
+            <tr>
+              <th>Waktu</th>
+              <th>Kuota</th>
+              <th>Sudah Terisi</th>
+              <th>Persentase</th>
+            </tr>
+          </thead>
+          <tbody>
+            {slots.map(slot => (
+              <tr key={slot.time_slot}>
+                <td>{slot.time_slot}</td>
+                <td>{slot.max_quota}</td>
+                <td>{slot.current_count}</td>
+                <td>
+                  <progress value={slot.percentage} max="100"></progress>
+                  {slot.percentage.toFixed(0)}%
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <div className="empty-state">
+          <img src="/calendar-icon.svg" alt="Kalender" />
+          <p>Belum Ada Janji Hari Ini</p>
+          <small>
+            Kunjungi halaman Therapy Slots untuk menambahkan slot baru.
+          </small>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default SlotTracker;
+c. Styling (CSS)
+css
+Copy
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+⌄
+⌄
+⌄
+⌄
+⌄
+.slot-tracker {
+  border: 1px dashed #e0e0e0;
+  padding: 20px;
+  text-align: center;
+}
+
+.empty-state img {
+  width: 50px;
+  margin-bottom: 10px;
+}
+
+progress {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+}
+
+progress[value]::-webkit-progress-bar {
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+progress[value]::-webkit-progress-value {
+  background-color: #4CAF50;
+  border-radius: 4px;
+}
+3. Contoh Tampilan
+
+
+4. Fitur Tambahan
+Filter Berdasarkan Tanggal:
+Tambahkan dropdown untuk memilih tanggal lain (opsional).
+Notifikasi Ketika Slot Penuh:
+Ubah warna latar menjadi merah jika current_count >= max_quota.
+Realtime Update:
+Gunakan WebSocket untuk memperbarui data tanpa refresh halaman.
+5. Catatan Penting
+Pastikan kolom date di tabel therapy_slots menggunakan format ISO (YYYY-MM-DD).
+Uji coba dengan skenario:
+Slot kosong hari ini.
+Slot penuh dan belum penuh.
+Jam server sesuai zona waktu lokal.
+Dengan fitur ini, admin bisa melihat status pengisian slot secara instan dari dashboard! 📊

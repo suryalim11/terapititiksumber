@@ -669,6 +669,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Internal server error" });
     }
   });
+  
+  app.get("/api/today-slots", async (req: Request, res: Response) => {
+    try {
+      // Mendapatkan tanggal hari ini
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Mendapatkan semua slot terapi untuk hari ini
+      const slots = await storage.getTherapySlotsByDate(today);
+      
+      // Menambahkan persentase pengisian
+      const slotsWithPercentage = slots.map(slot => ({
+        ...slot,
+        percentage: (slot.currentCount * 100 / slot.maxQuota)
+      }));
+      
+      return res.status(200).json(slotsWithPercentage);
+    } catch (error) {
+      console.error(`Error getting today's therapy slots: ${error}`);
+      return res.status(500).json({ message: "Failed to get today's therapy slots" });
+    }
+  });
 
   // Registration Link endpoints
   app.post("/api/registration-links", async (req: Request, res: Response) => {

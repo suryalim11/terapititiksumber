@@ -5,10 +5,12 @@ import {
   DollarSign, 
   PackageIcon, 
   UserRound, 
-  Users 
+  Users,
+  AlertCircle
 } from "lucide-react";
-import { formatRupiah } from "@/lib/utils";
+import { cn, formatRupiah } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import { Progress } from "@/components/ui/progress";
 
 interface DashboardStats {
   patientsToday: number;
@@ -43,6 +45,11 @@ export default function Dashboard() {
   // Fetch today's appointments
   const { data: todayAppointments = [] } = useQuery<any[]>({
     queryKey: [`/api/appointments/date/${formattedToday}`],
+  });
+  
+  // Fetch today's therapy slots
+  const { data: todaySlots = [], isLoading: isSlotsLoading } = useQuery<any[]>({
+    queryKey: ['/api/today-slots'],
   });
 
   // Dashboard stat cards data
@@ -160,45 +167,57 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {todayAppointments.length > 0 ? (
-              <div className="space-y-3">
-                {todayAppointments.map((appointment: any) => {
-                  const appointmentTime = new Date(appointment.date);
-                  return (
-                    <div 
-                      key={appointment.id}
-                      className="flex items-start justify-between rounded-lg border p-3"
-                    >
-                      <div className="flex items-start space-x-3">
-                        <div className="rounded-full bg-primary/10 p-2">
-                          <Calendar className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">
-                            {appointment.patient?.name || "Pasien"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {appointmentTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                          </p>
-                        </div>
-                      </div>
-                      <div className={`text-xs px-2 py-1 rounded-full ${
-                        appointment.status === 'completed' 
-                          ? 'bg-green-100 text-green-700'
-                          : appointment.status === 'cancelled'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {appointment.status === 'completed' 
-                          ? 'Selesai'
-                          : appointment.status === 'cancelled'
-                          ? 'Dibatalkan'
-                          : 'Terjadwal'
-                        }
-                      </div>
-                    </div>
-                  );
-                })}
+            {isSlotsLoading ? (
+              <div className="flex justify-center items-center py-6">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              </div>
+            ) : todaySlots.length > 0 ? (
+              <div className="space-y-4">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-muted-foreground">
+                      <th className="pb-2 font-medium text-left">Waktu</th>
+                      <th className="pb-2 font-medium text-center">Kuota</th>
+                      <th className="pb-2 font-medium text-center">Terisi</th>
+                      <th className="pb-2 font-medium text-right">Persentase</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {todaySlots.map((slot: any) => (
+                      <tr key={slot.id} className="py-2">
+                        <td className="py-3 text-left">{slot.timeSlot}</td>
+                        <td className="py-3 text-center">{slot.maxQuota}</td>
+                        <td className="py-3 text-center">{slot.currentCount}</td>
+                        <td className="py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <div className="w-16">
+                              <Progress 
+                                value={slot.percentage} 
+                                max={100} 
+                                className={cn(
+                                  "h-2",
+                                  slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 75 ? "bg-amber-200" : "bg-primary/20")
+                                )}
+                                indicatorClassName={
+                                  slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 75 ? "bg-amber-500" : "bg-primary")
+                                }
+                              />
+                            </div>
+                            <span className={cn(
+                              "text-xs",
+                              slot.percentage >= 100 ? "text-red-600" : (slot.percentage > 75 ? "text-amber-600" : "")
+                            )}>
+                              {Math.round(slot.percentage)}%
+                            </span>
+                            {slot.percentage >= 100 && (
+                              <AlertCircle className="h-3 w-3 text-red-500" />
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <div className="rounded-lg border border-dashed p-8 text-center">
@@ -206,10 +225,10 @@ export default function Dashboard() {
                   <Calendar className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="mt-4 text-lg font-semibold">
-                  Belum Ada Janji Hari Ini
+                  Belum Ada Slot Terapi Hari Ini
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Janji pasien akan muncul di sini. Kunjungi halaman Therapy Slots untuk mengatur slot terapi baru.
+                  Slot terapi akan muncul di sini. Kunjungi halaman Therapy Slots untuk mengatur slot terapi baru.
                 </p>
               </div>
             )}
