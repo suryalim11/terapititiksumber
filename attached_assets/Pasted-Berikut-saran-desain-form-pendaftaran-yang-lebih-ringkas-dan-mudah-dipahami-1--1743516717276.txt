@@ -1,0 +1,145 @@
+Berikut **saran desain form pendaftaran** yang lebih ringkas dan mudah dipahami:
+
+---
+
+### **1. Grup Slot Berdasarkan Tanggal**  
+- **Contoh Layout:**  
+  ```  
+  [ ] Selasa, 01 Apr 2024  
+    ├─ 10:00-11:00 (5 kursi)  
+    └─ 13:00-14:00 (5 kursi)  
+
+  [ ] Rabu, 02 Apr 2024  
+    ├─ 11:00-12:00 (5 kursi)  
+    └─ 15:00-16:00 (5 kursi)  
+  ```  
+
+- **Keuntungan:**  
+  - Mengurangi kekacauan visual.  
+  - Pasien bisa fokus pada tanggal terlebih dahulu.  
+
+---
+
+### **2. Gunakan Kalender Interaktif**  
+- **Contoh Tampilan:**  
+  ![Kalender dengan Slot](https://via.placeholder.com/400x300.png/FFFFFF?text=Sel%3A+01%2FApr%7C+Slot%3A+10%3A00-11%3A00+%285%29)  
+
+- **Fitur:**  
+  - Klik tanggal → tampilkan slot tersedia untuk hari tersebut.  
+  - Warna kode:  
+    - Hijau = Ada kuota.  
+    - Abu-abu = Penuh.  
+
+---
+
+### **3. Filter & Sortir**  
+- **Tambahkan Filter:**  
+  - *"Tampilkan hanya slot dengan kuota > 3"*  
+  - *"Urutkan berdasarkan waktu terdekat"*.  
+
+- **Contoh Dropdown Filter:**  
+  ```  
+  🔍 Filter:  
+  [ ] Tampilkan semua  
+  [x] Hanya slot tersedia (kuota > 0)  
+  ```  
+
+---
+
+### **4. Highlight Slot Terpilih**  
+- Saat pasien memilih slot, tambahkan **border berwarna** atau **ikon centang**.  
+- **Contoh:**  
+  ```  
+  ✅ Kamis, 03 Apr 10:00-11:00 (5 kursi)  
+  ```  
+
+---
+
+### **5. Responsivitas untuk Mobile**  
+- **Layout Mobile-Friendly:**  
+  ```  
+  [ ] Selasa, 01 Apr 2024  
+    ├─ 10:00-11:00 (5 kursi)  
+    └─ 13:00-14:00 (5 kursi)  
+
+  [ ] Rabu, 02 Apr 2024  
+    ├─ 11:00-12:00 (5 kursi)  
+    └─ 15:00-16:00 (5 kursi)  
+  ```  
+
+- **Gunakan Scrollable List:**  
+  - Jika banyak slot, tambahkan scrollbar vertikal.  
+
+---
+
+### **6. Validasi Realtime**  
+- **Contoh Pesan Error:**  
+  ```  
+  ❌ Slot penuh! Silakan pilih tanggal lain.  
+  ```  
+
+- **Auto-refresh Kuota:**  
+  - Gunakan WebSocket/Firebase untuk update kuota secara otomatis.  
+
+---
+
+### **7. Contoh Kode React.js**  
+```jsx
+import { useState } from 'react';
+
+function RegistrationForm() {
+  const [selectedDate, setSelectedDate] = useState('');
+  const [availableSlots, setAvailableSlots] = useState([]);
+
+  // Ambil data slot dari API
+  useEffect(() => {
+    fetch('/api/slots')
+      .then(response => response.json())
+      .then(data => setAvailableSlots(data));
+  }, []);
+
+  return (
+    <div>
+      {/* Pilih Tanggal */}
+      <select
+        value={selectedDate}
+        onChange={(e) => setSelectedDate(e.target.value)}
+      >
+        <option>Pilih Tanggal</option>
+        {availableSlots.map(slot => (
+          <option key={slot.date} value={slot.date}>
+            {slot.date}
+          </option>
+        ))}
+      </select>
+
+      {/* Daftar Slot */}
+      {selectedDate && (
+        <ul>
+          {availableSlots
+            .filter(slot => slot.date === selectedDate)
+            .map(slot => (
+              <li key={slot.time_slot}>
+                <input
+                  type="radio"
+                  name="slot"
+                  value={slot.time_slot}
+                />
+                {slot.time_slot} ({slot.current_count}/{slot.max_quota})
+              </li>
+            ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export default RegistrationForm;
+```
+
+---
+
+### **8. Hasil Akhir**  
+![Form Pendaftaran Ringkas](https://via.placeholder.com/600x400.png/FFFFFF?text=Selasa%3A+01%2FApr%7C+Slot%3A+10%3A00-11%3A00+%285%29%7C+Rabu%3A+02%2FApr%7C+Slot%3A+11%3A00-12%3A00+%285%29)
+
+Dengan struktur ini, pasien bisa memilih slot dengan cepat tanpa kebingungan! 🚀

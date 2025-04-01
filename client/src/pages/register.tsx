@@ -573,35 +573,62 @@ export default function RegisterPage() {
                             ) : therapySlots && therapySlots.length > 0 ? (
                               <RadioGroup 
                                 onValueChange={(value) => field.onChange(parseInt(value))}
-                                className="grid grid-cols-1 md:grid-cols-2 gap-3"
+                                className="space-y-6"
                               >
-                                {therapySlots.map((slot: any) => {
-                                  // Format tanggal dan waktu
-                                  const slotDate = parseISO(slot.date);
-                                  const formattedDate = format(slotDate, "EEE, dd MMM", { locale: idLocale });
-                                  const availableSeats = slot.maxQuota - slot.currentCount;
-                                  const isAlmostFull = availableSeats <= 2;
+                                {/* Mengelompokkan slot berdasarkan tanggal */}
+                                {(() => {
+                                  // Mengelompokkan slot berdasarkan tanggal (YYYY-MM-DD)
+                                  const groupedSlots: {[key: string]: any[]} = {};
                                   
-                                  return (
-                                    <div key={slot.id} className="flex items-center space-x-2 border rounded-md p-2 hover:bg-teal-50 cursor-pointer transition-colors">
-                                      <RadioGroupItem value={String(slot.id)} id={`slot-${slot.id}`} />
-                                      <div className="grid gap-0.5 leading-none">
-                                        <div className="flex items-center justify-between">
-                                          <FormLabel htmlFor={`slot-${slot.id}`} className="font-medium text-sm text-teal-700">
-                                            {formattedDate}
-                                          </FormLabel>
-                                          <span className="text-sm text-gray-600 font-medium">{slot.timeSlot}</span>
+                                  therapySlots.forEach((slot: any) => {
+                                    const slotDate = parseISO(slot.date);
+                                    const dateKey = format(slotDate, "yyyy-MM-dd");
+                                    
+                                    if (!groupedSlots[dateKey]) {
+                                      groupedSlots[dateKey] = [];
+                                    }
+                                    
+                                    groupedSlots[dateKey].push(slot);
+                                  });
+                                  
+                                  // Mengubah object groupedSlots menjadi array untuk ditampilkan
+                                  return Object.entries(groupedSlots).map(([dateKey, slots]) => {
+                                    const slotDate = parseISO(dateKey);
+                                    const formattedDate = format(slotDate, "EEEE, dd MMMM yyyy", { locale: idLocale });
+                                    
+                                    return (
+                                      <div key={dateKey} className="border rounded-lg overflow-hidden">
+                                        <div className="bg-teal-50 px-4 py-2 border-b border-teal-100">
+                                          <h3 className="font-medium text-teal-800">{formattedDate}</h3>
                                         </div>
-                                        <div className="flex items-center space-x-1 text-xs">
-                                          <Users className="h-3 w-3" />
-                                          <span className={`${isAlmostFull ? 'text-red-600 font-medium' : 'text-amber-700'}`}>
-                                            {availableSeats} kursi tersedia
-                                          </span>
+                                        <div className="p-3 space-y-2">
+                                          {slots.map((slot: any) => {
+                                            const availableSeats = slot.maxQuota - slot.currentCount;
+                                            const isAlmostFull = availableSeats <= 2;
+                                            
+                                            return (
+                                              <div key={slot.id} className="flex items-center space-x-3 border border-gray-200 rounded-md p-2 hover:bg-teal-50 cursor-pointer transition-colors">
+                                                <RadioGroupItem value={String(slot.id)} id={`slot-${slot.id}`} />
+                                                <div className="grid grid-cols-2 w-full gap-1">
+                                                  <FormLabel htmlFor={`slot-${slot.id}`} className="font-medium text-sm">
+                                                    <Clock className="h-3.5 w-3.5 inline mr-1 text-gray-500" />
+                                                    {slot.timeSlot}
+                                                  </FormLabel>
+                                                  <div className="flex items-center justify-end text-xs">
+                                                    <Users className="h-3 w-3 mr-1" />
+                                                    <span className={`${isAlmostFull ? 'text-red-600 font-medium' : 'text-amber-700'}`}>
+                                                      {availableSeats}/{slot.maxQuota} kursi
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
                                         </div>
                                       </div>
-                                    </div>
-                                  );
-                                })}
+                                    );
+                                  });
+                                })()}
                               </RadioGroup>
                             ) : (
                               <Alert className="bg-amber-50 border-amber-200">
