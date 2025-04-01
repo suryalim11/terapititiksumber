@@ -364,8 +364,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(200).json(dateAppointments);
       }
       
-      // No filters specified, return error for now since we're in memory
-      return res.status(400).json({ message: "Date or Patient ID is required" });
+      // For dashboard/overview, return all appointments (limited to recent ones in a real app)
+      const allAppointments = [];
+      for (const appointment of await storage.getAllAppointments()) {
+        allAppointments.push(appointment);
+      }
+      return res.status(200).json(allAppointments);
+    } catch (error) {
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Date-specific appointments endpoint for the appointment form
+  app.get("/api/appointments/date/:date", async (req: Request, res: Response) => {
+    try {
+      const { date } = req.params;
+      if (!date) {
+        return res.status(400).json({ message: "Date is required" });
+      }
+      
+      const dateAppointments = await storage.getAppointmentsByDate(new Date(date));
+      return res.status(200).json(dateAppointments);
     } catch (error) {
       return res.status(500).json({ message: "Internal server error" });
     }
