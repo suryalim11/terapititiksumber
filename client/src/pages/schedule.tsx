@@ -1,57 +1,24 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, startOfWeek, addDays, isSameDay } from "date-fns";
 import { id } from "date-fns/locale";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { AppointmentForm } from "@/components/appointments/appointment-form";
+import { ClipboardEdit, Plus, CheckCircle, XCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
-type Appointment = {
+interface Appointment {
   id: number;
   patientId: number;
-  sessionId?: number;
   date: string;
   status: string;
   notes?: string;
   patient?: {
-    id: number;
     name: string;
     patientId: string;
   };
@@ -60,141 +27,20 @@ type Appointment = {
     sessionsUsed: number;
     totalSessions: number;
   };
-};
-
-type TimeSlot = {
-  hour: number;
-  minute: number;
-  formatted: string;
-  available: boolean;
-};
-
-// Form schema
-const appointmentFormSchema = z.object({
-  patientId: z.string().min(1, "Pilih pasien terlebih dahulu"),
-  sessionId: z.string().optional(),
-  date: z.date({ required_error: "Pilih tanggal terlebih dahulu" }),
-  time: z.string().min(1, "Pilih waktu terlebih dahulu"),
-  notes: z.string().optional(),
-});
-
-type AppointmentFormValues = z.infer<typeof appointmentFormSchema>;
+}
 
 export default function Schedule() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false);
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [isAddAppointmentOpen, setIsAddAppointmentOpen] = useState(false);
+  const [isEditAppointmentOpen, setIsEditAppointmentOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const { toast } = useToast();
-
-  const form = useForm<AppointmentFormValues>({
-    resolver: zodResolver(appointmentFormSchema),
-    defaultValues: {
-      patientId: "",
-      sessionId: "",
-      date: new Date(),
-      time: "",
-      notes: "",
-    },
-  });
-
-  // Fetch patients
-  const { data: patients } = useQuery({
-    queryKey: ["/api/patients"],
-  });
-
-  // Fetch active sessions
-  const { data: activeSessions } = useQuery({
-    queryKey: ["/api/sessions?active=true"],
-  });
+  const queryClient = useQueryClient();
 
   // Fetch appointments for selected date
-  const { data: appointments, isLoading: isLoadingAppointments } = useQuery({
-    queryKey: [`/api/appointments?date=${format(selectedDate, 'yyyy-MM-dd')}`],
+  const { data: appointments = [], isLoading } = useQuery<Appointment[]>({
+    queryKey: ['/api/appointments', format(selectedDate, 'yyyy-MM-dd')],
   });
-
-  // Generate time slots
-  useEffect(() => {
-    const slots: TimeSlot[] = [];
-    for (let hour = 8; hour <= 17; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        if (hour === 17 && minute > 0) continue; // Stop at 17:00
-        
-        const formattedHour = hour.toString().padStart(2, "0");
-        const formattedMinute = minute.toString().padStart(2, "0");
-        const formatted = `${formattedHour}:${formattedMinute}`;
-        
-        // Check if slot is available
-        let available = true;
-        if (appointments) {
-          const appointmentExists = appointments.some((appointment: Appointment) => {
-            const appointmentDate = new Date(appointment.date);
-            return (
-              appointmentDate.getHours() === hour && 
-              appointmentDate.getMinutes() === minute
-            );
-          });
-          available = !appointmentExists;
-        }
-        
-        slots.push({ hour, minute, formatted, available });
-      }
-    }
-    setTimeSlots(slots);
-  }, [appointments, selectedDate]);
-
-  // Create appointment mutation
-  const createAppointment = async (values: AppointmentFormValues) => {
-    try {
-      const appointmentDate = new Date(values.date);
-      const [hours, minutes] = values.time.split(':').map(Number);
-      appointmentDate.setHours(hours, minutes, 0, 0);
-      
-      const appointmentData = {
-        patientId: parseInt(values.patientId),
-        sessionId: values.sessionId ? parseInt(values.sessionId) : undefined,
-        date: appointmentDate.toISOString(),
-        notes: values.notes,
-      };
-      
-      await apiRequest("POST", "/api/appointments", appointmentData);
-      
-      // Invalidate queries to refetch data
-      await queryClient.invalidateQueries({ queryKey: [`/api/appointments?date=${format(selectedDate, 'yyyy-MM-dd')}`] });
-      
-      toast({
-        title: "Jadwal berhasil dibuat",
-        description: "Jadwal terapi telah berhasil ditambahkan",
-      });
-      
-      setIsAppointmentFormOpen(false);
-      form.reset();
-    } catch (error: any) {
-      toast({
-        title: "Gagal membuat jadwal",
-        description: error.message || "Terjadi kesalahan saat membuat jadwal",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle date selection
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      setSelectedDate(date);
-    }
-  };
-
-  // Get appointment status class
-  const getAppointmentStatusClass = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 dark:bg-green-900 dark:bg-opacity-20 border-green-500 text-green-800 dark:text-green-300";
-      case "cancelled":
-        return "bg-red-100 dark:bg-red-900 dark:bg-opacity-20 border-red-500 text-red-800 dark:text-red-300";
-      default:
-        return "bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 border-blue-500 text-blue-800 dark:text-blue-300";
-    }
-  };
 
   // Generate week day headers
   const generateWeekDays = () => {
@@ -209,35 +55,81 @@ export default function Schedule() {
     return days;
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "cancelled":
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-blue-500" />;
+    }
+  };
+
+  const getStatusClass = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "border-green-500 bg-green-50 dark:bg-green-900/20";
+      case "cancelled":
+        return "border-red-500 bg-red-50 dark:bg-red-900/20";
+      default:
+        return "border-blue-500 bg-blue-50 dark:bg-blue-900/20";
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "Selesai";
+      case "cancelled":
+        return "Dibatalkan";
+      case "rescheduled":
+        return "Dijadwalkan Ulang";
+      default:
+        return "Terjadwal";
+    }
+  };
+
+  const handleChangeStatus = async (appointment: Appointment, newStatus: string) => {
+    try {
+      await apiRequest(`/api/appointments/${appointment.id}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      toast({
+        title: "Status diperbarui",
+        description: `Status janji temu berhasil diubah menjadi ${getStatusText(newStatus)}`,
+      });
+      
+      // Invalidate appointments queries to refetch the data
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+    } catch (error) {
+      console.error("Error updating appointment status:", error);
+      toast({
+        title: "Gagal mengubah status",
+        description: "Terjadi kesalahan, silakan coba lagi",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditAppointment = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setIsEditAppointmentOpen(true);
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-heading text-gray-900 dark:text-white">
-            Jadwal
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">
+          <h2 className="text-3xl font-bold tracking-tight">Jadwal</h2>
+          <p className="text-muted-foreground">
             Kelola jadwal terapi dan kunjungan pasien
           </p>
         </div>
-        <Button
-          onClick={() => setIsAppointmentFormOpen(true)}
-          className="flex items-center gap-1"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-            />
-          </svg>
+        <Button onClick={() => setIsAddAppointmentOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
           Tambah Jadwal
         </Button>
       </div>
@@ -246,7 +138,7 @@ export default function Schedule() {
         {/* Calendar */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-xl font-heading">Kalender</CardTitle>
+            <CardTitle>Kalender</CardTitle>
             <CardDescription>
               Pilih tanggal untuk melihat jadwal
             </CardDescription>
@@ -255,7 +147,7 @@ export default function Schedule() {
             <Calendar
               mode="single"
               selected={selectedDate}
-              onSelect={handleDateSelect}
+              onSelect={(date) => date && setSelectedDate(date)}
               className="rounded-md border"
             />
           </CardContent>
@@ -264,7 +156,7 @@ export default function Schedule() {
         {/* Daily Schedule */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-xl font-heading">
+            <CardTitle>
               Jadwal: {format(selectedDate, "EEEE, d MMMM yyyy", { locale: id })}
             </CardTitle>
             <CardDescription>
@@ -272,47 +164,96 @@ export default function Schedule() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoadingAppointments ? (
+            {isLoading ? (
               <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
               </div>
-            ) : !appointments || appointments.length === 0 ? (
-              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                Tidak ada jadwal untuk tanggal ini
+            ) : (appointments as Appointment[]).length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">Tidak ada jadwal</h3>
+                <p className="mt-2 text-sm text-muted-foreground max-w-sm">
+                  Tidak ada jadwal terapi untuk tanggal yang dipilih. Klik 'Tambah Jadwal' untuk membuat jadwal baru.
+                </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {appointments.map((appointment: Appointment) => {
+              <div className="space-y-4">
+                {(appointments as Appointment[]).map((appointment) => {
                   const appointmentDate = new Date(appointment.date);
                   const timeString = format(appointmentDate, "HH:mm");
-                  const patient = appointment.patient || { name: "Pasien" };
                   
                   return (
                     <div 
                       key={appointment.id} 
                       className={cn(
-                        "p-3 border-l-4 rounded-r-lg",
-                        getAppointmentStatusClass(appointment.status)
+                        "p-4 border-l-4 rounded-md shadow-sm",
+                        getStatusClass(appointment.status)
                       )}
                     >
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-semibold">
-                          {patient.name}
-                        </span>
-                        <span className="text-xs font-medium">
-                          {timeString}
-                        </span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(appointment.status)}
+                          <span className="font-medium">{appointment.patient?.name || "Pasien"}</span>
+                        </div>
+                        <span className="text-sm font-medium">{timeString}</span>
                       </div>
-                      <p className="text-xs">
-                        {appointment.session 
-                          ? `Terapi Sesi #${appointment.session.sessionsUsed + 1} (${appointment.session.totalSessions > 1 ? `Paket ${appointment.session.totalSessions} Sesi` : 'Sesi Tunggal'})`
-                          : "Konsultasi"}
-                      </p>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                        <div>
+                          <span className="text-muted-foreground">Status:</span>{" "}
+                          <span>{getStatusText(appointment.status)}</span>
+                        </div>
+                        {appointment.session && (
+                          <div>
+                            <span className="text-muted-foreground">Sesi:</span>{" "}
+                            <span>#{appointment.session.sessionsUsed + 1} dari {appointment.session.totalSessions}</span>
+                          </div>
+                        )}
+                      </div>
+                      
                       {appointment.notes && (
-                        <p className="text-xs mt-1 italic">
-                          "{appointment.notes}"
-                        </p>
+                        <div className="text-sm mb-3">
+                          <span className="text-muted-foreground">Catatan:</span>{" "}
+                          <span className="italic">{appointment.notes}</span>
+                        </div>
                       )}
+                      
+                      <div className="flex items-center gap-2 mt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="h-8"
+                          onClick={() => handleEditAppointment(appointment)}
+                        >
+                          <ClipboardEdit className="h-3.5 w-3.5 mr-1" />
+                          Edit
+                        </Button>
+                        
+                        {appointment.status === "scheduled" && (
+                          <>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="h-8 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
+                              onClick={() => handleChangeStatus(appointment, "completed")}
+                            >
+                              <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                              Selesai
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="h-8 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                              onClick={() => handleChangeStatus(appointment, "cancelled")}
+                            >
+                              <XCircle className="h-3.5 w-3.5 mr-1" />
+                              Batal
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -323,166 +264,41 @@ export default function Schedule() {
       </div>
 
       {/* Add Appointment Dialog */}
-      <Dialog open={isAppointmentFormOpen} onOpenChange={setIsAppointmentFormOpen}>
-        <DialogContent className="sm:max-w-lg">
+      <Dialog open={isAddAppointmentOpen} onOpenChange={setIsAddAppointmentOpen}>
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold font-heading">Tambah Jadwal Baru</DialogTitle>
+            <DialogTitle>Tambah Jadwal Baru</DialogTitle>
           </DialogHeader>
+          <AppointmentForm
+            onSuccess={() => setIsAddAppointmentOpen(false)}
+            defaultValues={{
+              date: format(selectedDate, 'yyyy-MM-dd')
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(createAppointment)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="patientId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pasien</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih pasien..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {patients?.map((patient: any) => (
-                          <SelectItem key={patient.id} value={patient.id.toString()}>
-                            {patient.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="sessionId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sesi Terapi (opsional)</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih sesi terapi..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="">Tanpa sesi terapi</SelectItem>
-                        {form.watch("patientId") && activeSessions
-                          ? activeSessions
-                              .filter((session: any) => 
-                                session.patientId === parseInt(form.watch("patientId")) &&
-                                session.sessionsUsed < session.totalSessions
-                              )
-                              .map((session: any) => (
-                                <SelectItem key={session.id} value={session.id.toString()}>
-                                  Paket {session.totalSessions} Sesi (Sesi ke-{session.sessionsUsed + 1})
-                                </SelectItem>
-                              ))
-                          : null}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tanggal</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
-                          onChange={(e) => {
-                            const date = e.target.value ? new Date(e.target.value) : undefined;
-                            if (date) {
-                              field.onChange(date);
-                              setSelectedDate(date);
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="time"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Waktu</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih waktu..." />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {timeSlots.map((slot, index) => (
-                            <SelectItem
-                              key={index}
-                              value={slot.formatted}
-                              disabled={!slot.available}
-                            >
-                              {slot.formatted} {!slot.available && "(Terisi)"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Catatan (opsional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        placeholder="Tambahkan catatan untuk jadwal ini..."
-                        rows={3}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsAppointmentFormOpen(false)}
-                >
-                  Batal
-                </Button>
-                <Button type="submit">Simpan Jadwal</Button>
-              </DialogFooter>
-            </form>
-          </Form>
+      {/* Edit Appointment Dialog */}
+      <Dialog open={isEditAppointmentOpen} onOpenChange={setIsEditAppointmentOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Jadwal</DialogTitle>
+          </DialogHeader>
+          {selectedAppointment && (
+            <AppointmentForm
+              onSuccess={() => setIsEditAppointmentOpen(false)}
+              defaultValues={{
+                patientId: selectedAppointment.patientId,
+                date: format(new Date(selectedAppointment.date), 'yyyy-MM-dd'),
+                time: format(new Date(selectedAppointment.date), 'HH:mm'),
+                notes: selectedAppointment.notes || "",
+                sessionId: selectedAppointment.session?.id,
+                status: selectedAppointment.status
+              }}
+              isEditing={true}
+              appointmentId={selectedAppointment.id}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
