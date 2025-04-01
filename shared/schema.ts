@@ -137,7 +137,7 @@ export const appointments = pgTable("appointments", {
   date: timestamp("date").notNull(),
   timeSlot: text("time_slot"), // Menyimpan time_slot yang dipilih
   registrationNumber: text("registration_number"), // Nomor registrasi unik
-  status: text("status").notNull().default("scheduled"), // scheduled, completed, cancelled
+  status: text("status").notNull().default("Active"), // Active, Cancelled, Completed
   notes: text("notes"),
 });
 

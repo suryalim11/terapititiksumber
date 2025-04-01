@@ -625,10 +625,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Received status update for appointment ${id}, status value: "${status}", type: ${typeof status}`);
       
       // Validasi status
-      const validStatuses = ['scheduled', 'completed', 'cancelled'];
+      const validStatuses = ['Active', 'Completed', 'Cancelled'];
       if (!status || !validStatuses.includes(status)) {
         return res.status(400).json({ 
-          message: "Invalid status. Status must be one of: scheduled, completed, cancelled",
+          message: "Invalid status. Status must be one of: Active, Completed, Cancelled",
           receivedStatus: status
         });
       }
@@ -648,8 +648,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Failed to update appointment" });
       }
       
-      // Jika status menjadi cancelled, kurangi jumlah current count di therapy slot
-      if (status === 'cancelled' && appointment.status !== 'cancelled') {
+      // Jika status menjadi Cancelled, kurangi jumlah current count di therapy slot
+      if (status === 'Cancelled' && appointment.status !== 'Cancelled') {
         await storage.decrementTherapySlotUsage(appointment.therapySlotId);
         console.log(`Therapy slot ${appointment.therapySlotId} usage decremented after cancellation`);
       }
@@ -918,18 +918,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Janji temu tidak ditemukan" });
       }
       
-      // Periksa apakah status sudah cancelled
-      if (appointment.status === 'cancelled') {
+      // Periksa apakah status sudah Cancelled
+      if (appointment.status === 'Cancelled') {
         return res.status(400).json({ message: "Janji temu sudah dibatalkan sebelumnya" });
       }
       
-      // Periksa apakah status completed
-      if (appointment.status === 'completed') {
+      // Periksa apakah status Completed
+      if (appointment.status === 'Completed') {
         return res.status(400).json({ message: "Tidak dapat membatalkan janji temu yang sudah selesai" });
       }
       
-      // Update status menjadi cancelled
-      const updatedAppointment = await storage.updateAppointmentStatus(id, 'cancelled');
+      // Update status menjadi Cancelled
+      const updatedAppointment = await storage.updateAppointmentStatus(id, 'Cancelled');
       
       // Kurangi jumlah current count di therapy slot
       await storage.decrementTherapySlotUsage(appointment.therapySlotId);
@@ -1285,12 +1285,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Appointment not found" });
       }
       
-      if (appointment.status === "cancelled") {
+      if (appointment.status === "Cancelled") {
         return res.status(400).json({ message: "Appointment is already cancelled" });
       }
       
-      // Perbarui status appointment menjadi cancelled
-      const updatedAppointment = await storage.updateAppointmentStatus(id, "cancelled");
+      // Perbarui status appointment menjadi Cancelled
+      const updatedAppointment = await storage.updateAppointmentStatus(id, "Cancelled");
       
       // Jika appointment terkait dengan therapy slot, kurangi current count
       if (appointment.therapySlotId !== null) {

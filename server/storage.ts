@@ -978,7 +978,7 @@ export class MemStorage implements IStorage {
         patientId: 1,
         therapySlotId: todaySlots[0].id,
         date: new Date(todaySlots[0].date),
-        status: "scheduled",
+        status: "Active",
         notes: "Pasien pertama kali terapi",
         createdAt: new Date(),
         sessionId: null
@@ -989,7 +989,7 @@ export class MemStorage implements IStorage {
         patientId: 2,
         therapySlotId: todaySlots[0].id,
         date: new Date(todaySlots[0].date),
-        status: "scheduled",
+        status: "Active",
         notes: "Sesi ke-2",
         createdAt: new Date(),
         sessionId: null
@@ -1002,7 +1002,7 @@ export class MemStorage implements IStorage {
           patientId: 3,
           therapySlotId: todaySlots[1].id,
           date: new Date(todaySlots[1].date),
-          status: "scheduled",
+          status: "Active",
           notes: "Pasien baru dirujuk",
           createdAt: new Date(),
           sessionId: null

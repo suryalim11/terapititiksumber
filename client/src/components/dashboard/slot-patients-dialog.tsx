@@ -101,10 +101,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                 </p>
               ) : (
                 <div>
-                  {/* Filter hanya pasien dengan status 'scheduled' (aktif) */}
+                  {/* Filter hanya pasien dengan status 'Active' */}
                   {(() => {
                     const activeAppointments = data.appointments.filter(
-                      (appointment: any) => appointment.status === 'scheduled'
+                      (appointment: any) => appointment.status === 'Active'
                     );
                     
                     return activeAppointments.length === 0 ? (
