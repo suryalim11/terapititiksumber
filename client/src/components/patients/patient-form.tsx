@@ -44,12 +44,17 @@ const patientFormSchema = insertPatientSchema.extend({
   }, {
     message: "Format tanggal lahir tidak valid",
   }),
-  gender: z.enum(["Laki-laki", "Perempuan"]),
+  gender: z.string().refine(val => ["Laki-laki", "Perempuan"].includes(val), {
+    message: "Jenis kelamin harus Laki-laki atau Perempuan",
+  }),
   email: z.string().email({
     message: "Email tidak valid",
   }).optional().or(z.literal("")),
   address: z.string().optional().or(z.literal("")),
   medicalHistory: z.string().optional().or(z.literal("")),
+  complaints: z.string().min(3, {
+    message: "Keluhan harus minimal 3 karakter",
+  }),
 });
 
 type PatientFormValues = z.infer<typeof patientFormSchema>;
@@ -80,6 +85,7 @@ export function PatientForm({
       email: "",
       address: "",
       medicalHistory: "",
+      complaints: "", // Tambahkan field keluhan yang wajib
     },
   });
 
@@ -272,6 +278,20 @@ export function PatientForm({
               <FormLabel>Alamat (opsional)</FormLabel>
               <FormControl>
                 <Textarea placeholder="Masukkan alamat" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="complaints"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Keluhan Pasien</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Keluhan yang dirasakan pasien saat ini" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

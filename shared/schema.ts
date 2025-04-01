@@ -24,17 +24,25 @@ export const patients = pgTable("patients", {
   id: serial("id").primaryKey(),
   patientId: text("patient_id").notNull().unique(),
   name: text("name").notNull(),
+  phoneNumber: text("phone_number").notNull(),
+  email: text("email"),
   birthDate: text("birth_date").notNull(),
+  gender: text("gender").notNull(),
   address: text("address").notNull(),
   complaints: text("complaints").notNull(),
+  medicalHistory: text("medical_history"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertPatientSchema = createInsertSchema(patients).pick({
   name: true,
+  phoneNumber: true,
+  email: true,
   birthDate: true,
+  gender: true,
   address: true,
   complaints: true,
+  medicalHistory: true,
 });
 
 // Product Schema

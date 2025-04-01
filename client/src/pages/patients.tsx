@@ -17,6 +17,7 @@ interface Patient {
   birthDate: string;
   address?: string;
   gender: string;
+  complaints: string;
   medicalHistory?: string;
   createdAt: string;
 }
@@ -171,8 +172,9 @@ export default function Patients() {
                 phoneNumber: selectedPatient.phoneNumber,
                 email: selectedPatient.email || "",
                 birthDate: selectedPatient.birthDate,
-                gender: selectedPatient.gender,
+                gender: selectedPatient.gender as "Laki-laki" | "Perempuan",
                 address: selectedPatient.address || "",
+                complaints: selectedPatient.complaints || "",
                 medicalHistory: selectedPatient.medicalHistory || "",
               }}
               isEditing={true}
@@ -230,6 +232,13 @@ export default function Patients() {
               <div>
                 <div className="text-sm font-medium text-muted-foreground">Alamat</div>
                 <div className="font-medium">{selectedPatient.address || "-"}</div>
+              </div>
+
+              <div>
+                <div className="text-sm font-medium text-muted-foreground">Keluhan Pasien</div>
+                <div className="rounded-md border p-3 mt-1">
+                  {selectedPatient.complaints || "Tidak ada keluhan yang tercatat."}
+                </div>
               </div>
 
               <div>
