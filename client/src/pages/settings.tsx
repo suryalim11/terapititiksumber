@@ -406,26 +406,40 @@ export default function SettingsPage() {
                     id="theme-toggle"
                     checked={theme === "dark"}
                     onCheckedChange={(checked) => {
-                      // Simpan tema dalam variabel untuk uso nos toasts
-                      const newTheme = checked ? "dark" : "light";
-                      
-                      // Aplicar a mudança no tema - setTheme já salva no localStorage usando a chave THEME_STORAGE_KEY 
-                      setTheme(newTheme);
-                      
-                      // Também salvar nas configurações do app para manter compatibilidade
-                      localStorage.setItem('app_settings', JSON.stringify({
-                        theme: newTheme,
-                        isWhatsappEnabled,
-                        isEmailNotificationsEnabled
-                      }));
-                      
-                      // Para debug
-                      console.log('Switch toggle: Tema alterado para:', newTheme);
-                      
-                      toast({
-                        title: "Tema diperbarui",
-                        description: checked ? "Mode gelap diaktifkan" : "Mode terang diaktifkan",
-                      });
+                      try {
+                        // Tema yang baru berdasarkan toggle switch
+                        const newTheme = checked ? "dark" : "light";
+                        
+                        // Aplicar a mudança no tema - setTheme agora aplica diretamente sem precisar de refresh!
+                        setTheme(newTheme);
+                        
+                        // Salvamos nas configurações do app para manter compatibilidade com outras partes do sistema
+                        localStorage.setItem('app_settings', JSON.stringify({
+                          theme: newTheme,
+                          isWhatsappEnabled,
+                          isEmailNotificationsEnabled
+                        }));
+                        
+                        // Forçar re-render das classes css para o tema
+                        document.documentElement.classList.remove("light", "dark");
+                        document.documentElement.classList.add(newTheme);
+                        
+                        // Para debug
+                        console.log('Switch toggle: Tema alterado para:', newTheme, 'Aplicado diretamente');
+                        
+                        // Notificação amigável para o usuário
+                        toast({
+                          title: "Tema diperbarui",
+                          description: checked ? "Mode gelap diaktifkan" : "Mode terang diaktifkan",
+                        });
+                      } catch (error) {
+                        console.error("Erro ao alternar tema:", error);
+                        toast({
+                          variant: "destructive",
+                          title: "Gagal mengubah tema",
+                          description: "Terjadi kesalahan saat mengubah tema"
+                        });
+                      }
                     }}
                   />
                 </div>

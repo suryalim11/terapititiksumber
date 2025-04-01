@@ -42,33 +42,34 @@ export function ThemeProvider({
     }
   );
 
-  // Aplica o tema ao documento HTML
-  useEffect(() => {
+  // Função para aplicar o tema diretamente ao documento
+  const applyTheme = (newTheme: Theme) => {
     const root = window.document.documentElement;
     
     // Remove classes anteriores de tema
     root.classList.remove("light", "dark");
 
     // Se o tema for "system", determine baseado nas preferências do sistema
-    if (theme === "system") {
+    if (newTheme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
         .matches
         ? "dark"
         : "light";
 
       root.classList.add(systemTheme);
-      
-      // Log para depuração
       console.log("Tema do sistema aplicado:", systemTheme);
       return;
     }
 
     // Adiciona a classe correspondente ao tema
-    root.classList.add(theme);
-    
-    // Log para depuração
-    console.log("Tema aplicado:", theme);
-  }, [theme]);
+    root.classList.add(newTheme);
+    console.log("Tema aplicado diretamente:", newTheme);
+  };
+
+  // Aplica o tema inicial
+  useEffect(() => {
+    applyTheme(theme);
+  }, []);
 
   // Fornece os valores e funções para o contexto
   const value = {
@@ -77,7 +78,10 @@ export function ThemeProvider({
       // Salva no localStorage
       localStorage.setItem(storageKey, newTheme);
       
-      // Atualiza o estado
+      // Aplica o tema diretamente ao DOM - isso causa a mudança instantânea
+      applyTheme(newTheme);
+      
+      // Atualiza o estado do componente
       setTheme(newTheme);
       
       // Log para depuração
