@@ -525,7 +525,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold font-heading">Buat Transaksi Baru</DialogTitle>
         </DialogHeader>
