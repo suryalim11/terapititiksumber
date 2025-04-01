@@ -542,9 +542,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Date is required" });
       }
       
+      console.log(`Fetching appointments for date: ${date}`);
       const dateAppointments = await storage.getAppointmentsByDate(new Date(date));
-      return res.status(200).json(dateAppointments);
+      
+      // Add patient info to appointments
+      const enrichedAppointments = await Promise.all(
+        dateAppointments.map(async (appointment) => {
+          const patient = await storage.getPatient(appointment.patientId);
+          return {
+            ...appointment,
+            patient: patient ? {
+              id: patient.id,
+              patientId: patient.patientId,
+              name: patient.name
+            } : undefined
+          };
+        })
+      );
+      
+      console.log(`Found ${enrichedAppointments.length} appointments for date ${date}`);
+      return res.status(200).json(enrichedAppointments);
     } catch (error) {
+      console.error("Error fetching appointments by date:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });

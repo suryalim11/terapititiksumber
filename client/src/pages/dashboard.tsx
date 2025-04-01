@@ -25,6 +25,10 @@ interface RecentActivity {
 }
 
 export default function Dashboard() {
+  // Format today's date to YYYY-MM-DD for API query
+  const today = new Date();
+  const formattedToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  
   // Fetch dashboard stats
   const { data: stats = { patientsToday: 0, incomeToday: 0, productsSold: 0, activePackages: 0 } } = 
     useQuery<DashboardStats>({
@@ -34,6 +38,11 @@ export default function Dashboard() {
   // Fetch recent activities
   const { data: activities = [] } = useQuery<RecentActivity[]>({
     queryKey: ['/api/dashboard/activities'],
+  });
+  
+  // Fetch today's appointments
+  const { data: todayAppointments = [] } = useQuery<any[]>({
+    queryKey: [`/api/appointments/date/${formattedToday}`],
   });
 
   // Dashboard stat cards data
@@ -151,17 +160,59 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="rounded-lg border border-dashed p-8 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <Calendar className="h-6 w-6 text-primary" />
+            {todayAppointments.length > 0 ? (
+              <div className="space-y-3">
+                {todayAppointments.map((appointment: any) => {
+                  const appointmentTime = new Date(appointment.date);
+                  return (
+                    <div 
+                      key={appointment.id}
+                      className="flex items-start justify-between rounded-lg border p-3"
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className="rounded-full bg-primary/10 p-2">
+                          <Calendar className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {appointment.patient?.name || "Pasien"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {appointmentTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`text-xs px-2 py-1 rounded-full ${
+                        appointment.status === 'completed' 
+                          ? 'bg-green-100 text-green-700'
+                          : appointment.status === 'cancelled'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {appointment.status === 'completed' 
+                          ? 'Selesai'
+                          : appointment.status === 'cancelled'
+                          ? 'Dibatalkan'
+                          : 'Terjadwal'
+                        }
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <h3 className="mt-4 text-lg font-semibold">
-                No Appointments Today
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Patient appointments will appear here. Go to the Schedule page to add new appointments.
-              </p>
-            </div>
+            ) : (
+              <div className="rounded-lg border border-dashed p-8 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <Calendar className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">
+                  No Appointments Today
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Patient appointments will appear here. Go to the Schedule page to add new appointments.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
