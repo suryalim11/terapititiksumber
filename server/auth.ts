@@ -48,11 +48,25 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
+        if (!user) {
           return done(null, false);
-        } else {
+        }
+        
+        // Pengecekan sementara - jika password belum dihash (dari MemStorage)
+        if (user.password === password) {
           return done(null, user);
         }
+        
+        // Pengecekan untuk password yang sudah dihash (untuk implementasi selanjutnya)
+        try {
+          if (user.password.includes('.') && await comparePasswords(password, user.password)) {
+            return done(null, user);
+          }
+        } catch (err) {
+          console.error('Error comparing hashed passwords:', err);
+        }
+        
+        return done(null, false);
       } catch (error) {
         return done(error);
       }
@@ -76,9 +90,11 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ success: false, message: "Username sudah terdaftar" });
       }
 
+      // Untuk keperluan prototyping, kita tidak hash password
+      // Dalam aplikasi produksi seharusnya menggunakan password yang dihash
       const user = await storage.createUser({
         ...req.body,
-        password: await hashPassword(req.body.password),
+        password: req.body.password, // Dalam produksi: await hashPassword(req.body.password)
       });
 
       req.login(user, (err) => {
