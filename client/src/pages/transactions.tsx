@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,6 +47,23 @@ export default function Transactions() {
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
+  const [location] = useLocation();
+
+  // Check URL for patientId parameter
+  useEffect(() => {
+    // Jika halaman dibuka dengan URL /transactions/new?patientId=X
+    // Maka buka form transaksi dan set patientId
+    if (location.startsWith('/transactions/new')) {
+      const params = new URLSearchParams(location.split('?')[1]);
+      const patientId = params.get('patientId');
+      
+      if (patientId) {
+        setSelectedPatientId(parseInt(patientId));
+        setIsTransactionFormOpen(true);
+      }
+    }
+  }, [location]);
 
   const { data: transactions, isLoading } = useQuery({
     queryKey: ["/api/transactions"],
@@ -224,7 +242,11 @@ export default function Transactions() {
 
       <TransactionForm
         isOpen={isTransactionFormOpen}
-        onClose={() => setIsTransactionFormOpen(false)}
+        onClose={() => {
+          setIsTransactionFormOpen(false);
+          setSelectedPatientId(null);
+        }}
+        selectedPatientId={selectedPatientId}
       />
     </div>
   );

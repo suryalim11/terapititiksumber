@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { calculateAge } from "@/lib/utils";
-import { Search, Plus, UserRound, Pencil, FileText } from "lucide-react";
+import { Search, Plus, UserRound, Pencil, FileText, CreditCard } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PatientForm } from "@/components/patients/patient-form";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ export default function Patients() {
   const [isEditPatientOpen, setIsEditPatientOpen] = useState(false);
   const [isViewPatientOpen, setIsViewPatientOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [, navigate] = useLocation();
   
   // Fetch patients data
   const { data: patients = [], isLoading } = useQuery<Patient[]>({
@@ -49,6 +51,11 @@ export default function Patients() {
   const handleViewPatient = (patient: Patient) => {
     setSelectedPatient(patient);
     setIsViewPatientOpen(true);
+  };
+  
+  const handleNewTransaction = (patient: Patient) => {
+    // Navigasi ke halaman transaksi dengan parameter patientId
+    navigate(`/transactions/new?patientId=${patient.id}`);
   };
 
   return (
@@ -87,13 +94,20 @@ export default function Patients() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredPatients.map((patient) => (
             <Card key={patient.id} className="overflow-hidden">
-              <CardHeader className="border-b bg-muted/40 p-4">
+              <CardHeader 
+                className="border-b bg-muted/40 p-4 cursor-pointer hover:bg-muted/60 transition-colors"
+                onClick={() => handleNewTransaction(patient)}
+              >
                 <CardTitle className="flex items-center gap-2 text-base">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
                     <UserRound className="h-4 w-4 text-primary" />
                   </span>
                   {patient.name}
                 </CardTitle>
+                <div className="mt-1 text-xs text-muted-foreground flex items-center">
+                  <CreditCard className="h-3 w-3 mr-1" />
+                  Klik untuk buat transaksi
+                </div>
               </CardHeader>
               <CardContent className="p-4">
                 <div className="grid grid-cols-2 gap-y-2 text-sm">

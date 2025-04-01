@@ -39,6 +39,7 @@ import Invoice from "./invoice";
 type TransactionFormProps = {
   isOpen: boolean;
   onClose: () => void;
+  selectedPatientId?: number | null;
 };
 
 type Patient = {
@@ -85,7 +86,7 @@ const transactionFormSchema = z.object({
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
-export default function TransactionForm({ isOpen, onClose }: TransactionFormProps) {
+export default function TransactionForm({ isOpen, onClose, selectedPatientId }: TransactionFormProps) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<string>("");
   const [showInvoice, setShowInvoice] = useState(false);
@@ -124,6 +125,20 @@ export default function TransactionForm({ isOpen, onClose }: TransactionFormProp
       form.reset();
     }
   }, [isOpen, form]);
+  
+  // Atur pasien otomatis jika selectedPatientId diberikan
+  useEffect(() => {
+    if (isOpen && selectedPatientId && patients.length > 0) {
+      // Temukan pasien berdasarkan ID
+      const patient = patients.find((p: Patient) => p.id === selectedPatientId);
+      
+      if (patient) {
+        // Set nilai pada form
+        form.setValue("patientId", selectedPatientId.toString());
+        console.log("Patient auto-selected:", patient.name);
+      }
+    }
+  }, [isOpen, selectedPatientId, patients, form]);
 
   // Create transaction mutation
   const mutation = useMutation({
