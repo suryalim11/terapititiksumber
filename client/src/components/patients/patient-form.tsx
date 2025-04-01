@@ -111,30 +111,60 @@ export function PatientForm({
         return;
       }
       
+      // Periksa bahwa semua field yang diperlukan ada
+      const dataToSend = {
+        name: values.name,
+        phoneNumber: values.phoneNumber,
+        birthDate: values.birthDate,
+        gender: values.gender,
+        address: values.address || "",
+        complaints: values.complaints,
+        email: values.email || null,
+        medicalHistory: values.medicalHistory || null
+      };
+      
+      console.log("Data yang akan dikirim ke server:", dataToSend);
+      
       if (isEditing && patientId) {
         console.log("Editing existing patient with ID:", patientId);
-        const response = await apiRequest(`/api/patients/${patientId}`, {
-          method: "PUT",
-          body: JSON.stringify(values),
-        });
-        console.log("Update response:", response);
-        
-        toast({
-          title: "Pasien diperbarui",
-          description: "Data pasien berhasil diperbarui",
-        });
+        try {
+          const response = await apiRequest(`/api/patients/${patientId}`, {
+            method: "PUT",
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dataToSend),
+          });
+          console.log("Update response:", response);
+          
+          toast({
+            title: "Pasien diperbarui",
+            description: "Data pasien berhasil diperbarui",
+          });
+        } catch (err) {
+          console.error("Network error when updating patient:", err);
+          throw err;
+        }
       } else {
         console.log("Creating new patient");
-        const response = await apiRequest("/api/patients", {
-          method: "POST",
-          body: JSON.stringify(values),
-        });
-        console.log("Create response:", response);
-        
-        toast({
-          title: "Pasien baru ditambahkan",
-          description: "Pasien berhasil didaftarkan",
-        });
+        try {
+          const response = await apiRequest("/api/patients", {
+            method: "POST",
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dataToSend),
+          });
+          console.log("Create response:", response);
+          
+          toast({
+            title: "Pasien baru ditambahkan",
+            description: "Pasien berhasil didaftarkan",
+          });
+        } catch (err) {
+          console.error("Network error when creating patient:", err);
+          throw err;
+        }
       }
       
       // Invalidate patients query to refetch the data
