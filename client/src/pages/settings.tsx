@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { InvoiceSettings } from "@/components/settings/invoice-settings";
 
 import {
   Card,
@@ -163,9 +164,10 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile">Profil</TabsTrigger>
           <TabsTrigger value="clinic">Klinik</TabsTrigger>
+          <TabsTrigger value="invoice">Invoice</TabsTrigger>
           <TabsTrigger value="app">Aplikasi</TabsTrigger>
         </TabsList>
 
@@ -373,6 +375,10 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* Application Settings */}
+        <TabsContent value="invoice">
+          <InvoiceSettings />
+        </TabsContent>
+
         <TabsContent value="app">
           <Card>
             <CardHeader>

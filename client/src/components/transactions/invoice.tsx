@@ -1,10 +1,11 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
+import { InvoiceSettings, defaultInvoiceSettings } from "@/components/settings/invoice-settings";
 
 type InvoiceProps = {
   isOpen: boolean;
@@ -26,6 +27,19 @@ type InvoiceProps = {
 export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
   const invoiceRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [settings, setSettings] = useState<InvoiceSettings>(defaultInvoiceSettings);
+  
+  // Load saved invoice settings from localStorage
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem("invoice_settings");
+      if (savedSettings) {
+        setSettings(JSON.parse(savedSettings));
+      }
+    } catch (error) {
+      console.error("Error loading invoice settings:", error);
+    }
+  }, []);
 
   const formatPrice = (price: string) => {
     return `Rp${parseInt(price).toLocaleString('id-ID')}`;
@@ -95,14 +109,14 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           format: 'a4',
         });
         
-        // Judul invoice
+        // Judul invoice menggunakan pengaturan yang disimpan
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
-        doc.text("Terapinya Terapi Titik Sumber", 14, 20);
+        doc.text(settings.companyName, 14, 20);
         
         doc.setFontSize(12);
         doc.setFont("helvetica", "normal");
-        doc.text("Klinik Terapi Holistik", 14, 26);
+        doc.text(settings.companyTagline || "Klinik Terapi Holistik", 14, 26);
         
         // Detail invoice
         doc.setFontSize(14);
@@ -111,7 +125,11 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.text(data.transaction.transactionId, 180, 26, { align: 'right' });
+        doc.text(
+          settings.invoicePrefix 
+            ? `${settings.invoicePrefix}${data.transaction.transactionId}` 
+            : data.transaction.transactionId, 
+          180, 26, { align: 'right' });
         
         const formattedDate = format(new Date(data.transaction.createdAt), "d MMMM yyyy", { locale: id });
         doc.text(formattedDate, 180, 32, { align: 'right' });
@@ -171,11 +189,11 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Catatan
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
-        doc.text("Catatan: Terima kasih atas kepercayaan Anda. Paket terapi yang telah dibeli dapat digunakan sesuai jadwal yang telah disepakati.", 14, y + 25);
+        doc.text(`Catatan: ${settings.invoiceFooterNote || defaultInvoiceSettings.invoiceFooterNote}`, 14, y + 25);
         
         // Footer
         doc.setFontSize(9);
-        doc.text("Terima kasih telah memilih Terapinya Terapi Titik Sumber", 105, 280, { align: 'center' });
+        doc.text(settings.invoiceThankYouMessage || `Terima kasih telah memilih ${settings.companyName}`, 105, 280, { align: 'center' });
         
         // Simpan PDF
         doc.save(`Invoice-${data.transaction.transactionId}.pdf`);
@@ -206,18 +224,22 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         return;
       }
       
-      // Format pesan WhatsApp
-      const message = `*INVOICE ${data.transaction.transactionId}*
+      // Format pesan WhatsApp dengan menggunakan pengaturan yang disimpan
+      const invoiceId = settings.invoicePrefix 
+        ? `${settings.invoicePrefix}${data.transaction.transactionId}` 
+        : data.transaction.transactionId;
+        
+      const message = `*INVOICE ${invoiceId}*
 Yth. ${data.patient.name},
 
-Terima kasih telah mengunjungi Klinik Terapi Titik Sumber.
+Terima kasih telah mengunjungi ${settings.companyName}.
 Total Pembayaran: ${formatPrice(data.transaction.totalAmount)}
 
 Detail transaksi telah dikirim melalui invoice ini.
-Semoga sehat selalu!
+${settings.invoiceThankYouMessage || "Semoga sehat selalu!"}
 
 Salam,
-Tim Terapi Titik Sumber`;
+Tim ${settings.companyName}`;
 
       // Encode pesan untuk URL WhatsApp
       const encodedMessage = encodeURIComponent(message);
@@ -259,12 +281,27 @@ Tim Terapi Titik Sumber`;
           <div ref={invoiceRef} className="p-4 bg-white rounded">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h1 className="text-xl font-bold text-primary">Terapinya Terapi Titik Sumber</h1>
-                <p className="text-gray-500 text-sm mt-1">Klinik Terapi Holistik</p>
+                <h1 className="text-xl font-bold text-primary">{settings.companyName}</h1>
+                <p className="text-gray-500 text-sm mt-1">{settings.companyTagline}</p>
+                {settings.companyAddress && (
+                  <p className="text-gray-500 text-xs mt-1">{settings.companyAddress}</p>
+                )}
+                {(settings.companyPhone || settings.companyEmail) && (
+                  <p className="text-gray-500 text-xs mt-1">
+                    {settings.companyPhone && `Tel: ${settings.companyPhone}`}
+                    {settings.companyPhone && settings.companyEmail && " | "}
+                    {settings.companyEmail && `Email: ${settings.companyEmail}`}
+                  </p>
+                )}
+                {settings.companyWebsite && (
+                  <p className="text-gray-500 text-xs mt-1">{settings.companyWebsite}</p>
+                )}
               </div>
               <div className="text-right">
                 <h2 className="text-lg font-semibold">INVOICE</h2>
-                <p className="text-gray-500 text-sm">{data.transaction.transactionId}</p>
+                <p className="text-gray-500 text-sm">
+                  {settings.invoicePrefix ? `${settings.invoicePrefix}${data.transaction.transactionId}` : data.transaction.transactionId}
+                </p>
                 <p className="text-gray-500 text-sm">
                   {format(new Date(data.transaction.createdAt), "d MMMM yyyy", { locale: id })}
                 </p>
@@ -326,9 +363,13 @@ Tim Terapi Titik Sumber`;
 
             <div className="border-t border-gray-200 pt-4">
               <p className="text-gray-600 text-sm">
-                <strong>Catatan:</strong> Terima kasih atas kepercayaan Anda. Paket terapi yang telah dibeli
-                dapat digunakan sesuai jadwal yang telah disepakati.
+                <strong>Catatan:</strong> {settings.invoiceFooterNote || defaultInvoiceSettings.invoiceFooterNote}
               </p>
+              {settings.invoiceThankYouMessage && (
+                <p className="text-gray-600 text-sm mt-2 text-center">
+                  {settings.invoiceThankYouMessage}
+                </p>
+              )}
             </div>
           </div>
         </div>
