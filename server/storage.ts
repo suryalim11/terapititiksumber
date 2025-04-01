@@ -147,7 +147,7 @@ export class MemStorage implements IStorage {
     const admin: User = {
       id: 1,
       username: "admin",
-      password: "admin123", // In a real app, would be hashed
+      password: "admin123456", // Diubah sesuai permintaan pengguna
       name: "Administrator",
       role: "admin",
       createdAt: new Date()
