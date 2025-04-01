@@ -124,6 +124,7 @@ export const insertAppointmentSchema = createInsertSchema(appointments).pick({
   sessionId: true,
   date: true,
   notes: true,
+  status: true,
 });
 
 // Types

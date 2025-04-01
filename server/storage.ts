@@ -379,12 +379,18 @@ export class MemStorage implements IStorage {
     // Memastikan bahwa notes adalah null jika tidak disediakan
     const notes = insertAppointment.notes ?? null;
     
+    // Validasi status
+    const validStatus = ['scheduled', 'completed', 'cancelled'];
+    const status = validStatus.includes(insertAppointment.status || '') 
+      ? insertAppointment.status 
+      : 'scheduled';
+    
     const appointment: Appointment = { 
       ...insertAppointment,
       sessionId,
       notes, 
       id, 
-      status: insertAppointment.status || 'scheduled' 
+      status
     };
     
     console.log("Menyimpan appointment ke penyimpanan:", appointment);

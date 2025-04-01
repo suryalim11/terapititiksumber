@@ -597,9 +597,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const { status } = req.body;
       
-      if (!['scheduled', 'completed', 'cancelled'].includes(status)) {
-        return res.status(400).json({ message: "Invalid status" });
+      // Validasi status
+      const validStatuses = ['scheduled', 'completed', 'cancelled'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Status must be one of: scheduled, completed, cancelled" });
       }
+      
+      // Log untuk debugging
+      console.log(`Updating appointment ${id} status to: ${status}`);
       
       const updatedAppointment = await storage.updateAppointmentStatus(id, status);
       
@@ -607,8 +612,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Appointment not found" });
       }
       
+      console.log(`Appointment updated successfully:`, updatedAppointment);
       return res.status(200).json(updatedAppointment);
     } catch (error) {
+      console.error("Error updating appointment status:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });
