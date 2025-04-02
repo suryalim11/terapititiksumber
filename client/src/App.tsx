@@ -12,8 +12,7 @@ import Products from "@/pages/products";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import Register from "@/pages/register";
-import RegistrationLinks from "@/pages/registration-links";
-import TherapySlots from "@/pages/therapy-slots";
+import IntegratedManagement from "@/pages/integrated-management";
 import Login from "@/pages/login";
 import Layout from "@/components/layout/layout";
 import { AuthProvider } from "@/lib/auth";
@@ -31,8 +30,7 @@ function Router() {
       <ProtectedRoute path="/products" component={Products} />
       <ProtectedRoute path="/reports" component={Reports} />
       <ProtectedRoute path="/settings" component={Settings} />
-      <ProtectedRoute path="/registration-links" component={RegistrationLinks} />
-      <ProtectedRoute path="/therapy-slots" component={TherapySlots} />
+      <ProtectedRoute path="/pendaftaran" component={IntegratedManagement} />
       <Route path="/login" component={Login} />
       <Route path="/daftar" component={Register} />
       <Route path="/register" component={Register} />

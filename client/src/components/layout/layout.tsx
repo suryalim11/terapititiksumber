@@ -24,12 +24,10 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Patients", href: "/patients", icon: UserRound },
-
-  { name: "Therapy Slots", href: "/therapy-slots", icon: CalendarRange },
+  { name: "Pendaftaran", href: "/pendaftaran", icon: CalendarRange },
   { name: "Products", href: "/products", icon: PackageIcon },
   { name: "Transactions", href: "/transactions", icon: ShoppingCart },
   { name: "Reports", href: "/reports", icon: BarChart3 },
-  { name: "Registration Links", href: "/registration-links", icon: LinkIcon },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
