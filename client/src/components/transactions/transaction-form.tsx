@@ -128,6 +128,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const [invoiceData, setInvoiceData] = useState<any>(null);
   const [selectedSession, setSelectedSession] = useState<ActiveSession | null>(null);
   const [useExistingPackage, setUseExistingPackage] = useState(false);
+  const [formKey, setFormKey] = useState(Date.now()); // Kunci unik untuk me-reset form
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -177,6 +178,9 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     if (!isOpen) {
       setCartItems([]);
       setSelectedPackage("");
+      setSelectedSession(null);
+      setUseExistingPackage(false);
+      setFormKey(Date.now()); // Force a complete re-render on close
       form.reset();
     }
   }, [isOpen, form]);
@@ -671,6 +675,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         isOpen={showInvoice}
         onClose={() => {
           setShowInvoice(false);
+          setFormKey(Date.now()); // Force a complete re-render on close
           onClose();
         }}
         data={invoiceData}
@@ -679,13 +684,22 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!open) {
+          // Reset state on dialog close
+          setFormKey(Date.now());
+        }
+        onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold font-heading">Buat Transaksi Baru</DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
+        <Form {...form} key={formKey}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Patient Selection - Simple Approach */}
             <FormField
