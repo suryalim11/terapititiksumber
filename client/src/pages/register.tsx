@@ -8,7 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { formatDateDDMMYYYY } from "@/lib/utils";
+import { formatDateDDMMYYYY, cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
   Form,
@@ -36,7 +42,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   AlertCircle, 
-  Calendar, 
+  CalendarIcon, 
   Clock, 
   CheckCircle, 
   Search, 
@@ -383,7 +389,7 @@ export default function RegisterPage() {
         {registrationStatus === "idle" && registrationCode && (
           <div className="mb-6 text-center">
             <div className="inline-flex items-center bg-teal-50 rounded-full px-4 py-2 text-sm text-teal-700">
-              <Calendar className="w-4 h-4 mr-2" />
+              <CalendarIcon className="w-4 h-4 mr-2" />
               Pendaftaran tersedia: {currentRegistrations}/{registrationLimit}
             </div>
             {expiryTime && (
@@ -503,12 +509,35 @@ export default function RegisterPage() {
                         <FormItem>
                           <FormLabel>Tanggal Lahir</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="date" 
-                              className="h-12 px-4 md:h-10"
-                              {...field}
-                              // Format untuk input date tetap yyyy-MM-dd sesuai standar HTML
-                            />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal h-12 px-4 md:h-10",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      formatDateDDMMYYYY(field.value)
+                                    ) : (
+                                      <span>Pilih tanggal lahir</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value ? new Date(field.value) : undefined}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                                  disabled={(date) => date > new Date()}
+                                />
+                              </PopoverContent>
+                            </Popover>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
