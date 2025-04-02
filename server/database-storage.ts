@@ -856,12 +856,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAppointmentsByTherapySlot(therapySlotId: number): Promise<Appointment[]> {
-    return db.query.appointments.findMany({
-      where: and(
-        eq(schema.appointments.therapySlotId, therapySlotId),
-        not(eq(schema.appointments.status, "Cancelled")) // Filter out cancelled appointments
-      )
-    });
+    try {
+      // Ambil semua appointment untuk slot terapi ini
+      const allAppointmentsForSlot = await db.query.appointments.findMany({
+        where: eq(schema.appointments.therapySlotId, therapySlotId)
+      });
+      
+      console.log(`All appointments for slot ${therapySlotId}:`, 
+        allAppointmentsForSlot.map(a => ({id: a.id, status: a.status}))
+      );
+      
+      // Filter semua status yang tidak dibatalkan (berbagai variasi casing)
+      const nonCancelledAppointments = allAppointmentsForSlot.filter(app => {
+        const statusLower = app.status.toLowerCase();
+        return !statusLower.includes('cancel');
+      });
+      
+      console.log(`Non-cancelled appointments for slot ${therapySlotId}:`, 
+        nonCancelledAppointments.map(a => ({id: a.id, status: a.status}))
+      );
+      
+      return nonCancelledAppointments;
+    } catch (error) {
+      console.error(`Error in getAppointmentsByTherapySlot for slot ${therapySlotId}:`, error);
+      // Kembalikan array kosong jika terjadi error
+      return [];
+    }
   }
 
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {

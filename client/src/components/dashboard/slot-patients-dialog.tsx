@@ -82,11 +82,14 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     queryKey: ['/api/therapy-slots', slotId, 'patients'],
     queryFn: async () => {
       if (!slotId) return null;
+      console.log("Fetching patients for therapy slot:", slotId);
       const res = await fetch(`/api/therapy-slots/${slotId}/patients`);
       if (!res.ok) {
         throw new Error('Failed to fetch patients');
       }
-      return res.json();
+      const responseData = await res.json();
+      console.log("Response data from API:", responseData);
+      return responseData;
     },
     enabled: !!slotId && isOpen
   });
@@ -196,11 +199,26 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                   <div>
                     {/* Filter hanya pasien dengan status aktif (booked atau active) */}
                     {(() => {
-                      console.log("Appointments data:", data.appointments);
+                      // Log informasi debug hanya dalam mode pengembangan
+                      if (process.env.NODE_ENV === 'development' && data.appointments.length > 0) {
+                        console.log("Debug - Appointments data:", data.appointments.map((a: any) => `${a.id}: ${a.status}`));
+                      }
+                      
+                      // Sebagai alternatif dari pemeriksaan status yang sensitif terhadap huruf besar/kecil,
+                      // kita gunakan pendekatan case insensitive untuk pemeriksaan status
+                      const activeStatusPatterns = ['active', 'booked', 'confirmed'];
+                      
+                      // Fungsi untuk memverifikasi apakah status termasuk status aktif (case insensitive)
+                      const isActiveStatus = (status: string): boolean => {
+                        const statusLower = status.toLowerCase();
+                        return activeStatusPatterns.some(pattern => statusLower.includes(pattern));
+                      };
+                      
                       const activeAppointments = data.appointments.filter(
                         (appointment: any) => {
-                          const status = appointment.status.toLowerCase();
-                          return status === 'active' || status === 'booked' || status === 'confirmed';
+                          // Gunakan fungsi helpers untuk pemeriksaan status
+                          const isActive = isActiveStatus(appointment.status);
+                          return isActive;
                         }
                       );
                       
@@ -217,7 +235,18 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                             >
                               <div className="font-medium flex items-center justify-between">
                                 <span>{appointment.patient.name}</span>
-                                <Badge className={appointment.status.toLowerCase() === 'booked' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}>
+                                <Badge className={
+                                  (() => {
+                                    const status = appointment.status.toLowerCase();
+                                    if (status.includes('booked')) {
+                                      return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
+                                    } else if (status.includes('confirmed')) {
+                                      return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+                                    } else {
+                                      return 'bg-green-100 text-green-800 hover:bg-green-200';
+                                    }
+                                  })()
+                                }>
                                   {appointment.status}
                                 </Badge>
                               </div>
