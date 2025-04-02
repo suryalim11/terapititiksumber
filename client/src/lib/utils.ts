@@ -12,39 +12,13 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Get a date adjusted to WIB (GMT+7) timezone
- */
-export function getWIBDate(dateInput: Date | string): Date {
-  try {
-    // Konversi input menjadi objek Date
-    const date = typeof dateInput === 'string' ? new Date(dateInput) : new Date(dateInput);
-    
-    // Tambahkan 7 jam ke UTC untuk mendapatkan waktu WIB
-    const jakartaOffset = 7 * 60 * 60 * 1000; // 7 jam dalam milidetik
-    
-    // Jika objek date sudah dalam timezone lokal, kita perlu:
-    // 1. Mengubahnya ke UTC
-    // 2. Menambahkan offset Jakarta
-    const utcTime = date.getTime() + (date.getTimezoneOffset() * 60 * 1000);
-    const jakartaTime = new Date(utcTime + jakartaOffset);
-    
-    return jakartaTime;
-  } catch (error) {
-    console.error('Error converting to WIB date:', error);
-    return new Date();
-  }
-}
-
-/**
  * Format a date string to dd/MM/yyyy format with WIB timezone
  */
 export function formatDateDDMMYYYY(dateString: string | Date): string {
   try {
-    // Konversi ke objek Date dan pastikan menggunakan WIB timezone
-    const date = typeof dateString === 'string' ? getWIBDate(dateString) : getWIBDate(dateString);
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
     return dateFnsFormat(date, "dd/MM/yyyy", { locale: id }) + " WIB";
   } catch (e) {
-    console.error('Error formatting date:', e);
     return "";
   }
 }
@@ -139,15 +113,8 @@ export function isValidDate(dateString: string): boolean {
 /**
  * Format a date with time for display with WIB timezone
  */
-export function formatDate(date: Date | string): string {
-  try {
-    // Konversi ke WIB date terlebih dahulu
-    const wibDate = getWIBDate(date);
-    return dateFnsFormat(wibDate, "dd/MM/yyyy HH:mm", { locale: id }) + " WIB";
-  } catch (error) {
-    console.error('Error formatting date with time:', error);
-    return "";
-  }
+export function formatDate(date: Date): string {
+  return dateFnsFormat(date, "dd/MM/yyyy HH:mm", { locale: id }) + " WIB";
 }
 
 /**

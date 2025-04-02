@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Loader2
 } from "lucide-react";
-import { cn, formatRupiah, formatDateDDMMYYYY, formatDate, getWIBDate } from "@/lib/utils";
+import { cn, formatRupiah, formatDateDDMMYYYY } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
@@ -227,16 +227,7 @@ export default function Dashboard() {
                       <p className="text-sm">{activity.description}</p>
                       <time className="text-xs text-muted-foreground">
                         {activity.timestamp ? 
-                          (() => {
-                            try {
-                              // Gunakan fungsi formatDate dari utils yang sudah direfactor 
-                              // untuk mendapatkan waktu WIB yang konsisten
-                              return formatDate(activity.timestamp).replace(' WIB', ' WIB');
-                            } catch (error) {
-                              console.error("Error formatting activity timestamp:", error);
-                              return "";
-                            }
-                          })() :
+                          format(new Date(activity.timestamp), "dd/MM/yyyy, HH:mm 'WIB'", { locale: localeId }) :
                           ""}
                       </time>
                     </div>
