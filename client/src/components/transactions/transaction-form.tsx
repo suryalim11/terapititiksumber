@@ -731,7 +731,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Pilih pasien dari daftar..." />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent side="bottom" sideOffset={4} align="start" className="z-[100]">
                           {patients?.length === 0 ? (
                             <div className="px-2 py-4 text-center text-sm">
                               Belum ada data pasien
@@ -911,7 +911,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                       <SelectValue placeholder="Pilih paket terapi..." />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent position="popper" className="z-50 w-[200px]">
+                  <SelectContent side="bottom" sideOffset={4} align="start" className="z-[100]">
                     {packages?.map((pkg: Package) => (
                       <SelectItem key={pkg.id} value={pkg.id.toString()}>
                         {pkg.name} ({formatPrice(pkg.price)})
