@@ -173,17 +173,21 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     enabled: !!form.watch("patientId"), // hanya jalankan jika patientId ada
   });
 
-  // Reset cart when form is closed
+  // Reset cart when form is closed or opened
   useEffect(() => {
     if (!isOpen) {
+      // Reset form when closed
       setCartItems([]);
       setSelectedPackage("");
       setSelectedSession(null);
       setUseExistingPackage(false);
       setFormKey(Date.now()); // Force a complete re-render on close
       form.reset();
+    } else if (isOpen && form.watch("patientId")) {
+      // Refresh data when form is opened and patient is selected
+      refetchActiveSessions();
     }
-  }, [isOpen, form]);
+  }, [isOpen, form, refetchActiveSessions]);
   
   // Atur pasien otomatis jika selectedPatientId diberikan
   useEffect(() => {
@@ -865,7 +869,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                         session.package && 
                         session.package.sessions > 1 && 
                         session.remainingSessions > 0 &&
-                        // Tambahkan filter untuk mengelompokkan berdasarkan packageId
+                        // Memastikan hanya menampilkan paket unik berdasarkan packageId
+                        // dan mengambil yang memiliki ID terkecil (paket yang paling lama dibeli)
                         !activeSessions.some(s => 
                           s.id < session.id && 
                           s.packageId === session.packageId && 
@@ -952,7 +957,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                         session.package && 
                         session.package.sessions > 1 && 
                         session.remainingSessions > 0 &&
-                        // Tambahkan filter untuk mengelompokkan berdasarkan packageId
+                        // Memastikan hanya menampilkan paket unik berdasarkan packageId
+                        // dan mengambil yang memiliki ID terkecil (paket yang paling lama dibeli)
                         !activeSessions.some(s => 
                           s.id < session.id && 
                           s.packageId === session.packageId && 
