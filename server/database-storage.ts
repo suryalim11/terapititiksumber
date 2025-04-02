@@ -23,6 +23,16 @@ function formatRupiah(amount: number): string {
   }).format(amount);
 }
 
+// Utility function untuk mendapatkan waktu dengan zona waktu Indonesia (GMT+7/WIB)
+function getWIBDate(date: Date): Date {
+  // Waktu Indonesia Barat adalah GMT+7
+  const offset = 7 * 60 * 60 * 1000; // 7 jam dalam milidetik
+  // Mendapatkan UTC time
+  const utcTime = date.getTime() + (date.getTimezoneOffset() * 60 * 1000);
+  // Menambahkan offset zona waktu WIB
+  return new Date(utcTime + offset);
+}
+
 function formatDateString(dateStr: string | Date): string {
   const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
   return format(date, 'dd MMMM yyyy');
@@ -1098,7 +1108,7 @@ export class DatabaseStorage implements IStorage {
             id: transaction.id,
             type: "transaction",
             description: `${patient?.name || 'Pasien'} melakukan pembayaran sebesar Rp${Number(transaction.totalAmount).toLocaleString('id-ID')}`,
-            timestamp: transaction.createdAt.toISOString()
+            timestamp: getWIBDate(transaction.createdAt).toISOString()
           });
         }
       }
@@ -1142,7 +1152,7 @@ export class DatabaseStorage implements IStorage {
               id: 1000 + appointment.id, // Menambahkan offset untuk menghindari konflik ID
               type: "appointment",
               description: `${patient.name} terjadwal untuk sesi terapi`,
-              timestamp: appointmentDate.toISOString()
+              timestamp: getWIBDate(appointmentDate).toISOString()
             });
           }
         }
