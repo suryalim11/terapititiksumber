@@ -7,7 +7,7 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { storage } from './storage';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 // Direktori penyimpanan file backup
 const BACKUP_DIR = path.join(process.cwd(), 'backups');
@@ -176,29 +176,138 @@ export async function restoreData(req: Request, res: Response) {
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     const data = JSON.parse(fileContent);
     
-    // Hapus semua data yang ada terlebih dahulu (tanpa transaksi)
-    // Catatan: Urutan penghapusan penting karena foreign key constraints
+    // Sebaiknya jangan hapus data yang ada, gunakan onConflictDoUpdate untuk memperbarui data yang sudah ada
+    // Karena penghapusan data tidak perlu, kita langsung proses pemulihan data
     try {
-      // Hapus dalam urutan terbalik dari dependensi
-      await db.delete(appointments);
-      await db.delete(registrationLinks);
-      await db.delete(sessions);
-      await db.delete(transactions);
-      await db.delete(therapySlots);
-      await db.delete(patients);
-      await db.delete(products);
-      await db.delete(packages);
-      // Jangan hapus users untuk menjaga kredensial login
+      console.log("Memulai proses restore data dari backup...");
       
-      // Masukkan data yang di-backup
-      if (data.products?.length) await db.insert(products).values(data.products);
-      if (data.packages?.length) await db.insert(packages).values(data.packages);
-      if (data.patients?.length) await db.insert(patients).values(data.patients);
-      if (data.therapySlots?.length) await db.insert(therapySlots).values(data.therapySlots);
-      if (data.transactions?.length) await db.insert(transactions).values(data.transactions);
-      if (data.sessions?.length) await db.insert(sessions).values(data.sessions);
-      if (data.registrationLinks?.length) await db.insert(registrationLinks).values(data.registrationLinks);
-      if (data.appointments?.length) await db.insert(appointments).values(data.appointments);
+
+      
+      // Masukkan data yang di-backup - pastikan semua ID disertakan
+      if (data.packages?.length) {
+        console.log(`Memulihkan ${data.packages.length} data packages...`);
+        await db.insert(packages).values(data.packages).onConflictDoUpdate({
+          target: packages.id,
+          set: {
+            name: sql`excluded.name`,
+            sessions: sql`excluded.sessions`,
+            price: sql`excluded.price`,
+            description: sql`excluded.description`,
+          }
+        });
+      }
+      
+      if (data.products?.length) {
+        console.log(`Memulihkan ${data.products.length} data products...`);
+        await db.insert(products).values(data.products).onConflictDoUpdate({
+          target: products.id,
+          set: {
+            name: sql`excluded.name`,
+            price: sql`excluded.price`,
+            description: sql`excluded.description`,
+            stock: sql`excluded.stock`,
+          }
+        });
+      }
+      
+      if (data.patients?.length) {
+        console.log(`Memulihkan ${data.patients.length} data patients...`);
+        await db.insert(patients).values(data.patients).onConflictDoUpdate({
+          target: patients.id,
+          set: {
+            name: sql`excluded.name`,
+            patientId: sql`excluded.patientId`,
+            phoneNumber: sql`excluded.phoneNumber`,
+            email: sql`excluded.email`,
+            birthDate: sql`excluded.birthDate`,
+            gender: sql`excluded.gender`,
+            address: sql`excluded.address`,
+            complaints: sql`excluded.complaints`,
+            therapySlotId: sql`excluded.therapySlotId`
+          }
+        });
+      }
+      
+      if (data.therapySlots?.length) {
+        console.log(`Memulihkan ${data.therapySlots.length} data therapySlots...`);
+        await db.insert(therapySlots).values(data.therapySlots).onConflictDoUpdate({
+          target: therapySlots.id,
+          set: {
+            date: sql`excluded.date`,
+            timeSlot: sql`excluded.timeSlot`,
+            maxQuota: sql`excluded.maxQuota`,
+            currentCount: sql`excluded.currentCount`,
+            isActive: sql`excluded.isActive`,
+            createdAt: sql`excluded.createdAt`
+          }
+        });
+      }
+      
+      if (data.transactions?.length) {
+        console.log(`Memulihkan ${data.transactions.length} data transactions...`);
+        await db.insert(transactions).values(data.transactions).onConflictDoUpdate({
+          target: transactions.id,
+          set: {
+            transactionId: sql`excluded.transactionId`,
+            patientId: sql`excluded.patientId`,
+            totalAmount: sql`excluded.totalAmount`,
+            paymentMethod: sql`excluded.paymentMethod`,
+            items: sql`excluded.items`,
+            createdAt: sql`excluded.createdAt`
+          }
+        });
+      }
+      
+      if (data.sessions?.length) {
+        console.log(`Memulihkan ${data.sessions.length} data sessions...`);
+        await db.insert(sessions).values(data.sessions).onConflictDoUpdate({
+          target: sessions.id,
+          set: {
+            patientId: sql`excluded.patientId`,
+            transactionId: sql`excluded.transactionId`,
+            packageId: sql`excluded.packageId`,
+            totalSessions: sql`excluded.totalSessions`,
+            sessionsUsed: sql`excluded.sessionsUsed`,
+            status: sql`excluded.status`,
+            startDate: sql`excluded.startDate`,
+            lastSessionDate: sql`excluded.lastSessionDate`
+          }
+        });
+      }
+      
+      if (data.registrationLinks?.length) {
+        console.log(`Memulihkan ${data.registrationLinks.length} data registrationLinks...`);
+        await db.insert(registrationLinks).values(data.registrationLinks).onConflictDoUpdate({
+          target: registrationLinks.id,
+          set: {
+            code: sql`excluded.code`,
+            userId: sql`excluded.userId`,
+            expiryTime: sql`excluded.expiryTime`,
+            isActive: sql`excluded.isActive`,
+            createdAt: sql`excluded.createdAt`,
+            dailyLimit: sql`excluded.dailyLimit`,
+            registrationCount: sql`excluded.registrationCount`,
+            specificDate: sql`excluded.specificDate`
+          }
+        });
+      }
+      
+      if (data.appointments?.length) {
+        console.log(`Memulihkan ${data.appointments.length} data appointments...`);
+        await db.insert(appointments).values(data.appointments).onConflictDoUpdate({
+          target: appointments.id,
+          set: {
+            patientId: sql`excluded.patientId`,
+            date: sql`excluded.date`,
+            timeSlot: sql`excluded.timeSlot`,
+            therapySlotId: sql`excluded.therapySlotId`,
+            status: sql`excluded.status`,
+            sessionId: sql`excluded.sessionId`,
+            registrationNumber: sql`excluded.registrationNumber`,
+            notes: sql`excluded.notes`
+          }
+        });
+      }
       
       // Hanya update user jika ada perbedaan data (jangan ganti password)
       if (data.users?.length) {
