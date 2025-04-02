@@ -15,6 +15,8 @@ import {
 import { setupAuth } from "./auth";
 import multer from "multer";
 import path from "path";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 import {
   exportData,
   getBackupFiles,
@@ -210,7 +212,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         patient => patient.phoneNumber === validatedData.phoneNumber
       );
       
+      // Jika ada therapySlotId, periksa apakah pasien sudah punya jadwal di hari yang sama
+      if (therapySlotId && existingPatient) {
+        try {
+          // Ambil therapy slot untuk mendapatkan tanggalnya
+          const therapySlot = await storage.getTherapySlot(therapySlotId);
+          
+          if (therapySlot) {
+            // Dapatkan semua janji temu pasien
+            const appointments = await storage.getAppointmentsByPatient(existingPatient.id);
+            
+            // Cek apakah ada janji temu pada hari yang sama dengan therapySlot
+            const slotDate = new Date(therapySlot.date);
+            
+            const hasSameDayAppointment = appointments.some(appointment => {
+              const appointmentDate = new Date(appointment.date);
+              return (
+                appointmentDate.getFullYear() === slotDate.getFullYear() &&
+                appointmentDate.getMonth() === slotDate.getMonth() &&
+                appointmentDate.getDate() === slotDate.getDate() &&
+                appointment.status !== 'Cancelled'
+              );
+            });
+            
+            if (hasSameDayAppointment) {
+              return res.status(400).json({ 
+                message: "Anda sudah memiliki janji terapi pada hari yang sama. Silakan pilih hari lain.", 
+                code: "DUPLICATE_APPOINTMENT" 
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Error memeriksa pendaftaran ganda:", err);
+        }
+      }
+      
       let patientToUse;
+      let appointmentResponse = null;
       
       if (existingPatient) {
         console.log(`Pasien dengan nomor telepon ${validatedData.phoneNumber} sudah ada, menggunakan ID: ${existingPatient.id}`);
@@ -237,12 +275,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
               patientId: patientToUse.id,
               therapySlotId: therapySlotId,
               notes: validatedData.complaints,
-              status: "booked",
-              date: new Date() // Menggunakan tanggal hari ini untuk appointment
+              status: "Scheduled",
+              date: new Date(therapySlot.date),
+              timeSlot: therapySlot.timeSlot,
+              sessionId: null,
+              registrationNumber: null
             };
             
             const appointment = await storage.createAppointment(appointmentData);
             console.log("Appointment dibuat:", appointment);
+            
+            // Simpan appointment untuk digunakan nanti
+            appointmentResponse = {
+              ...appointment,
+              therapySlotDetails: {
+                date: therapySlot.date,
+                timeSlot: therapySlot.timeSlot,
+                formattedDate: format(new Date(therapySlot.date), 'EEEE, dd MMMM yyyy', { locale: require('date-fns/locale/id') })
+              }
+            };
           }
         } catch (error) {
           console.error("Error saat memproses slot terapi:", error);
@@ -251,7 +302,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      return res.status(201).json(patientToUse);
+      // Kembalikan data lengkap untuk halaman sukses
+      const responseData = {
+        ...patientToUse,
+        appointment: appointmentResponse
+      };
+      
+      return res.status(201).json(responseData);
     } catch (error) {
       console.error("Error ketika membuat pasien:", error);
       if (error instanceof z.ZodError) {

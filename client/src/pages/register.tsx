@@ -92,6 +92,7 @@ export default function RegisterPage() {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [patientFound, setPatientFound] = useState<boolean>(false);
   const [foundPatient, setFoundPatient] = useState<any>(null);
+  const [selectedSlot, setSelectedSlot] = useState<{id: number, date: string, timeSlot: string} | null>(null);
   
   // Mendapatkan data slot terapi yang tersedia
   const { data: therapySlots, isLoading: isLoadingSlots } = useQuery({
@@ -288,6 +289,16 @@ export default function RegisterPage() {
         // Successfully created the patient
         setRegistrationStatus("success");
         
+        // Simpan data slot terapi dari response jika ada
+        if (response.appointment && response.appointment.therapySlotDetails) {
+          // Untuk ditampilkan pada halaman sukses
+          setSelectedSlot({
+            id: response.appointment.therapySlotId,
+            date: response.appointment.therapySlotDetails.formattedDate,
+            timeSlot: response.appointment.therapySlotDetails.timeSlot
+          });
+        }
+        
         toast({
           title: "Pendaftaran Berhasil",
           description: "Terima kasih telah mendaftar. Anda akan segera dihubungi oleh tim kami.",
@@ -308,6 +319,13 @@ export default function RegisterPage() {
             // Non-critical error, don't show to user
           }
         }
+      } else if (response && response.code === "DUPLICATE_APPOINTMENT") {
+        // Penanganan khusus untuk pendaftaran ganda
+        toast({
+          variant: "destructive",
+          title: "Pendaftaran Gagal",
+          description: response.message || "Anda sudah memiliki jadwal terapi pada hari yang sama. Silakan pilih hari lain.",
+        });
       } else {
         toast({
           variant: "destructive",
@@ -799,6 +817,20 @@ export default function RegisterPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="bg-white rounded-md p-4 mb-4 border border-teal-100">
+                <h3 className="font-medium text-teal-800 mb-2">Detail Jadwal Terapi Anda:</h3>
+                {selectedSlot ? (
+                  <div className="space-y-1">
+                    <p className="text-gray-700"><span className="font-medium">Tanggal:</span> {selectedSlot.date}</p>
+                    <p className="text-gray-700"><span className="font-medium">Jam:</span> {selectedSlot.timeSlot}</p>
+                    <div className="mt-2 py-2 px-3 bg-yellow-50 border border-yellow-100 rounded text-sm text-yellow-700">
+                      Silakan datang 15 menit sebelum jadwal untuk persiapan terapi.
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-600 italic">Detail jadwal akan diinformasikan oleh admin kami.</p>
+                )}
+              </div>
               <p className="mb-4 text-gray-700">
                 Tim kami akan segera menghubungi Anda melalui WhatsApp untuk konfirmasi jadwal terapi.
               </p>
