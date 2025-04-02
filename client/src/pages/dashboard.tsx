@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
@@ -227,7 +227,7 @@ export default function Dashboard() {
                       <p className="text-sm">{activity.description}</p>
                       <time className="text-xs text-muted-foreground">
                         {activity.timestamp ? 
-                          format(new Date(activity.timestamp), "dd/MM/yyyy, HH:mm 'WIB'", { locale: localeId }) :
+                          format(parseISO(activity.timestamp), "dd/MM/yyyy, HH:mm 'WIB'", { locale: localeId }) :
                           ""}
                       </time>
                     </div>
