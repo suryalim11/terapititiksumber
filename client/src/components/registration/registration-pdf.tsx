@@ -38,7 +38,12 @@ export function RegistrationPDF({
     // Title
     doc.setFontSize(16);
     doc.setTextColor(0, 0, 0);
-    doc.text("BUKTI PENDAFTARAN", 105, 35, { align: "center" });
+    doc.text("BUKTI PENDAFTARAN RESMI", 105, 35, { align: "center" });
+    
+    // Add subtitle
+    doc.setFontSize(12);
+    doc.setTextColor(70, 70, 70);
+    doc.text("Dokumen Resmi Terapi Titik Sumber", 105, 43, { align: "center" });
     
     // Patient Information
     doc.setFontSize(12);
@@ -77,24 +82,51 @@ export function RegistrationPDF({
     
     doc.text(`Tanggal Pendaftaran: ${format(registrationDate, "dd MMMM yyyy")}`, 25, y); y += lineHeight;
     
-    // Appointment details if available
-    if (therapyDate || therapyTime) {
-      y += 5;
-      doc.setFont("helvetica", "bold");
-      doc.text("Detail Jadwal Terapi:", 20, y); y += lineHeight;
-      
+    // Appointment details section - always show this
+    y += 5;
+    doc.setFont("helvetica", "bold");
+    doc.text("KONFIRMASI JADWAL TERAPI", 20, y); y += lineHeight;
+    
+    doc.setFont("helvetica", "normal");
+    // Draw a box around the appointment details
+    doc.setDrawColor(0, 128, 128);
+    doc.setLineWidth(0.5);
+    const boxStartY = y;
+    
+    // Add therapy date
+    doc.setFont("helvetica", "bold");
+    if (therapyDate) {
+      doc.text(`Tanggal: `, 25, y);
       doc.setFont("helvetica", "normal");
-      if (therapyDate) {
-        doc.text(`Tanggal: ${therapyDate}`, 25, y); y += lineHeight;
-      }
-      
-      if (therapyTime) {
-        doc.text(`Jam: ${therapyTime}`, 25, y); y += lineHeight;
-      }
-      
-      // Add location information
-      doc.text("Lokasi: Klinik Terapi Titik Sumber", 25, y); y += lineHeight;
+      doc.text(`${therapyDate}`, 65, y); 
+      y += lineHeight;
     }
+    
+    // Add therapy time
+    doc.setFont("helvetica", "bold");
+    if (therapyTime) {
+      doc.text(`Jam: `, 25, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${therapyTime}`, 65, y); 
+      y += lineHeight;
+    }
+    
+    // Add location information
+    doc.setFont("helvetica", "bold");
+    doc.text(`Lokasi: `, 25, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Klinik Terapi Titik Sumber`, 65, y); 
+    y += lineHeight;
+    
+    // Add status information
+    doc.setFont("helvetica", "bold");
+    doc.text(`Status: `, 25, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(`TERJADWAL & TERKONFIRMASI`, 65, y); 
+    y += lineHeight;
+    
+    // Draw the box around appointment details
+    doc.rect(20, boxStartY - 5, 170, y - boxStartY + 5);
     
     // Note section
     y += 10;
@@ -106,6 +138,34 @@ export function RegistrationPDF({
     y += lineHeight;
     doc.text(note2, 20, y); 
     y += lineHeight;
+    
+    // Signature section
+    y += 15;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0, 0, 0);
+    
+    // Current date in Jakarta
+    const today = format(new Date(), "dd MMMM yyyy");
+    doc.text(`Jakarta, ${today}`, 140, y);
+    y += 5;
+    
+    doc.text("Admin Terapi Titik Sumber", 140, y + 25);
+    
+    // Draw signature line
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(140, y + 20, 190, y + 20);
+    
+    // Add digital stamp
+    doc.setDrawColor(0, 128, 128);
+    doc.setFillColor(240, 255, 255);
+    doc.circle(50, y + 15, 15, 'FD');
+    doc.setTextColor(0, 128, 128);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("TERAPI", 50, y + 13, { align: "center" });
+    doc.text("TITIK", 50, y + 17, { align: "center" });
+    doc.text("SUMBER", 50, y + 21, { align: "center" });
     
     // Footer
     const footerY = 270;

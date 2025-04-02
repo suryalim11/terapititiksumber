@@ -852,6 +852,14 @@ export default function RegisterPage() {
               
               {/* Add PDF download button */}
               <div className="mb-4">
+                <div className="bg-green-50 rounded-md p-4 border border-green-200 mb-4">
+                  <h3 className="text-green-800 font-medium flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" /> Jadwal Terapi Anda telah dikonfirmasi!
+                  </h3>
+                  <p className="text-sm text-green-700 mt-1">
+                    Silakan unduh bukti pendaftaran resmi di bawah ini. Bukti ini harap dibawa saat datang ke klinik.
+                  </p>
+                </div>
                 <RegistrationPDF 
                   patientName={form.getValues("name")}
                   registrationNumber={`TTS-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`}
