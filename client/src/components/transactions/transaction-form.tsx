@@ -569,8 +569,22 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     
     // Handle using session from package if selectedSession exists
     if (useExistingPackage && selectedSession) {
+      // Prepare confirmation message based on cart content
+      const hasProducts = cartItems.some(item => item.type === "product");
+      let confirmMessage = `Konfirmasi penggunaan satu sesi dari paket ${selectedSession.package?.name}`;
+      
+      if (hasProducts) {
+        const totalProductPrice = cartItems
+          .filter(item => item.type === "product")
+          .reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
+          
+        confirmMessage += ` dan pembelian produk senilai ${formatPrice(totalProductPrice.toString())}`;
+      }
+      
+      confirmMessage += "?";
+      
       // Confirm before proceeding
-      if (!confirm(`Konfirmasi penggunaan satu sesi dari paket ${selectedSession.package?.name}?`)) {
+      if (!confirm(confirmMessage)) {
         return; // User canceled
       }
       
@@ -595,17 +609,39 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         const result = await response.json();
         console.log("Hasil penggunaan sesi:", result);
         
-        // Buat transaksi dengan total 0 untuk mencatat penggunaan sesi
-        const transactionData = {
-          patientId: parseInt(formValues.patientId),
-          totalAmount: "0",
-          paymentMethod: formValues.paymentMethod || "cash",
-          items: [{
+        // Buat transaksi dengan total 0 untuk mencatat penggunaan sesi + produk jika ada
+        // Persiapkan items untuk transaksi - mulai dari paket yang digunakan
+        const transactionItems = [
+          {
             id: selectedSession.packageId,
             type: "package",
             quantity: 1,
             description: "(menggunakan sisa paket)"
-          }],
+          }
+        ];
+        
+        // Tambahkan produk yang dipilih ke dalam items transaksi
+        const productItems = cartItems.filter(item => item.type === "product").map(item => ({
+          id: item.id,
+          type: item.type,
+          quantity: item.quantity,
+          price: item.price
+        }));
+        
+        // Gabungkan semua item
+        const allItems = [...transactionItems, ...productItems];
+        
+        // Hitung total harga produk (jangan hitung paket karena menggunakan sisa paket)
+        const productTotal = productItems.reduce(
+          (sum, item) => sum + parseFloat(item.price) * item.quantity, 
+          0
+        );
+        
+        const transactionData = {
+          patientId: parseInt(formValues.patientId),
+          totalAmount: productTotal.toString(), // Gunakan total harga produk
+          paymentMethod: formValues.paymentMethod || "cash",
+          items: allItems,
           notes: `Penggunaan sesi paket: ${selectedSession.package?.name}. Sesi ke-${newSessionsUsed} dari ${selectedSession.totalSessions}.`
         };
         
