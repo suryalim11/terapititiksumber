@@ -294,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               therapySlotDetails: {
                 date: therapySlot.date,
                 timeSlot: therapySlot.timeSlot,
-                formattedDate: format(new Date(therapySlot.date), 'EEEE, dd MMMM yyyy', { locale: require('date-fns/locale/id') })
+                formattedDate: format(new Date(therapySlot.date), 'dd/MM/yyyy')
               }
             };
           }
