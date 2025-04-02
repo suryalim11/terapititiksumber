@@ -65,18 +65,54 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   
   // Fungsi untuk membuka dialog konfirmasi batalkan janji (memoized)
   const handleCancelAppointment = useCallback((appointment: any, event: React.MouseEvent) => {
-    event.stopPropagation(); // Mencegah event propagation ke elemen parent
-    setSelectedAppointment(appointment);
-    setIsConfirmCancelOpen(true);
-  }, []);
+    try {
+      event.stopPropagation(); // Mencegah event propagation ke elemen parent
+      
+      if (!appointment || !appointment.id) {
+        toast({
+          title: "Terjadi kesalahan",
+          description: "Data janji temu tidak ditemukan atau tidak valid.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setSelectedAppointment(appointment);
+      setIsConfirmCancelOpen(true);
+    } catch (error) {
+      console.error("Error handling cancel appointment:", error);
+      toast({
+        title: "Terjadi kesalahan", 
+        description: "Gagal memproses pembatalan. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
   
   // Fungsi untuk konfirmasi batalkan janji (memoized)
   const confirmCancelAppointment = useCallback(() => {
-    if (selectedAppointment) {
-      cancelAppointmentMutation.mutate(selectedAppointment.id);
+    try {
+      if (selectedAppointment && selectedAppointment.id) {
+        cancelAppointmentMutation.mutate(selectedAppointment.id);
+        setIsConfirmCancelOpen(false);
+      } else {
+        toast({
+          title: "Terjadi kesalahan",
+          description: "Data janji temu tidak ditemukan atau tidak valid.",
+          variant: "destructive",
+        });
+        setIsConfirmCancelOpen(false);
+      }
+    } catch (error) {
+      console.error("Error confirming appointment cancellation:", error);
+      toast({
+        title: "Terjadi kesalahan",
+        description: "Gagal membatalkan janji temu. Silakan coba lagi.",
+        variant: "destructive",
+      });
       setIsConfirmCancelOpen(false);
     }
-  }, [selectedAppointment, cancelAppointmentMutation]);
+  }, [selectedAppointment, cancelAppointmentMutation, toast]);
   
   // Menggunakan useCallback untuk queryFn agar tidak dirender ulang
   const fetchPatients = useCallback(async () => {
@@ -101,9 +137,18 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   // Refetch data saat dialog dibuka
   useEffect(() => {
     if (isOpen && slotId) {
-      refetch();
+      try {
+        refetch();
+      } catch (error) {
+        console.error("Error refetching slot data:", error);
+        toast({
+          title: "Terjadi kesalahan",
+          description: "Gagal memuat data slot terapi. Silakan coba lagi.",
+          variant: "destructive",
+        });
+      }
     }
-  }, [isOpen, slotId, refetch]);
+  }, [isOpen, slotId, refetch, toast]);
 
   // Menggunakan useMemo untuk memformat tanggal agar tidak dirender ulang
   const formatDate = useCallback((dateString: string) => {
@@ -113,27 +158,45 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   
   // Fungsi untuk mengarahkan ke halaman transaksi dan langsung membuka form baru (memoized)
   const navigateToTransaction = useCallback((patient: any) => {
-    // Tutup dialog terlebih dahulu
-    onClose();
-    
-    // Alih-alih menggunakan URL parameter, kita akan menggunakan url state
-    // Arahkan ke halaman transaksi
-    navigate("/transactions");
-    
-    // Tunggu sebentar untuk memastikan komponen transactions sudah di-mount
-    setTimeout(() => {
-      // Gunakan event system untuk berkomunikasi antar komponen
-      const transactionEvent = new CustomEvent('open-transaction-form', {
-        detail: { patientId: patient.id }
-      });
-      window.dispatchEvent(transactionEvent);
-      
-      // Tambahkan notifikasi untuk feedback
+    if (!patient || !patient.id) {
       toast({
-        title: "Membuat transaksi baru",
-        description: `Form transaksi untuk ${patient.name} akan segera dibuka`,
+        title: "Error",
+        description: "Data pasien tidak lengkap atau tidak ditemukan.",
+        variant: "destructive",
       });
-    }, 500);
+      return;
+    }
+    
+    try {
+      // Tutup dialog terlebih dahulu
+      onClose();
+      
+      // Alih-alih menggunakan URL parameter, kita akan menggunakan url state
+      // Arahkan ke halaman transaksi
+      navigate("/transactions");
+      
+      // Tunggu sebentar untuk memastikan komponen transactions sudah di-mount
+      setTimeout(() => {
+        // Gunakan event system untuk berkomunikasi antar komponen
+        const transactionEvent = new CustomEvent('open-transaction-form', {
+          detail: { patientId: patient.id }
+        });
+        window.dispatchEvent(transactionEvent);
+        
+        // Tambahkan notifikasi untuk feedback
+        toast({
+          title: "Membuat transaksi baru",
+          description: `Form transaksi untuk ${patient.name || 'pasien terpilih'} akan segera dibuka`,
+        });
+      }, 500);
+    } catch (error) {
+      console.error("Error navigating to transaction:", error);
+      toast({
+        title: "Terjadi kesalahan",
+        description: "Gagal membuka form transaksi. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    }
   }, [onClose, navigate, toast]);
 
   if (!isOpen) return null;
@@ -164,22 +227,25 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             <div className="text-center py-6 text-destructive">
               <p>Error: {(error as Error).message}</p>
             </div>
-          ) : !data ? (
+          ) : !data || !data.slot ? (
             <div className="text-center py-6 text-muted-foreground">
-              <p>No data found</p>
+              <p>Data slot tidak tersedia</p>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="rounded-lg bg-muted p-3">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="text-muted-foreground">Tanggal:</div>
-                  <div className="font-medium">{formatDate(data.slot.date)}</div>
+                  <div className="font-medium">{data.slot.date ? formatDate(data.slot.date) : '-'}</div>
                   
                   <div className="text-muted-foreground">Waktu:</div>
-                  <div className="font-medium">{data.slot.timeSlot}</div>
+                  <div className="font-medium">{data.slot.timeSlot || '-'}</div>
                   
                   <div className="text-muted-foreground">Kuota:</div>
-                  <div className="font-medium">{data.slot.currentCount}/{data.slot.maxQuota}</div>
+                  <div className="font-medium">
+                    {typeof data.slot.currentCount === 'number' ? data.slot.currentCount : 0}/
+                    {typeof data.slot.maxQuota === 'number' ? data.slot.maxQuota : 0}
+                  </div>
                   
                   <div className="text-muted-foreground">Status:</div>
                   <div>
@@ -194,7 +260,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
               
               <div>
                 <h3 className="text-sm font-medium mb-2">Daftar Pasien Aktif</h3>
-                {data.appointments.length === 0 ? (
+                {!data.appointments || data.appointments.length === 0 ? (
                   <p className="text-center py-4 text-sm text-muted-foreground border rounded">
                     Belum ada pasien terdaftar
                   </p>
@@ -211,10 +277,13 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                       // kita gunakan pendekatan case insensitive untuk pemeriksaan status dan cache hasilnya dengan useMemo
                       // Termasuk 'scheduled' sebagai status aktif
                       const activeAppointments = useMemo(() => {
+                        if (!Array.isArray(data.appointments)) return [];
+                        
                         const activeStatusPatterns = ['active', 'booked', 'confirmed', 'scheduled'];
                         
                         // Fungsi untuk memverifikasi apakah status termasuk status aktif (case insensitive)
                         const isActiveStatus = (status: string): boolean => {
+                          if (!status) return false;
                           const statusLower = status.toLowerCase();
                           return activeStatusPatterns.some(pattern => statusLower.includes(pattern));
                         };
@@ -222,7 +291,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                         return data.appointments.filter(
                           (appointment: any) => {
                             // Gunakan fungsi helpers untuk pemeriksaan status
-                            return isActiveStatus(appointment.status);
+                            return appointment && appointment.status && isActiveStatus(appointment.status);
                           }
                         );
                       }, [data.appointments]);
@@ -239,8 +308,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                               className="p-3 text-sm hover:bg-teal-50 transition-colors"
                             >
                               <div className="font-medium flex items-center justify-between">
-                                <span>{appointment.patient.name}</span>
+                                <span>{appointment.patient?.name || 'Pasien tidak diketahui'}</span>
                                 <Badge className={useMemo(() => {
+                                  if (!appointment.status) return 'bg-gray-100 text-gray-800';
+                                  
                                   const status = appointment.status.toLowerCase();
                                   if (status.includes('booked')) {
                                     return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
@@ -252,11 +323,11 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                                     return 'bg-green-100 text-green-800 hover:bg-green-200';
                                   }
                                 }, [appointment.status])}>
-                                  {appointment.status}
+                                  {appointment.status || 'Unknown'}
                                 </Badge>
                               </div>
                               <div className="flex justify-between text-muted-foreground text-xs mt-1">
-                                <span>{appointment.patient.phoneNumber}</span>
+                                <span>{appointment.patient?.phoneNumber || '-'}</span>
                                 <div className="flex items-center gap-2">
                                   <Button
                                     variant="destructive"

@@ -150,8 +150,17 @@ export default function Dashboard() {
   ];
   
   const handleSlotClick = (slotId: number) => {
-    setSelectedSlotId(slotId);
-    setIsDialogOpen(true);
+    try {
+      if (typeof slotId !== 'number' || isNaN(slotId)) {
+        console.error("Invalid slot ID:", slotId);
+        return;
+      }
+      
+      setSelectedSlotId(slotId);
+      setIsDialogOpen(true);
+    } catch (error) {
+      console.error("Error handling slot click:", error);
+    }
   };
 
   const handleCloseDialog = () => {
