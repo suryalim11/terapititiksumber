@@ -35,23 +35,31 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     return format(date, 'dd MMMM yyyy');
   };
   
-  // Fungsi untuk mengarahkan ke halaman transaksi baru dengan data pasien
+  // Fungsi untuk mengarahkan ke halaman transaksi dan langsung membuka form baru
   const navigateToTransaction = (patient: any) => {
     console.log("Navigating to transaction for patient:", patient);
     
     // Tutup dialog terlebih dahulu
     onClose();
     
-    // Arahkan ke halaman transaksi baru dengan ID pasien
-    navigate(`/transactions/new?patientId=${patient.id}`);
+    // Alih-alih menggunakan URL parameter, kita akan menggunakan url state
+    // Arahkan ke halaman transaksi
+    navigate("/transactions");
     
-    // Tambahkan notifikasi untuk feedback
+    // Tunggu sebentar untuk memastikan komponen transactions sudah di-mount
     setTimeout(() => {
+      // Gunakan event system untuk berkomunikasi antar komponen
+      const transactionEvent = new CustomEvent('open-transaction-form', {
+        detail: { patientId: patient.id }
+      });
+      window.dispatchEvent(transactionEvent);
+      
+      // Tambahkan notifikasi untuk feedback
       toast({
         title: "Membuat transaksi baru",
         description: `Form transaksi untuk ${patient.name} akan segera dibuka`,
       });
-    }, 300);
+    }, 500);
   };
 
   if (!isOpen) return null;

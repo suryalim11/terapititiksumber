@@ -55,18 +55,15 @@ export default function Transactions() {
   const [location] = useLocation();
   const { toast } = useToast();
 
-  // Check URL for patientId parameter
+  // Event listener untuk membuka form transaksi dari komponen lain
   useEffect(() => {
-    // Jika halaman dibuka dengan URL /transactions/new?patientId=X
-    // Maka buka form transaksi dan set patientId
-    if (location.startsWith('/transactions/new')) {
-      const params = new URLSearchParams(location.split('?')[1]);
-      const patientId = params.get('patientId');
-      
-      console.log("URL parameter patientId:", patientId);
+    // Fungsi untuk menangani event dari slot-patients-dialog
+    const handleOpenTransactionForm = (event: CustomEvent) => {
+      const { patientId } = event.detail;
+      console.log("Received custom event to open transaction form with patient ID:", patientId);
       
       if (patientId) {
-        const patientIdNum = parseInt(patientId);
+        const patientIdNum = typeof patientId === 'string' ? parseInt(patientId) : patientId;
         console.log("Setting selected patient ID:", patientIdNum);
         
         setSelectedPatientId(patientIdNum);
@@ -78,8 +75,16 @@ export default function Transactions() {
           description: `ID Pasien: ${patientIdNum}`,
         });
       }
-    }
-  }, [location, toast]);
+    };
+    
+    // Tambahkan event listener
+    window.addEventListener('open-transaction-form', handleOpenTransactionForm as EventListener);
+    
+    // Cleanup event listener ketika komponen unmount
+    return () => {
+      window.removeEventListener('open-transaction-form', handleOpenTransactionForm as EventListener);
+    };
+  }, [toast]);
 
   const { data: transactions, isLoading } = useQuery({
     queryKey: ["/api/transactions"],
