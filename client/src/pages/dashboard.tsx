@@ -7,12 +7,16 @@ import {
   PackageIcon, 
   UserRound, 
   Users,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import { cn, formatRupiah } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 interface DashboardStats {
   patientsToday: number;
@@ -51,6 +55,8 @@ interface ActivePackage {
 export default function Dashboard() {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("day");
+  const queryClient = useQueryClient();
   
   // Format today's date to YYYY-MM-DD for API query
   const today = new Date();
@@ -75,9 +81,22 @@ export default function Dashboard() {
     refetchInterval: 10000,
   });
   
-  // Fetch today's therapy slots with auto-refresh
-  const { data: todaySlots = [], isLoading: isSlotsLoading, refetch: refetchSlots } = useQuery<any[]>({
+  // Fetch today's therapy slots (for backward compatibility)
+  const { data: todaySlots = [], isLoading: isTodaySlotsLoading } = useQuery<any[]>({
     queryKey: ['/api/today-slots'],
+    refetchInterval: 10000,
+  });
+  
+  // Fetch therapy slots by period
+  const { data: slotsByPeriod = [], isLoading: isSlotsLoading, refetch: refetchSlotsByPeriod } = useQuery<any[]>({
+    queryKey: ['/api/slots-by-period', selectedPeriod],
+    queryFn: async () => {
+      const response = await fetch(`/api/slots-by-period?period=${selectedPeriod}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch slots by period');
+      }
+      return response.json();
+    },
     refetchInterval: 10000,
   });
   
@@ -86,6 +105,15 @@ export default function Dashboard() {
     queryKey: ['/api/dashboard/active-packages'],
     refetchInterval: 10000,
   });
+  
+  // Handle period change
+  const handlePeriodChange = (period: string) => {
+    // Clear cache for the current period to ensure fresh data
+    queryClient.invalidateQueries({ queryKey: ['/api/slots-by-period', selectedPeriod] });
+    
+    // Update selected period
+    setSelectedPeriod(period);
+  };
 
   // Dashboard stat cards data
   const statCards = [
@@ -206,98 +234,132 @@ export default function Dashboard() {
         {/* Slot Tracker */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span>Slot Tracker</span>
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {new Date().toLocaleDateString('id-ID', { 
-                weekday: 'long', 
-                day: 'numeric', 
-                month: 'long', 
-                year: 'numeric' 
-              })}
-            </p>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <span>Slot Tracker</span>
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    refetchSlotsByPeriod();
+                  }}
+                  className="h-8 w-8 p-0"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="sr-only">Refresh</span>
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-muted-foreground">
+                {new Date().toLocaleDateString('id-ID', { 
+                  weekday: 'long', 
+                  day: 'numeric', 
+                  month: 'long', 
+                  year: 'numeric' 
+                })}
+              </p>
+            </div>
           </CardHeader>
           <CardContent>
-            {isSlotsLoading ? (
-              <div className="flex justify-center items-center py-6">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              </div>
-            ) : todaySlots.length > 0 ? (
-              <div className="space-y-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-muted-foreground">
-                      <th className="pb-2 font-medium text-left">Tanggal / Waktu</th>
-                      <th className="pb-2 font-medium text-center">Kuota</th>
-                      <th className="pb-2 font-medium text-center">Terisi</th>
-                      <th className="pb-2 font-medium text-right">Persentase</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {todaySlots.map((slot: any) => (
-                      <tr 
-                        key={slot.id} 
-                        className="py-2 hover:bg-muted/50 cursor-pointer transition-colors"
-                        onClick={() => handleSlotClick(slot.id)}
-                      >
-                        <td className="py-3 text-left">
-                          <div className="flex flex-col">
-                            <span>{slot.timeSlot}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(slot.date).toLocaleDateString('id-ID', {
-                                day: 'numeric',
-                                month: 'short'
-                              })}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 text-center">{slot.maxQuota}</td>
-                        <td className="py-3 text-center">{slot.currentCount}</td>
-                        <td className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="w-16">
-                              <Progress 
-                                value={slot.percentage} 
-                                max={100} 
-                                className={cn(
-                                  "h-2",
-                                  slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 75 ? "bg-amber-200" : "bg-primary/20")
+            <Tabs 
+              defaultValue="day" 
+              className="w-full" 
+              value={selectedPeriod}
+              onValueChange={handlePeriodChange}
+            >
+              <TabsList className="grid w-full grid-cols-4 mb-4">
+                <TabsTrigger value="day">Hari Ini</TabsTrigger>
+                <TabsTrigger value="week">Minggu Ini</TabsTrigger>
+                <TabsTrigger value="month">Bulan Ini</TabsTrigger>
+                <TabsTrigger value="past-week">7 Hari Terakhir</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value={selectedPeriod} className="mt-0">
+                {isSlotsLoading ? (
+                  <div className="flex justify-center items-center py-6">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : slotsByPeriod.length > 0 ? (
+                  <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-background">
+                        <tr className="border-b text-muted-foreground">
+                          <th className="pb-2 font-medium text-left">Tanggal / Waktu</th>
+                          <th className="pb-2 font-medium text-center">Kuota</th>
+                          <th className="pb-2 font-medium text-center">Terisi</th>
+                          <th className="pb-2 font-medium text-right">Persentase</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {slotsByPeriod.map((slot: any) => (
+                          <tr 
+                            key={slot.id} 
+                            className="py-2 hover:bg-muted/50 cursor-pointer transition-colors"
+                            onClick={() => handleSlotClick(slot.id)}
+                          >
+                            <td className="py-3 text-left">
+                              <div className="flex flex-col">
+                                <span>{slot.timeSlot}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(slot.date).toLocaleDateString('id-ID', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 text-center">{slot.maxQuota}</td>
+                            <td className="py-3 text-center">{slot.currentCount}</td>
+                            <td className="py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="w-16">
+                                  <Progress 
+                                    value={slot.percentage} 
+                                    max={100} 
+                                    className={cn(
+                                      "h-2",
+                                      slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 75 ? "bg-amber-200" : "bg-primary/20")
+                                    )}
+                                    indicatorClassName={
+                                      slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 75 ? "bg-amber-500" : "bg-primary")
+                                    }
+                                  />
+                                </div>
+                                <span className={cn(
+                                  "text-xs",
+                                  slot.percentage >= 100 ? "text-red-600" : (slot.percentage > 75 ? "text-amber-600" : "")
+                                )}>
+                                  {Math.round(slot.percentage)}%
+                                </span>
+                                {slot.percentage >= 100 && (
+                                  <AlertCircle className="h-3 w-3 text-red-500" />
                                 )}
-                                indicatorClassName={
-                                  slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 75 ? "bg-amber-500" : "bg-primary")
-                                }
-                              />
-                            </div>
-                            <span className={cn(
-                              "text-xs",
-                              slot.percentage >= 100 ? "text-red-600" : (slot.percentage > 75 ? "text-amber-600" : "")
-                            )}>
-                              {Math.round(slot.percentage)}%
-                            </span>
-                            {slot.percentage >= 100 && (
-                              <AlertCircle className="h-3 w-3 text-red-500" />
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <Calendar className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="mt-4 text-lg font-semibold">
-                  Belum Ada Slot Terapi Hari Ini
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Slot terapi akan muncul di sini. Kunjungi halaman Therapy Slots untuk mengatur slot terapi baru.
-                </p>
-              </div>
-            )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed p-8 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                      <Calendar className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="mt-4 text-lg font-semibold">
+                      Belum Ada Slot Terapi
+                    </h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Tidak ada slot terapi untuk periode yang dipilih. Kunjungi halaman Therapy Slots untuk mengatur slot terapi baru.
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>

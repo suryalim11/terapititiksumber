@@ -862,6 +862,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.get("/api/slots-by-period", async (req: Request, res: Response) => {
+    try {
+      let startDate = new Date();
+      const period = req.query.period as string || 'day';
+      
+      startDate.setHours(0, 0, 0, 0);
+      
+      let endDate = new Date(startDate);
+      
+      // Set date range based on period
+      if (period === 'week') {
+        // Get slots for the next 7 days
+        endDate.setDate(endDate.getDate() + 7);
+      } else if (period === 'month') {
+        // Get slots for the next 30 days
+        endDate.setDate(endDate.getDate() + 30);
+      } else if (period === 'past-week') {
+        // Get slots for the past 7 days
+        startDate.setDate(startDate.getDate() - 7);
+      } else if (period === 'past-month') {
+        // Get slots for the past 30 days
+        startDate.setDate(startDate.getDate() - 30);
+      } else {
+        // Default: only today
+        endDate.setDate(endDate.getDate() + 1);
+      }
+      
+      console.log(`Fetching slots from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      
+      // Get all therapy slots
+      const allSlots = await storage.getAllTherapySlots();
+      
+      // Filter slots by date range
+      const slots = allSlots.filter(slot => {
+        const slotDate = new Date(slot.date);
+        return slotDate >= startDate && slotDate < endDate;
+      });
+      
+      // Add percentage
+      const slotsWithPercentage = slots.map(slot => ({
+        ...slot,
+        percentage: (slot.currentCount * 100 / slot.maxQuota)
+      }));
+      
+      // Sort by date 
+      slotsWithPercentage.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      return res.status(200).json(slotsWithPercentage);
+    } catch (error) {
+      console.error(`Error getting therapy slots by period: ${error}`);
+      return res.status(500).json({ message: "Failed to get therapy slots" });
+    }
+  });
+  
   app.get("/api/today-slots", async (req: Request, res: Response) => {
     try {
       // Mendapatkan tanggal hari ini
@@ -905,7 +959,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Dapatkan informasi pasien dari tiap appointment
       // Gunakan Map untuk menghindari duplikasi pasien dengan ID yang sama
-      const patientIds = new Set(appointments.map(appointment => appointment.patientId));
+      const patientIdsSet = new Set(appointments.map(appointment => appointment.patientId));
+      const patientIds = Array.from(patientIdsSet);
       const patientMap = new Map();
       
       // Ambil data pasien sekali untuk tiap ID unik
