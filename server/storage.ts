@@ -285,13 +285,13 @@ export class MemStorage implements IStorage {
     // Membuat slot terapi untuk hari ini dan 7 hari ke depan
     const today = new Date();
     
-    // Definisi slot waktu default
+    // Definisi slot waktu default yang telah diperbarui sesuai permintaan
     const timeSlots = [
-      { time: "10:00-11:00", quota: 5 },
-      { time: "11:00-12:00", quota: 5 },
-      { time: "13:00-14:00", quota: 5 },
-      { time: "15:00-16:00", quota: 5 },
-      { time: "16:00-17:00", quota: 5 }
+      { time: "10:00-11:30", quota: 4 },
+      // 11:30-12:30 adalah jam istirahat
+      { time: "12:30-14:00", quota: 4 },
+      { time: "14:00-15:30", quota: 4 },
+      { time: "15:30-17:00", quota: 5 }
     ];
     
     // Membuat 7 hari slot terapi
