@@ -217,7 +217,9 @@ export default function Dashboard() {
                     <div className="flex-1">
                       <p className="text-sm">{activity.description}</p>
                       <time className="text-xs text-muted-foreground">
-                        {format(new Date(activity.timestamp), "dd/MM/yyyy, HH:mm", { locale: localeId })}
+                        {activity.timestamp ? 
+                          format(new Date(activity.timestamp), "dd/MM/yyyy, HH:mm", { locale: localeId }) :
+                          ""}
                       </time>
                     </div>
                   </div>
@@ -301,7 +303,7 @@ export default function Dashboard() {
                               <div className="flex flex-col">
                                 <span>{slot.timeSlot}</span>
                                 <span className="text-xs text-muted-foreground">
-                                  {formatDateDDMMYYYY(slot.date)}
+                                  {slot.date ? formatDateDDMMYYYY(slot.date) : '-'}
                                 </span>
                               </div>
                             </td>
@@ -401,14 +403,12 @@ export default function Dashboard() {
                   <div className="flex justify-between items-center text-xs">
                     <div>
                       <span className="text-muted-foreground">Mulai: </span>
-                      {formatDateDDMMYYYY(pkg.startDate)}
+                      {pkg.startDate ? formatDateDDMMYYYY(pkg.startDate) : '-'}
                     </div>
-                    {pkg.lastSessionDate && (
-                      <div>
-                        <span className="text-muted-foreground">Terakhir: </span>
-                        {formatDateDDMMYYYY(pkg.lastSessionDate)}
-                      </div>
-                    )}
+                    <div>
+                      <span className="text-muted-foreground">Terakhir: </span>
+                      {pkg.lastSessionDate ? formatDateDDMMYYYY(pkg.lastSessionDate) : '-'}
+                    </div>
                     <div className="font-medium">
                       {pkg.progress}%
                     </div>
