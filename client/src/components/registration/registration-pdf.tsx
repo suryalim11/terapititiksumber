@@ -152,16 +152,12 @@ export function RegistrationPDF({
     doc.text("- Mohon datang 15 menit lebih awal", 25, y); y += lineHeight;
     doc.text("- Mohon bawa baju ganti (sesi terapi akan keringatan)", 25, y); y += lineHeight;
     
-    // Digital stamp
-    doc.setDrawColor(0, 128, 128);
-    doc.setFillColor(240, 255, 255);
-    doc.circle(160, y + 20, 15, 'FD');
-    doc.setTextColor(0, 128, 128);
+    // Tambahkan teks konfirmasi di bagian bawah
+    y += 30;
+    doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text("TERAPI", 160, y + 18, { align: "center" });
-    doc.text("TITIK", 160, y + 22, { align: "center" });
-    doc.text("SUMBER", 160, y + 26, { align: "center" });
+    doc.setTextColor(0, 128, 128);
+    doc.text("TERJADWAL & TERKONFIRMASI", 105, y, { align: "center" });
     
     // Save the PDF
     doc.save(`Bukti-Pendaftaran-${patientName.replace(/\s+/g, "-")}.pdf`);
