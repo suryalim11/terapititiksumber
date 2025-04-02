@@ -470,20 +470,70 @@ export class DatabaseStorage implements IStorage {
         return false;
       }
       
-      // Find and delete related sessions
-      const sessions = await db.query.sessions.findMany({
-        where: eq(schema.sessions.transactionId, id)
-      });
-      
-      // Delete each session
-      for (const session of sessions) {
-        await db.delete(schema.sessions)
-          .where(eq(schema.sessions.id, session.id));
-      }
-      
-      // For products in the transaction, restore stock
+      // Menangani kasus khusus: Jika transaksi berisi penggunaan sesi dari paket
+      // (contohnya transaksi dengan harga 0 yang merupakan penggunaan sesi paket terapi)
       const items = transaction.items as any[];
       if (items && Array.isArray(items)) {
+        // Cek apakah ada item dengan jenis "package" dan descripsi berisi "menggunakan sisa paket"
+        const isUsingExistingPackage = items.some(
+          item => item.type === "package" && 
+          item.description && 
+          item.description.includes("menggunakan sisa paket")
+        );
+        
+        if (isUsingExistingPackage) {
+          // Jika transaksi ini adalah penggunaan sesi paket terapi, cari sesi yang terkait
+          // dan kurangi jumlah sesi yang telah digunakan
+          const sessions = await db.query.sessions.findMany({
+            where: eq(schema.sessions.transactionId, id)
+          });
+          
+          for (const session of sessions) {
+            // Dapatkan sesi asli dari paket
+            const originalSession = await db.query.sessions.findFirst({
+              where: and(
+                eq(schema.sessions.patientId, session.patientId),
+                eq(schema.sessions.packageId, session.packageId),
+                eq(schema.sessions.status, "active")
+              )
+            });
+            
+            if (originalSession) {
+              // Kurangi jumlah sesi yang telah digunakan
+              const updatedSessionsUsed = Math.max(0, originalSession.sessionsUsed - 1);
+              console.log(`Memperbarui sesi paket ${originalSession.id}: mendecrement sessionsUsed dari ${originalSession.sessionsUsed} menjadi ${updatedSessionsUsed}`);
+              
+              await db.update(schema.sessions)
+                .set({ 
+                  sessionsUsed: updatedSessionsUsed,
+                  status: "active"  // Pastikan statusnya kembali aktif
+                })
+                .where(eq(schema.sessions.id, originalSession.id));
+            }
+          }
+          
+          // Hapus sesi dari transaksi ini
+          for (const session of sessions) {
+            await db.delete(schema.sessions)
+              .where(eq(schema.sessions.id, session.id));
+          }
+        } else {
+          // Kasus normal: Transaksi pembelian paket baru
+          console.log("Menghapus transaksi pembelian paket");
+          
+          // Find and delete related sessions
+          const sessions = await db.query.sessions.findMany({
+            where: eq(schema.sessions.transactionId, id)
+          });
+          
+          // Delete each session
+          for (const session of sessions) {
+            await db.delete(schema.sessions)
+              .where(eq(schema.sessions.id, session.id));
+          }
+        }
+        
+        // For products in the transaction, restore stock
         for (const item of items) {
           if (item.type === 'product' && typeof item.id === 'number' && typeof item.quantity === 'number') {
             // Get the product
