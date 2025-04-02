@@ -440,19 +440,24 @@ export default function RegisterPage() {
               {/* Search box for existing patients */}
               <div className="mb-6 pb-6 border-b border-gray-200">
                 <h3 className="text-lg font-medium mb-3">Sudah pernah terapi di Titik Sumber?</h3>
-                <div className="flex gap-2">
-                  <Input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Masukkan nama atau nomor WA Anda"
-                    className="flex-1"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        searchPatient();
-                      }
-                    }}
-                  />
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex-1">
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Masukkan nama atau nomor WA Anda"
+                      className="w-full"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          searchPatient();
+                        }
+                      }}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Cari berdasarkan nama atau nomor whatsapp untuk mengisi data otomatis
+                    </p>
+                  </div>
                   <Button
                     onClick={searchPatient}
                     disabled={isSearching}

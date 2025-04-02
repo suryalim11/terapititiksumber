@@ -1,0 +1,178 @@
+### **Judul Proyek:**  
+Sistem Pendaftaran Pasien dengan Konfirmasi Link Unik & Pencarian Data  
+
+---
+
+### **1. Fitur Utama**  
+#### **a. Halaman Konfirmasi Pendaftaran**  
+- Setelah pasien mendaftar, sistem akan:  
+  - Menampilkan pesan sukses.  
+  - Membuat **tautan unik** (contoh: `https://terapi-titiksumber.com/confirm/ABC123`).  
+  - Kirim tautan ke email atau WhatsApp pasien.  
+
+#### **b. Pencarian Data Pasien**  
+- Di halaman pendaftaran, tambahkan form pencarian:  
+  ```  
+  [ ] Cari berdasarkan Nama  
+  [ ] Cari berdasarkan No. WA  
+  ```  
+- Jika ditemukan, tampilkan detail pendaftaran pasien.  
+
+---
+
+### **2. Teknis Implementasi**  
+#### **a. Generate Tautan Unik**  
+- **Backend (Node.js/Express):**  
+  ```javascript
+  // Endpoint untuk membuat tautan unik
+  app.post('/api/register', async (req, res) => {
+    const { name, phone } = req.body;
+    
+    // Simpan data pasien ke database
+    const patientId = await savePatientToDB(name, phone);
+    
+    // Buat token unik (UUID)
+    const token = uuidv4();
+    
+    // Simpan token ke tabel tokens
+    await db.query(`
+      INSERT INTO tokens (token, patient_id, expires_at)
+      VALUES ($1, $2, NOW() + INTERVAL '1 day')
+    `, [token, patientId]);
+    
+    // Kembalikan tautan
+    res.json({
+      message: 'Pendaftaran berhasil!',
+      link: `${process.env.BASE_URL}/confirm/${token}`
+    });
+  });
+  ```
+
+- **Frontend (React.js):**  
+  ```jsx
+  import { useState } from 'react';
+
+  function RegistrationForm() {
+    const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const [uniqueLink, setUniqueLink] = useState('');
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      
+      try {
+        const response = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone })
+        });
+        
+        const data = await response.json();
+        setSuccessMessage(data.message);
+        setUniqueLink(data.link);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    return (
+      <div>
+        {/* Form pendaftaran */}
+        <button onClick={handleSubmit}>Daftar</button>
+
+        {/* Tampilan konfirmasi */}
+        {successMessage && (
+          <div>
+            <h3>{successMessage}</h3>
+            <p>Simpan tautan ini:</p>
+            <input type="text" value={uniqueLink} readOnly />
+            <button onClick={() => copyToClipboard(uniqueLink)}>
+              Salin Tautan
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+  ```
+
+#### **b. Pencarian Data Pasien**  
+- **Endpoint untuk Pencarian:**  
+  ```javascript
+  app.get('/api/search', async (req, res) => {
+    const { query } = req.query;
+    
+    const patients = await db.query(`
+      SELECT * FROM patients 
+      WHERE name ILIKE $1 OR phone = $1
+    `, [query]);
+    
+    res.json(patients);
+  });
+  ```
+
+- **Komponen Pencarian (React.js):**  
+  ```jsx
+  import { useState, useEffect } from 'react';
+
+  function SearchPatient() {
+    const [query, setQuery] = useState('');
+    const [patients, setPatients] = useState([]);
+
+    useEffect(() => {
+      if (query.length > 0) {
+        fetch(`/api/search?query=${query}`)
+          .then(response => response.json())
+          .then(data => setPatients(data));
+      }
+    }, [query]);
+
+    return (
+      <div>
+        <input
+          type="text"
+          placeholder="Cari nama atau no. WA"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        
+        {patients.map(patient => (
+          <div key={patient.id}>
+            <h4>{patient.name}</h4>
+            <p>No. WA: {patient.phone}</p>
+            <button onClick={() => redirectToDetails(patient.id)}>
+              Lihat Detail
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  ```
+
+---
+
+### **3. Contoh Tampilan**  
+![Halaman Konfirmasi](https://via.placeholder.com/600x400.png/FFFFFF?text=Pendaftaran+Berhasil%0ATautan%3A+https%3A%2F%2F...%2Fconfirm%2FABC123)
+
+---
+
+### **4. Keamanan Tambahan**  
+- **Token Expiry:**  
+  - Token hanya valid sampai selesainya janji temu.  
+  - Hapus token dari database setelah digunakan.  
+
+- **Validasi Input:**  
+  - Pastikan nomor WA sesuai format (contoh: `+6281234567890`).  
+
+---
+
+### **5. Testing**  
+1. **Registrasi Baru:**  
+   - Pastikan tautan unik dibuat dan bisa diakses.  
+2. **Pencarian Data:**  
+   - Cari dengan nama/WA yang benar → harus menemukan data.  
+   - Cari dengan data tidak ada → tampilkan pesan "Tidak ditemukan".  
+
+Jika ada bagian yang kurang jelas, beri tahu! 🛠️

@@ -181,6 +181,24 @@ export const insertRegistrationLinkSchema = createInsertSchema(registrationLinks
   specificDate: true,
 });
 
+// Confirmation Token Schema
+export const confirmationTokens = pgTable("confirmation_tokens", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  patientId: integer("patient_id").notNull(),
+  appointmentId: integer("appointment_id").notNull(),
+  expiryTime: timestamp("expiry_time").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  isUsed: boolean("is_used").notNull().default(false),
+});
+
+export const insertConfirmationTokenSchema = createInsertSchema(confirmationTokens).pick({
+  token: true,
+  patientId: true,
+  appointmentId: true,
+  expiryTime: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -208,3 +226,6 @@ export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 
 export type RegistrationLink = typeof registrationLinks.$inferSelect;
 export type InsertRegistrationLink = z.infer<typeof insertRegistrationLinkSchema>;
+
+export type ConfirmationToken = typeof confirmationTokens.$inferSelect;
+export type InsertConfirmationToken = z.infer<typeof insertConfirmationTokenSchema>;

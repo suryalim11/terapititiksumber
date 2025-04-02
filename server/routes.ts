@@ -10,8 +10,11 @@ import {
   insertAppointmentSchema,
   insertUserSchema,
   insertTherapySlotSchema,
+  insertConfirmationTokenSchema,
+  insertRegistrationLinkSchema,
   User
 } from "@shared/schema";
+import crypto from "crypto";
 import { setupAuth } from "./auth";
 import multer from "multer";
 import path from "path";
@@ -302,10 +305,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Generate token unik untuk konfirmasi
+      let confirmationToken = null;
+      
+      if (appointmentResponse) {
+        try {
+          // Buat token unik untuk konfirmasi
+          const tokenStr = crypto.randomUUID();
+          
+          // Simpan token ke database (berlaku 7 hari dari sekarang)
+          const expiryTime = new Date();
+          expiryTime.setDate(expiryTime.getDate() + 7);
+          
+          const tokenData = {
+            token: tokenStr,
+            patientId: patientToUse.id,
+            appointmentId: appointmentResponse.id,
+            expiryTime: expiryTime
+          };
+          
+          confirmationToken = await storage.createConfirmationToken(tokenData);
+          console.log("Token konfirmasi berhasil dibuat:", confirmationToken);
+        } catch (error) {
+          console.error("Error saat membuat token konfirmasi:", error);
+        }
+      }
+      
       // Kembalikan data lengkap untuk halaman sukses
       const responseData = {
         ...patientToUse,
-        appointment: appointmentResponse
+        appointment: appointmentResponse,
+        confirmationLink: confirmationToken ? 
+          `${req.protocol}://${req.get('host')}/confirm/${confirmationToken.token}` : 
+          null
       };
       
       return res.status(201).json(responseData);

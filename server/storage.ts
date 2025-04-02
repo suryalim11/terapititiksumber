@@ -1,9 +1,11 @@
 import { 
   users, patients, products, packages, transactions, sessions, appointments, therapySlots,
+  registrationLinks, confirmationTokens,
   type User, type InsertUser, type Patient, type InsertPatient,
   type Product, type InsertProduct, type Package, type InsertPackage, type Transaction,
   type InsertTransaction, type Session, type InsertSession,
-  type Appointment, type InsertAppointment, type TherapySlot, type InsertTherapySlot
+  type Appointment, type InsertAppointment, type TherapySlot, type InsertTherapySlot,
+  type ConfirmationToken, type InsertConfirmationToken
 } from "@shared/schema";
 import { format } from "date-fns";
 
@@ -42,6 +44,12 @@ export interface IStorage {
   createPatient(patient: InsertPatient): Promise<Patient>;
   updatePatient(id: number, patient: InsertPatient): Promise<Patient | undefined>;
   deletePatient(id: number): Promise<boolean>;
+  searchPatientByNameOrPhone(query: string): Promise<Patient[]>;
+  
+  // Confirmation Tokens
+  createConfirmationToken(token: InsertConfirmationToken): Promise<ConfirmationToken>;
+  getConfirmationTokenByToken(token: string): Promise<ConfirmationToken | undefined>;
+  markTokenAsUsed(token: string): Promise<ConfirmationToken | undefined>;
   
   // Products
   getProduct(id: number): Promise<Product | undefined>;
@@ -129,6 +137,7 @@ export class MemStorage implements IStorage {
   private therapySlots: Map<number, TherapySlot>;
   private appointments: Map<number, Appointment>;
   private registrationLinks: Map<number, RegistrationLink>;
+  private confirmationTokens: Map<string, ConfirmationToken>;
   
   private userCurrentId: number;
   private patientCurrentId: number;
@@ -139,6 +148,7 @@ export class MemStorage implements IStorage {
   private therapySlotCurrentId: number;
   private appointmentCurrentId: number;
   private registrationLinkCurrentId: number;
+  private confirmationTokenCurrentId: number;
 
   // Session store for authentication
   sessionStore: session.Store;
@@ -153,6 +163,7 @@ export class MemStorage implements IStorage {
     this.therapySlots = new Map();
     this.appointments = new Map();
     this.registrationLinks = new Map();
+    this.confirmationTokens = new Map();
     
     this.userCurrentId = 1;
     this.patientCurrentId = 1;
@@ -163,6 +174,7 @@ export class MemStorage implements IStorage {
     this.therapySlotCurrentId = 1;
     this.appointmentCurrentId = 1;
     this.registrationLinkCurrentId = 1;
+    this.confirmationTokenCurrentId = 1;
     
     // Initialize session store
     this.sessionStore = new MemoryStore({
@@ -377,6 +389,15 @@ export class MemStorage implements IStorage {
   async getAllPatients(): Promise<Patient[]> {
     return Array.from(this.patients.values());
   }
+  
+  async searchPatientByNameOrPhone(query: string): Promise<Patient[]> {
+    const queryLowerCase = query.toLowerCase();
+    return Array.from(this.patients.values()).filter(
+      patient => 
+        patient.name.toLowerCase().includes(queryLowerCase) || 
+        patient.phoneNumber.includes(query)
+    );
+  }
 
   async createPatient(insertPatient: InsertPatient): Promise<Patient> {
     const id = this.patientCurrentId++;
@@ -439,6 +460,41 @@ export class MemStorage implements IStorage {
     // Hapus pasien
     this.patients.delete(id);
     return true;
+  }
+  
+  // Confirmation Token methods
+  async createConfirmationToken(token: InsertConfirmationToken): Promise<ConfirmationToken> {
+    const id = this.confirmationTokenCurrentId++;
+    
+    const confirmationToken: ConfirmationToken = {
+      id,
+      token: token.token,
+      patientId: token.patientId,
+      appointmentId: token.appointmentId,
+      expiryTime: token.expiryTime,
+      createdAt: new Date(),
+      isUsed: false
+    };
+    
+    this.confirmationTokens.set(token.token, confirmationToken);
+    return confirmationToken;
+  }
+  
+  async getConfirmationTokenByToken(token: string): Promise<ConfirmationToken | undefined> {
+    return this.confirmationTokens.get(token);
+  }
+  
+  async markTokenAsUsed(token: string): Promise<ConfirmationToken | undefined> {
+    const confirmationToken = this.confirmationTokens.get(token);
+    if (!confirmationToken) return undefined;
+    
+    const updatedToken: ConfirmationToken = {
+      ...confirmationToken,
+      isUsed: true
+    };
+    
+    this.confirmationTokens.set(token, updatedToken);
+    return updatedToken;
   }
 
   // Product methods
