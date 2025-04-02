@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { formatDateDDMMYYYY } from "@/lib/utils";
 
 import {
   Form,
@@ -182,6 +183,7 @@ export default function RegisterPage() {
           form.setValue("name", response.patient.name);
           form.setValue("phoneNumber", response.patient.phoneNumber);
           form.setValue("email", response.patient.email || "");
+          // Format tanggal lahir sesuai format yang dibutuhkan input type="date" (yyyy-MM-dd)
           form.setValue("birthDate", response.patient.birthDate);
           form.setValue("gender", response.patient.gender);
           form.setValue("address", response.patient.address);
@@ -251,6 +253,8 @@ export default function RegisterPage() {
         ...values, 
         // Convert fields as needed to match schema
         email: values.email || null,
+        // Memastikan format tanggal tetap yyyy-MM-dd untuk komunikasi dengan backend
+        birthDate: values.birthDate, // Format yyyy-MM-dd sesuai untuk API
         // Add registration code as metadata
         registrationCode,
         // Pastikan therapySlotId dikirim dengan benar
@@ -499,7 +503,12 @@ export default function RegisterPage() {
                         <FormItem>
                           <FormLabel>Tanggal Lahir</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <Input 
+                              type="date" 
+                              className="h-12 px-4 md:h-10"
+                              {...field}
+                              // Format untuk input date tetap yyyy-MM-dd sesuai standar HTML
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
