@@ -358,8 +358,8 @@ export default function Patients() {
                   </Button>
                 </div>
                 
-                {/* WhatsApp quick link for mobile */}
-                <div className="mt-3 md:hidden">
+                {/* WhatsApp quick link for all devices */}
+                <div className="mt-3">
                   <a 
                     href={`https://wa.me/${patient.phoneNumber.replace(/^0/, '62')}`}
                     target="_blank"
@@ -500,8 +500,8 @@ export default function Patients() {
                 </div>
               </div>
 
-              {/* WhatsApp link for mobile */}
-              <div className="md:hidden">
+              {/* WhatsApp link for all devices */}
+              <div>
                 <a 
                   href={`https://wa.me/${selectedPatient.phoneNumber.replace(/^0/, '62')}`}
                   target="_blank"

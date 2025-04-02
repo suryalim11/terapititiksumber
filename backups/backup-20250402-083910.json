@@ -1,20 +1,20 @@
 {
   "users": [
     {
-      "id": 1,
-      "username": "admin",
-      "password": "admin123456",
-      "name": "Administrator",
-      "role": "admin",
-      "createdAt": "2025-04-02T01:34:24.874Z"
-    },
-    {
       "id": 2,
       "username": "suryalim11",
       "password": "asdfghjkl",
       "name": "Surya Lim",
       "role": "admin",
       "createdAt": "2025-04-02T01:34:24.953Z"
+    },
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "Jahetuano1",
+      "name": "Administrator",
+      "role": "admin",
+      "createdAt": "2025-04-02T01:34:24.874Z"
     }
   ],
   "patients": [
@@ -22,7 +22,7 @@
       "id": 9,
       "patientId": "P-2025-001",
       "name": "Kurnia Dharma Surya L",
-      "phoneNumber": "87772925565",
+      "phoneNumber": "087772925565",
       "email": null,
       "birthDate": "1994-04-03",
       "gender": "Laki-laki",
@@ -34,36 +34,36 @@
   ],
   "products": [
     {
-      "id": 1,
-      "name": "Minyak Pijat Herbal",
-      "price": "85000.00",
-      "stock": 25,
-      "description": "Minyak pijat dengan bahan herbal alami",
-      "createdAt": "2025-04-02T01:34:25.443Z"
-    },
-    {
       "id": 2,
-      "name": "Bantal Terapi",
-      "price": "120000.00",
-      "stock": 14,
-      "description": "Bantal khusus untuk terapi",
+      "name": "Jahe Tua Bubuk",
+      "price": "100000.00",
+      "stock": 25,
+      "description": "Jahe Tua Bubuk Murni 100%",
       "createdAt": "2025-04-02T01:34:25.512Z"
     },
     {
       "id": 3,
-      "name": "Krim Pijat",
-      "price": "65000.00",
-      "stock": 29,
-      "description": "Krim pijat untuk relaksasi",
+      "name": "Balsem Jahe",
+      "price": "100000.00",
+      "stock": 30,
+      "description": null,
       "createdAt": "2025-04-02T01:34:25.580Z"
     },
     {
       "id": 4,
-      "name": "Minyak Esensial Lavender",
-      "price": "95000.00",
-      "stock": 19,
-      "description": "Minyak esensial lavender untuk aromaterapi",
+      "name": "Bantal Panas",
+      "price": "1700000.00",
+      "stock": 18,
+      "description": "Bantal panas untuk kesehatan",
       "createdAt": "2025-04-02T01:34:25.648Z"
+    },
+    {
+      "id": 1,
+      "name": "Bawang Hitam",
+      "price": "150000.00",
+      "stock": 100,
+      "description": "Bawang Hitam Alami",
+      "createdAt": "2025-04-02T01:34:25.443Z"
     }
   ],
   "packages": [
@@ -228,6 +228,28 @@
         }
       ],
       "createdAt": "2025-04-02T06:34:22.486Z"
+    },
+    {
+      "id": 34,
+      "transactionId": "T-20250402-691",
+      "patientId": 9,
+      "totalAmount": "215000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 2,
+          "type": "product",
+          "quantity": 1,
+          "price": "120000.00"
+        },
+        {
+          "id": 4,
+          "type": "product",
+          "quantity": 1,
+          "price": "95000.00"
+        }
+      ],
+      "createdAt": "2025-04-02T08:36:27.517Z"
     }
   ],
   "sessions": [
@@ -533,7 +555,7 @@
       "date": "2025-04-02T01:34:25.751Z",
       "timeSlot": "10:00-11:30",
       "maxQuota": 4,
-      "currentCount": 2,
+      "currentCount": 1,
       "isActive": true,
       "createdAt": "2025-04-02T01:34:25.784Z"
     }
@@ -547,7 +569,7 @@
       "date": "2025-04-02T05:11:10.116Z",
       "timeSlot": null,
       "registrationNumber": "R-20250402-574",
-      "status": "booked",
+      "status": "Cancelled",
       "notes": "asdfasdfasdf"
     }
   ],
