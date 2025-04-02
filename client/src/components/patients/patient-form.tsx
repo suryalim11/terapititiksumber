@@ -6,6 +6,12 @@ import { insertPatientSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 import {
   Form,
@@ -281,17 +287,45 @@ export function PatientForm({
             control={form.control}
             name="birthDate"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="flex flex-col">
                 <FormLabel>Tanggal Lahir</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="date" 
-                    autoComplete="bday"
-                    className="h-12 px-4 md:h-10"
-                    {...field}
-                    // Format untuk input date tetap yyyy-MM-dd, format tampilan yang akan diubah
-                  />
-                </FormControl>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "h-12 md:h-10 w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(new Date(field.value), "dd MMMM yyyy", {
+                            locale: idLocale,
+                          })
+                        ) : (
+                          <span>Pilih tanggal</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value ? new Date(field.value) : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          // Konversi Date ke string format YYYY-MM-DD
+                          const dateString = format(date, 'yyyy-MM-dd');
+                          field.onChange(dateString);
+                        }
+                      }}
+                      initialFocus
+                      disabled={(date) => date > new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
