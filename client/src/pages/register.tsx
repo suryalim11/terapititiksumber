@@ -651,13 +651,37 @@ export default function RegisterPage() {
                                     const slotDate = parseISO(dateKey);
                                     const formattedDate = format(slotDate, "EEEE, dd MMMM yyyy", { locale: idLocale });
                                     
-                                    // Simplify filtering logic to avoid potential errors
-                                    // We'll use a simpler approach that's less prone to errors
+                                    // Filtering logic untuk menampilkan hanya slot yang belum lewat
                                     const now = new Date();
                                     
-                                    // We'll consider all slots for 2025 as valid to avoid any timezone issues
-                                    // This is a temporary fix that we'll refine later
-                                    const validSlots = slots;
+                                    // Tambahkan informasi debugging untuk melihat waktu server
+                                    console.log("Waktu server saat ini:", now);
+                                    
+                                    // Tambahkan 7 jam untuk zona waktu Indonesia (WIB/UTC+7)
+                                    // Ini cara yang lebih aman untuk mendapatkan waktu lokal Indonesia
+                                    const localTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+                                    console.log("Waktu lokal Indonesia (WIB):", localTime);
+                                    
+                                    // Filter slot yang belum lewat waktunya
+                                    const validSlots = slots.filter((slot: any) => {
+                                      try {
+                                        // Parse tanggal dan jam dari slot
+                                        const [hours, minutes] = slot.timeSlot.split(':').map(Number);
+                                        
+                                        // Buat objek tanggal slot dengan tanggal hari slot + jam dari timeSlot
+                                        const slotDateTime = new Date(slotDate);
+                                        slotDateTime.setHours(hours, minutes, 0, 0);
+                                        
+                                        // Debug informasi slot
+                                        console.log(`Slot: ${slot.timeSlot}, DateTime: ${slotDateTime}, isAfter currentTime: ${slotDateTime > localTime}`);
+                                        
+                                        // Bandingkan dengan waktu lokal Indonesia
+                                        return slotDateTime > localTime;
+                                      } catch (err) {
+                                        console.error("Error comparing dates:", err);
+                                        return false; // Jika ada error, anggap slot sudah tidak valid
+                                      }
+                                    });
                                     
                                     // If there are no slots at all, return null
                                     if (validSlots.length === 0) return null;
