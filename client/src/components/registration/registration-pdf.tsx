@@ -86,7 +86,16 @@ export function RegistrationPDF({
     
     doc.setFont("helvetica", "normal");
     if (registrationNumber) {
-      doc.text(`Nomor Registrasi: ${registrationNumber}`, 25, y); y += lineHeight;
+      // Create highlighted registration number
+      doc.setFillColor(240, 248, 255);
+      doc.rect(25, y - 7, 160, 10, 'F');
+      
+      doc.setFont("helvetica", "bold");
+      doc.text(`Nomor Registrasi: `, 25, y);
+      doc.setTextColor(0, 100, 100);
+      doc.text(`${registrationNumber}`, 90, y); 
+      doc.setTextColor(60, 60, 60);
+      y += lineHeight;
     }
     
     doc.text(`Tanggal Pendaftaran: ${format(registrationDate, "dd MMMM yyyy")}`, 25, y); y += lineHeight;
@@ -102,8 +111,17 @@ export function RegistrationPDF({
     doc.setLineWidth(0.5);
     const boxStartY = y;
     
+    // Add confirmation title
+    doc.setFillColor(230, 248, 248);
+    doc.rect(30, y, 150, 10, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 100, 100);
+    doc.text(`JADWAL YANG ANDA PILIH`, 105, y + 7, { align: "center" });
+    y += lineHeight + 5;
+    
     // Add therapy date
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
     if (therapyDate) {
       doc.text(`Tanggal: `, 25, y);
       doc.setFont("helvetica", "normal");
@@ -180,11 +198,17 @@ export function RegistrationPDF({
     const footerY = 270;
     doc.setDrawColor(0, 128, 128);
     doc.setLineWidth(0.5);
-    doc.line(20, footerY - 5, 190, footerY - 5);
+    doc.line(20, footerY - 15, 190, footerY - 15);
     
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    doc.text("Terapi Titik Sumber | Telp: +62 811-777-3608", 105, footerY, { align: "center" });
+    doc.text("Terapi Titik Sumber | Telp: +62 811-777-3608", 105, footerY - 10, { align: "center" });
+    doc.text("Jl. Raya Puncak KM 84, Cipanas, Kabupaten Cianjur, Jawa Barat", 105, footerY - 5, { align: "center" });
+    doc.text("www.terapititiksumber.com", 105, footerY, { align: "center" });
+    
+    // Document creation timestamp
+    doc.setTextColor(130, 130, 130);
+    doc.setFontSize(8);
     doc.text(`Dokumen ini dibuat pada: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, 105, footerY + 7, { align: "center" });
     
     // Save the PDF
