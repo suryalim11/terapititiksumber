@@ -509,13 +509,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    // Generate transaction ID
-    const transactionId = `T-${format(new Date(), 'yyyyMMdd')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+    // Generate transaction ID dengan menggunakan waktu WIB
+    const wibDate = getWIBDate(new Date());
+    const transactionId = `T-${format(wibDate, 'yyyyMMdd')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
     
+    // Semua transaksi baru akan disimpan dengan createdAt yang sudah disesuaikan ke WIB
+    const wibNow = new Date();
     const result = await db.insert(schema.transactions)
-      .values({ ...transaction, transactionId })
+      .values({ 
+        ...transaction, 
+        transactionId,
+        createdAt: wibNow // timestamp ini akan otomatis dikonversi ke UTC oleh database
+      })
       .returning();
-    return result[0];
+    
+    // Jika perlu transform hasil untuk memastikan waktu dikonversi ke WIB
+    const transactionResult = { 
+      ...result[0],
+      createdAt: getWIBDate(result[0].createdAt)
+    };
+    
+    return transactionResult;
   }
   
   async deleteTransaction(id: number): Promise<boolean> {
@@ -674,8 +688,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSession(session: InsertSession): Promise<Session> {
-    const result = await db.insert(schema.sessions).values(session).returning();
-    return result[0];
+    const wibDate = getWIBDate(new Date());
+    
+    // Tambahkan startDate dengan waktu WIB ke session
+    const result = await db.insert(schema.sessions).values({
+      ...session,
+      startDate: wibDate // startDate adalah field yang valid dalam schema
+    }).returning();
+    
+    return {
+      ...result[0],
+      startDate: getWIBDate(result[0].startDate) // Konversi kembali ke WIB untuk tampilan
+    };
   }
 
   async updateSessionUsage(id: number, sessionsUsed?: number): Promise<Session | undefined> {
@@ -916,14 +940,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
-    // Generate registration number if not provided
-    const registrationNumber = appointment.registrationNumber || 
-      `R-${format(new Date(), 'yyyyMMdd')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+    // Generate registration number with WIB time if not provided
+    const wibDate = getWIBDate(new Date());
+    let regNum = appointment.registrationNumber;
     
+    if (!regNum) {
+      regNum = `R-${format(wibDate, 'yyyyMMdd')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+    }
+    
+    // Pastikan date menggunakan zona waktu WIB untuk konsistensi
     const result = await db.insert(schema.appointments)
-      .values({ ...appointment, registrationNumber })
+      .values({
+        patientId: appointment.patientId,
+        sessionId: appointment.sessionId,
+        therapySlotId: appointment.therapySlotId,
+        date: wibDate, // gunakan waktu WIB untuk tanggal
+        timeSlot: appointment.timeSlot,
+        notes: appointment.notes,
+        status: appointment.status,
+        registrationNumber: regNum
+      })
       .returning();
-    return result[0];
+    
+    // Konversi date ke WIB untuk tampilan
+    return {
+      ...result[0],
+      date: getWIBDate(result[0].date)
+    };
   }
 
   async updateAppointmentStatus(id: number, status: string): Promise<Appointment | undefined> {
@@ -937,7 +980,8 @@ export class DatabaseStorage implements IStorage {
 
   // Registration Link methods
   async createRegistrationLink(userId: number, expiryHours: number, dailyLimit: number, specificDate?: string): Promise<RegistrationLink> {
-    const now = new Date();
+    // Gunakan waktu WIB saat ini untuk basis kalkulasi
+    const now = getWIBDate(new Date());
     const expiryTime = new Date(now);
     expiryTime.setHours(expiryTime.getHours() + expiryHours);
     
@@ -953,20 +997,41 @@ export class DatabaseStorage implements IStorage {
         specificDate: specificDate || null
       })
       .returning();
-    return result[0];
+    
+    // Konversi waktu ke WIB untuk display
+    return {
+      ...result[0],
+      expiryTime: getWIBDate(result[0].expiryTime),
+      createdAt: getWIBDate(result[0].createdAt)
+    };
   }
 
   async getRegistrationLinkByCode(code: string): Promise<RegistrationLink | undefined> {
     const result = await db.query.registrationLinks.findFirst({
       where: eq(schema.registrationLinks.code, code)
     });
-    return result;
+    
+    if (!result) return undefined;
+    
+    // Konversi timestamp ke WIB
+    return {
+      ...result,
+      expiryTime: getWIBDate(result.expiryTime),
+      createdAt: getWIBDate(result.createdAt)
+    };
   }
 
   async getAllRegistrationLinks(): Promise<RegistrationLink[]> {
-    return db.query.registrationLinks.findMany({
+    const links = await db.query.registrationLinks.findMany({
       orderBy: [desc(schema.registrationLinks.createdAt)]
     });
+    
+    // Konversi semua timestamp ke WIB
+    return links.map(link => ({
+      ...link,
+      expiryTime: getWIBDate(link.expiryTime),
+      createdAt: getWIBDate(link.createdAt)
+    }));
   }
 
   async incrementRegistrationCount(code: string): Promise<RegistrationLink | undefined> {
@@ -981,7 +1046,15 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(schema.registrationLinks.code, code))
       .returning();
-    return result[0];
+    
+    if (result.length === 0) return undefined;
+    
+    // Konversi timestamp ke WIB untuk hasil
+    return {
+      ...result[0],
+      expiryTime: getWIBDate(result[0].expiryTime),
+      createdAt: getWIBDate(result[0].createdAt)
+    };
   }
 
   async deactivateRegistrationLink(id: number): Promise<boolean> {
@@ -1008,12 +1081,14 @@ export class DatabaseStorage implements IStorage {
     productsSold: number;
     activePackages: number;
   }> {
-    // Get today's date range
-    const today = new Date();
-    const startOfDay = new Date(today);
+    // Gunakan zona waktu WIB untuk perhitungan hari ini
+    const wibNow = getWIBDate(new Date());
+    
+    // Dapatkan rentang waktu hari ini dalam zona waktu WIB
+    const startOfDay = new Date(wibNow);
     startOfDay.setHours(0, 0, 0, 0);
     
-    const endOfDay = new Date(today);
+    const endOfDay = new Date(wibNow);
     endOfDay.setHours(23, 59, 59, 999);
     
     // Count patients registered today
