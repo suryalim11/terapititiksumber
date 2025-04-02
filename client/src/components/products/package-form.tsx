@@ -75,11 +75,25 @@ export function PackageForm({
   // 2. Define a submit handler.
   async function onSubmit(values: PackageFormValues) {
     try {
+      // Prepare data to send - make sure we sanitize price by removing formatting
+      const sanitizedData = {
+        name: values.name.trim(),
+        sessions: values.sessions,
+        // Remove all non-numeric characters from price
+        price: values.price.replace(/\D/g, ""),
+        description: values.description?.trim() || null
+      };
+      
+      console.log("Data paket yang disiapkan:", sanitizedData);
+      
       if (mode === "create") {
         // Create new package
         await apiRequest("/api/packages", {
           method: "POST",
-          body: JSON.stringify(values)
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(sanitizedData)
         });
         toast({
           title: "Paket berhasil dibuat",
@@ -89,7 +103,10 @@ export function PackageForm({
         // Update existing package
         await apiRequest(`/api/packages/${id}`, {
           method: "PUT",
-          body: JSON.stringify(values)
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(sanitizedData)
         });
         toast({
           title: "Paket berhasil diperbarui",
@@ -178,14 +195,11 @@ export function PackageForm({
               <FormControl>
                 <Input
                   placeholder="Masukkan harga"
-                  {...field}
-                  onChange={(e) => field.onChange(e.target.value)}
-                  onBlur={(e) => {
-                    // Format when leaving field
+                  value={field.value ? formatRupiah(parseInt(field.value.replace(/\D/g, "") || "0")) : ""}
+                  onChange={(e) => {
+                    // Ketika nilai berubah, simpan nilai numerik saja
                     const numericValue = e.target.value.replace(/\D/g, "");
-                    if (numericValue) {
-                      field.onChange(numericValue);
-                    }
+                    field.onChange(numericValue);
                   }}
                   autoComplete="off"
                 />
@@ -230,17 +244,9 @@ export function PackageForm({
             </Button>
           )}
           {/* If in a Dialog, use DialogClose, otherwise use normal Button */}
-          {onSuccess ? (
-            <Button type="submit">
-              {mode === "create" ? "Simpan Paket" : "Perbarui Paket"}
-            </Button>
-          ) : (
-            <DialogClose asChild>
-              <Button type="submit">
-                {mode === "create" ? "Simpan Paket" : "Perbarui Paket"}
-              </Button>
-            </DialogClose>
-          )}
+          <Button type="submit">
+            {mode === "create" ? "Simpan Paket" : "Perbarui Paket"}
+          </Button>
         </div>
       </form>
     </Form>

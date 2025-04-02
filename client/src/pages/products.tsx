@@ -462,7 +462,12 @@ export default function Products() {
 
           <PackageForm 
             onSuccess={handlePackageFormSuccess}
-            initialValues={editingPackage || undefined}
+            initialValues={editingPackage ? {
+              name: editingPackage.name,
+              price: editingPackage.price,
+              sessions: editingPackage.sessions,
+              description: editingPackage.description || ""
+            } : undefined}
             mode={editingPackage ? "edit" : "create"}
             id={editingPackage?.id}
             onCancel={handleClosePackageForm}

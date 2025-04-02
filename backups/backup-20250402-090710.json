@@ -1,0 +1,345 @@
+{
+  "users": [
+    {
+      "id": 2,
+      "username": "suryalim11",
+      "password": "asdfghjkl",
+      "name": "Surya Lim",
+      "role": "admin",
+      "createdAt": "2025-04-02T01:34:24.953Z"
+    },
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "Jahetuano1",
+      "name": "Administrator",
+      "role": "admin",
+      "createdAt": "2025-04-02T01:34:24.874Z"
+    }
+  ],
+  "patients": [
+    {
+      "id": 10,
+      "patientId": "P-2025-001",
+      "name": "asdffasdf",
+      "phoneNumber": "087772925565",
+      "email": null,
+      "birthDate": "2014-04-03",
+      "gender": "Laki-laki",
+      "address": "asdfasdf",
+      "complaints": "asdfasdf",
+      "createdAt": "2025-04-02T08:51:25.323Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 11,
+      "patientId": "P-2025-011",
+      "name": "asdfasdf",
+      "phoneNumber": "08127003608",
+      "email": null,
+      "birthDate": "2007-04-13",
+      "gender": "Laki-laki",
+      "address": "asdfasdf",
+      "complaints": "asdfasdf",
+      "createdAt": "2025-04-02T08:51:41.285Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 12,
+      "patientId": "P-2025-012",
+      "name": "fffffffffff",
+      "phoneNumber": "0898-9999-0000",
+      "email": "suryalim11@gmail.com",
+      "birthDate": "1962-04-12",
+      "gender": "Laki-laki",
+      "address": "asdfasdf",
+      "complaints": "asdfasdffdsaasdf",
+      "createdAt": "2025-04-02T08:52:10.329Z",
+      "therapySlotId": null
+    }
+  ],
+  "products": [
+    {
+      "id": 5,
+      "name": "Minyak Pijat Herbal",
+      "price": "85000.00",
+      "stock": 25,
+      "description": "Minyak pijat dengan bahan herbal alami",
+      "createdAt": "2025-04-02T09:05:33.390Z"
+    },
+    {
+      "id": 6,
+      "name": "Bantal Terapi",
+      "price": "120000.00",
+      "stock": 15,
+      "description": "Bantal khusus untuk terapi",
+      "createdAt": "2025-04-02T09:05:33.476Z"
+    },
+    {
+      "id": 7,
+      "name": "Krim Pijat",
+      "price": "65000.00",
+      "stock": 30,
+      "description": "Krim pijat untuk relaksasi",
+      "createdAt": "2025-04-02T09:05:33.545Z"
+    },
+    {
+      "id": 8,
+      "name": "Minyak Esensial Lavender",
+      "price": "95000.00",
+      "stock": 20,
+      "description": "Minyak esensial lavender untuk aromaterapi",
+      "createdAt": "2025-04-02T09:05:33.612Z"
+    }
+  ],
+  "packages": [
+    {
+      "id": 3,
+      "name": "Sesi Tunggal",
+      "sessions": 1,
+      "price": "150000.00",
+      "description": "Paket terapi untuk satu sesi"
+    },
+    {
+      "id": 4,
+      "name": "Paket 12 Sesi",
+      "sessions": 12,
+      "price": "1500000.00",
+      "description": "Paket terapi untuk 12 sesi dengan harga spesial"
+    }
+  ],
+  "transactions": [],
+  "sessions": [],
+  "therapySlots": [
+    {
+      "id": 25,
+      "date": "2025-04-02T09:05:33.710Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:33.747Z"
+    },
+    {
+      "id": 26,
+      "date": "2025-04-02T09:05:33.710Z",
+      "timeSlot": "12:30-14:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:33.817Z"
+    },
+    {
+      "id": 27,
+      "date": "2025-04-02T09:05:33.710Z",
+      "timeSlot": "14:00-15:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:33.885Z"
+    },
+    {
+      "id": 28,
+      "date": "2025-04-02T09:05:33.710Z",
+      "timeSlot": "15:30-17:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:33.952Z"
+    },
+    {
+      "id": 29,
+      "date": "2025-04-03T09:05:33.710Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.019Z"
+    },
+    {
+      "id": 30,
+      "date": "2025-04-03T09:05:33.710Z",
+      "timeSlot": "12:30-14:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.086Z"
+    },
+    {
+      "id": 31,
+      "date": "2025-04-03T09:05:33.710Z",
+      "timeSlot": "14:00-15:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.152Z"
+    },
+    {
+      "id": 32,
+      "date": "2025-04-03T09:05:33.710Z",
+      "timeSlot": "15:30-17:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.219Z"
+    },
+    {
+      "id": 33,
+      "date": "2025-04-04T09:05:33.710Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.284Z"
+    },
+    {
+      "id": 34,
+      "date": "2025-04-04T09:05:33.710Z",
+      "timeSlot": "12:30-14:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.351Z"
+    },
+    {
+      "id": 35,
+      "date": "2025-04-04T09:05:33.710Z",
+      "timeSlot": "14:00-15:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.418Z"
+    },
+    {
+      "id": 36,
+      "date": "2025-04-04T09:05:33.710Z",
+      "timeSlot": "15:30-17:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.485Z"
+    },
+    {
+      "id": 37,
+      "date": "2025-04-05T09:05:33.710Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.552Z"
+    },
+    {
+      "id": 38,
+      "date": "2025-04-05T09:05:33.710Z",
+      "timeSlot": "12:30-14:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.618Z"
+    },
+    {
+      "id": 39,
+      "date": "2025-04-05T09:05:33.710Z",
+      "timeSlot": "14:00-15:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.685Z"
+    },
+    {
+      "id": 40,
+      "date": "2025-04-05T09:05:33.710Z",
+      "timeSlot": "15:30-17:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.751Z"
+    },
+    {
+      "id": 41,
+      "date": "2025-04-07T09:05:33.710Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.817Z"
+    },
+    {
+      "id": 42,
+      "date": "2025-04-07T09:05:33.710Z",
+      "timeSlot": "12:30-14:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.883Z"
+    },
+    {
+      "id": 43,
+      "date": "2025-04-07T09:05:33.710Z",
+      "timeSlot": "14:00-15:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:34.950Z"
+    },
+    {
+      "id": 44,
+      "date": "2025-04-07T09:05:33.710Z",
+      "timeSlot": "15:30-17:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:35.016Z"
+    },
+    {
+      "id": 45,
+      "date": "2025-04-08T09:05:33.710Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:35.082Z"
+    },
+    {
+      "id": 46,
+      "date": "2025-04-08T09:05:33.710Z",
+      "timeSlot": "12:30-14:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:35.148Z"
+    },
+    {
+      "id": 47,
+      "date": "2025-04-08T09:05:33.710Z",
+      "timeSlot": "14:00-15:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:35.214Z"
+    },
+    {
+      "id": 48,
+      "date": "2025-04-08T09:05:33.710Z",
+      "timeSlot": "15:30-17:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-02T09:05:35.280Z"
+    }
+  ],
+  "appointments": [],
+  "registrationLinks": [
+    {
+      "id": 3,
+      "code": "TTS-REG",
+      "expiryTime": "2025-04-09T09:05:30.677Z",
+      "dailyLimit": 5,
+      "currentRegistrations": 0,
+      "createdAt": "2025-04-02T09:05:30.716Z",
+      "isActive": true,
+      "createdBy": 1,
+      "specificDate": null
+    }
+  ]
+}
