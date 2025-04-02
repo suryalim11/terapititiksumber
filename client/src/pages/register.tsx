@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { format, parseISO, isAfter, isSameDay } from "date-fns";
+import { format, parseISO, isAfter, isSameDay, addHours } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { formatDateDDMMYYYY, cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
@@ -652,14 +652,26 @@ export default function RegisterPage() {
                                     const formattedDate = format(slotDate, "EEEE, dd MMMM yyyy", { locale: idLocale });
                                     
                                     // Filter slots - hanya tampilkan slot yang belum lewat waktunya
-                                    const currentDateTime = new Date();
+                                    // Dapatkan waktu lokal dengan zona waktu UTC+7 (WIB)
+                                    const now = new Date();
+                                    // Tampilkan waktu server di console untuk debug
+                                    console.log('Server time:', now.toISOString());
+                                    
+                                    // Waktu lokal Indonesia (UTC+7)
+                                    const currentDateTime = addHours(now, 7);
+                                    console.log('Indonesia time (UTC+7):', currentDateTime.toISOString());
+                                    
                                     const validSlots = slots.filter((slot: any) => {
                                       // Parse tanggal dan jam dari slot
                                       const [hours, minutes] = slot.timeSlot.split(':').map(Number);
                                       const slotDateTime = new Date(slotDate);
                                       slotDateTime.setHours(hours, minutes, 0, 0);
                                       
-                                      // Bandingkan dengan waktu sekarang, kembalikan true jika slot masih di masa depan
+                                      // Debug informasi slot
+                                      console.log(`Slot time ${slot.timeSlot}:`, slotDateTime.toISOString());
+                                      console.log(`Is after current time:`, isAfter(slotDateTime, currentDateTime));
+                                      
+                                      // Bandingkan dengan waktu lokal Indonesia, kembalikan true jika slot masih di masa depan
                                       return isAfter(slotDateTime, currentDateTime);
                                     });
                                     
