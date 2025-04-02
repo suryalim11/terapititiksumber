@@ -825,7 +825,18 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                   <Accordion type="single" collapsible className="w-full">
                     {/* Only show multi-session packages that have remaining sessions */}
                     {activeSessions
-                      .filter(session => session.package && session.package.sessions > 1 && session.remainingSessions > 0)
+                      .filter(session => 
+                        session.package && 
+                        session.package.sessions > 1 && 
+                        session.remainingSessions > 0 &&
+                        // Tambahkan filter untuk mengelompokkan berdasarkan packageId
+                        !activeSessions.some(s => 
+                          s.id < session.id && 
+                          s.packageId === session.packageId && 
+                          s.patientId === session.patientId &&
+                          s.remainingSessions > 0
+                        )
+                      )
                       .map(session => (
                       <AccordionItem value={`session-${session.id}`} key={session.id}>
                         <AccordionTrigger className="py-2 text-sm hover:no-underline">
@@ -901,7 +912,18 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                   <div className="text-sm text-muted-foreground border border-dashed rounded-md p-3 flex items-center gap-2">
                     <Info className="h-4 w-4" />
                     <span>
-                      Pasien memiliki {activeSessions.filter(session => session.package && session.package.sessions > 1 && session.remainingSessions > 0).length} paket terapi 12 sesi aktif. 
+                      Pasien memiliki {activeSessions.filter(session => 
+                        session.package && 
+                        session.package.sessions > 1 && 
+                        session.remainingSessions > 0 &&
+                        // Tambahkan filter untuk mengelompokkan berdasarkan packageId
+                        !activeSessions.some(s => 
+                          s.id < session.id && 
+                          s.packageId === session.packageId && 
+                          s.patientId === session.patientId &&
+                          s.remainingSessions > 0
+                        )
+                      ).length} paket terapi aktif. 
                       Aktifkan switch untuk menggunakan sesi dari paket yang ada.
                     </span>
                   </div>
