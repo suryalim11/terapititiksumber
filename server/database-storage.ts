@@ -3,7 +3,7 @@ import {
   Product, InsertProduct, Package, InsertPackage, Transaction,
   InsertTransaction, Session, InsertSession,
   Appointment, InsertAppointment, TherapySlot, InsertTherapySlot,
-  RegistrationLink, InsertRegistrationLink
+  RegistrationLink, InsertRegistrationLink, ConfirmationToken, InsertConfirmationToken
 } from "@shared/schema";
 import { db, sql } from "./db";
 import { eq, gt, lt, and, desc, asc, not } from "drizzle-orm";
@@ -311,6 +311,52 @@ export class DatabaseStorage implements IStorage {
       console.error("Error saat menghapus pasien:", error);
       return false;
     }
+  }
+  
+  async searchPatientByNameOrPhone(query: string): Promise<Patient[]> {
+    const queryLowerCase = query.toLowerCase();
+    
+    // Use the SQL ILIKE operator for case-insensitive search
+    const results = await db.query.patients.findMany({
+      where: sql`(LOWER(${schema.patients.name}) LIKE ${`%${queryLowerCase}%`} OR 
+                  ${schema.patients.phoneNumber} LIKE ${`%${query}%`})`,
+      orderBy: [desc(schema.patients.createdAt)]
+    });
+    
+    return results;
+  }
+  
+  // Confirmation Token methods
+  async createConfirmationToken(token: InsertConfirmationToken): Promise<ConfirmationToken> {
+    // Insert token into database
+    const [result] = await db.insert(schema.confirmationTokens)
+      .values({
+        token: token.token,
+        patientId: token.patientId,
+        appointmentId: token.appointmentId,
+        expiryTime: token.expiryTime,
+        isUsed: false
+      })
+      .returning();
+    
+    return result;
+  }
+  
+  async getConfirmationTokenByToken(token: string): Promise<ConfirmationToken | undefined> {
+    const result = await db.query.confirmationTokens.findFirst({
+      where: eq(schema.confirmationTokens.token, token)
+    });
+    return result;
+  }
+  
+  async markTokenAsUsed(token: string): Promise<ConfirmationToken | undefined> {
+    const [result] = await db
+      .update(schema.confirmationTokens)
+      .set({ isUsed: true })
+      .where(eq(schema.confirmationTokens.token, token))
+      .returning();
+    
+    return result;
   }
 
   // Product methods

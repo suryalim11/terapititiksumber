@@ -220,10 +220,10 @@ export class MemStorage implements IStorage {
       id: 1,
       code: "TTS-REG",
       expiryTime,
-      dailyLimit: 5,
-      currentRegistrations: 0,
+      dailyLimit: 10, // Ditingkatkan dari 5 menjadi 10
+      currentRegistrations: 0, // Direset ke 0
       createdAt: now,
-      isActive: true,
+      isActive: true, // Memastikan aktif
       createdBy: 1, // Admin user ID
       specificDate: null
     };
