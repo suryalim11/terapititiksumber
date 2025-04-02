@@ -17,15 +17,40 @@ interface SlotPatientsDialogProps {
 }
 
 export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDialogProps) {
+  // Hooks
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // State untuk konfirmasi batalkan janji
+  // State
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
 
-  // Mutation untuk membatalkan janji
+  // Data fetching
+  const fetchPatients = useCallback(async () => {
+    if (!slotId) return null;
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Fetching patients for therapy slot:", slotId);
+    }
+    try {
+      const res = await fetch(`/api/therapy-slots/${slotId}/patients`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch patients');
+      }
+      return await res.json();
+    } catch (error) {
+      console.error("Error fetching patients:", error);
+      throw error;
+    }
+  }, [slotId]);
+  
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['/api/therapy-slots', slotId, 'patients'],
+    queryFn: fetchPatients,
+    enabled: !!slotId && isOpen
+  });
+  
+  // Mutations
   const cancelAppointmentMutation = useMutation({
     mutationFn: async (appointmentId: number) => {
       const response = await fetch(`/api/appointments/${appointmentId}/cancel`, {
@@ -63,7 +88,33 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   });
   
-  // Fungsi untuk membuka dialog konfirmasi batalkan janji (memoized)
+  // Effects
+  useEffect(() => {
+    if (isOpen && slotId) {
+      try {
+        refetch();
+      } catch (error) {
+        console.error("Error refetching slot data:", error);
+        toast({
+          title: "Terjadi kesalahan",
+          description: "Gagal memuat data slot terapi. Silakan coba lagi.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [isOpen, slotId, refetch, toast]);
+  
+  // Callbacks
+  const formatDate = useCallback((dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return format(date, 'dd MMMM yyyy', { locale: localeId });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return 'Invalid date';
+    }
+  }, []);
+  
   const handleCancelAppointment = useCallback((appointment: any, event: React.MouseEvent) => {
     try {
       event.stopPropagation(); // Mencegah event propagation ke elemen parent
@@ -89,7 +140,6 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }, [toast]);
   
-  // Fungsi untuk konfirmasi batalkan janji (memoized)
   const confirmCancelAppointment = useCallback(() => {
     try {
       if (selectedAppointment && selectedAppointment.id) {
@@ -114,49 +164,6 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }, [selectedAppointment, cancelAppointmentMutation, toast]);
   
-  // Menggunakan useCallback untuk queryFn agar tidak dirender ulang
-  const fetchPatients = useCallback(async () => {
-    if (!slotId) return null;
-    if (process.env.NODE_ENV === 'development') {
-      console.log("Fetching patients for therapy slot:", slotId);
-    }
-    const res = await fetch(`/api/therapy-slots/${slotId}/patients`);
-    if (!res.ok) {
-      throw new Error('Failed to fetch patients');
-    }
-    const responseData = await res.json();
-    return responseData;
-  }, [slotId]);
-  
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['/api/therapy-slots', slotId, 'patients'],
-    queryFn: fetchPatients,
-    enabled: !!slotId && isOpen
-  });
-  
-  // Refetch data saat dialog dibuka
-  useEffect(() => {
-    if (isOpen && slotId) {
-      try {
-        refetch();
-      } catch (error) {
-        console.error("Error refetching slot data:", error);
-        toast({
-          title: "Terjadi kesalahan",
-          description: "Gagal memuat data slot terapi. Silakan coba lagi.",
-          variant: "destructive",
-        });
-      }
-    }
-  }, [isOpen, slotId, refetch, toast]);
-
-  // Menggunakan useMemo untuk memformat tanggal agar tidak dirender ulang
-  const formatDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    return format(date, 'dd MMMM yyyy', { locale: localeId });
-  }, []);
-  
-  // Fungsi untuk mengarahkan ke halaman transaksi dan langsung membuka form baru (memoized)
   const navigateToTransaction = useCallback((patient: any) => {
     if (!patient || !patient.id) {
       toast({
@@ -198,9 +205,11 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       });
     }
   }, [onClose, navigate, toast]);
-
+  
+  // Early return
   if (!isOpen) return null;
 
+  // Render
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -266,22 +275,17 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                   </p>
                 ) : (
                   <div>
-                    {/* Filter hanya pasien dengan status aktif (booked atau active) */}
                     {(() => {
                       // Log informasi debug hanya dalam mode pengembangan
                       if (process.env.NODE_ENV === 'development' && data.appointments.length > 0) {
                         console.log("Debug - Appointments data:", data.appointments.map((a: any) => `${a.id}: ${a.status}`));
                       }
                       
-                      // Sebagai alternatif dari pemeriksaan status yang sensitif terhadap huruf besar/kecil,
-                      // kita gunakan pendekatan case insensitive untuk pemeriksaan status dan cache hasilnya dengan useMemo
-                      // Termasuk 'scheduled' sebagai status aktif
                       const activeAppointments = useMemo(() => {
                         if (!Array.isArray(data.appointments)) return [];
                         
                         const activeStatusPatterns = ['active', 'booked', 'confirmed', 'scheduled'];
                         
-                        // Fungsi untuk memverifikasi apakah status termasuk status aktif (case insensitive)
                         const isActiveStatus = (status: string): boolean => {
                           if (!status) return false;
                           const statusLower = status.toLowerCase();
@@ -290,7 +294,6 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                         
                         return data.appointments.filter(
                           (appointment: any) => {
-                            // Gunakan fungsi helpers untuk pemeriksaan status
                             return appointment && appointment.status && isActiveStatus(appointment.status);
                           }
                         );
@@ -302,60 +305,64 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                         </p>
                       ) : (
                         <div className="border rounded-md divide-y">
-                          {activeAppointments.map((appointment: any) => (
-                            <div 
-                              key={appointment.id} 
-                              className="p-3 text-sm hover:bg-teal-50 transition-colors"
-                            >
-                              <div className="font-medium flex items-center justify-between">
-                                <span>{appointment.patient?.name || 'Pasien tidak diketahui'}</span>
-                                <Badge className={useMemo(() => {
-                                  if (!appointment.status) return 'bg-gray-100 text-gray-800';
-                                  
-                                  const status = appointment.status.toLowerCase();
-                                  if (status.includes('booked')) {
-                                    return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
-                                  } else if (status.includes('confirmed')) {
-                                    return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-                                  } else if (status.includes('scheduled')) {
-                                    return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
-                                  } else {
-                                    return 'bg-green-100 text-green-800 hover:bg-green-200';
-                                  }
-                                }, [appointment.status])}>
-                                  {appointment.status || 'Unknown'}
-                                </Badge>
-                              </div>
-                              <div className="flex justify-between text-muted-foreground text-xs mt-1">
-                                <span>{appointment.patient?.phoneNumber || '-'}</span>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    onClick={(e) => handleCancelAppointment(appointment, e)}
-                                    disabled={cancelAppointmentMutation.isPending && selectedAppointment?.id === appointment.id}
-                                  >
-                                    {cancelAppointmentMutation.isPending && selectedAppointment?.id === appointment.id ? (
-                                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                    ) : (
-                                      <Ban className="h-3 w-3 mr-1" />
-                                    )}
-                                    Batalkan
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    onClick={() => navigateToTransaction(appointment.patient)}
-                                  >
-                                    <ShoppingCart className="h-3 w-3 mr-1" />
-                                    Transaksi
-                                  </Button>
+                          {activeAppointments.map((appointment: any) => {
+                            const statusClass = useMemo(() => {
+                              if (!appointment.status) return 'bg-gray-100 text-gray-800';
+                              
+                              const status = appointment.status.toLowerCase();
+                              if (status.includes('booked')) {
+                                return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
+                              } else if (status.includes('confirmed')) {
+                                return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+                              } else if (status.includes('scheduled')) {
+                                return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
+                              } else {
+                                return 'bg-green-100 text-green-800 hover:bg-green-200';
+                              }
+                            }, [appointment.status]);
+                            
+                            return (
+                              <div 
+                                key={appointment.id} 
+                                className="p-3 text-sm hover:bg-teal-50 transition-colors"
+                              >
+                                <div className="font-medium flex items-center justify-between">
+                                  <span>{appointment.patient?.name || 'Pasien tidak diketahui'}</span>
+                                  <Badge className={statusClass}>
+                                    {appointment.status || 'Unknown'}
+                                  </Badge>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground text-xs mt-1">
+                                  <span>{appointment.patient?.phoneNumber || '-'}</span>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs"
+                                      onClick={(e) => handleCancelAppointment(appointment, e)}
+                                      disabled={cancelAppointmentMutation.isPending && selectedAppointment?.id === appointment.id}
+                                    >
+                                      {cancelAppointmentMutation.isPending && selectedAppointment?.id === appointment.id ? (
+                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                      ) : (
+                                        <Ban className="h-3 w-3 mr-1" />
+                                      )}
+                                      Batalkan
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs"
+                                      onClick={() => navigateToTransaction(appointment.patient)}
+                                    >
+                                      <ShoppingCart className="h-3 w-3 mr-1" />
+                                      Transaksi
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       );
                     })()}
@@ -376,8 +383,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
               Apakah Anda yakin ingin membatalkan janji temu pasien ini?
               {selectedAppointment && (
                 <div className="mt-2 p-2 border rounded-md bg-muted">
-                  <p className="font-medium">{selectedAppointment.patient?.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedAppointment.patient?.phoneNumber}</p>
+                  <p className="font-medium">{selectedAppointment.patient?.name || 'Pasien tidak diketahui'}</p>
+                  <p className="text-sm text-muted-foreground">{selectedAppointment.patient?.phoneNumber || '-'}</p>
                 </div>
               )}
             </AlertDialogDescription>
