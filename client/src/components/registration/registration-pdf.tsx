@@ -25,15 +25,24 @@ export function RegistrationPDF({
   const generatePDF = () => {
     const doc = new jsPDF();
     
+    // Add colored header bar
+    doc.setFillColor(0, 128, 128);
+    doc.rect(0, 0, 210, 8, 'F');
+    
     // Add logo or header
     doc.setFontSize(18);
     doc.setTextColor(0, 128, 128); // Teal color
     doc.text("TERAPI TITIK SUMBER", 105, 20, { align: "center" });
     
+    // Add contact info
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Telp: +62 811-777-3608 | www.terapititiksumber.com", 105, 25, { align: "center" });
+    
     // Divider line
     doc.setDrawColor(0, 128, 128);
     doc.setLineWidth(0.5);
-    doc.line(20, 25, 190, 25);
+    doc.line(20, 30, 190, 30);
     
     // Title
     doc.setFontSize(16);
@@ -185,10 +194,10 @@ export function RegistrationPDF({
   return (
     <Button
       onClick={generatePDF}
-      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white mt-4"
+      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white mt-4 py-6 text-lg font-medium w-full justify-center"
     >
-      <Download className="h-4 w-4" />
-      Unduh Bukti Pendaftaran
+      <Download className="h-5 w-5 mr-2" />
+      Unduh Bukti Pendaftaran Resmi
     </Button>
   );
 }

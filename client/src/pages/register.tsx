@@ -853,9 +853,22 @@ export default function RegisterPage() {
               {/* Add PDF download button */}
               <div className="mb-4">
                 <div className="bg-green-50 rounded-md p-4 border border-green-200 mb-4">
-                  <h3 className="text-green-800 font-medium flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4" /> Jadwal Terapi Anda telah dikonfirmasi!
+                  <h3 className="text-green-800 font-semibold flex items-center gap-2 text-lg">
+                    <CheckCircle className="h-5 w-5" /> Jadwal Terapi Anda telah dikonfirmasi!
                   </h3>
+                  {selectedSlot && (
+                    <div className="mt-2 mb-2 bg-white rounded p-3 border border-green-100">
+                      <p className="text-sm font-medium text-gray-800">Detail Jadwal Terkonfirmasi:</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <CalendarIcon className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-gray-700">{selectedSlot.date}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Clock className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-gray-700">{selectedSlot.timeSlot}</span>
+                      </div>
+                    </div>
+                  )}
                   <p className="text-sm text-green-700 mt-1">
                     Silakan unduh bukti pendaftaran resmi di bawah ini. Bukti ini harap dibawa saat datang ke klinik.
                   </p>
