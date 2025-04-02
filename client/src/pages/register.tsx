@@ -654,13 +654,9 @@ export default function RegisterPage() {
                                     // Filtering logic untuk menampilkan hanya slot yang belum lewat
                                     const now = new Date();
                                     
-                                    // Tambahkan informasi debugging untuk melihat waktu server
-                                    console.log("Waktu server saat ini:", now);
-                                    
                                     // Tambahkan 7 jam untuk zona waktu Indonesia (WIB/UTC+7)
                                     // Ini cara yang lebih aman untuk mendapatkan waktu lokal Indonesia
                                     const localTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-                                    console.log("Waktu lokal Indonesia (WIB):", localTime);
                                     
                                     // Filter slot yang belum lewat waktunya
                                     const validSlots = slots.filter((slot: any) => {
@@ -672,12 +668,6 @@ export default function RegisterPage() {
                                         // Buat objek tanggal slot dengan tanggal hari slot + jam dari timeSlot
                                         const slotDateTime = new Date(slotDate);
                                         slotDateTime.setHours(hours, minutes, 0, 0);
-                                        
-                                        // Debugging waktu slot
-                                        console.log(`Raw timeSlot: ${slot.timeSlot}, StartTime: ${startTime}, Hours: ${hours}, Minutes: ${minutes}`);
-                                        
-                                        // Debug informasi slot
-                                        console.log(`Slot: ${slot.timeSlot}, DateTime: ${slotDateTime}, isAfter currentTime: ${slotDateTime > localTime}`);
                                         
                                         // Bandingkan dengan waktu lokal Indonesia
                                         return slotDateTime > localTime;
