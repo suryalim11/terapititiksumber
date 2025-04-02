@@ -78,32 +78,33 @@ export function RegistrationPDF({
     doc.text(`Tanggal Pendaftaran: ${format(registrationDate, "dd MMMM yyyy")}`, 25, y); y += lineHeight;
     
     // Appointment details if available
-    y += 5;
-    doc.setFont("helvetica", "bold");
-    doc.text("Detail Jadwal Terapi:", 20, y); y += lineHeight;
-    
-    doc.setFont("helvetica", "normal");
-    if (therapyDate) {
-      doc.text(`Tanggal: ${therapyDate}`, 25, y); y += lineHeight;
-    } else {
-      doc.text("Tanggal: Menunggu konfirmasi admin", 25, y); y += lineHeight;
+    if (therapyDate || therapyTime) {
+      y += 5;
+      doc.setFont("helvetica", "bold");
+      doc.text("Detail Jadwal Terapi:", 20, y); y += lineHeight;
+      
+      doc.setFont("helvetica", "normal");
+      if (therapyDate) {
+        doc.text(`Tanggal: ${therapyDate}`, 25, y); y += lineHeight;
+      }
+      
+      if (therapyTime) {
+        doc.text(`Jam: ${therapyTime}`, 25, y); y += lineHeight;
+      }
+      
+      // Add location information
+      doc.text("Lokasi: Klinik Terapi Titik Sumber", 25, y); y += lineHeight;
     }
     
-    if (therapyTime) {
-      doc.text(`Jam: ${therapyTime}`, 25, y); y += lineHeight;
-    } else {
-      doc.text("Jam: Menunggu konfirmasi admin", 25, y); y += lineHeight;
-    }
-    
-    // Add location information
-    doc.text("Lokasi: Klinik Terapi Titik Sumber", 25, y); y += lineHeight;
-    
-    // Note
+    // Note section
     y += 10;
     doc.setFont("helvetica", "italic");
-    doc.text("* Harap datang 15 menit sebelum jadwal untuk persiapan terapi.", 20, y); 
+    const note1 = "* Harap datang 15 menit sebelum jadwal untuk persiapan terapi.";
+    const note2 = "* Bukti pendaftaran ini harap dibawa saat datang ke klinik.";
+    
+    doc.text(note1, 20, y); 
     y += lineHeight;
-    doc.text("* Bukti pendaftaran ini harap dibawa saat datang ke klinik.", 20, y); 
+    doc.text(note2, 20, y); 
     y += lineHeight;
     
     // Footer
