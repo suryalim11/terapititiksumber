@@ -28,6 +28,26 @@ interface RecentActivity {
   timestamp: string;
 }
 
+interface ActivePackage {
+  id: number;
+  patient: {
+    id: number;
+    name: string;
+    patientId: string;
+  } | null;
+  package: {
+    id: number;
+    name: string;
+    sessions: number;
+  } | null;
+  status: string;
+  startDate: string;
+  lastSessionDate: string | null;
+  sessionsUsed: number;
+  totalSessions: number;
+  progress: number;
+}
+
 export default function Dashboard() {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -55,6 +75,11 @@ export default function Dashboard() {
   // Fetch today's therapy slots
   const { data: todaySlots = [], isLoading: isSlotsLoading } = useQuery<any[]>({
     queryKey: ['/api/today-slots'],
+  });
+  
+  // Fetch active packages
+  const { data: activePackages = [], isLoading: isPackagesLoading } = useQuery<ActivePackage[]>({
+    queryKey: ['/api/dashboard/active-packages'],
   });
 
   // Dashboard stat cards data
@@ -271,6 +296,89 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Active Packages Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <span>Paket Aktif Pasien</span>
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Progress paket terapi pasien yang masih aktif
+          </p>
+        </CardHeader>
+        <CardContent>
+          {isPackagesLoading ? (
+            <div className="flex justify-center items-center py-6">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          ) : activePackages.length > 0 ? (
+            <div className="space-y-4">
+              {activePackages.map((pkg) => (
+                <div key={pkg.id} className="border rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="font-medium">{pkg.patient?.name || 'Unknown Patient'}</div>
+                      <div className="text-sm text-muted-foreground">
+                        ID: {pkg.patient?.patientId || 'Unknown'}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">{pkg.package?.name || 'Unknown Package'}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {pkg.sessionsUsed} dari {pkg.totalSessions} sesi
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Progress 
+                    value={pkg.progress} 
+                    max={100} 
+                    className="h-2 bg-primary/20"
+                    indicatorClassName={pkg.progress >= 90 ? "bg-green-500" : "bg-primary"}
+                  />
+                  
+                  <div className="flex justify-between items-center text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Mulai: </span>
+                      {new Date(pkg.startDate).toLocaleDateString('id-ID', {
+                        day: 'numeric', 
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </div>
+                    {pkg.lastSessionDate && (
+                      <div>
+                        <span className="text-muted-foreground">Terakhir: </span>
+                        {new Date(pkg.lastSessionDate).toLocaleDateString('id-ID', {
+                          day: 'numeric', 
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </div>
+                    )}
+                    <div className="font-medium">
+                      {pkg.progress}%
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed p-8 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <PackageIcon className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="mt-4 text-lg font-semibold">
+                Belum Ada Paket Aktif
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Paket terapi aktif pasien akan muncul di sini.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       
       {/* Dialog untuk melihat pasien yang terdaftar di slot */}
       <SlotPatientsDialog 

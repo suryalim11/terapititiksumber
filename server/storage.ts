@@ -64,6 +64,7 @@ export interface IStorage {
   getSession(id: number): Promise<Session | undefined>;
   getSessionsByPatient(patientId: number): Promise<Session[]>;
   getActiveSessionsByPatient(patientId: number): Promise<Session[]>;
+  getAllActiveSessions(): Promise<Session[]>;
   createSession(session: InsertSession): Promise<Session>;
   updateSessionUsage(id: number, sessionsUsed?: number): Promise<Session | undefined>;
   
@@ -505,6 +506,11 @@ export class MemStorage implements IStorage {
   async getActiveSessionsByPatient(patientId: number): Promise<Session[]> {
     return Array.from(this.therapySessions.values())
       .filter(session => session.patientId === patientId && session.status === 'active');
+  }
+  
+  async getAllActiveSessions(): Promise<Session[]> {
+    return Array.from(this.therapySessions.values())
+      .filter(session => session.status === 'active');
   }
 
   async createSession(insertSession: InsertSession): Promise<Session> {

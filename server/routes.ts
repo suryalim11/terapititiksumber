@@ -779,6 +779,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get active packages for dashboard
+  app.get("/api/dashboard/active-packages", async (req: Request, res: Response) => {
+    try {
+      const sessions = await storage.getAllActiveSessions();
+      
+      // Map sessions to include patient and package details
+      const activePackages = await Promise.all(
+        sessions.map(async (session) => {
+          const patient = await storage.getPatient(session.patientId);
+          const packageItem = await storage.getPackage(session.packageId);
+          
+          return {
+            id: session.id,
+            patient: patient ? {
+              id: patient.id,
+              name: patient.name,
+              patientId: patient.patientId
+            } : null,
+            package: packageItem ? {
+              id: packageItem.id,
+              name: packageItem.name,
+              sessions: packageItem.sessions
+            } : null,
+            status: session.status,
+            startDate: session.startDate,
+            lastSessionDate: session.lastSessionDate,
+            sessionsUsed: session.sessionsUsed,
+            totalSessions: session.totalSessions,
+            progress: Math.round((session.sessionsUsed / session.totalSessions) * 100)
+          };
+        })
+      );
+      
+      return res.status(200).json(activePackages);
+    } catch (error) {
+      console.error("Error getting active packages:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   app.get("/api/today-slots", async (req: Request, res: Response) => {
     try {
       // Mendapatkan tanggal hari ini

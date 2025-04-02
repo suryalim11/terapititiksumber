@@ -390,6 +390,12 @@ export class DatabaseStorage implements IStorage {
       )
     });
   }
+  
+  async getAllActiveSessions(): Promise<Session[]> {
+    return db.query.sessions.findMany({
+      where: eq(schema.sessions.status, "active")
+    });
+  }
 
   async createSession(session: InsertSession): Promise<Session> {
     const result = await db.insert(schema.sessions).values(session).returning();
