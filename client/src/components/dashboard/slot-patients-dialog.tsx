@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, CalendarIcon, ShoppingCart, X } from "lucide-react";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 interface SlotPatientsDialogProps {
   slotId: number | null;
@@ -17,7 +18,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const [, navigate] = useLocation();
   const { toast } = useToast();
   
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/therapy-slots', slotId, 'patients'],
     queryFn: async () => {
       if (!slotId) return null;
@@ -29,6 +30,13 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     },
     enabled: !!slotId && isOpen
   });
+  
+  // Refetch data saat dialog dibuka
+  useEffect(() => {
+    if (isOpen && slotId) {
+      refetch();
+    }
+  }, [isOpen, slotId, refetch]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -76,6 +84,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
               <span className="sr-only">Close</span>
             </DialogClose>
           </DialogTitle>
+          <DialogDescription>
+            Menampilkan detail slot terapi dan daftar pasien yang terdaftar.
+          </DialogDescription>
         </DialogHeader>
         
         {isLoading ? (
@@ -122,10 +133,12 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                 </p>
               ) : (
                 <div>
-                  {/* Filter hanya pasien dengan status 'Active' */}
+                  {/* Filter hanya pasien dengan status aktif (booked atau active) */}
                   {(() => {
+                    console.log("Appointments data:", data.appointments);
                     const activeAppointments = data.appointments.filter(
-                      (appointment: any) => appointment.status === 'Active'
+                      (appointment: any) => appointment.status.toLowerCase() === 'active' || 
+                                            appointment.status.toLowerCase() === 'booked'
                     );
                     
                     return activeAppointments.length === 0 ? (
@@ -140,14 +153,17 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                             className="p-3 text-sm hover:bg-teal-50 cursor-pointer transition-colors"
                             onClick={() => navigateToTransaction(appointment.patient)}
                           >
-                            <div className="font-medium flex items-center">
-                              {appointment.patient.name}
-                              <ShoppingCart className="h-3.5 w-3.5 ml-2 text-teal-600" />
+                            <div className="font-medium flex items-center justify-between">
+                              <span>{appointment.patient.name}</span>
+                              <Badge className={appointment.status.toLowerCase() === 'booked' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}>
+                                {appointment.status}
+                              </Badge>
                             </div>
-                            <div className="text-muted-foreground text-xs">
-                              {appointment.patient.phoneNumber}
-                              <span className="inline-block ml-1 text-xs text-teal-600">
-                                Klik untuk buat transaksi
+                            <div className="flex justify-between text-muted-foreground text-xs mt-1">
+                              <span>{appointment.patient.phoneNumber}</span>
+                              <span className="inline-flex items-center text-xs text-teal-600">
+                                <ShoppingCart className="h-3 w-3 mr-1" />
+                                Klik untuk transaksi
                               </span>
                             </div>
                           </div>
