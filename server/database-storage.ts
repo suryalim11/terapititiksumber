@@ -461,9 +461,40 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getAllActiveSessions(): Promise<Session[]> {
-    return db.query.sessions.findMany({
+    // Get all active sessions first
+    const allActiveSessions = await db.query.sessions.findMany({
       where: eq(schema.sessions.status, "active")
     });
+    
+    // Process to eliminate duplicate sessions (only keep the latest session for each patient+package combination)
+    const uniqueCombinations = new Map<string, Session>();
+    
+    for (const session of allActiveSessions) {
+      const key = `${session.patientId}_${session.packageId}`;
+      
+      if (!uniqueCombinations.has(key)) {
+        uniqueCombinations.set(key, session);
+      } else {
+        const existingSession = uniqueCombinations.get(key)!;
+        
+        // Keep the session with the most recent lastSessionDate, or if that's equal, the one with higher sessionsUsed
+        if (!existingSession.lastSessionDate && session.lastSessionDate) {
+          uniqueCombinations.set(key, session);
+        } else if (existingSession.lastSessionDate && session.lastSessionDate) {
+          const existingDate = new Date(existingSession.lastSessionDate);
+          const newDate = new Date(session.lastSessionDate);
+          
+          if (newDate > existingDate || 
+              (newDate.getTime() === existingDate.getTime() && session.sessionsUsed > existingSession.sessionsUsed)) {
+            uniqueCombinations.set(key, session);
+          }
+        } else if (session.sessionsUsed > existingSession.sessionsUsed) {
+          uniqueCombinations.set(key, session);
+        }
+      }
+    }
+    
+    return Array.from(uniqueCombinations.values());
   }
 
   async createSession(session: InsertSession): Promise<Session> {
