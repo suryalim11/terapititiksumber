@@ -197,8 +197,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                     {(() => {
                       console.log("Appointments data:", data.appointments);
                       const activeAppointments = data.appointments.filter(
-                        (appointment: any) => appointment.status.toLowerCase() === 'active' || 
-                                              appointment.status.toLowerCase() === 'booked'
+                        (appointment: any) => {
+                          const status = appointment.status.toLowerCase();
+                          return status === 'active' || status === 'booked' || status === 'confirmed';
+                        }
                       );
                       
                       return activeAppointments.length === 0 ? (
@@ -226,8 +228,13 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                                     size="sm"
                                     className="h-6 px-2 text-xs"
                                     onClick={(e) => handleCancelAppointment(appointment, e)}
+                                    disabled={cancelAppointmentMutation.isPending && selectedAppointment?.id === appointment.id}
                                   >
-                                    <Ban className="h-3 w-3 mr-1" />
+                                    {cancelAppointmentMutation.isPending && selectedAppointment?.id === appointment.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                    ) : (
+                                      <Ban className="h-3 w-3 mr-1" />
+                                    )}
                                     Batalkan
                                   </Button>
                                   <Button
