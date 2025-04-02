@@ -1407,7 +1407,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ 
           message: "Registration limit has been reached for today",
           currentRegistrations: link.currentRegistrations,
-          dailyLimit: link.dailyLimit
+          dailyLimit: link.dailyLimit,
+          status: "quota-reached"
         });
       }
       

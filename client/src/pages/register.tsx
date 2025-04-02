@@ -124,50 +124,58 @@ export default function RegisterPage() {
   // Function to verify the registration code
   const verifyRegistrationCode = async (code: string) => {
     try {
-      const response = await apiRequest(`/api/verify-registration-link`, {
-        method: "POST",
+      const response = await fetch('/api/verify-registration-link', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ code }),
       });
       
-      if (response.valid) {
+      const data = await response.json();
+      
+      if (response.ok && data.valid) {
         // Code is valid
         setRegistrationStatus("idle"); // Ready for registration
         
         // Store metadata if available
-        if (response.dailyLimit) {
-          setRegistrationLimit(response.dailyLimit);
+        if (data.dailyLimit) {
+          setRegistrationLimit(data.dailyLimit);
         }
         
-        if (response.currentRegistrations !== undefined) {
-          setCurrentRegistrations(response.currentRegistrations);
+        if (data.currentRegistrations !== undefined) {
+          setCurrentRegistrations(data.currentRegistrations);
         }
         
-        if (response.expiryTime) {
-          setExpiryTime(new Date(response.expiryTime));
+        if (data.expiryTime) {
+          setExpiryTime(new Date(data.expiryTime));
         }
       } else {
+        // Check for explicit status
+        if (data.status === "quota-reached") {
+          setRegistrationStatus("quota-reached");
+          if (data.dailyLimit) setRegistrationLimit(data.dailyLimit);
+          if (data.currentRegistrations !== undefined) setCurrentRegistrations(data.currentRegistrations);
+        }
         // Handle various error scenarios based on the message
-        if (response.message?.includes("expired")) {
+        else if (data.message?.includes("expired")) {
           setRegistrationStatus("expired");
-        } else if (response.message?.includes("limit") || response.message?.includes("reached")) {
+        } else if (data.message?.includes("limit") || data.message?.includes("reached")) {
           setRegistrationStatus("quota-reached");
           
           // Try to extract numbers from the message if available
-          if (response.dailyLimit) {
-            setRegistrationLimit(response.dailyLimit);
+          if (data.dailyLimit) {
+            setRegistrationLimit(data.dailyLimit);
           }
           
-          if (response.currentRegistrations) {
-            setCurrentRegistrations(response.currentRegistrations);
+          if (data.currentRegistrations !== undefined) {
+            setCurrentRegistrations(data.currentRegistrations);
           }
         } else {
           setRegistrationStatus("error");
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error verifying registration code:", error);
       setRegistrationStatus("error");
     }
