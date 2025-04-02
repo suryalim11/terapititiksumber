@@ -227,7 +227,7 @@ export default function Dashboard() {
                       <p className="text-sm">{activity.description}</p>
                       <time className="text-xs text-muted-foreground">
                         {activity.timestamp ? 
-                          format(new Date(activity.timestamp), "dd/MM/yyyy, HH:mm", { locale: localeId }) :
+                          format(new Date(activity.timestamp), "dd/MM/yyyy, HH:mm 'WIB'", { locale: localeId }) :
                           ""}
                       </time>
                     </div>
@@ -267,7 +267,7 @@ export default function Dashboard() {
             </div>
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
-                {format(new Date(), "EEEE, dd/MM/yyyy", { locale: localeId })}
+                {format(new Date(), "EEEE, dd/MM/yyyy", { locale: localeId })} WIB
               </p>
             </div>
           </CardHeader>

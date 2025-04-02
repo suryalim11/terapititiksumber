@@ -12,12 +12,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Format a date string to dd/MM/yyyy format
+ * Format a date string to dd/MM/yyyy format with WIB timezone
  */
 export function formatDateDDMMYYYY(dateString: string | Date): string {
   try {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-    return dateFnsFormat(date, "dd/MM/yyyy", { locale: id });
+    return dateFnsFormat(date, "dd/MM/yyyy", { locale: id }) + " WIB";
   } catch (e) {
     return "";
   }
@@ -111,10 +111,10 @@ export function isValidDate(dateString: string): boolean {
 }
 
 /**
- * Format a date with time for display
+ * Format a date with time for display with WIB timezone
  */
 export function formatDate(date: Date): string {
-  return dateFnsFormat(date, "dd/MM/yyyy HH:mm", { locale: id });
+  return dateFnsFormat(date, "dd/MM/yyyy HH:mm", { locale: id }) + " WIB";
 }
 
 /**
