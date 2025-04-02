@@ -84,6 +84,13 @@ export const packages = pgTable("packages", {
   description: text("description"),
 });
 
+export const insertPackageSchema = createInsertSchema(packages).pick({
+  name: true,
+  sessions: true,
+  price: true,
+  description: true,
+});
+
 // Transaction Schema
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
@@ -185,6 +192,7 @@ export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 
 export type Package = typeof packages.$inferSelect;
+export type InsertPackage = z.infer<typeof insertPackageSchema>;
 
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;

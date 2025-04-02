@@ -1,6 +1,6 @@
 import { 
   User, InsertUser, Patient, InsertPatient,
-  Product, InsertProduct, Package, Transaction,
+  Product, InsertProduct, Package, InsertPackage, Transaction,
   InsertTransaction, Session, InsertSession,
   Appointment, InsertAppointment, TherapySlot, InsertTherapySlot,
   RegistrationLink, InsertRegistrationLink
@@ -374,6 +374,61 @@ export class DatabaseStorage implements IStorage {
 
   async getAllPackages(): Promise<Package[]> {
     return db.query.packages.findMany();
+  }
+  
+  async createPackage(packageData: InsertPackage): Promise<Package> {
+    const [newPackage] = await db
+      .insert(schema.packages)
+      .values({
+        name: packageData.name,
+        sessions: packageData.sessions,
+        price: packageData.price,
+        description: packageData.description
+      })
+      .returning();
+    return newPackage;
+  }
+  
+  async updatePackage(id: number, packageData: InsertPackage): Promise<Package | undefined> {
+    // Periksa apakah paket ada
+    const existingPackage = await this.getPackage(id);
+    if (!existingPackage) {
+      return undefined;
+    }
+    
+    // Update paket
+    const [updatedPackage] = await db
+      .update(schema.packages)
+      .set({
+        name: packageData.name,
+        sessions: packageData.sessions,
+        price: packageData.price,
+        description: packageData.description
+      })
+      .where(eq(schema.packages.id, id))
+      .returning();
+    
+    return updatedPackage;
+  }
+  
+  async deletePackage(id: number): Promise<boolean> {
+    try {
+      // Periksa apakah paket ada
+      const existingPackage = await this.getPackage(id);
+      if (!existingPackage) {
+        return false;
+      }
+      
+      // Hapus paket
+      await db
+        .delete(schema.packages)
+        .where(eq(schema.packages.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error("Error deleting package:", error);
+      return false;
+    }
   }
 
   // Transaction methods

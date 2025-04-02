@@ -1,7 +1,7 @@
 import { 
   users, patients, products, packages, transactions, sessions, appointments, therapySlots,
   type User, type InsertUser, type Patient, type InsertPatient,
-  type Product, type InsertProduct, type Package, type Transaction,
+  type Product, type InsertProduct, type Package, type InsertPackage, type Transaction,
   type InsertTransaction, type Session, type InsertSession,
   type Appointment, type InsertAppointment, type TherapySlot, type InsertTherapySlot
 } from "@shared/schema";
@@ -54,6 +54,9 @@ export interface IStorage {
   // Packages
   getPackage(id: number): Promise<Package | undefined>;
   getAllPackages(): Promise<Package[]>;
+  createPackage(packageData: InsertPackage): Promise<Package>;
+  updatePackage(id: number, packageData: InsertPackage): Promise<Package | undefined>;
+  deletePackage(id: number): Promise<boolean>;
   
   // Transactions
   getTransaction(id: number): Promise<Transaction | undefined>;
@@ -495,6 +498,39 @@ export class MemStorage implements IStorage {
 
   async getAllPackages(): Promise<Package[]> {
     return Array.from(this.packageList.values());
+  }
+  
+  async createPackage(packageData: InsertPackage): Promise<Package> {
+    const id = this.packageCurrentId++;
+    const newPackage: Package = { 
+      ...packageData, 
+      id,
+      description: packageData.description || null
+    };
+    this.packageList.set(id, newPackage);
+    return newPackage;
+  }
+  
+  async updatePackage(id: number, packageData: InsertPackage): Promise<Package | undefined> {
+    const existingPackage = this.packageList.get(id);
+    if (!existingPackage) return undefined;
+    
+    const updatedPackage: Package = {
+      ...existingPackage,
+      ...packageData,
+      description: packageData.description || null
+    };
+    
+    this.packageList.set(id, updatedPackage);
+    return updatedPackage;
+  }
+  
+  async deletePackage(id: number): Promise<boolean> {
+    const exists = this.packageList.has(id);
+    if (!exists) return false;
+    
+    this.packageList.delete(id);
+    return true;
   }
 
   // Transaction methods

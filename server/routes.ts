@@ -470,6 +470,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Internal server error" });
     }
   });
+  
+  // Create a new therapy package
+  app.post("/api/packages", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated() || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Unauthorized, only admin can create packages" });
+      }
+      
+      const packageData = {
+        name: req.body.name,
+        sessions: req.body.sessions,
+        price: req.body.price,
+        description: req.body.description
+      };
+      
+      const newPackage = await storage.createPackage(packageData);
+      return res.status(201).json(newPackage);
+    } catch (error) {
+      console.error("Error creating package:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Update a therapy package
+  app.put("/api/packages/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated() || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Unauthorized, only admin can update packages" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const packageData = {
+        name: req.body.name,
+        sessions: req.body.sessions,
+        price: req.body.price,
+        description: req.body.description
+      };
+      
+      const updatedPackage = await storage.updatePackage(id, packageData);
+      
+      if (!updatedPackage) {
+        return res.status(404).json({ message: "Package not found" });
+      }
+      
+      return res.status(200).json(updatedPackage);
+    } catch (error) {
+      console.error("Error updating package:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Delete a therapy package
+  app.delete("/api/packages/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated() || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Unauthorized, only admin can delete packages" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deletePackage(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Package not found" });
+      }
+      
+      return res.status(200).json({ success: true, message: "Package successfully deleted" });
+    } catch (error) {
+      console.error("Error deleting package:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
 
   // Transaction routes
   app.get("/api/transactions", async (req: Request, res: Response) => {
