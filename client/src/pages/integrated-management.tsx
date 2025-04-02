@@ -16,6 +16,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipTrigger,
+  TooltipProvider 
+} from "@/components/ui/tooltip";
 import {
   Card,
   CardContent,
@@ -542,6 +548,34 @@ export default function IntegratedManagement() {
       description: "Link pendaftaran berhasil disalin ke clipboard.",
     });
   };
+  
+  // Fungsi untuk sinkronisasi kuota slot terapi
+  const syncTherapySlotQuota = async () => {
+    try {
+      const response = await fetch('/api/therapy-slots/sync-quota', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Gagal melakukan sinkronisasi kuota');
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      toast({
+        title: "Sinkronisasi Berhasil",
+        description: "Kuota slot terapi berhasil disinkronisasi dengan data janji temu aktif.",
+      });
+    } catch (error) {
+      toast({
+        title: "Gagal Sinkronisasi",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan saat menyinkronkan kuota",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Format tanggal untuk ditampilkan
   const formatSlotDate = (dateStr: string) => {
@@ -608,766 +642,783 @@ export default function IntegratedManagement() {
         <title>Manajemen Pendaftaran | Terapi Titik Sumber</title>
       </Helmet>
       
-      {/* AlertDialog untuk konfirmasi hapus slot */}
-      <AlertDialog open={deletingSlotId !== null} onOpenChange={(open) => !open && setDeletingSlotId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Slot Terapi</AlertDialogTitle>
-            <AlertDialogDescription>
-              Anda yakin ingin menghapus slot terapi ini? Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deletingSlotId && deleteSlotMutation.mutate(deletingSlotId)}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={deleteSlotMutation.isPending}
-            >
-              {deleteSlotMutation.isPending ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Menghapus...
-                </>
-              ) : (
-                "Hapus"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* Deactivate Link Dialog */}
-      <AlertDialog 
-        open={isDeactivateDialogOpen} 
-        onOpenChange={setIsDeactivateDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Nonaktifkan Link Pendaftaran?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Link yang sudah dinonaktifkan tidak dapat digunakan lagi untuk pendaftaran pasien baru.
-              Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setIsDeactivateDialogOpen(false)}>
-              Batal
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => {
-                if (linkToDeactivate) {
-                  deactivateLinkMutation.mutate(linkToDeactivate);
-                }
-              }}
-              className="bg-amber-600 hover:bg-amber-700"
-              disabled={deactivateLinkMutation.isPending}
-            >
-              {deactivateLinkMutation.isPending ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Menonaktifkan...
-                </>
-              ) : (
-                "Nonaktifkan"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* Delete Link Dialog */}
-      <AlertDialog 
-        open={isDeleteDialogOpen} 
-        onOpenChange={setIsDeleteDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Link Pendaftaran?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Link pendaftaran ini akan dihapus secara permanen dan tidak dapat dikembalikan.
-              Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
-              Batal
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => {
-                if (linkToDelete) {
-                  deleteLinkMutation.mutate(linkToDelete);
-                }
-              }}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={deleteLinkMutation.isPending}
-            >
-              {deleteLinkMutation.isPending ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Menghapus...
-                </>
-              ) : (
-                "Hapus Permanen"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* Dialog untuk edit slot terapi */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Slot Terapi</DialogTitle>
-            <DialogDescription>
-              Edit detail untuk slot terapi ini.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
-              <FormField
-                control={editForm.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Tanggal</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pilih tanggal</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
+      <TooltipProvider>
+        {/* AlertDialog untuk konfirmasi hapus slot */}
+        <AlertDialog open={deletingSlotId !== null} onOpenChange={(open) => !open && setDeletingSlotId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Hapus Slot Terapi</AlertDialogTitle>
+              <AlertDialogDescription>
+                Anda yakin ingin menghapus slot terapi ini? Tindakan ini tidak dapat dibatalkan.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Batal</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deletingSlotId && deleteSlotMutation.mutate(deletingSlotId)}
+                className="bg-red-600 hover:bg-red-700"
+                disabled={deleteSlotMutation.isPending}
+              >
+                {deleteSlotMutation.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Menghapus...
+                  </>
+                ) : (
+                  "Hapus"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        {/* Deactivate Link Dialog */}
+        <AlertDialog 
+          open={isDeactivateDialogOpen} 
+          onOpenChange={setIsDeactivateDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Nonaktifkan Link Pendaftaran?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Link yang sudah dinonaktifkan tidak dapat digunakan lagi untuk pendaftaran pasien baru.
+                Tindakan ini tidak dapat dibatalkan.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setIsDeactivateDialogOpen(false)}>
+                Batal
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => {
+                  if (linkToDeactivate) {
+                    deactivateLinkMutation.mutate(linkToDeactivate);
+                  }
+                }}
+                className="bg-amber-600 hover:bg-amber-700"
+                disabled={deactivateLinkMutation.isPending}
+              >
+                {deactivateLinkMutation.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Menonaktifkan...
+                  </>
+                ) : (
+                  "Nonaktifkan"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        {/* Delete Link Dialog */}
+        <AlertDialog 
+          open={isDeleteDialogOpen} 
+          onOpenChange={setIsDeleteDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Hapus Link Pendaftaran?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Link pendaftaran ini akan dihapus secara permanen dan tidak dapat dikembalikan.
+                Tindakan ini tidak dapat dibatalkan.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
+                Batal
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => {
+                  if (linkToDelete) {
+                    deleteLinkMutation.mutate(linkToDelete);
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700"
+                disabled={deleteLinkMutation.isPending}
+              >
+                {deleteLinkMutation.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Menghapus...
+                  </>
+                ) : (
+                  "Hapus Permanen"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        {/* Dialog untuk edit slot terapi */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Slot Terapi</DialogTitle>
+              <DialogDescription>
+                Edit detail untuk slot terapi ini.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
+                <FormField
+                  control={editForm.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Tanggal</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pilih tanggal</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Waktu Mulai</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Waktu Selesai</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="maxQuota"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kuota Maksimal</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={1} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
                         />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editForm.control}
-                name="startTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Waktu Mulai</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editForm.control}
-                name="endTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Waktu Selesai</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editForm.control}
-                name="maxQuota"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Kuota Maksimal</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editForm.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Aktif
-                      </FormLabel>
-                      <FormDescription>
-                        Slot terapi ini dapat dipilih oleh pasien saat pendaftaran.
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-                  Batal
-                </Button>
-                <Button type="submit">Simpan Perubahan</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Dialog untuk buat slot terapi */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Buat Slot Terapi Baru</DialogTitle>
-            <DialogDescription>
-              Buat slot terapi baru untuk pasien.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Tanggal</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pilih tanggal</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="startTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Waktu Mulai</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="endTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Waktu Selesai</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="maxQuota"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Kuota Maksimal</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Aktif
-                      </FormLabel>
-                      <FormDescription>
-                        Slot terapi ini dapat dipilih oleh pasien saat pendaftaran.
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Batal
-                </Button>
-                <Button type="submit">Buat Slot</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog untuk membuat link pendaftaran */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Buat Link Pendaftaran Baru</DialogTitle>
-            <DialogDescription>
-              Buat link pendaftaran dengan batas waktu dan jumlah pendaftaran tertentu.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="expiryHours" className="col-span-4">
-                Berlaku selama (jam)
-              </Label>
-              <Input
-                id="expiryHours"
-                type="number"
-                min="1"
-                max="720"
-                value={expiryHours}
-                onChange={(e) => setExpiryHours(parseInt(e.target.value))}
-                className="col-span-4"
-              />
-              <p className="text-sm text-muted-foreground col-span-4">
-                Link akan kedaluwarsa setelah {expiryHours} jam (default 1 minggu / 168 jam)
-              </p>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dailyLimit" className="col-span-4">
-                Batas pendaftaran harian
-              </Label>
-              <Input
-                id="dailyLimit"
-                type="number"
-                min="1"
-                max="100"
-                value={dailyLimit}
-                onChange={(e) => setDailyLimit(parseInt(e.target.value))}
-                className="col-span-4"
-              />
-              <p className="text-sm text-muted-foreground col-span-4">
-                Maksimal {dailyLimit} pendaftaran per hari menggunakan link ini
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsCreateDialogOpen(false)}
-            >
-              Batal
-            </Button>
-            <Button 
-              onClick={handleCreateLink}
-              disabled={createLinkMutation.isPending}
-            >
-              {createLinkMutation.isPending ? "Membuat..." : "Buat Link"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <div className="py-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold">Manajemen Pendaftaran</h1>
-            <p className="text-gray-500">Kelola slot terapi dan link pendaftaran pasien</p>
-          </div>
-        </div>
-
-        <Tabs defaultValue="slots" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="slots">Slot Terapi</TabsTrigger>
-            <TabsTrigger value="links">Link Pendaftaran</TabsTrigger>
-          </TabsList>
-          
-          {/* Tab Slot Terapi */}
-          <TabsContent value="slots" className="space-y-4">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-              <div className="flex-1 flex flex-col sm:flex-row gap-2 min-w-[300px]">
-                <div className="flex-1">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    className="border rounded-md"
-                  />
-                </div>
-                <div className="flex-1 space-y-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Buat Slot Otomatis</CardTitle>
-                      <CardDescription>
-                        Buat slot terapi otomatis untuk beberapa hari mendatang
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-2 pt-0">
-                      {quickActions.map((action) => (
-                        <Button 
-                          key={action.days}
-                          variant="outline" 
-                          className="w-full justify-start"
-                          onClick={() => createBatchSlots(action.days, action.timeSlots)}
-                        >
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Buat untuk {action.label} ke depan
-                        </Button>
-                      ))}
-                    </CardContent>
-                  </Card>
-                  
-                  <Button 
-                    className="w-full" 
-                    onClick={() => setDialogOpen(true)}
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Buat Slot Manual
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Aktif
+                        </FormLabel>
+                        <FormDescription>
+                          Slot terapi ini dapat dipilih oleh pasien saat pendaftaran.
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                    Batal
                   </Button>
-                </div>
+                  <Button type="submit">Simpan Perubahan</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Dialog untuk buat slot terapi */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Buat Slot Terapi Baru</DialogTitle>
+              <DialogDescription>
+                Buat slot terapi baru untuk pasien.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Tanggal</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pilih tanggal</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Waktu Mulai</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Waktu Selesai</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="maxQuota"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kuota Maksimal</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={1} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Aktif
+                        </FormLabel>
+                        <FormDescription>
+                          Slot terapi ini dapat dipilih oleh pasien saat pendaftaran.
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                    Batal
+                  </Button>
+                  <Button type="submit">Buat Slot</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog untuk membuat link pendaftaran */}
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Buat Link Pendaftaran Baru</DialogTitle>
+              <DialogDescription>
+                Buat link pendaftaran dengan batas waktu dan jumlah pendaftaran tertentu.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="expiryHours" className="col-span-4">
+                  Berlaku selama (jam)
+                </Label>
+                <Input
+                  id="expiryHours"
+                  type="number"
+                  min="1"
+                  max="720"
+                  value={expiryHours}
+                  onChange={(e) => setExpiryHours(parseInt(e.target.value))}
+                  className="col-span-4"
+                />
+                <p className="text-sm text-muted-foreground col-span-4">
+                  Link akan kedaluwarsa setelah {expiryHours} jam (default 1 minggu / 168 jam)
+                </p>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="dailyLimit" className="col-span-4">
+                  Batas pendaftaran harian
+                </Label>
+                <Input
+                  id="dailyLimit"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={dailyLimit}
+                  onChange={(e) => setDailyLimit(parseInt(e.target.value))}
+                  className="col-span-4"
+                />
+                <p className="text-sm text-muted-foreground col-span-4">
+                  Maksimal {dailyLimit} pendaftaran per hari menggunakan link ini
+                </p>
               </div>
             </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsCreateDialogOpen(false)}
+              >
+                Batal
+              </Button>
+              <Button 
+                onClick={handleCreateLink}
+                disabled={createLinkMutation.isPending}
+              >
+                {createLinkMutation.isPending ? "Membuat..." : "Buat Link"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <div className="container mx-auto px-4 py-6 space-y-6">
+          <Tabs defaultValue="slots" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="slots">Slot Terapi</TabsTrigger>
+              <TabsTrigger value="links">Link Pendaftaran</TabsTrigger>
+            </TabsList>
             
-            <Card>
-              <CardHeader>
-                <CardTitle>Daftar Slot Terapi</CardTitle>
-                <CardDescription>
-                  {date ? `Slot terapi untuk tanggal ${format(date, "dd MMMM yyyy")}` : "Semua slot terapi"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingSlots ? (
-                  <div className="space-y-3">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="flex items-center space-x-4">
-                        <Skeleton className="h-12 w-12 rounded-full" />
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-[250px]" />
-                          <Skeleton className="h-4 w-[200px]" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : therapySlots.length === 0 ? (
-                  <div className="text-center py-8">
-                    <h3 className="text-lg font-medium">Belum Ada Slot Terapi</h3>
-                    <p className="text-gray-500 mt-2 mb-6">
-                      Belum ada slot terapi untuk tanggal ini. Klik tombol "Buat Slot Manual" untuk membuat slot baru.
-                    </p>
-                    <Button 
-                      onClick={() => setDialogOpen(true)}
-                      className="mx-auto"
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Buat Slot Manual
-                    </Button>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableCaption>Daftar slot terapi yang tersedia</TableCaption>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Tanggal</TableHead>
-                        <TableHead>Waktu</TableHead>
-                        <TableHead>Kuota</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Aksi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {therapySlots.map((slot) => (
-                        <TableRow key={slot.id}>
-                          <TableCell>{formatSlotDate(String(slot.date))}</TableCell>
-                          <TableCell>{slot.timeSlot}</TableCell>
-                          <TableCell>
-                            {slot.currentCount}/{slot.maxQuota}
-                            {slot.currentCount >= slot.maxQuota && (
-                              <Badge variant="destructive" className="ml-2">Penuh</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {slot.isActive ? (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-50">
-                                Aktif
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-red-50 text-red-700 hover:bg-red-50">
-                                Nonaktif
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end space-x-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openEditDialog(slot)}
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                                <span className="sr-only">Edit</span>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleToggleStatus(slot)}
-                              >
-                                {slot.isActive ? (
-                                  <>
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-4 w-4 text-amber-500"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                                      />
-                                    </svg>
-                                    <span className="sr-only">Nonaktifkan</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-4 w-4 text-green-500"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                      />
-                                    </svg>
-                                    <span className="sr-only">Aktifkan</span>
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setDeletingSlotId(slot.id)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                                <span className="sr-only">Hapus</span>
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+            {/* Tab Slot Terapi */}
+            <TabsContent value="slots" className="space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
+                <Card className="flex-1">
+                  <CardHeader className="pb-2">
+                    <CardTitle>Pemilihan Tanggal</CardTitle>
+                    <CardDescription>
+                      Pilih tanggal untuk melihat slot terapi yang tersedia
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      className="w-full"
+                    />
+                  </CardContent>
+                </Card>
+                
+                <Card className="flex-1">
+                  <CardHeader className="pb-2">
+                    <CardTitle>Aksi Cepat</CardTitle>
+                    <CardDescription>
+                      Buat slot terapi untuk beberapa hari sekaligus
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0 space-y-2">
+                    <div className="mb-4">
+                      <Button onClick={() => setDialogOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Buat Slot Manual
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      {quickActions.map((action, idx) => (
+                        <Button 
+                          key={idx} 
+                          variant="outline"
+                          onClick={() => createBatchSlots(action.days, action.timeSlots)}
+                        >
+                          Buat untuk {action.label}
+                        </Button>
                       ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          {/* Tab Link Pendaftaran */}
-          <TabsContent value="links" className="space-y-4">
-            <div className="flex justify-end">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Buat Link Baru
-                  </Button>
-                </DialogTrigger>
-              </Dialog>
-            </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Daftar Link Pendaftaran</CardTitle>
-                <CardDescription>
-                  Link ini dapat dibagikan kepada calon pasien untuk mendaftar secara mandiri
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingLinks ? (
-                  <div className="space-y-3">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="flex items-center space-x-4">
-                        <Skeleton className="h-12 w-12 rounded-full" />
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-[250px]" />
-                          <Skeleton className="h-4 w-[200px]" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Daftar Slot Terapi</CardTitle>
+                    <CardDescription>
+                      {date ? `Slot terapi untuk tanggal ${format(date, "dd MMMM yyyy")}` : "Semua slot terapi"}
+                    </CardDescription>
+                  </div>
+                  
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="ml-auto"
+                        onClick={() => syncTherapySlotQuota()}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Sinkronisasi Kuota
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Memperbaiki kuota slot terapi berdasarkan jumlah janji temu aktif yang sebenarnya</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  {isLoadingSlots ? (
+                    <div className="space-y-3">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="flex items-center space-x-4">
+                          <Skeleton className="h-12 w-12 rounded-full" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-[250px]" />
+                            <Skeleton className="h-4 w-[200px]" />
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : linksError ? (
-                  <div className="text-center py-4 text-red-500">
-                    Terjadi kesalahan saat memuat data. Silakan coba lagi.
-                  </div>
-                ) : links && Array.isArray(links) && links.length > 0 ? (
-                  <Table>
-                    <TableCaption>Daftar link pendaftaran pasien</TableCaption>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Kode</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Tanggal Dibuat</TableHead>
-                        <TableHead>Berlaku Hingga</TableHead>
-                        <TableHead>Batas Harian</TableHead>
-                        <TableHead>Pendaftaran</TableHead>
-                        <TableHead className="text-right">Aksi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {links.map((link: RegistrationLink) => (
-                        <TableRow key={link.id}>
-                          <TableCell className="font-medium">{link.code}</TableCell>
-                          <TableCell>
-                            {link.isActive ? (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-50">
-                                Aktif
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-gray-100 text-gray-500 hover:bg-gray-100">
-                                Nonaktif
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>{formatDate(link.createdAt)}</TableCell>
-                          <TableCell>{formatDate(link.expiryTime)}</TableCell>
-                          <TableCell>{link.dailyLimit}</TableCell>
-                          <TableCell>{link.currentRegistrations}/{link.dailyLimit}</TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <span className="sr-only">Buka menu</span>
-                                  <MoreVertical className="h-4 w-4" />
+                      ))}
+                    </div>
+                  ) : therapySlots.length === 0 ? (
+                    <div className="text-center py-8">
+                      <h3 className="text-lg font-medium">Belum Ada Slot Terapi</h3>
+                      <p className="text-gray-500 mt-2 mb-6">
+                        Belum ada slot terapi untuk tanggal ini. Klik tombol "Buat Slot Manual" untuk membuat slot baru.
+                      </p>
+                      <Button 
+                        onClick={() => setDialogOpen(true)}
+                        className="mx-auto"
+                      >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Buat Slot Manual
+                      </Button>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableCaption>Daftar slot terapi yang tersedia</TableCaption>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tanggal</TableHead>
+                          <TableHead>Waktu</TableHead>
+                          <TableHead>Kuota</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Aksi</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {therapySlots.map((slot) => (
+                          <TableRow key={slot.id}>
+                            <TableCell>{formatSlotDate(String(slot.date))}</TableCell>
+                            <TableCell>{slot.timeSlot}</TableCell>
+                            <TableCell>
+                              {slot.currentCount}/{slot.maxQuota}
+                              {slot.currentCount >= slot.maxQuota && (
+                                <Badge variant="destructive" className="ml-2">Penuh</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {slot.isActive ? (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-50">
+                                  Aktif
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-red-50 text-red-700 hover:bg-red-50">
+                                  Nonaktif
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openEditDialog(slot)}
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                  <span className="sr-only">Edit</span>
                                 </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={() => copyLinkToClipboard(link.code)}
-                                  disabled={!link.isActive}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleToggleStatus(slot)}
                                 >
-                                  <Copy className="mr-2 h-4 w-4" />
-                                  Salin Link
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-amber-600"
-                                  onClick={() => {
-                                    setLinkToDeactivate(link.id);
-                                    setIsDeactivateDialogOpen(true);
-                                  }}
-                                  disabled={!link.isActive}
+                                  {slot.isActive ? (
+                                    <>
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-4 w-4 text-amber-500"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                                        />
+                                      </svg>
+                                      <span className="sr-only">Nonaktifkan</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-4 w-4 text-green-500"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                      </svg>
+                                      <span className="sr-only">Aktifkan</span>
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setDeletingSlotId(slot.id)}
                                 >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Nonaktifkan
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-red-600"
-                                  onClick={() => {
-                                    setLinkToDelete(link.id);
-                                    setIsDeleteDialogOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Hapus Permanen
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8">
-                    <Link className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium">Belum Ada Link Pendaftaran</h3>
-                    <p className="text-gray-500 mt-2 mb-6">
-                      Anda belum membuat link pendaftaran. Klik tombol "Buat Link Baru" untuk membuat.
-                    </p>
-                    <Button 
-                      onClick={() => setIsCreateDialogOpen(true)}
-                      className="mx-auto"
-                    >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                  <span className="sr-only">Hapus</span>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Tab Link Pendaftaran */}
+            <TabsContent value="links" className="space-y-4">
+              <div className="flex justify-end">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => setIsCreateDialogOpen(true)}>
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Buat Link Baru
                     </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Daftar Link Pendaftaran</CardTitle>
+                  <CardDescription>
+                    Link ini dapat dibagikan kepada calon pasien untuk mendaftar secara mandiri
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingLinks ? (
+                    <div className="space-y-3">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="flex items-center space-x-4">
+                          <Skeleton className="h-12 w-12 rounded-full" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-[250px]" />
+                            <Skeleton className="h-4 w-[200px]" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : linksError ? (
+                    <div className="text-center py-4 text-red-500">
+                      Terjadi kesalahan saat memuat data. Silakan coba lagi.
+                    </div>
+                  ) : links && Array.isArray(links) && links.length > 0 ? (
+                    <Table>
+                      <TableCaption>Daftar link pendaftaran pasien</TableCaption>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Kode</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Tanggal Dibuat</TableHead>
+                          <TableHead>Berlaku Hingga</TableHead>
+                          <TableHead>Batas Harian</TableHead>
+                          <TableHead>Pendaftaran</TableHead>
+                          <TableHead className="text-right">Aksi</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {links.map((link: RegistrationLink) => (
+                          <TableRow key={link.id}>
+                            <TableCell className="font-medium">{link.code}</TableCell>
+                            <TableCell>
+                              {link.isActive ? (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-50">
+                                  Aktif
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-gray-100 text-gray-500 hover:bg-gray-100">
+                                  Nonaktif
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>{formatDate(link.createdAt)}</TableCell>
+                            <TableCell>{formatDate(link.expiryTime)}</TableCell>
+                            <TableCell>{link.dailyLimit}</TableCell>
+                            <TableCell>{link.currentRegistrations}/{link.dailyLimit}</TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Buka menu</span>
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    onClick={() => copyLinkToClipboard(link.code)}
+                                    disabled={!link.isActive}
+                                  >
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Salin Link
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-amber-600"
+                                    onClick={() => {
+                                      setLinkToDeactivate(link.id);
+                                      setIsDeactivateDialogOpen(true);
+                                    }}
+                                    disabled={!link.isActive}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Nonaktifkan
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() => {
+                                      setLinkToDelete(link.id);
+                                      setIsDeleteDialogOpen(true);
+                                    }}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Hapus Permanen
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Link className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium">Belum Ada Link Pendaftaran</h3>
+                      <p className="text-gray-500 mt-2 mb-6">
+                        Anda belum membuat link pendaftaran. Klik tombol "Buat Link Baru" untuk membuat.
+                      </p>
+                      <Button 
+                        onClick={() => setIsCreateDialogOpen(true)}
+                        className="mx-auto"
+                      >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Buat Link Baru
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </TooltipProvider>
     </>
   );
 }
