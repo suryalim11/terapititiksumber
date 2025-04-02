@@ -1378,6 +1378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/verify-registration-link", async (req: Request, res: Response) => {
     try {
+      console.log("Verify registration link request body:", req.body);
       const { code } = req.body as VerifyRegistrationLinkBody;
       
       if (!code) {

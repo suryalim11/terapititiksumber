@@ -111,7 +111,8 @@ export default function RegisterPage() {
   // Parse the URL for registration code
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
+    // Check for both "code" and "kode" to maintain backward compatibility
+    const code = params.get("code") || params.get("kode");
     
     if (code) {
       setRegistrationCode(code);
