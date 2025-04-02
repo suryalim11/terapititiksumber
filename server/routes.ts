@@ -855,15 +855,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { expiryHours, dailyLimit, specificDate } = req.body as CreateRegistrationLinkBody;
       
-      if (!expiryHours || !dailyLimit || typeof expiryHours !== 'number' || typeof dailyLimit !== 'number') {
+      // Tetapkan masa kadaluwarsa link menjadi 1 minggu (7 hari = 168 jam)
+      const oneWeekInHours = 168;
+      
+      if (!dailyLimit || typeof dailyLimit !== 'number') {
         return res.status(400).json({ 
-          message: "Invalid request body, expiryHours and dailyLimit are required and must be numbers" 
+          message: "Invalid request body, dailyLimit is required and must be a number" 
         });
       }
       
       const registrationLink = await storage.createRegistrationLink(
         req.user.id, // Menggunakan req.user.id bukan req.session.userId
-        expiryHours,
+        oneWeekInHours, // Selalu gunakan 1 minggu (168 jam)
         dailyLimit,
         specificDate
       );

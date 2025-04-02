@@ -83,7 +83,7 @@ export default function RegistrationLinksPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [expiryHours, setExpiryHours] = useState(24);
+  const [expiryHours, setExpiryHours] = useState(168); // Default 1 minggu (168 jam)
   const [dailyLimit, setDailyLimit] = useState(10);
   const [linkToDeactivate, setLinkToDeactivate] = useState<number | null>(null);
   const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
@@ -269,7 +269,7 @@ export default function RegistrationLinksPage() {
                   className="col-span-4"
                 />
                 <p className="text-sm text-muted-foreground col-span-4">
-                  Link akan kedaluwarsa setelah {expiryHours} jam (maks. 30 hari / 720 jam)
+                  Link akan kedaluwarsa setelah {expiryHours} jam (default 1 minggu / 168 jam)
                 </p>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
