@@ -1,0 +1,185 @@
+Berikut **prompt yang diperbaiki** berdasarkan gambar form transaksi Anda:
+
+---
+
+### **Judul Proyek:**  
+Optimasi Form Transaksi dengan Prefill Data Pasien & Validasi Realtime  
+
+---
+
+### **1. Fitur Utama**  
+- **Prefill Data Pasien:**  
+  - Ketika admin klik nama pasien dari halaman slot terapi, form transaksi otomatis terisi:  
+    ```  
+    Nama: Budi Santoso  
+    No. WA: 081234567890  
+    ```  
+
+- **Validasi Input:**  
+  - Pastikan semua field wajib diisi (pasien, paket terapi, metode pembayaran).  
+  - Tampilkan pesan error jika stok produk habis.  
+
+---
+
+### **2. Teknis Implementasi**  
+#### **a. Frontend (React.js)**  
+```jsx
+import { useState, useEffect } from 'react';
+
+function TransactionForm({ patient }) {
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [paymentMethod, setPaymentMethod] = useState('Tunai');
+
+  // Ambil data paket terapi dan produk dari API
+  useEffect(() => {
+    fetch('/api/packages')
+      .then(response => response.json())
+      .then(data => setSelectedPackage(data[0])); // Pilih paket default
+  
+    fetch('/api/products')
+      .then(response => response.json())
+      .then(data => setProducts(data));
+  }, []);
+
+  // Fungsi submit transaksi
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validasi input
+    if (!patient || !selectedPackage || !paymentMethod) {
+      alert('Semua field wajib diisi!');
+      return;
+    }
+    
+    // Kirim data ke backend
+    await fetch('/api/transactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        patientId: patient.id,
+        packageId: selectedPackage.id,
+        products: products.filter(p => p.selected),
+        paymentMethod
+      })
+    });
+    
+    alert('Transaksi berhasil diproses!');
+  };
+
+  return (
+    <div className="modal">
+      <h2>Buat Transaksi Baru</h2>
+      <form onSubmit={handleSubmit}>
+        {/* Prefill data pasien */}
+        <input value={patient.name} readOnly />
+        <input value={patient.phone} readOnly />
+
+        {/* Paket Terapi */}
+        <select
+          value={selectedPackage?.id}
+          onChange={(e) => setSelectedPackage(e.target.value)}
+        >
+          <option>Pilih paket terapi...</option>
+          {packages.map(pkg => (
+            <option key={pkg.id} value={pkg.id}>
+              {pkg.name} - Rp{pkg.price}
+            </option>
+          ))}
+        </select>
+
+        {/* Produk Tambahan */}
+        <div className="products">
+          {products.map(product => (
+            <div key={product.id}>
+              <input
+                type="checkbox"
+                checked={product.selected}
+                onChange={() => toggleProduct(product.id)}
+              />
+              <label>
+                {product.name} - Rp{product.price} (Stok: {product.stock})
+              </label>
+            </div>
+          ))}
+        </div>
+
+        {/* Metode Pembayaran */}
+        <div className="payment-methods">
+          <button onClick={() => setPaymentMethod('Transfer Bank')}>
+            Transfer Bank
+          </button>
+          <button onClick={() => setPaymentMethod('QRIS')}>
+            QRIS
+          </button>
+          <button onClick={() => setPaymentMethod('Tunai')} className="active">
+            Tunai
+          </button>
+        </div>
+
+        <button type="submit">Proses Pembayaran</button>
+      </form>
+    </div>
+  );
+}
+```
+
+#### **b. Backend (Node.js/Express)**  
+- **Endpoint untuk Prefill Data Pasien:**  
+  ```javascript
+  app.get('/api/patients/:id', async (req, res) => {
+    const { id } = req.params;
+    const patient = await db.query(`
+      SELECT * FROM patients WHERE id = $1
+    `, [id]);
+    res.json(patient);
+  });
+  ```
+
+- **Endpoint Simpan Transaksi:**  
+  ```javascript
+  app.post('/api/transactions', async (req, res) => {
+    const { patientId, packageId, products, paymentMethod } = req.body;
+
+    // Validasi stok produk
+    for (const product of products) {
+      const stock = await db.query(`
+        SELECT stock FROM products WHERE id = $1
+      `, [product.id]);
+      if (stock <= 0) {
+        return res.status(400).json({ error: 'Produk habis!' });
+      }
+    }
+
+    // Simpan transaksi ke database
+    await db.query(`
+      INSERT INTO transactions (patient_id, package_id, payment_method)
+      VALUES ($1, $2, $3)
+    `, [patientId, packageId, paymentMethod]);
+
+    // Update stok produk
+    for (const product of products) {
+      await db.query(`
+        UPDATE products 
+        SET stock = stock - 1 
+        WHERE id = $1
+      `, [product.id]);
+    }
+
+    res.json({ success: true });
+  });
+  ```
+
+---
+
+### **3. Contoh Tampilan**  
+![Form Transaksi dengan Prefill](https://via.placeholder.com/600x400.png/FFFFFF?text=Nama%3A+Budi+Santoso%0APaket%3A+Paket+12+Sesi%0AMetode%3A+Tunai)
+
+---
+
+### **4. Keuntungan Fitur Ini**  
+- **Efisiensi Admin:** Tidak perlu mencari ulang data pasien atau paket.  
+- **Reduksi Kesalahan:** Validasi stok produk dan metode pembayaran.  
+- **Audit Trail:** Semua transaksi tersimpan dengan detail lengkap.  
+
+Jika ada bagian yang masih bermasalah, beri tahu! 🛠️

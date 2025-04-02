@@ -55,6 +55,13 @@ type Patient = {
   id: number;
   patientId: string;
   name: string;
+  phoneNumber: string;
+  email: string | null;
+  birthDate?: string;
+  gender?: string;
+  address?: string;
+  complaints?: string;
+  therapySlotId?: number | null;
 };
 
 type Package = {
@@ -183,9 +190,18 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         // Set nilai pada form
         form.setValue("patientId", selectedPatientId.toString());
         console.log("Patient auto-selected:", patient.name);
+        
+        // Auto refetch active sessions untuk pasien yang dipilih
+        refetchActiveSessions();
+        
+        // Tampilkan toast notifikasi
+        toast({
+          title: "Pasien terpilih",
+          description: `Data ${patient.name} telah diisi otomatis`,
+        });
       }
     }
-  }, [isOpen, selectedPatientId, patients, form]);
+  }, [isOpen, selectedPatientId, patients, form, refetchActiveSessions, toast]);
 
   // Create transaction mutation
   const mutation = useMutation({
@@ -331,6 +347,17 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const handlePackageSelect = (packageId: string) => {
     if (!packageId) return;
 
+    // Validasi form: pastikan pasien sudah dipilih
+    if (!form.getValues().patientId) {
+      toast({
+        title: "Pilih pasien terlebih dahulu",
+        description: "Anda harus memilih pasien sebelum menambahkan paket terapi",
+        variant: "destructive",
+      });
+      setSelectedPackage("");
+      return;
+    }
+
     // Log untuk debugging
     console.log("Package selected with ID:", packageId);
     
@@ -359,6 +386,20 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       return;
     }
 
+    // Cek apakah sudah ada paket lain di keranjang
+    const existingPackage = cartItems.find(item => item.type === "package");
+    if (existingPackage) {
+      // Konfirmasi penggantian paket
+      if (confirm(`Paket ${existingPackage.name} sudah dipilih. Ganti dengan ${pkg.name}?`)) {
+        // Hapus paket yang ada
+        setCartItems(cartItems.filter(item => item.type !== "package"));
+      } else {
+        // Batal pilih paket baru
+        setSelectedPackage("");
+        return;
+      }
+    }
+
     const newCartItem = {
       id: pkg.id,
       type: "package" as const,
@@ -370,9 +411,15 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     console.log("Adding to cart:", newCartItem);
     
     setCartItems([
-      ...cartItems,
+      ...cartItems.filter(item => item.type !== "package"),
       newCartItem,
     ]);
+    
+    // Notifikasi berhasil ditambahkan
+    toast({
+      title: "Paket terapi ditambahkan",
+      description: `${pkg.name} telah ditambahkan ke transaksi`,
+    });
     
     // Setelah menambahkan ke keranjang, kita reset pilihan paket
     // untuk memungkinkan pemilihan paket lain
@@ -384,6 +431,16 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   // Add/remove product from cart
   const handleProductToggle = (product: Product, isChecked: boolean) => {
     if (isChecked) {
+      // Validasi stok produk
+      if (product.stock <= 0) {
+        toast({
+          title: "Stok tidak tersedia",
+          description: `Produk ${product.name} sedang habis stok`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Add product to cart
       setCartItems([
         ...cartItems,
@@ -395,6 +452,12 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
           quantity: 1,
         },
       ]);
+      
+      // Konfirmasi produk berhasil ditambahkan
+      toast({
+        title: "Produk ditambahkan",
+        description: `${product.name} ditambahkan ke keranjang`,
+      });
     } else {
       // Remove product from cart
       setCartItems(
@@ -597,11 +660,27 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                       {/* Show selected patient info */}
                       {field.value && (
                         <div className="text-sm p-2 border rounded-md bg-muted/40">
-                          <p className="font-medium">
-                            Pasien terpilih: {
-                              patients.find((p: Patient) => p.id.toString() === field.value)?.name
-                            }
-                          </p>
+                          {(() => {
+                            const selectedPatient = patients.find((p: Patient) => p.id.toString() === field.value);
+                            return selectedPatient ? (
+                              <div className="space-y-1">
+                                <p className="font-medium">
+                                  Pasien terpilih: {selectedPatient.name}
+                                </p>
+                                <div className="grid grid-cols-2 gap-1">
+                                  <p className="text-xs text-muted-foreground">ID Pasien:</p>
+                                  <p className="text-xs">{selectedPatient.patientId}</p>
+                                  
+                                  {selectedPatient.phoneNumber && (
+                                    <>
+                                      <p className="text-xs text-muted-foreground">No. WhatsApp:</p>
+                                      <p className="text-xs">{selectedPatient.phoneNumber}</p>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       )}
                     </div>
