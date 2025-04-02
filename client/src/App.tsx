@@ -8,13 +8,13 @@ import Dashboard from "@/pages/dashboard";
 import Patients from "@/pages/patients";
 import PatientDetail from "@/pages/patient-detail";
 import Transactions from "@/pages/transactions";
-
 import Products from "@/pages/products";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import Register from "@/pages/register";
 import IntegratedManagement from "@/pages/integrated-management";
 import Login from "@/pages/login";
+import BackupRestore from "@/pages/backup-restore";
 import Layout from "@/components/layout/layout";
 import { AuthProvider } from "@/lib/auth";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -33,6 +33,7 @@ function Router() {
       <ProtectedRoute path="/reports" component={Reports} />
       <ProtectedRoute path="/settings" component={Settings} />
       <ProtectedRoute path="/pendaftaran" component={IntegratedManagement} />
+      <ProtectedRoute path="/backup-restore" component={BackupRestore} />
       <Route path="/login" component={Login} />
       <Route path="/daftar" component={Register} />
       <Route path="/register" component={Register} />

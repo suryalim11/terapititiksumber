@@ -13,6 +13,16 @@ import {
   User
 } from "@shared/schema";
 import { setupAuth } from "./auth";
+import multer from "multer";
+import path from "path";
+import {
+  exportData,
+  getBackupFiles,
+  downloadBackup,
+  deleteBackup,
+  restoreData,
+  uploadBackup
+} from "./backup";
 
 // Tipe data untuk verifikasi link pendaftaran
 interface VerifyRegistrationLinkBody {
@@ -1632,6 +1642,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Internal server error" });
     }
   });
+
+  // Konfigurasi untuk upload file
+  const upload = multer({
+    dest: 'tmp/',
+    limits: {
+      fileSize: 10 * 1024 * 1024, // Batasi ukuran file menjadi 10MB
+    }
+  });
+
+  // Backup dan Restore API routes
+  app.get("/api/backup/files", getBackupFiles);
+  app.post("/api/backup/export", exportData);
+  app.get("/api/backup/download/:filename", downloadBackup);
+  app.delete("/api/backup/files/:filename", deleteBackup);
+  app.post("/api/backup/restore/:filename", restoreData);
+  app.post("/api/backup/upload", upload.single('backupFile'), uploadBackup);
 
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);

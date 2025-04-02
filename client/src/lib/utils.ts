@@ -111,6 +111,13 @@ export function isValidDate(dateString: string): boolean {
 }
 
 /**
+ * Format a date with time for display
+ */
+export function formatDate(date: Date): string {
+  return dateFnsFormat(date, "dd/MM/yyyy HH:mm", { locale: id });
+}
+
+/**
  * Create time slots for scheduling (e.g., 08:00, 08:30, etc.)
  */
 export function generateTimeSlots(startHour: number = 8, endHour: number = 17, interval: number = 30): string[] {

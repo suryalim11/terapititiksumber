@@ -15,6 +15,7 @@ import {
   X,
   CalendarRange,
   LogOut,
+  Database,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +29,7 @@ const navItems = [
   { name: "Products", href: "/products", icon: PackageIcon },
   { name: "Transactions", href: "/transactions", icon: ShoppingCart },
   { name: "Reports", href: "/reports", icon: BarChart3 },
+  { name: "Backup & Restore", href: "/backup-restore", icon: Database },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
