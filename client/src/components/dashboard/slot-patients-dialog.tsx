@@ -206,7 +206,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                       
                       // Sebagai alternatif dari pemeriksaan status yang sensitif terhadap huruf besar/kecil,
                       // kita gunakan pendekatan case insensitive untuk pemeriksaan status
-                      const activeStatusPatterns = ['active', 'booked', 'confirmed'];
+                      // Termasuk 'scheduled' sebagai status aktif
+                      const activeStatusPatterns = ['active', 'booked', 'confirmed', 'scheduled'];
                       
                       // Fungsi untuk memverifikasi apakah status termasuk status aktif (case insensitive)
                       const isActiveStatus = (status: string): boolean => {
@@ -242,6 +243,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                                       return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
                                     } else if (status.includes('confirmed')) {
                                       return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+                                    } else if (status.includes('scheduled')) {
+                                      return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
                                     } else {
                                       return 'bg-green-100 text-green-800 hover:bg-green-200';
                                     }

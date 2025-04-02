@@ -866,10 +866,25 @@ export class DatabaseStorage implements IStorage {
         allAppointmentsForSlot.map(a => ({id: a.id, status: a.status}))
       );
       
-      // Filter semua status yang tidak dibatalkan (berbagai variasi casing)
+      // Filter semua status yang aktif (tidak dibatalkan dan dalam status valid)
+      const activeStatusPatterns = ['active', 'booked', 'confirmed', 'scheduled'];
       const nonCancelledAppointments = allAppointmentsForSlot.filter(app => {
         const statusLower = app.status.toLowerCase();
-        return !statusLower.includes('cancel');
+        // Jika status mengandung 'cancel' maka itu dibatalkan
+        if (statusLower.includes('cancel')) {
+          return false;
+        }
+        // Periksa apakah status termasuk dalam daftar status aktif
+        const isActiveStatus = activeStatusPatterns.some(pattern => 
+          statusLower.includes(pattern)
+        );
+        
+        // Debug - Tambahkan log untuk mempermudah pelacakan
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Appointment ${app.id} (${app.status}): isActiveStatus=${isActiveStatus}`);
+        }
+        
+        return isActiveStatus;
       });
       
       console.log(`Non-cancelled appointments for slot ${therapySlotId}:`, 
