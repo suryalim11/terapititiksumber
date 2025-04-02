@@ -301,6 +301,26 @@ export class DatabaseStorage implements IStorage {
   
   async deletePatient(id: number): Promise<boolean> {
     try {
+      // Dapatkan semua janji temu pasien untuk mengurangi kuota slot terapi
+      const patientAppointments = await db
+        .select()
+        .from(schema.appointments)
+        .where(eq(schema.appointments.patientId, id));
+      
+      // Untuk setiap janji temu yang aktif, kurangi kuota slot terapi
+      for (const appointment of patientAppointments) {
+        if (appointment.status !== "cancelled" && appointment.therapySlotId) {
+          // Dapatkan slot terapi
+          const therapySlot = await this.getTherapySlot(appointment.therapySlotId);
+          
+          if (therapySlot && therapySlot.currentCount > 0) {
+            // Kurangi kuota terhitung pada slot terapi
+            await this.decrementTherapySlotUsage(appointment.therapySlotId);
+            console.log(`Mengurangi kuota untuk slot terapi ID ${appointment.therapySlotId}`);
+          }
+        }
+      }
+      
       // Find and delete all related appointments
       await db
         .delete(schema.appointments)
@@ -970,11 +990,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAppointmentStatus(id: number, status: string): Promise<Appointment | undefined> {
+    // Dapatkan data janji temu sebelumnya untuk membandingkan status
+    const existingAppointment = await db.query.appointments.findFirst({
+      where: eq(schema.appointments.id, id)
+    });
+    
+    if (!existingAppointment) {
+      return undefined;
+    }
+    
+    // Proses perubahan kuota slot terapi
+    if (existingAppointment.therapySlotId) {
+      // Jika status berubah dari aktif ke dibatalkan, kurangi kuota
+      if (existingAppointment.status !== "cancelled" && status === "cancelled") {
+        await this.decrementTherapySlotUsage(existingAppointment.therapySlotId);
+        console.log(`Mengurangi kuota untuk slot terapi ID ${existingAppointment.therapySlotId} karena janji temu dibatalkan`);
+      } 
+      // Jika status berubah dari dibatalkan ke aktif, tambahkan kuota
+      else if (existingAppointment.status === "cancelled" && status !== "cancelled") {
+        await this.incrementTherapySlotUsage(existingAppointment.therapySlotId);
+        console.log(`Menambah kuota untuk slot terapi ID ${existingAppointment.therapySlotId} karena janji temu diaktifkan`);
+      }
+    }
+    
+    // Update status janji temu
     const result = await db
       .update(schema.appointments)
       .set({ status })
       .where(eq(schema.appointments.id, id))
       .returning();
+      
     return result[0];
   }
 
