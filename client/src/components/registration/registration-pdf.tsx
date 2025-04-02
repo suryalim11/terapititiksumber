@@ -78,19 +78,25 @@ export function RegistrationPDF({
     doc.text(`Tanggal Pendaftaran: ${format(registrationDate, "dd MMMM yyyy")}`, 25, y); y += lineHeight;
     
     // Appointment details if available
-    if (therapyDate || therapyTime) {
-      y += 5;
-      doc.setFont("helvetica", "bold");
-      doc.text("Detail Jadwal Terapi:", 20, y); y += lineHeight;
-      
-      doc.setFont("helvetica", "normal");
-      if (therapyDate) {
-        doc.text(`Tanggal: ${therapyDate}`, 25, y); y += lineHeight;
-      }
-      if (therapyTime) {
-        doc.text(`Jam: ${therapyTime}`, 25, y); y += lineHeight;
-      }
+    y += 5;
+    doc.setFont("helvetica", "bold");
+    doc.text("Detail Jadwal Terapi:", 20, y); y += lineHeight;
+    
+    doc.setFont("helvetica", "normal");
+    if (therapyDate) {
+      doc.text(`Tanggal: ${therapyDate}`, 25, y); y += lineHeight;
+    } else {
+      doc.text("Tanggal: Menunggu konfirmasi admin", 25, y); y += lineHeight;
     }
+    
+    if (therapyTime) {
+      doc.text(`Jam: ${therapyTime}`, 25, y); y += lineHeight;
+    } else {
+      doc.text("Jam: Menunggu konfirmasi admin", 25, y); y += lineHeight;
+    }
+    
+    // Add location information
+    doc.text("Lokasi: Klinik Terapi Titik Sumber", 25, y); y += lineHeight;
     
     // Note
     y += 10;

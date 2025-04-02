@@ -855,6 +855,7 @@ export default function RegisterPage() {
                 <RegistrationPDF 
                   patientName={form.getValues("name")}
                   registrationNumber={`TTS-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`}
+                  patientId={foundPatient?.patientId || undefined}
                   phoneNumber={form.getValues("phoneNumber")}
                   therapyDate={selectedSlot?.date}
                   therapyTime={selectedSlot?.timeSlot}
