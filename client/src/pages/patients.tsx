@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { calculateAge } from "@/lib/utils";
-import { Search, Plus, UserRound, Pencil, FileText, CreditCard, Calendar, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Plus, UserRound, Pencil, FileText, CreditCard, Calendar, AlertCircle, CheckCircle2, XCircle, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PatientForm } from "@/components/patients/patient-form";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,7 @@ export default function Patients() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
+  const [isDeletePatientOpen, setIsDeletePatientOpen] = useState(false);
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -123,9 +124,55 @@ export default function Patients() {
     }
   });
 
+  // Mutation for deleting patient
+  const deletePatientMutation = useMutation({
+    mutationFn: async (patientId: number) => {
+      const response = await fetch(`/api/patients/${patientId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal menghapus pasien');
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Pasien dihapus",
+        description: "Data pasien berhasil dihapus dari sistem",
+        variant: "default",
+      });
+      
+      setIsDeletePatientOpen(false);
+      setSelectedPatient(null);
+      
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/activities'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Gagal menghapus pasien",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleEditPatient = (patient: Patient) => {
     setSelectedPatient(patient);
     setIsEditPatientOpen(true);
+  };
+
+  const handleDeletePatient = (patient: Patient) => {
+    setSelectedPatient(patient);
+    setIsDeletePatientOpen(true);
   };
 
   const handleViewPatient = (patient: Patient) => {
@@ -151,6 +198,12 @@ export default function Patients() {
   const confirmCancelAppointment = () => {
     if (selectedAppointment) {
       cancelAppointmentMutation.mutate(selectedAppointment.id);
+    }
+  };
+  
+  const confirmDeletePatient = () => {
+    if (selectedPatient) {
+      deletePatientMutation.mutate(selectedPatient.id);
     }
   };
   
@@ -251,12 +304,12 @@ export default function Patients() {
                   <div className="font-medium">{patient.gender}</div>
                 </div>
                 
-                <div className="mt-4 grid grid-cols-2 gap-2">
+                <div className="mt-4 grid grid-cols-3 gap-2">
                   <Button 
                     variant="outline" 
                     size="sm" 
                     className="touch-target h-12 md:h-10 text-sm"
-                    onClick={() => handleViewPatient(patient)}
+                    onClick={() => navigate(`/patients/${patient.id}`)}
                   >
                     <FileText className="md:mr-1 h-3.5 w-3.5" />
                     <span className="hidden md:inline-block ml-1">Detail</span>
@@ -271,6 +324,16 @@ export default function Patients() {
                     <span className="hidden md:inline-block ml-1">Edit</span>
                   </Button>
                 
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="touch-target h-12 md:h-10 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                    onClick={() => handleDeletePatient(patient)}
+                  >
+                    <Trash2 className="md:mr-1 h-3.5 w-3.5" />
+                    <span className="hidden md:inline-block ml-1">Hapus</span>
+                  </Button>
+                  
                   <Button
                     variant="ghost"
                     size="sm"
@@ -545,6 +608,29 @@ export default function Patients() {
       </Dialog>
       
       {/* Cancel Appointment Confirmation Dialog */}
+      {/* Delete Patient Confirmation */}
+      <AlertDialog open={isDeletePatientOpen} onOpenChange={setIsDeletePatientOpen}>
+        <AlertDialogContent className="w-[95vw] max-w-[500px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Pasien</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus pasien ini? Tindakan ini tidak dapat dibatalkan.
+              Semua data terkait seperti janji temu dan transaksi mungkin juga akan terpengaruh.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeletePatient}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Cancel Appointment Confirmation */}
       <AlertDialog open={isConfirmCancelOpen} onOpenChange={setIsConfirmCancelOpen}>
         <AlertDialogContent className="w-[95vw] max-w-[500px]">
           <AlertDialogHeader>

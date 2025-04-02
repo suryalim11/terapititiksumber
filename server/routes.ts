@@ -387,6 +387,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Patient delete endpoint
+  app.delete("/api/patients/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`Menerima permintaan DELETE /api/patients/${id}`);
+      
+      // Cek dulu apakah pasien ada
+      const patient = await storage.getPatient(id);
+      if (!patient) {
+        return res.status(404).json({ message: "Pasien tidak ditemukan" });
+      }
+      
+      // Hapus pasien
+      const result = await storage.deletePatient(id);
+      
+      if (result) {
+        console.log(`Pasien dengan ID ${id} berhasil dihapus`);
+        return res.status(200).json({ success: true, message: "Pasien berhasil dihapus" });
+      } else {
+        console.error(`Gagal menghapus pasien dengan ID ${id}`);
+        return res.status(500).json({ success: false, message: "Gagal menghapus pasien" });
+      }
+    } catch (error) {
+      console.error("Error ketika menghapus pasien:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.put("/api/products/:id/stock", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);

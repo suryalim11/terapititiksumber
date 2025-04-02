@@ -41,6 +41,7 @@ export interface IStorage {
   getAllPatients(): Promise<Patient[]>;
   createPatient(patient: InsertPatient): Promise<Patient>;
   updatePatient(id: number, patient: InsertPatient): Promise<Patient | undefined>;
+  deletePatient(id: number): Promise<boolean>;
   
   // Products
   getProduct(id: number): Promise<Product | undefined>;
@@ -409,6 +410,31 @@ export class MemStorage implements IStorage {
     
     this.patients.set(id, updatedPatient);
     return updatedPatient;
+  }
+  
+  async deletePatient(id: number): Promise<boolean> {
+    const exists = this.patients.has(id);
+    if (!exists) return false;
+    
+    // Cari dan hapus semua appointment terkait
+    const patientAppointments = Array.from(this.appointments.values())
+      .filter(appointment => appointment.patientId === id);
+    
+    for (const appointment of patientAppointments) {
+      this.appointments.delete(appointment.id);
+    }
+    
+    // Cari dan hapus semua sesi (paket terapi) terkait
+    const patientSessions = Array.from(this.therapySessions.values())
+      .filter(session => session.patientId === id);
+    
+    for (const session of patientSessions) {
+      this.therapySessions.delete(session.id);
+    }
+    
+    // Hapus pasien
+    this.patients.delete(id);
+    return true;
   }
 
   // Product methods

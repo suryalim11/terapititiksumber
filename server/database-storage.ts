@@ -273,6 +273,30 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result[0];
   }
+  
+  async deletePatient(id: number): Promise<boolean> {
+    try {
+      // Find and delete all related appointments
+      await db
+        .delete(schema.appointments)
+        .where(eq(schema.appointments.patientId, id));
+      
+      // Find and delete all related sessions
+      await db
+        .delete(schema.sessions)
+        .where(eq(schema.sessions.patientId, id));
+      
+      // Delete the patient
+      await db
+        .delete(schema.patients)
+        .where(eq(schema.patients.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error("Error saat menghapus pasien:", error);
+      return false;
+    }
+  }
 
   // Product methods
   async getProduct(id: number): Promise<Product | undefined> {

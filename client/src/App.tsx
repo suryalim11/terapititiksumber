@@ -6,6 +6,7 @@ import { HelmetProvider } from "react-helmet-async";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Patients from "@/pages/patients";
+import PatientDetail from "@/pages/patient-detail";
 import Transactions from "@/pages/transactions";
 
 import Products from "@/pages/products";
@@ -24,6 +25,7 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/patients" component={Patients} />
+      <ProtectedRoute path="/patients/:id" component={PatientDetail} />
       <ProtectedRoute path="/transactions" component={Transactions} />
       <ProtectedRoute path="/transactions/new" component={Transactions} />
 
