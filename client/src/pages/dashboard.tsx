@@ -56,30 +56,35 @@ export default function Dashboard() {
   const today = new Date();
   const formattedToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   
-  // Fetch dashboard stats
-  const { data: stats = { patientsToday: 0, incomeToday: 0, productsSold: 0, activePackages: 0 } } = 
+  // Fetch dashboard stats with auto-refresh (every 10 seconds)
+  const { data: stats = { patientsToday: 0, incomeToday: 0, productsSold: 0, activePackages: 0 }, refetch: refetchStats } = 
     useQuery<DashboardStats>({
       queryKey: ['/api/dashboard/stats'],
+      refetchInterval: 10000, // Refresh every 10 seconds
     });
 
-  // Fetch recent activities
-  const { data: activities = [] } = useQuery<RecentActivity[]>({
+  // Fetch recent activities with auto-refresh
+  const { data: activities = [], refetch: refetchActivities } = useQuery<RecentActivity[]>({
     queryKey: ['/api/dashboard/activities'],
+    refetchInterval: 10000,
   });
   
-  // Fetch today's appointments
-  const { data: todayAppointments = [] } = useQuery<any[]>({
+  // Fetch today's appointments with auto-refresh
+  const { data: todayAppointments = [], refetch: refetchAppointments } = useQuery<any[]>({
     queryKey: [`/api/appointments/date/${formattedToday}`],
+    refetchInterval: 10000,
   });
   
-  // Fetch today's therapy slots
-  const { data: todaySlots = [], isLoading: isSlotsLoading } = useQuery<any[]>({
+  // Fetch today's therapy slots with auto-refresh
+  const { data: todaySlots = [], isLoading: isSlotsLoading, refetch: refetchSlots } = useQuery<any[]>({
     queryKey: ['/api/today-slots'],
+    refetchInterval: 10000,
   });
   
-  // Fetch active packages
-  const { data: activePackages = [], isLoading: isPackagesLoading } = useQuery<ActivePackage[]>({
+  // Fetch active packages with auto-refresh
+  const { data: activePackages = [], isLoading: isPackagesLoading, refetch: refetchPackages } = useQuery<ActivePackage[]>({
     queryKey: ['/api/dashboard/active-packages'],
+    refetchInterval: 10000,
   });
 
   // Dashboard stat cards data
