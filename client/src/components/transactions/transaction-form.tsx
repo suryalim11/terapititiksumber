@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -129,6 +129,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const [selectedSession, setSelectedSession] = useState<ActiveSession | null>(null);
   const [useExistingPackage, setUseExistingPackage] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
@@ -340,6 +341,41 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       
       const result = await response.json();
       console.log("Hasil penggunaan sesi:", result);
+      
+      // Buat transaksi dengan total 0 untuk mencatat penggunaan sesi
+      const transactionData = {
+        patientId: parseInt(form.getValues().patientId),
+        totalAmount: "0",
+        paymentMethod: form.getValues().paymentMethod || "cash",
+        items: [],
+        notes: `Penggunaan sesi paket: ${session.package?.name}. Sesi ke-${newSessionsUsed} dari ${session.totalSessions}.`
+      };
+      
+      try {
+        // Simpan transaksi dengan nilai 0
+        const transactionResponse = await fetch('/api/transactions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(transactionData),
+        });
+        
+        if (!transactionResponse.ok) {
+          console.warn("Gagal mencatat transaksi penggunaan sesi, tetapi sesi berhasil digunakan");
+        } else {
+          const transactionResult = await transactionResponse.json();
+          console.log("Transaksi penggunaan sesi berhasil dicatat:", transactionResult);
+          
+          // Invalidate transactions query untuk refresh data
+          queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/dashboard/activities'] });
+        }
+      } catch (transactionError) {
+        console.warn("Error mencatat transaksi sesi:", transactionError);
+        // Tetap lanjutkan karena penggunaan sesi sudah berhasil
+      }
       
       // Tampilkan notifikasi sukses
       toast({
