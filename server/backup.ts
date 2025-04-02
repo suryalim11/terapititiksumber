@@ -174,7 +174,52 @@ export async function restoreData(req: Request, res: Response) {
     
     // Baca konten file
     const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(fileContent);
+    const rawData = JSON.parse(fileContent);
+    
+    // Process data to ensure dates are Date objects
+    const data = {
+      ...rawData,
+      patients: rawData.patients?.map(p => ({
+        ...p,
+        createdAt: new Date(p.createdAt)
+      })),
+      packages: rawData.packages?.map(p => ({
+        ...p,
+        createdAt: new Date(p.createdAt)
+      })),
+      products: rawData.products?.map(p => ({
+        ...p,
+        createdAt: new Date(p.createdAt)
+      })),
+      transactions: rawData.transactions?.map(t => ({
+        ...t,
+        createdAt: new Date(t.createdAt)
+      })),
+      therapySlots: rawData.therapySlots?.map(t => ({
+        ...t,
+        createdAt: new Date(t.createdAt),
+        date: new Date(t.date)
+      })),
+      sessions: rawData.sessions?.map(s => ({
+        ...s,
+        startDate: new Date(s.startDate),
+        lastSessionDate: s.lastSessionDate ? new Date(s.lastSessionDate) : null
+      })),
+      appointments: rawData.appointments?.map(a => ({
+        ...a,
+        date: new Date(a.date)
+      })),
+      registrationLinks: rawData.registrationLinks?.map(r => ({
+        ...r,
+        createdAt: new Date(r.createdAt),
+        expiryTime: new Date(r.expiryTime),
+        specificDate: r.specificDate ? new Date(r.specificDate) : null
+      })),
+      users: rawData.users?.map(u => ({
+        ...u,
+        createdAt: new Date(u.createdAt)
+      }))
+    };
     
     // Sebaiknya jangan hapus data yang ada, gunakan onConflictDoUpdate untuk memperbarui data yang sudah ada
     // Karena penghapusan data tidak perlu, kita langsung proses pemulihan data

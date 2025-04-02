@@ -19,27 +19,64 @@
   ],
   "patients": [
     {
-      "id": 15,
+      "id": 17,
       "patientId": "P-2025-001",
-      "name": "asdfasfd",
+      "name": "asdfasdf",
       "phoneNumber": "087772925565",
       "email": null,
-      "birthDate": "2007-04-05",
+      "birthDate": "2009-04-14",
       "gender": "Laki-laki",
       "address": "asdfasdf",
       "complaints": "asdfasdf",
-      "createdAt": "2025-04-02T09:17:40.412Z",
+      "createdAt": "2025-04-02T10:16:07.307Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 18,
+      "patientId": "P-2025-018",
+      "name": "fffeeewwww",
+      "phoneNumber": "08127003608",
+      "email": null,
+      "birthDate": "2000-04-12",
+      "gender": "Laki-laki",
+      "address": "asdfasdf",
+      "complaints": "asdfasdf",
+      "createdAt": "2025-04-02T10:16:33.343Z",
       "therapySlotId": null
     }
   ],
   "products": [
     {
-      "id": 9,
-      "name": "jahe bubuk tua",
-      "price": "150000.00",
-      "stock": 99,
-      "description": null,
-      "createdAt": "2025-04-02T09:09:12.413Z"
+      "id": 10,
+      "name": "Minyak Pijat Herbal",
+      "price": "85000.00",
+      "stock": 25,
+      "description": "Minyak pijat dengan bahan herbal alami",
+      "createdAt": "2025-04-02T10:15:04.578Z"
+    },
+    {
+      "id": 12,
+      "name": "Krim Pijat",
+      "price": "65000.00",
+      "stock": 29,
+      "description": "Krim pijat untuk relaksasi",
+      "createdAt": "2025-04-02T10:15:04.722Z"
+    },
+    {
+      "id": 13,
+      "name": "Minyak Esensial Lavender",
+      "price": "95000.00",
+      "stock": 19,
+      "description": "Minyak esensial lavender untuk aromaterapi",
+      "createdAt": "2025-04-02T10:15:04.789Z"
+    },
+    {
+      "id": 11,
+      "name": "popok bacckup 1",
+      "price": "12000000.00",
+      "stock": 14,
+      "description": "Bantal khusus untuk terapi",
+      "createdAt": "2025-04-02T10:15:04.655Z"
     }
   ],
   "packages": [
@@ -67,39 +104,105 @@
   ],
   "transactions": [
     {
-      "id": 38,
-      "transactionId": "T-20250402-706",
-      "patientId": 15,
-      "totalAmount": "950000.00",
+      "id": 40,
+      "transactionId": "T-20250402-216",
+      "patientId": 17,
+      "totalAmount": "1500000.00",
       "paymentMethod": "cash",
       "items": [
         {
-          "id": 9,
+          "id": 8,
           "type": "package",
           "quantity": 1,
-          "price": "800000.00"
-        },
-        {
-          "id": 9,
-          "type": "product",
-          "quantity": 1,
-          "price": "150000.00"
+          "price": "1500000.00"
         }
       ],
-      "createdAt": "2025-04-02T10:05:23.791Z"
+      "createdAt": "2025-04-02T10:17:11.232Z"
+    },
+    {
+      "id": 41,
+      "transactionId": "T-20250402-166",
+      "patientId": 17,
+      "totalAmount": "0.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 8,
+          "type": "package",
+          "quantity": 1,
+          "description": "(menggunakan sisa paket)"
+        }
+      ],
+      "createdAt": "2025-04-02T10:17:25.553Z"
+    },
+    {
+      "id": 42,
+      "transactionId": "T-20250402-853",
+      "patientId": 17,
+      "totalAmount": "12160000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 8,
+          "type": "package",
+          "quantity": 1,
+          "description": "(menggunakan sisa paket)"
+        },
+        {
+          "id": 12,
+          "type": "product",
+          "quantity": 1,
+          "price": "65000.00"
+        },
+        {
+          "id": 13,
+          "type": "product",
+          "quantity": 1,
+          "price": "95000.00"
+        },
+        {
+          "id": 11,
+          "type": "product",
+          "quantity": 1,
+          "price": "12000000.00"
+        }
+      ],
+      "createdAt": "2025-04-02T10:17:54.796Z"
     }
   ],
   "sessions": [
     {
-      "id": 35,
-      "patientId": 15,
-      "transactionId": 38,
-      "packageId": 9,
-      "totalSessions": 6,
+      "id": 38,
+      "patientId": 17,
+      "transactionId": 41,
+      "packageId": 8,
+      "totalSessions": 12,
       "sessionsUsed": 0,
       "status": "active",
-      "startDate": "2025-04-02T10:05:23.934Z",
-      "lastSessionDate": "2025-04-02T10:05:47.848Z"
+      "startDate": "2025-04-02T10:17:25.686Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 37,
+      "patientId": 17,
+      "transactionId": 40,
+      "packageId": 8,
+      "totalSessions": 12,
+      "sessionsUsed": 2,
+      "status": "active",
+      "startDate": "2025-04-02T10:17:11.371Z",
+      "lastSessionDate": "2025-04-02T10:17:54.403Z"
+    },
+    {
+      "id": 39,
+      "patientId": 17,
+      "transactionId": 42,
+      "packageId": 8,
+      "totalSessions": 12,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-02T10:17:54.929Z",
+      "lastSessionDate": null
     }
   ],
   "therapySlots": [
