@@ -120,17 +120,21 @@ export function formatDate(date: Date): string {
 /**
  * Format ISO string timestamp to WIB time
  * This function handles the timezone offset correctly
+ * 
+ * @param isoString - The ISO string timestamp to format
+ * @param transactionTimestamp - Set to true for transaction timestamps that need -7 hours adjustment
  */
-export function formatISOtoWIB(isoString: string): string {
+export function formatISOtoWIB(isoString: string, transactionTimestamp: boolean = false): string {
   try {
     // Parse ISO string to date object
     const date = parseISO(isoString);
     
-    // Data dari server sudah dalam format UTC+7 (WIB)
-    // Tidak perlu menambahkan jam lagi
+    // Hanya kurangi 7 jam untuk timestamp transaksi jika diperlukan
+    // Ini dikarenakan adanya inkonsistensi format timestamp dari server
+    const adjustedDate = transactionTimestamp ? addHours(date, -7) : date;
     
     // Format with date-fns
-    return dateFnsFormat(date, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
+    return dateFnsFormat(adjustedDate, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
   } catch (e) {
     console.error("Error formatting ISO date:", e);
     return "";

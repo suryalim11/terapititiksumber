@@ -227,7 +227,7 @@ export default function Dashboard() {
                       <p className="text-sm">{activity.description}</p>
                       <time className="text-xs text-muted-foreground">
                         {activity.timestamp ? 
-                          formatISOtoWIB(activity.timestamp) :
+                          formatISOtoWIB(activity.timestamp, activity.type === "transaction") :
                           ""}
                       </time>
                     </div>
