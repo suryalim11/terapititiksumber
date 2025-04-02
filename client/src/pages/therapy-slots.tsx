@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TherapySlot } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { formatDateDDMMYYYY } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -400,8 +401,7 @@ export default function TherapySlots() {
 
   // Format tanggal untuk ditampilkan
   const formatSlotDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return format(date, "dd/MM/yyyy");
+    return formatDateDDMMYYYY(dateStr);
   };
 
   // Quick actions untuk membuat batch slot
@@ -494,7 +494,7 @@ export default function TherapySlots() {
                             )}
                           >
                             {field.value ? (
-                              format(field.value, "dd/MM/yyyy")
+                              formatDateDDMMYYYY(field.value)
                             ) : (
                               <span>Pilih tanggal</span>
                             )}
@@ -642,7 +642,7 @@ export default function TherapySlots() {
                                   )}
                                 >
                                   {field.value ? (
-                                    format(field.value, "dd/MM/yyyy")
+                                    formatDateDDMMYYYY(field.value)
                                   ) : (
                                     <span>Pilih tanggal</span>
                                   )}
@@ -768,7 +768,7 @@ export default function TherapySlots() {
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    Slot Terapi: {date && format(date, "dd/MM/yyyy")}
+                    Slot Terapi: {date && formatDateDDMMYYYY(date)}
                   </CardTitle>
                   <CardDescription>
                     Daftar slot terapi untuk tanggal yang dipilih
@@ -886,7 +886,7 @@ export default function TherapySlots() {
                             </li>
                           ))}
                         </ul>
-                        <p className="mt-3">Mulai dari: {date ? format(date, "dd/MM/yyyy") : "hari ini"}</p>
+                        <p className="mt-3">Mulai dari: {date ? formatDateDDMMYYYY(date) : "hari ini"}</p>
                         <p className="text-muted-foreground text-xs mt-1">Minggu libur, tidak ada sesi.</p>
                       </CardContent>
                       <CardFooter>
