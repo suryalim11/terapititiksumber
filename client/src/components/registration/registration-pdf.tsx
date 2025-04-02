@@ -70,13 +70,6 @@ export function RegistrationPDF({
     doc.setFont("helvetica", "normal");
     doc.text(`Nama: ${patientName}`, 25, y); y += lineHeight;
     
-    if (patientId) {
-      doc.text(`ID: ${patientId}`, 25, y); 
-    } else {
-      doc.text(`ID: -`, 25, y);
-    }
-    y += lineHeight;
-    
     if (phoneNumber) {
       doc.text(`No WA: ${phoneNumber}`, 25, y); 
     } else {
@@ -99,40 +92,41 @@ export function RegistrationPDF({
     doc.setFont("helvetica", "normal");
     doc.setTextColor(60, 60, 60);
     
-    if (therapyDate) {
-      const dateParts = therapyDate.split('/');
-      if (dateParts.length >= 3) {
-        // Attempt to construct date object
-        // Format: DD/MM/YYYY
-        const therapyDateObj = new Date(
-          parseInt(dateParts[2]), // Year
-          parseInt(dateParts[1]) - 1, // Month (0-based)
-          parseInt(dateParts[0]) // Day
-        );
+    // Menangani tanggal terapi (wajib diisi)
+    const dateParts = therapyDate ? therapyDate.split('/') : [];
+    if (dateParts.length >= 3) {
+      // Mengkonversi format tanggal DD/MM/YYYY ke objek Date
+      const therapyDateObj = new Date(
+        parseInt(dateParts[2]), // Tahun
+        parseInt(dateParts[1]) - 1, // Bulan (0-based)
+        parseInt(dateParts[0]) // Hari
+      );
+      
+      if (!isNaN(therapyDateObj.getTime())) {
+        // Mendapatkan nama hari dalam Bahasa Indonesia
+        const dayNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+        const dayName = dayNames[therapyDateObj.getDay()];
         
-        if (!isNaN(therapyDateObj.getTime())) {
-          // Get day name in Indonesian
-          const dayNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-          const dayName = dayNames[therapyDateObj.getDay()];
-          
-          doc.text(`Hari: ${dayName}`, 25, y);
-          y += lineHeight;
-          doc.text(`Tanggal: ${therapyDate}`, 25, y);
-        } else {
-          doc.text(`Tanggal: ${therapyDate}`, 25, y);
-        }
+        doc.text(`Hari: ${dayName}`, 25, y);
+        y += lineHeight;
+        doc.text(`Tanggal: ${therapyDate}`, 25, y);
       } else {
         doc.text(`Tanggal: ${therapyDate}`, 25, y);
       }
     } else {
-      doc.text(`Tanggal: -`, 25, y);
+      // Fallback ke tanggal hari ini jika tidak ada
+      const today = new Date();
+      const formattedDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+      doc.text(`Tanggal: ${formattedDate}`, 25, y);
     }
     y += lineHeight;
     
-    if (therapyTime) {
-      doc.text(`Waktu: ${therapyTime}`, 25, y); 
+    // Menangani waktu terapi (wajib diisi)
+    if (therapyTime && therapyTime.trim()) {
+      doc.text(`Waktu: ${therapyTime}`, 25, y);
     } else {
-      doc.text(`Waktu: -`, 25, y);
+      // Fallback ke waktu default jika tidak ada
+      doc.text(`Waktu: [Sesuai Jadwal Klinik]`, 25, y);
     }
     y += lineHeight;
     
