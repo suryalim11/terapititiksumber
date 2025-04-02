@@ -193,8 +193,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Data yang akan divalidasi:", patientData);
       const validatedData = insertPatientSchema.parse(patientData);
       console.log("Data pasien tervalidasi:", validatedData);
-      const newPatient = await storage.createPatient(validatedData);
-      console.log("Pasien baru dibuat:", newPatient);
+      
+      // Check if patient already exists by phone number
+      const existingPatients = await storage.getAllPatients();
+      const existingPatient = existingPatients.find(
+        patient => patient.phoneNumber === validatedData.phoneNumber
+      );
+      
+      let patientToUse;
+      
+      if (existingPatient) {
+        console.log(`Pasien dengan nomor telepon ${validatedData.phoneNumber} sudah ada, menggunakan ID: ${existingPatient.id}`);
+        patientToUse = existingPatient;
+      } else {
+        // Create new patient if doesn't exist
+        patientToUse = await storage.createPatient(validatedData);
+        console.log("Pasien baru dibuat:", patientToUse);
+      }
       
       // Jika therapySlotId ada, buat appointment dan perbarui slot terapi
       if (therapySlotId) {
@@ -209,7 +224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Buat appointment baru
             const appointmentData = {
-              patientId: newPatient.id,
+              patientId: patientToUse.id,
               therapySlotId: therapySlotId,
               notes: validatedData.complaints,
               status: "booked",
@@ -226,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      return res.status(201).json(newPatient);
+      return res.status(201).json(patientToUse);
     } catch (error) {
       console.error("Error ketika membuat pasien:", error);
       if (error instanceof z.ZodError) {
@@ -861,15 +876,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const appointments = await storage.getAppointmentsByTherapySlot(slotId);
       
       // Dapatkan informasi pasien dari tiap appointment
-      const patientPromises = appointments.map(async (appointment) => {
-        const patient = await storage.getPatient(appointment.patientId);
+      // Gunakan Map untuk menghindari duplikasi pasien dengan ID yang sama
+      const patientIds = new Set(appointments.map(appointment => appointment.patientId));
+      const patientMap = new Map();
+      
+      // Ambil data pasien sekali untuk tiap ID unik
+      for (const patientId of patientIds) {
+        const patient = await storage.getPatient(patientId);
+        if (patient) {
+          patientMap.set(patientId, patient);
+        }
+      }
+      
+      const patientsData = appointments.map(appointment => {
         return {
           ...appointment,
-          patient: patient || { name: "Unknown Patient" },
+          patient: patientMap.get(appointment.patientId) || { name: "Unknown Patient" },
         };
       });
-      
-      const patientsData = await Promise.all(patientPromises);
       
       return res.status(200).json({
         slot,
