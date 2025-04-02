@@ -37,6 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ArrowLeft } from "lucide-react";
 import TransactionForm from "@/components/transactions/transaction-form";
 import Invoice from "@/components/transactions/invoice";
 import { useToast } from "@/hooks/use-toast";
@@ -65,8 +66,12 @@ export default function Transactions() {
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [invoiceData, setInvoiceData] = useState<any>(null);
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
+  
+  // Parse URL untuk mendapatkan patientId dari parameter URL
+  const urlSearchParams = new URLSearchParams(window.location.search);
+  const patientIdFromUrl = urlSearchParams.get('patientId');
 
   // Event listener untuk membuka form transaksi dari komponen lain
   useEffect(() => {
@@ -190,9 +195,18 @@ export default function Transactions() {
     return `Rp${parseInt(price).toLocaleString("id-ID")}`;
   };
 
+  // Get patient dari URL jika ada
+  const patientFromUrl = patientIdFromUrl ? 
+    patients?.find((p: any) => p.id === parseInt(patientIdFromUrl)) : null;
+
   const filteredTransactions = transactions
     ? transactions
         .filter((transaction: Transaction) => {
+          // Filter berdasarkan patientId dari URL jika ada
+          if (patientIdFromUrl) {
+            return transaction.patientId === parseInt(patientIdFromUrl);
+          }
+          
           // Search filter
           const transactionId = transaction.transactionId.toLowerCase();
           const patientName = getPatientName(transaction.patientId).toLowerCase();
@@ -303,36 +317,82 @@ export default function Transactions() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold font-heading text-gray-900 dark:text-white">
-            Transaksi
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Kelola transaksi paket terapi dan produk
-          </p>
-        </div>
-        <Button
-          onClick={() => setIsTransactionFormOpen(true)}
-          className="flex items-center gap-1"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+      {patientFromUrl ? (
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 w-8 p-0"
+              onClick={() => navigate('/transactions')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold font-heading text-gray-900 dark:text-white">
+                Riwayat Transaksi Pasien
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400">
+                {patientFromUrl?.name} ({patientFromUrl?.patientId})
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => {
+              setSelectedPatientId(parseInt(patientIdFromUrl!));
+              setIsTransactionFormOpen(true);
+            }}
+            className="flex items-center gap-1"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-            />
-          </svg>
-          Buat Transaksi
-        </Button>
-      </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
+            Buat Transaksi Baru
+          </Button>
+        </div>
+      ) : (
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold font-heading text-gray-900 dark:text-white">
+              Transaksi
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400">
+              Kelola transaksi paket terapi dan produk
+            </p>
+          </div>
+          <Button
+            onClick={() => setIsTransactionFormOpen(true)}
+            className="flex items-center gap-1"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
+            Buat Transaksi
+          </Button>
+        </div>
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
