@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { useLocation } from "wouter";
@@ -27,9 +27,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import TransactionForm from "@/components/transactions/transaction-form";
 import Invoice from "@/components/transactions/invoice";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type Transaction = {
   id: number;
@@ -48,9 +59,11 @@ type Transaction = {
 export default function Transactions() {
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false);
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [invoiceData, setInvoiceData] = useState<any>(null);
   const [location] = useLocation();
   const { toast } = useToast();
@@ -101,6 +114,49 @@ export default function Transactions() {
   const { data: products } = useQuery({
     queryKey: ["/api/products"],
   });
+  
+  // Mutation untuk menghapus transaksi
+  const deleteTransactionMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/transactions/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Transaksi berhasil dihapus",
+        description: "Data transaksi telah dihapus dari sistem",
+      });
+      
+      // Invalidate query untuk merefresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
+      
+      // Reset state
+      setSelectedTransaction(null);
+      setIsDeleteDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error("Error deleting transaction:", error);
+      toast({
+        title: "Gagal menghapus transaksi",
+        description: "Terjadi kesalahan saat menghapus data. Silakan coba lagi.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Fungsi untuk menghapus transaksi
+  const handleDeleteTransaction = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const confirmDeleteTransaction = () => {
+    if (selectedTransaction) {
+      deleteTransactionMutation.mutate(selectedTransaction.id);
+    }
+  };
 
   const getPatientName = (patientId: number) => {
     const patient = patients?.find((p: any) => p.id === patientId);
@@ -362,6 +418,17 @@ export default function Transactions() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                             </svg>
                           </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-100"
+                            onClick={() => handleDeleteTransaction(transaction)}
+                            title="Hapus Transaksi"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -390,6 +457,47 @@ export default function Transactions() {
           data={invoiceData}
         />
       )}
+      
+      {/* Dialog konfirmasi hapus transaksi */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Hapus Transaksi</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus transaksi ini? Tindakan ini akan menghapus data transaksi, sesi terapi yang terkait, dan mengembalikan stok produk.
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-400 rounded text-sm">
+                <p className="font-semibold">Peringatan:</p>
+                <p>Jika transaksi terkait dengan paket terapi yang sedang aktif, semua data sesi terapi juga akan dihapus.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setSelectedTransaction(null);
+              }}
+            >
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteTransaction}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteTransactionMutation.isPending}
+            >
+              {deleteTransactionMutation.isPending ? (
+                <div className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Menghapus...
+                </div>
+              ) : "Hapus Transaksi"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

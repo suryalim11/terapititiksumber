@@ -530,6 +530,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Internal server error" });
     }
   });
+  
+  app.delete("/api/transactions/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated() || !req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Unauthorized, only admin can delete transactions" });
+      }
+      
+      const id = parseInt(req.params.id);
+      
+      // Check if transaction exists
+      const transaction = await storage.getTransaction(id);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      // Delete the transaction
+      const success = await storage.deleteTransaction(id);
+      
+      if (success) {
+        return res.status(200).json({ message: "Transaction deleted successfully" });
+      } else {
+        return res.status(500).json({ message: "Failed to delete transaction" });
+      }
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
 
   // Session routes
   app.get("/api/sessions", async (req: Request, res: Response) => {

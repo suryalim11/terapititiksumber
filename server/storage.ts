@@ -60,6 +60,7 @@ export interface IStorage {
   getAllTransactions(): Promise<Transaction[]>;
   getTransactionsByPatient(patientId: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  deleteTransaction(id: number): Promise<boolean>;
   
   // Sessions
   getSession(id: number): Promise<Session | undefined>;
@@ -517,6 +518,42 @@ export class MemStorage implements IStorage {
     const transaction: Transaction = { ...insertTransaction, id, transactionId, createdAt };
     this.transactions.set(id, transaction);
     return transaction;
+  }
+  
+  async deleteTransaction(id: number): Promise<boolean> {
+    // Check if transaction exists
+    if (!this.transactions.has(id)) {
+      return false;
+    }
+    
+    const transaction = this.transactions.get(id);
+    
+    // Delete the transaction
+    this.transactions.delete(id);
+    
+    // Find any sessions that were created from this transaction
+    const sessionsToDelete = Array.from(this.therapySessions.values())
+      .filter(session => session.transactionId === id);
+    
+    // Delete associated sessions
+    for (const session of sessionsToDelete) {
+      this.therapySessions.delete(session.id);
+    }
+    
+    // For products, restore the stock
+    if (transaction && transaction.items) {
+      for (const item of transaction.items) {
+        if (item.type === 'product' && typeof item.id === 'number' && typeof item.quantity === 'number') {
+          const product = this.products.get(item.id);
+          if (product) {
+            // Restore the stock by adding back the quantity
+            await this.updateProductStock(item.id, item.quantity);
+          }
+        }
+      }
+    }
+    
+    return true;
   }
 
   // Session methods

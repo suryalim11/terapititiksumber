@@ -391,6 +391,51 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result[0];
   }
+  
+  async deleteTransaction(id: number): Promise<boolean> {
+    try {
+      // Get the transaction first to handle related records
+      const transaction = await this.getTransaction(id);
+      if (!transaction) {
+        return false;
+      }
+      
+      // Find and delete related sessions
+      const sessions = await db.query.sessions.findMany({
+        where: eq(schema.sessions.transactionId, id)
+      });
+      
+      // Delete each session
+      for (const session of sessions) {
+        await db.delete(schema.sessions)
+          .where(eq(schema.sessions.id, session.id));
+      }
+      
+      // For products in the transaction, restore stock
+      const items = transaction.items as any[];
+      if (items && Array.isArray(items)) {
+        for (const item of items) {
+          if (item.type === 'product' && typeof item.id === 'number' && typeof item.quantity === 'number') {
+            // Get the product
+            const product = await this.getProduct(item.id);
+            if (product) {
+              // Restore stock by adding back the quantity
+              await this.updateProductStock(item.id, item.quantity);
+            }
+          }
+        }
+      }
+      
+      // Finally, delete the transaction
+      const result = await db.delete(schema.transactions)
+        .where(eq(schema.transactions.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      return false;
+    }
+  }
 
   // Session methods
   async getSession(id: number): Promise<Session | undefined> {
