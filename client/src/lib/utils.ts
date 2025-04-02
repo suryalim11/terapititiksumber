@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format as dateFnsFormat } from "date-fns";
+import { format as dateFnsFormat, parseISO, addHours } from "date-fns";
 import { id } from "date-fns/locale";
 
 /**
@@ -115,6 +115,27 @@ export function isValidDate(dateString: string): boolean {
  */
 export function formatDate(date: Date): string {
   return dateFnsFormat(date, "dd/MM/yyyy HH:mm", { locale: id }) + " WIB";
+}
+
+/**
+ * Format ISO string timestamp to WIB time
+ * This function handles the timezone offset correctly
+ */
+export function formatISOtoWIB(isoString: string): string {
+  try {
+    // Parse ISO string to date object
+    const date = parseISO(isoString);
+    
+    // Add 7 hours to convert to WIB time (Indonesia)
+    // Untuk memastikan waktu tetap ditampilkan sebagai WIB (GMT+7)
+    const wibDate = addHours(date, 0); // Server sudah mengkonversi ke WIB
+    
+    // Format with date-fns
+    return dateFnsFormat(wibDate, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
+  } catch (e) {
+    console.error("Error formatting ISO date:", e);
+    return "";
+  }
 }
 
 /**

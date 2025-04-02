@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Loader2
 } from "lucide-react";
-import { cn, formatRupiah, formatDateDDMMYYYY } from "@/lib/utils";
+import { cn, formatRupiah, formatDateDDMMYYYY, formatISOtoWIB } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
@@ -227,7 +227,7 @@ export default function Dashboard() {
                       <p className="text-sm">{activity.description}</p>
                       <time className="text-xs text-muted-foreground">
                         {activity.timestamp ? 
-                          format(parseISO(activity.timestamp), "dd/MM/yyyy, HH:mm 'WIB'", { locale: localeId }) :
+                          formatISOtoWIB(activity.timestamp) :
                           ""}
                       </time>
                     </div>
