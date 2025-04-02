@@ -331,85 +331,18 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         return;
       }
       
-      // Kirim permintaan ke API untuk menggunakan sesi
-      const newSessionsUsed = session.sessionsUsed + 1;
-      const response = await fetch(`/api/sessions/${session.id}/use`, {
-        method: "PUT",
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          sessionsUsed: newSessionsUsed
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal menggunakan sesi paket");
-      }
-      
-      const result = await response.json();
-      console.log("Hasil penggunaan sesi:", result);
-      
-      // Buat transaksi dengan total 0 untuk mencatat penggunaan sesi
-      const transactionData = {
-        patientId: parseInt(form.getValues().patientId),
-        totalAmount: "0",
-        paymentMethod: form.getValues().paymentMethod || "cash",
-        items: [{
-          id: session.packageId,
-          type: "package",
-          quantity: 1,
-          description: "(menggunakan sisa paket)"
-        }],
-        notes: `Penggunaan sesi paket: ${session.package?.name}. Sesi ke-${newSessionsUsed} dari ${session.totalSessions}.`
-      };
-      
-      try {
-        // Simpan transaksi dengan nilai 0
-        const transactionResponse = await fetch('/api/transactions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(transactionData),
-        });
-        
-        if (!transactionResponse.ok) {
-          console.warn("Gagal mencatat transaksi penggunaan sesi, tetapi sesi berhasil digunakan");
-        } else {
-          const transactionResult = await transactionResponse.json();
-          console.log("Transaksi penggunaan sesi berhasil dicatat:", transactionResult);
-          
-          // Invalidate transactions query untuk refresh data
-          queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/dashboard/activities'] });
-        }
-      } catch (transactionError) {
-        console.warn("Error mencatat transaksi sesi:", transactionError);
-        // Tetap lanjutkan karena penggunaan sesi sudah berhasil
-      }
-      
-      // Tampilkan notifikasi sukses
+      // Set session as selected but don't use it immediately - wait for user confirmation
+      setSelectedSession(session);
       toast({
-        title: "Sesi paket berhasil digunakan",
-        description: `Tersisa ${session.remainingSessions - 1} sesi dari paket ${session.package?.name}`,
+        title: "Paket dipilih",
+        description: "Klik tombol 'Proses Pembayaran' untuk mencatat penggunaan sesi",
       });
-      
-      // Refresh data sesi aktif
-      refetchActiveSessions();
-      
-      // Set selected session ke null
-      setSelectedSession(null);
-      
-      // Reset switch
-      setUseExistingPackage(false);
+      return;
     } catch (error: any) {
-      console.error("Error menggunakan sesi paket:", error);
+      console.error("Error memilih sesi paket:", error);
       toast({
-        title: "Gagal menggunakan sesi paket",
-        description: error.message || "Terjadi kesalahan saat menggunakan sesi paket",
+        title: "Gagal memilih sesi paket",
+        description: error.message || "Terjadi kesalahan saat memilih sesi paket",
         variant: "destructive",
       });
     }
@@ -625,11 +558,98 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   };
   
   // Handler untuk submit form secara manual
-  const handleSubmitForm = () => {
+  const handleSubmitForm = async () => {
     console.log("Manual submit triggered");
     const formValues = form.getValues();
     console.log("Form values:", formValues);
     
+    // Handle using session from package if selectedSession exists
+    if (useExistingPackage && selectedSession) {
+      // Confirm before proceeding
+      if (!confirm(`Konfirmasi penggunaan satu sesi dari paket ${selectedSession.package?.name}?`)) {
+        return; // User canceled
+      }
+      
+      try {
+        // Kirim permintaan ke API untuk menggunakan sesi
+        const newSessionsUsed = selectedSession.sessionsUsed + 1;
+        const response = await fetch(`/api/sessions/${selectedSession.id}/use`, {
+          method: "PUT",
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sessionsUsed: newSessionsUsed
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Gagal menggunakan sesi paket");
+        }
+        
+        const result = await response.json();
+        console.log("Hasil penggunaan sesi:", result);
+        
+        // Buat transaksi dengan total 0 untuk mencatat penggunaan sesi
+        const transactionData = {
+          patientId: parseInt(formValues.patientId),
+          totalAmount: "0",
+          paymentMethod: formValues.paymentMethod || "cash",
+          items: [{
+            id: selectedSession.packageId,
+            type: "package",
+            quantity: 1,
+            description: "(menggunakan sisa paket)"
+          }],
+          notes: `Penggunaan sesi paket: ${selectedSession.package?.name}. Sesi ke-${newSessionsUsed} dari ${selectedSession.totalSessions}.`
+        };
+        
+        // Simpan transaksi dengan nilai 0
+        const transactionResponse = await fetch('/api/transactions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(transactionData),
+        });
+        
+        if (!transactionResponse.ok) {
+          console.warn("Gagal mencatat transaksi penggunaan sesi, tetapi sesi berhasil digunakan");
+        } else {
+          const transactionResult = await transactionResponse.json();
+          console.log("Transaksi penggunaan sesi berhasil dicatat:", transactionResult);
+          
+          // Invalidate queries untuk refresh data
+          queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/dashboard/activities'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/sessions'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/dashboard/active-packages'] });
+          
+          // Tampilkan notifikasi sukses
+          toast({
+            title: "Sesi paket berhasil digunakan",
+            description: `Tersisa ${selectedSession.remainingSessions - 1} sesi dari paket ${selectedSession.package?.name}`,
+          });
+          
+          // Tutup form
+          onClose();
+        }
+        
+        return; // Exit function after handling session use
+      } catch (error: any) {
+        console.error("Error menggunakan sesi paket:", error);
+        toast({
+          title: "Gagal menggunakan sesi paket",
+          description: error.message || "Terjadi kesalahan saat menggunakan sesi paket",
+          variant: "destructive",
+        });
+        return; // Stop execution on error
+      }
+    }
+    
+    // Proceed with normal transaction if we're not using session from package
     // Siapkan data
     const submissionData: TransactionFormValues = {
       patientId: formValues.patientId || "",
@@ -843,19 +863,19 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               
                               <Button 
                                 onClick={() => {
-                                  // Clear selectedSession first, set it after to prevent duplicate data issues
-                                  setSelectedSession(null);
-                                  setTimeout(() => {
-                                    setSelectedSession(session);
-                                    useSessionFromPackage(session);
-                                  }, 50);
+                                  // Just select the session, actual processing happens on form submit
+                                  setSelectedSession(session);
+                                  toast({
+                                    title: "Paket dipilih",
+                                    description: "Klik tombol 'Proses Pembayaran' untuk mencatat penggunaan sesi",
+                                  });
                                 }}
                                 disabled={session.remainingSessions <= 0 || selectedSession?.id === session.id}
                                 className="w-full"
                                 size="sm"
                                 variant={selectedSession?.id === session.id ? "secondary" : "default"}
                               >
-                                {selectedSession?.id === session.id ? "Sesi Terpilih" : "Gunakan 1 Sesi"}
+                                {selectedSession?.id === session.id ? "Sesi Terpilih" : "Pilih Sesi Ini"}
                               </Button>
                             </CardContent>
                           </Card>
@@ -876,7 +896,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
             )}
 
             {/* Package Selection */}
-            <div>
+            <div className={`${useExistingPackage ? 'opacity-50' : ''}`}>
               <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 {useExistingPackage ? 'Beli Paket Terapi Baru' : 'Paket Terapi'}
               </h4>
@@ -891,7 +911,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                       <SelectValue placeholder="Pilih paket terapi..." />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent position="popper" className="z-50 w-[200px]">
                     {packages?.map((pkg: Package) => (
                       <SelectItem key={pkg.id} value={pkg.id.toString()}>
                         {pkg.name} ({formatPrice(pkg.price)})
