@@ -13,6 +13,21 @@ import { IStorage } from "./storage";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
+// Utility functions for formatting
+function formatRupiah(amount: number): string {
+  return new Intl.NumberFormat('id-ID', { 
+    style: 'currency', 
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
+}
+
+function formatDateString(dateStr: string | Date): string {
+  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+  return format(date, 'dd/MM/yyyy, HH:mm');
+}
+
 const MemoryStore = createMemoryStore(session);
 
 export class DatabaseStorage implements IStorage {
@@ -848,25 +863,77 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRecentActivities(limit: number = 10): Promise<any[]> {
-    // This is a simplified implementation of recent activities
-    // In a real application, you might want to have a dedicated activities table
+    // Mengambil berbagai jenis aktivitas dan menggabungkannya
+    const activities: any[] = [];
     
-    // Get recent transactions
+    // 1. Dapatkan transaksi terbaru
     const recentTransactions = await db.query.transactions.findMany({
       orderBy: [desc(schema.transactions.createdAt)],
-      limit,
+      limit: limit * 2 // Mengambil lebih banyak untuk difilter nanti
     });
     
-    // Transform transactions to activities
-    return recentTransactions.map(transaction => ({
-      id: transaction.id,
-      type: "transaction",
-      time: transaction.createdAt,
-      details: {
-        transactionId: transaction.transactionId,
-        amount: transaction.totalAmount,
-        patientId: transaction.patientId
+    // Dapatkan informasi pasien secara terpisah untuk menghindari masalah join
+    for (const transaction of recentTransactions) {
+      try {
+        const patient = await db.query.patients.findFirst({
+          where: eq(schema.patients.id, transaction.patientId)
+        });
+        
+        activities.push({
+          id: transaction.id,
+          type: "transaction",
+          description: `${patient?.name || 'Pasien'} melakukan pembayaran sebesar Rp${Number(transaction.totalAmount).toLocaleString('id-ID')}`,
+          timestamp: transaction.createdAt.toISOString()
+        });
+      } catch (error) {
+        console.error("Error getting patient for transaction activity:", error);
+        // Tambahkan aktivitas tanpa informasi pasien sebagai fallback
+        activities.push({
+          id: transaction.id,
+          type: "transaction",
+          description: `Pembayaran sebesar Rp${Number(transaction.totalAmount).toLocaleString('id-ID')}`,
+          timestamp: transaction.createdAt.toISOString()
+        });
       }
-    }));
+    }
+    
+    // 2. Dapatkan appointment terbaru
+    const recentAppointments = await db.query.appointments.findMany({
+      orderBy: [desc(schema.appointments.date)],
+      limit: limit * 2 // Mengambil lebih banyak untuk difilter nanti
+    });
+    
+    // Tambahkan appointment ke aktivitas
+    for (const appointment of recentAppointments) {
+      try {
+        const patient = await db.query.patients.findFirst({
+          where: eq(schema.patients.id, appointment.patientId)
+        });
+        
+        const appointmentDate = new Date(appointment.date);
+        const dateStr = appointmentDate.toLocaleDateString('id-ID', {
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric'
+        });
+        
+        activities.push({
+          id: 1000 + appointment.id, // Menambahkan offset untuk menghindari konflik ID
+          type: "appointment",
+          description: `${patient?.name || 'Pasien'} terjadwal untuk sesi terapi pada ${dateStr}`,
+          timestamp: appointmentDate.toISOString()
+        });
+      } catch (error) {
+        console.error("Error getting patient for appointment activity:", error);
+      }
+    }
+    
+    // 3. Mengurutkan semua aktivitas berdasarkan timestamp terbaru
+    activities.sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    
+    // Mengembalikan hanya sejumlah limit
+    return activities.slice(0, limit);
   }
 }
