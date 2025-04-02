@@ -18,6 +18,7 @@ export interface RegistrationLink {
   createdAt: Date;
   isActive: boolean;
   createdBy: number; // User ID who created the link
+  specificDate: string | null;
 }
 
 import session from "express-session";
@@ -85,7 +86,7 @@ export interface IStorage {
   updateAppointmentStatus(id: number, status: string): Promise<Appointment | undefined>;
   
   // Registration Links
-  createRegistrationLink(userId: number, expiryHours: number, dailyLimit: number): Promise<RegistrationLink>;
+  createRegistrationLink(userId: number, expiryHours: number, dailyLimit: number, specificDate?: string): Promise<RegistrationLink>;
   getRegistrationLinkByCode(code: string): Promise<RegistrationLink | undefined>;
   getAllRegistrationLinks(): Promise<RegistrationLink[]>;
   incrementRegistrationCount(code: string): Promise<RegistrationLink | undefined>;
@@ -198,7 +199,8 @@ export class MemStorage implements IStorage {
       currentRegistrations: 0,
       createdAt: now,
       isActive: true,
-      createdBy: 1 // Admin user ID
+      createdBy: 1, // Admin user ID
+      specificDate: null
     };
     this.registrationLinks.set(registrationLink.id, registrationLink);
     this.registrationLinkCurrentId++;
@@ -864,7 +866,7 @@ export class MemStorage implements IStorage {
   }
   
   // Registration Link methods
-  async createRegistrationLink(userId: number, expiryHours: number, dailyLimit: number): Promise<RegistrationLink> {
+  async createRegistrationLink(userId: number, expiryHours: number, dailyLimit: number, specificDate?: string): Promise<RegistrationLink> {
     const id = this.registrationLinkCurrentId++;
     const createdAt = new Date();
     
@@ -887,7 +889,8 @@ export class MemStorage implements IStorage {
       currentRegistrations: 0,
       createdAt,
       isActive: true,
-      createdBy: userId
+      createdBy: userId,
+      specificDate
     };
     
     this.registrationLinks.set(id, registrationLink);
@@ -1070,7 +1073,8 @@ export class MemStorage implements IStorage {
       currentRegistrations: 0,
       createdAt,
       isActive: true,
-      createdBy: userId
+      createdBy: userId,
+      specificDate: null
     };
     
     // Simpan ke Map

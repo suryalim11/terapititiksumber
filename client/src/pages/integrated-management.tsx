@@ -94,11 +94,13 @@ interface RegistrationLink {
   createdAt: string;
   isActive: boolean;
   createdBy: number;
+  specificDate: string | null;
 }
 
 interface CreateLinkRequest {
   expiryHours: number;
   dailyLimit: number;
+  specificDate?: string;
 }
 
 // Form Schema untuk Therapy Slot
@@ -138,6 +140,8 @@ export default function IntegratedManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [expiryHours, setExpiryHours] = useState(24);
   const [dailyLimit, setDailyLimit] = useState(10);
+  const [specificDate, setSpecificDate] = useState<Date | null>(null);
+  const [useSpecificDate, setUseSpecificDate] = useState(false);
   const [linkToDeactivate, setLinkToDeactivate] = useState<number | null>(null);
   const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
   const [linkToDelete, setLinkToDelete] = useState<number | null>(null);
@@ -453,7 +457,14 @@ export default function IntegratedManagement() {
       return;
     }
 
-    createLinkMutation.mutate({ expiryHours, dailyLimit });
+    const linkData: CreateLinkRequest = { expiryHours, dailyLimit };
+    
+    // Tambahkan tanggal spesifik jika diaktifkan
+    if (useSpecificDate && specificDate) {
+      linkData.specificDate = format(specificDate, 'yyyy-MM-dd');
+    }
+
+    createLinkMutation.mutate(linkData);
   };
 
   // Handler untuk mengaktifkan/nonaktifkan slot
@@ -1129,7 +1140,7 @@ export default function IntegratedManagement() {
                     <TableBody>
                       {therapySlots.map((slot) => (
                         <TableRow key={slot.id}>
-                          <TableCell>{formatSlotDate(slot.date)}</TableCell>
+                          <TableCell>{formatSlotDate(String(slot.date))}</TableCell>
                           <TableCell>{slot.timeSlot}</TableCell>
                           <TableCell>
                             {slot.currentCount}/{slot.maxQuota}
@@ -1257,7 +1268,7 @@ export default function IntegratedManagement() {
                   <div className="text-center py-4 text-red-500">
                     Terjadi kesalahan saat memuat data. Silakan coba lagi.
                   </div>
-                ) : links && links.length > 0 ? (
+                ) : links && Array.isArray(links) && links.length > 0 ? (
                   <Table>
                     <TableCaption>Daftar link pendaftaran pasien</TableCaption>
                     <TableHeader>

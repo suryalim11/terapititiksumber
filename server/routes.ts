@@ -23,6 +23,7 @@ interface VerifyRegistrationLinkBody {
 interface CreateRegistrationLinkBody {
   expiryHours: number;
   dailyLimit: number;
+  specificDate?: string;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -852,7 +853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized, only admin can create registration links" });
       }
 
-      const { expiryHours, dailyLimit } = req.body as CreateRegistrationLinkBody;
+      const { expiryHours, dailyLimit, specificDate } = req.body as CreateRegistrationLinkBody;
       
       if (!expiryHours || !dailyLimit || typeof expiryHours !== 'number' || typeof dailyLimit !== 'number') {
         return res.status(400).json({ 
@@ -863,7 +864,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const registrationLink = await storage.createRegistrationLink(
         req.user.id, // Menggunakan req.user.id bukan req.session.userId
         expiryHours,
-        dailyLimit
+        dailyLimit,
+        specificDate
       );
       
       return res.status(201).json(registrationLink);

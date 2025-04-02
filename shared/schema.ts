@@ -2,6 +2,19 @@ import { pgTable, text, serial, integer, boolean, timestamp, json, decimal } fro
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Registration Link Schema
+export const registrationLinks = pgTable("registration_links", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  expiryTime: timestamp("expiry_time").notNull(),
+  dailyLimit: integer("daily_limit").notNull(),
+  currentRegistrations: integer("current_registrations").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: integer("created_by").notNull(),
+  specificDate: text("specific_date"),
+});
+
 // User Schema
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -152,6 +165,15 @@ export const insertAppointmentSchema = createInsertSchema(appointments).pick({
   status: true,
 });
 
+// Registration Link insertSchema
+export const insertRegistrationLinkSchema = createInsertSchema(registrationLinks).pick({
+  code: true,
+  expiryTime: true,
+  dailyLimit: true,
+  createdBy: true,
+  specificDate: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -175,3 +197,6 @@ export type InsertTherapySlot = z.infer<typeof insertTherapySlotSchema>;
 
 export type Appointment = typeof appointments.$inferSelect;
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
+
+export type RegistrationLink = typeof registrationLinks.$inferSelect;
+export type InsertRegistrationLink = z.infer<typeof insertRegistrationLinkSchema>;
