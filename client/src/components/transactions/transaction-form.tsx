@@ -128,6 +128,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const [invoiceData, setInvoiceData] = useState<any>(null);
   const [selectedSession, setSelectedSession] = useState<ActiveSession | null>(null);
   const [useExistingPackage, setUseExistingPackage] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // State untuk mengontrol pemrosesan ganda
   const [formKey, setFormKey] = useState(Date.now()); // Kunci unik untuk me-reset form
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -683,148 +684,179 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     mutation.mutate(values);
   };
   
-  // Handler untuk submit form secara manual
+  // Handler untuk submit form secara manual dengan debounce protection
   const handleSubmitForm = async () => {
-    console.log("Manual submit triggered");
+    // Ambil nilai form di luar blok try-catch agar tersedia di semua bagian fungsi
     const formValues = form.getValues();
-    console.log("Form values:", formValues);
     
-    // Handle using session from package if selectedSession exists
-    if (useExistingPackage && selectedSession) {
-      // Prepare confirmation message based on cart content
-      const hasProducts = cartItems.some(item => item.type === "product");
-      let confirmMessage = `Konfirmasi penggunaan satu sesi dari paket ${selectedSession.package?.name}`;
-      
-      if (hasProducts) {
-        const totalProductPrice = cartItems
-          .filter(item => item.type === "product")
-          .reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
-          
-        confirmMessage += ` dan pembelian produk senilai ${formatPrice(totalProductPrice.toString())}`;
-      }
-      
-      confirmMessage += "?";
-      
-      // Confirm before proceeding
-      if (!confirm(confirmMessage)) {
-        return; // User canceled
-      }
-      
-      try {
-        // Kirim permintaan ke API untuk menggunakan sesi
-        const newSessionsUsed = selectedSession.sessionsUsed + 1;
-        const response = await fetch(`/api/sessions/${selectedSession.id}/use`, {
-          method: "PUT",
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            sessionsUsed: newSessionsUsed
-          })
+    try {
+      // Tambahkan semaphore untuk mencegah multiple submit
+      if (mutation.isPending || isSubmitting) {
+        toast({
+          title: "Sedang diproses",
+          description: "Mohon tunggu, transaksi sedang diproses",
         });
+        return; // Prevent multiple submissions
+      }
+      
+      console.log("Manual submit triggered");
+      
+      // Handle using session from package if selectedSession exists
+      if (useExistingPackage && selectedSession) {
+        // Prepare confirmation message based on cart content
+        const hasProducts = cartItems.some(item => item.type === "product");
+        let confirmMessage = `Konfirmasi penggunaan satu sesi dari paket ${selectedSession.package?.name}`;
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Gagal menggunakan sesi paket");
+        if (hasProducts) {
+          const totalProductPrice = cartItems
+            .filter(item => item.type === "product")
+            .reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
+            
+          confirmMessage += ` dan pembelian produk senilai ${formatPrice(totalProductPrice.toString())}`;
         }
         
-        const result = await response.json();
-        console.log("Hasil penggunaan sesi:", result);
+        confirmMessage += "?";
         
-        // Buat transaksi dengan total 0 untuk mencatat penggunaan sesi + produk jika ada
-        // Persiapkan items untuk transaksi - mulai dari paket yang digunakan
-        const transactionItems = [
-          {
-            id: selectedSession.packageId,
-            type: "package",
-            quantity: 1,
-            description: "(menggunakan sisa paket)"
+        // Confirm before proceeding
+        if (!confirm(confirmMessage)) {
+          return; // User canceled
+        }
+        
+        // Disable form interaction during processing
+        setIsSubmitting(true);
+        
+        try {
+          // Kirim permintaan ke API untuk menggunakan sesi
+          const newSessionsUsed = selectedSession.sessionsUsed + 1;
+          const response = await fetch(`/api/sessions/${selectedSession.id}/use`, {
+            method: "PUT",
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              sessionsUsed: newSessionsUsed
+            })
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Gagal menggunakan sesi paket");
           }
-        ];
+          
+          const result = await response.json();
+          console.log("Hasil penggunaan sesi:", result);
+          
+          // Buat transaksi dengan total 0 untuk mencatat penggunaan sesi + produk jika ada
+          // Persiapkan items untuk transaksi - mulai dari paket yang digunakan
+          const transactionItems = [
+            {
+              id: selectedSession.packageId,
+              type: "package",
+              quantity: 1,
+              description: "(menggunakan sisa paket)"
+            }
+          ];
+          
+          // Tambahkan produk yang dipilih ke dalam items transaksi
+          const productItems = cartItems.filter(item => item.type === "product").map(item => ({
+            id: item.id,
+            type: item.type,
+            quantity: item.quantity,
+            price: item.price
+          }));
+          
+          // Gabungkan semua item
+          const allItems = [...transactionItems, ...productItems];
+          
+          // Hitung total harga produk (jangan hitung paket karena menggunakan sisa paket)
+          const productTotal = productItems.reduce(
+            (sum, item) => sum + parseFloat(item.price) * item.quantity, 
+            0
+          );
+          
+          const transactionData = {
+            patientId: parseInt(formValues.patientId),
+            totalAmount: productTotal.toString(), // Gunakan total harga produk
+            paymentMethod: formValues.paymentMethod || "cash",
+            items: allItems,
+            notes: `Penggunaan sesi paket: ${selectedSession.package?.name}. Sesi ke-${newSessionsUsed} dari ${selectedSession.totalSessions}.`
+          };
+          
+          // Simpan transaksi tanpa membuat sesi baru (penting: tambahkan flag createSession: false)
+          const transactionResponse = await fetch('/api/transactions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...transactionData,
+              createSession: false // Flag penting untuk mencegah pembuatan sesi baru
+            }),
+          });
+          
+          if (!transactionResponse.ok) {
+            console.warn("Gagal mencatat transaksi penggunaan sesi, tetapi sesi berhasil digunakan");
+          } else {
+            const transactionResult = await transactionResponse.json();
+            console.log("Transaksi penggunaan sesi berhasil dicatat:", transactionResult);
+            
+            // Invalidate queries untuk refresh data
+            queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/dashboard/activities'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/sessions'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/dashboard/active-packages'] });
+            
+            // Tampilkan notifikasi sukses
+            toast({
+              title: "Sesi paket berhasil digunakan",
+              description: `Tersisa ${selectedSession.remainingSessions - 1} sesi dari paket ${selectedSession.package?.name}`,
+            });
+            
+            // Tutup form
+            onClose();
+          }
+          
+          return; // Exit function after handling session use
+        } catch (error: any) {
+          console.error("Error menggunakan sesi paket:", error);
+          toast({
+            title: "Gagal menggunakan sesi paket",
+            description: error.message || "Terjadi kesalahan saat menggunakan sesi paket",
+            variant: "destructive",
+          });
+        } finally {
+          // Re-enable form interaction
+          setIsSubmitting(false);
+        }
         
-        // Tambahkan produk yang dipilih ke dalam items transaksi
-        const productItems = cartItems.filter(item => item.type === "product").map(item => ({
+        return; // Stop execution after error handling
+      }
+      
+      // Jika kita sampai di sini, berarti kita tidak menggunakan paket yang ada
+      // Proceed with normal transaction
+      const submissionData: TransactionFormValues = {
+        patientId: formValues.patientId || "",
+        paymentMethod: formValues.paymentMethod,
+        items: cartItems.map(item => ({
           id: item.id,
           type: item.type,
           quantity: item.quantity,
-          price: item.price
-        }));
-        
-        // Gabungkan semua item
-        const allItems = [...transactionItems, ...productItems];
-        
-        // Hitung total harga produk (jangan hitung paket karena menggunakan sisa paket)
-        const productTotal = productItems.reduce(
-          (sum, item) => sum + parseFloat(item.price) * item.quantity, 
-          0
-        );
-        
-        const transactionData = {
-          patientId: parseInt(formValues.patientId),
-          totalAmount: productTotal.toString(), // Gunakan total harga produk
-          paymentMethod: formValues.paymentMethod || "cash",
-          items: allItems,
-          notes: `Penggunaan sesi paket: ${selectedSession.package?.name}. Sesi ke-${newSessionsUsed} dari ${selectedSession.totalSessions}.`
-        };
-        
-        // Simpan transaksi dengan nilai 0
-        const transactionResponse = await fetch('/api/transactions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(transactionData),
-        });
-        
-        if (!transactionResponse.ok) {
-          console.warn("Gagal mencatat transaksi penggunaan sesi, tetapi sesi berhasil digunakan");
-        } else {
-          const transactionResult = await transactionResponse.json();
-          console.log("Transaksi penggunaan sesi berhasil dicatat:", transactionResult);
-          
-          // Invalidate queries untuk refresh data
-          queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/dashboard/activities'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/sessions'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/dashboard/active-packages'] });
-          
-          // Tampilkan notifikasi sukses
-          toast({
-            title: "Sesi paket berhasil digunakan",
-            description: `Tersisa ${selectedSession.remainingSessions - 1} sesi dari paket ${selectedSession.package?.name}`,
-          });
-          
-          // Tutup form
-          onClose();
-        }
-        
-        return; // Exit function after handling session use
-      } catch (error: any) {
-        console.error("Error menggunakan sesi paket:", error);
-        toast({
-          title: "Gagal menggunakan sesi paket",
-          description: error.message || "Terjadi kesalahan saat menggunakan sesi paket",
-          variant: "destructive",
-        });
-        return; // Stop execution on error
-      }
+        })),
+      };
+      
+      // Eksekusi onSubmit
+      onSubmit(submissionData);
+      
+    } catch (error) {
+      console.error("Error handling form submission:", error);
+      toast({
+        title: "Gagal memproses transaksi",
+        description: "Terjadi kesalahan saat memproses transaksi. Silakan coba lagi.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
     }
-    
-    // Proceed with normal transaction if we're not using session from package
-    // Siapkan data
-    const submissionData: TransactionFormValues = {
-      patientId: formValues.patientId || "",
-      paymentMethod: formValues.paymentMethod,
-      items: cartItems.map(item => ({
-        id: item.id,
-        type: item.type,
-        quantity: item.quantity,
-      })),
-    };
-    
-    // Eksekusi onSubmit
-    onSubmit(submissionData);
   };
 
   if (showInvoice && invoiceData) {
