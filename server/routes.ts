@@ -855,9 +855,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const sessions = await storage.getAllActiveSessions();
       
+      // Create a unique key for each patient+package combination
+      const uniquePackagesMap = new Map();
+      
+      // First, group sessions by patient and package
+      for (const session of sessions) {
+        const uniqueKey = `${session.patientId}_${session.packageId}`;
+        
+        // If this combination already exists, keep only the one with the most recent lastSessionDate
+        // or the one with higher sessionsUsed if lastSessionDate is the same
+        if (uniquePackagesMap.has(uniqueKey)) {
+          const existing = uniquePackagesMap.get(uniqueKey);
+          
+          // Keep the more recently used session or the one with more sessions used
+          if (
+            !existing.lastSessionDate || 
+            (session.lastSessionDate && new Date(session.lastSessionDate) > new Date(existing.lastSessionDate)) ||
+            (session.lastSessionDate && existing.lastSessionDate && 
+              new Date(session.lastSessionDate).getTime() === new Date(existing.lastSessionDate).getTime() && 
+              session.sessionsUsed > existing.sessionsUsed)
+          ) {
+            uniquePackagesMap.set(uniqueKey, session);
+          }
+        } else {
+          uniquePackagesMap.set(uniqueKey, session);
+        }
+      }
+      
+      // Get unique sessions
+      const uniqueSessions = Array.from(uniquePackagesMap.values());
+      
       // Map sessions to include patient and package details
       const activePackages = await Promise.all(
-        sessions.map(async (session) => {
+        uniqueSessions.map(async (session) => {
           const patient = await storage.getPatient(session.patientId);
           const packageItem = await storage.getPackage(session.packageId);
           
@@ -883,6 +913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
+      console.log(`Returning ${activePackages.length} unique active packages from ${sessions.length} active sessions`);
       return res.status(200).json(activePackages);
     } catch (error) {
       console.error("Error getting active packages:", error);
