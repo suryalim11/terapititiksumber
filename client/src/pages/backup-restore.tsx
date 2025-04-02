@@ -477,22 +477,30 @@ export default function BackupRestorePage() {
                         variant="outline"
                         size="sm"
                         onClick={() => downloadBackup(file.filename)}
+                        title="Download backup file"
                       >
-                        <Download className="h-4 w-4" />
+                        <Download className="h-4 w-4 mr-1" />
+                        <span className="hidden md:inline">Unduh</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setSelectedFile(file.filename)}
+                        title="Restore data from this backup file"
+                        className="text-blue-500 hover:text-blue-700"
                       >
-                        <Check className="h-4 w-4" />
+                        <Check className="h-4 w-4 mr-1" />
+                        <span className="hidden md:inline">Restore</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => deleteBackup(file.filename)}
+                        title="Delete this backup file"
+                        className="text-red-500 hover:text-red-700"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        <span className="hidden md:inline">Hapus</span>
                       </Button>
                     </div>
                   </TableCell>
