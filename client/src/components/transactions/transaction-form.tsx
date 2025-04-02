@@ -358,150 +358,268 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
 
   // Add package to cart
   const handlePackageSelect = (packageId: string) => {
-    if (!packageId) return;
+    try {
+      if (!packageId) return;
 
-    // Validasi form: pastikan pasien sudah dipilih
-    if (!form.getValues().patientId) {
-      toast({
-        title: "Pilih pasien terlebih dahulu",
-        description: "Anda harus memilih pasien sebelum menambahkan paket terapi",
-        variant: "destructive",
-      });
-      setSelectedPackage("");
-      return;
-    }
-
-    // Log untuk debugging
-    console.log("Package selected with ID:", packageId);
-    
-    // Simpan nilai packageId yang dipilih
-    setSelectedPackage(packageId);
-
-    const pkg = packages?.find((p: Package) => p.id === parseInt(packageId));
-    if (!pkg) {
-      console.log("Package not found for ID:", packageId);
-      return;
-    }
-
-    console.log("Found package:", pkg);
-
-    // Check if package already in cart
-    const existingPackageIndex = cartItems.findIndex(
-      item => item.type === "package" && item.id === pkg.id
-    );
-
-    if (existingPackageIndex >= 0) {
-      toast({
-        title: "Paket sudah dipilih",
-        description: "Paket terapi sudah ada dalam transaksi",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Cek apakah sudah ada paket lain di keranjang
-    const existingPackage = cartItems.find(item => item.type === "package");
-    if (existingPackage) {
-      // Konfirmasi penggantian paket
-      if (confirm(`Paket ${existingPackage.name} sudah dipilih. Ganti dengan ${pkg.name}?`)) {
-        // Hapus paket yang ada
-        setCartItems(cartItems.filter(item => item.type !== "package"));
-      } else {
-        // Batal pilih paket baru
+      // Validasi form: pastikan pasien sudah dipilih
+      if (!form.getValues().patientId) {
+        toast({
+          title: "Pilih pasien terlebih dahulu",
+          description: "Anda harus memilih pasien sebelum menambahkan paket terapi",
+          variant: "destructive",
+        });
         setSelectedPackage("");
         return;
       }
-    }
 
-    const newCartItem = {
-      id: pkg.id,
-      type: "package" as const,
-      name: pkg.name,
-      price: pkg.price,
-      quantity: 1,
-    };
-    
-    console.log("Adding to cart:", newCartItem);
-    
-    setCartItems([
-      ...cartItems.filter(item => item.type !== "package"),
-      newCartItem,
-    ]);
-    
-    // Notifikasi berhasil ditambahkan
-    toast({
-      title: "Paket terapi ditambahkan",
-      description: `${pkg.name} telah ditambahkan ke transaksi`,
-    });
-    
-    // Setelah menambahkan ke keranjang, kita reset pilihan paket
-    // untuk memungkinkan pemilihan paket lain
-    setTimeout(() => {
-      setSelectedPackage("");
-    }, 500);
+      // Log untuk debugging hanya dalam mode pengembangan
+      if (process.env.NODE_ENV === 'development') {
+        console.log("Package selected with ID:", packageId);
+      }
+      
+      // Simpan nilai packageId yang dipilih
+      setSelectedPackage(packageId);
+
+      if (!packages || packages.length === 0) {
+        toast({
+          title: "Data paket tidak tersedia",
+          description: "Daftar paket terapi tidak dapat dimuat",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const pkg = packages.find((p: Package) => p.id === parseInt(packageId));
+      if (!pkg) {
+        toast({
+          title: "Paket tidak ditemukan",
+          description: "Paket yang dipilih tidak ditemukan. Silahkan pilih paket lain.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log("Found package:", pkg);
+      }
+
+      // Check if package already in cart
+      const existingPackageIndex = cartItems.findIndex(
+        item => item.type === "package" && item.id === pkg.id
+      );
+
+      if (existingPackageIndex >= 0) {
+        toast({
+          title: "Paket sudah dipilih",
+          description: "Paket terapi ini sudah ada dalam transaksi",
+        });
+        return;
+      }
+
+      // Cek apakah sudah ada paket lain di keranjang dan gunakan Dialog alih-alih confirm()
+      const existingPackage = cartItems.find(item => item.type === "package");
+      if (existingPackage) {
+        // Hapus paket yang ada dan ganti dengan yang baru
+        setCartItems(cartItems.filter(item => item.type !== "package"));
+        
+        toast({
+          title: "Paket diganti",
+          description: `Paket ${existingPackage.name} telah diganti dengan ${pkg.name}`,
+        });
+      }
+
+      const newCartItem = {
+        id: pkg.id,
+        type: "package" as const,
+        name: pkg.name,
+        price: pkg.price,
+        quantity: 1,
+      };
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log("Adding to cart:", newCartItem);
+      }
+      
+      setCartItems([
+        ...cartItems.filter(item => item.type !== "package"),
+        newCartItem,
+      ]);
+      
+      // Notifikasi berhasil ditambahkan
+      if (!existingPackage) {
+        toast({
+          title: "Paket terapi ditambahkan",
+          description: `${pkg.name} telah ditambahkan ke transaksi`,
+        });
+      }
+    } catch (error) {
+      console.error("Error selecting package:", error);
+      toast({
+        title: "Gagal memilih paket",
+        description: "Terjadi kesalahan saat memilih paket terapi. Silahkan coba lagi.",
+        variant: "destructive", 
+      });
+    }
   };
 
   // Add/remove product from cart
   const handleProductToggle = (product: Product, isChecked: boolean) => {
-    if (isChecked) {
-      // Validasi stok produk
-      if (product.stock <= 0) {
+    try {
+      if (isChecked) {
+        // Validasi: pastikan pasien sudah dipilih
+        if (!form.getValues().patientId) {
+          toast({
+            title: "Pilih pasien terlebih dahulu",
+            description: "Anda harus memilih pasien sebelum menambahkan produk",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Validasi stok produk
+        if (!product || product.stock <= 0) {
+          toast({
+            title: "Stok tidak tersedia",
+            description: `Produk ${product?.name || 'yang dipilih'} sedang habis stok`,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Cek apakah produk sudah ada di keranjang
+        const existingProductIndex = cartItems.findIndex(
+          item => item.type === "product" && item.id === product.id
+        );
+        
+        if (existingProductIndex >= 0) {
+          // Produk sudah ada, tambah quantity
+          const updatedCartItems = [...cartItems];
+          updatedCartItems[existingProductIndex].quantity += 1;
+          
+          // Validasi: stok cukup untuk quantity yang diinginkan
+          if (updatedCartItems[existingProductIndex].quantity > product.stock) {
+            toast({
+              title: "Stok tidak cukup",
+              description: `Stok ${product.name} hanya tersisa ${product.stock}`,
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          setCartItems(updatedCartItems);
+          
+          toast({
+            title: "Jumlah produk ditambah",
+            description: `${product.name} sekarang: ${updatedCartItems[existingProductIndex].quantity}`,
+          });
+        } else {
+          // Tambah produk baru ke keranjang
+          setCartItems([
+            ...cartItems,
+            {
+              id: product.id,
+              type: "product",
+              name: product.name,
+              price: product.price,
+              quantity: 1,
+            },
+          ]);
+          
+          // Konfirmasi produk berhasil ditambahkan
+          toast({
+            title: "Produk ditambahkan",
+            description: `${product.name} ditambahkan ke keranjang`,
+          });
+        }
+      } else {
+        // Hapus produk dari keranjang
+        setCartItems(
+          cartItems.filter(item => !(item.type === "product" && item.id === product.id))
+        );
+        
         toast({
-          title: "Stok tidak tersedia",
-          description: `Produk ${product.name} sedang habis stok`,
+          title: "Produk dihapus",
+          description: `${product.name} dihapus dari keranjang`,
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling product:", error);
+      toast({
+        title: "Gagal menambahkan produk",
+        description: "Terjadi kesalahan saat menambahkan produk. Silahkan coba lagi.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Update product quantity with error handling
+  const updateProductQuantity = (productId: number, newQuantity: number) => {
+    try {
+      if (newQuantity < 1) {
+        // Instead of silently returning, give feedback
+        toast({
+          title: "Jumlah minimum 1",
+          description: "Jumlah produk tidak boleh kurang dari 1",
           variant: "destructive",
         });
         return;
       }
       
-      // Add product to cart
-      setCartItems([
-        ...cartItems,
-        {
-          id: product.id,
-          type: "product",
-          name: product.name,
-          price: product.price,
-          quantity: 1,
-        },
-      ]);
+      const product = products?.find((p: Product) => p.id === productId);
+      if (!product) {
+        toast({
+          title: "Produk tidak ditemukan",
+          description: "Produk yang dipilih tidak valid",
+          variant: "destructive",
+        });
+        return;
+      }
       
-      // Konfirmasi produk berhasil ditambahkan
-      toast({
-        title: "Produk ditambahkan",
-        description: `${product.name} ditambahkan ke keranjang`,
-      });
-    } else {
-      // Remove product from cart
-      setCartItems(
-        cartItems.filter(item => !(item.type === "product" && item.id === product.id))
-      );
-    }
-  };
+      if (newQuantity > product.stock) {
+        toast({
+          title: "Stok tidak cukup",
+          description: `Stok ${product.name} hanya tersisa ${product.stock}`,
+          variant: "destructive",
+        });
+        return;
+      }
 
-  // Update product quantity
-  const updateProductQuantity = (productId: number, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    
-    const product = products?.find((p: Product) => p.id === productId);
-    if (!product) return;
-    
-    if (newQuantity > product.stock) {
+      // Get current quantity to show change message
+      const currentItem = cartItems.find(
+        item => item.type === "product" && item.id === productId
+      );
+      const currentQuantity = currentItem?.quantity || 0;
+      
+      // Update cart items with new quantity
+      setCartItems(
+        cartItems.map(item =>
+          item.type === "product" && item.id === productId
+            ? { ...item, quantity: newQuantity }
+            : item
+        )
+      );
+      
+      // Show feedback on quantity change
+      if (newQuantity > currentQuantity) {
+        toast({
+          title: "Jumlah ditambah",
+          description: `${product.name}: ${currentQuantity} → ${newQuantity}`,
+        });
+      } else if (newQuantity < currentQuantity) {
+        toast({
+          title: "Jumlah dikurangi",
+          description: `${product.name}: ${currentQuantity} → ${newQuantity}`,
+        });
+      }
+    } catch (error) {
+      console.error("Error updating product quantity:", error);
       toast({
-        title: "Stok tidak cukup",
-        description: `Stok ${product.name} hanya tersisa ${product.stock}`,
+        title: "Gagal mengubah jumlah",
+        description: "Terjadi kesalahan saat mengubah jumlah produk",
         variant: "destructive",
       });
-      return;
     }
-
-    setCartItems(
-      cartItems.map(item =>
-        item.type === "product" && item.id === productId
-          ? { ...item, quantity: newQuantity }
-          : item
-      )
-    );
   };
 
   // Calculate total amount
@@ -782,12 +900,18 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                         onValueChange={field.onChange}
                         value={field.value}
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full focus:ring-2 focus:ring-primary">
                           <SelectValue placeholder="Pilih pasien dari daftar..." />
                         </SelectTrigger>
-                        <SelectContent side="bottom" sideOffset={4} align="start" className="z-[100]">
+                        <SelectContent 
+                          position="popper" 
+                          side="bottom" 
+                          sideOffset={4} 
+                          align="start" 
+                          className="z-[100] overflow-y-auto max-h-[300px] w-full"
+                        >
                           {patients?.length === 0 ? (
-                            <div className="px-2 py-4 text-center text-sm">
+                            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                               Belum ada data pasien
                             </div>
                           ) : (
@@ -795,8 +919,10 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               <SelectItem 
                                 key={patient.id} 
                                 value={patient.id.toString()}
+                                className="cursor-pointer hover:bg-primary/10"
                               >
-                                {patient.name} (ID: {patient.patientId})
+                                <span className="font-medium">{patient.name}</span>
+                                <span className="ml-2 text-xs text-muted-foreground">({patient.patientId})</span>
                               </SelectItem>
                             ))
                           )}
@@ -985,16 +1111,33 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                   disabled={useExistingPackage}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full focus:ring-2 focus:ring-primary">
                       <SelectValue placeholder="Pilih paket terapi..." />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent side="bottom" sideOffset={4} align="start" className="z-[100]">
-                    {packages?.map((pkg: Package) => (
-                      <SelectItem key={pkg.id} value={pkg.id.toString()}>
-                        {pkg.name} ({formatPrice(pkg.price)})
-                      </SelectItem>
-                    ))}
+                  <SelectContent 
+                    position="popper" 
+                    side="bottom" 
+                    sideOffset={4} 
+                    align="start" 
+                    className="z-[100] overflow-y-auto max-h-[300px] w-full"
+                  >
+                    {packages?.length ? (
+                      packages.map((pkg: Package) => (
+                        <SelectItem 
+                          key={pkg.id} 
+                          value={pkg.id.toString()}
+                          className="cursor-pointer hover:bg-primary/10"
+                        >
+                          <span className="font-medium">{pkg.name}</span>
+                          <span className="ml-2 text-muted-foreground">({formatPrice(pkg.price)})</span>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="py-2 px-2 text-sm text-muted-foreground text-center">
+                        Tidak ada paket terapi tersedia
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
                 {useExistingPackage && (
