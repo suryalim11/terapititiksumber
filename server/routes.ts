@@ -855,11 +855,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const sessions = await storage.getAllActiveSessions();
       
+      // Get all packages first to check which ones have more than 1 session
+      const allPackages = new Map();
+      for (const session of sessions) {
+        const pkg = await storage.getPackage(session.packageId);
+        if (pkg) {
+          allPackages.set(pkg.id, pkg);
+        }
+      }
+      
+      // Filter sessions for packages with more than 1 session (exclude single-session packages)
+      const multiSessionSessions = sessions.filter(session => {
+        const pkg = allPackages.get(session.packageId);
+        return pkg && pkg.sessions > 1; // Only include if it's a multi-session package
+      });
+      
+      if (multiSessionSessions.length === 0) {
+        return res.status(200).json([]);
+      }
+      
       // Create a unique key for each patient+package combination
       const uniquePackagesMap = new Map();
       
       // First, group sessions by patient and package
-      for (const session of sessions) {
+      for (const session of multiSessionSessions) {
         const uniqueKey = `${session.patientId}_${session.packageId}`;
         
         // If this combination already exists, keep only the one with the most recent lastSessionDate
@@ -882,7 +901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Get unique sessions
+      // Get unique multi-session sessions
       const uniqueSessions = Array.from(uniquePackagesMap.values());
       
       // Map sessions to include patient and package details
@@ -913,7 +932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      console.log(`Returning ${activePackages.length} unique active packages from ${sessions.length} active sessions`);
+      console.log(`Returning ${activePackages.length} unique multi-session packages from ${sessions.length} total active sessions`);
       return res.status(200).json(activePackages);
     } catch (error) {
       console.error("Error getting active packages:", error);
