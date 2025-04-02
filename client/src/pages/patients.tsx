@@ -155,6 +155,9 @@ export default function Patients() {
       queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/activities'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
     },
     onError: (error: Error) => {
       toast({
