@@ -665,12 +665,16 @@ export default function RegisterPage() {
                                     // Filter slot yang belum lewat waktunya
                                     const validSlots = slots.filter((slot: any) => {
                                       try {
-                                        // Parse tanggal dan jam dari slot
-                                        const [hours, minutes] = slot.timeSlot.split(':').map(Number);
+                                        // Format dari timeSlot adalah "10:00-11:30", ambil jam awal saja
+                                        const startTime = slot.timeSlot.split('-')[0].trim();
+                                        const [hours, minutes] = startTime.split(':').map(Number);
                                         
                                         // Buat objek tanggal slot dengan tanggal hari slot + jam dari timeSlot
                                         const slotDateTime = new Date(slotDate);
                                         slotDateTime.setHours(hours, minutes, 0, 0);
+                                        
+                                        // Debugging waktu slot
+                                        console.log(`Raw timeSlot: ${slot.timeSlot}, StartTime: ${startTime}, Hours: ${hours}, Minutes: ${minutes}`);
                                         
                                         // Debug informasi slot
                                         console.log(`Slot: ${slot.timeSlot}, DateTime: ${slotDateTime}, isAfter currentTime: ${slotDateTime > localTime}`);
