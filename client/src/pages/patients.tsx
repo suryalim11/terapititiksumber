@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { calculateAge } from "@/lib/utils";
-import { Search, Plus, UserRound, Pencil, FileText, CreditCard, Calendar, AlertCircle, CheckCircle2, XCircle, Trash2 } from "lucide-react";
+import { Search, Plus, UserRound, Pencil, FileText, CreditCard, Calendar, AlertCircle, CheckCircle2, XCircle, Trash2, Receipt } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PatientForm } from "@/components/patients/patient-form";
 import { Input } from "@/components/ui/input";
@@ -340,11 +340,21 @@ export default function Patients() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="touch-target h-12 md:h-10 text-sm col-span-2 justify-center text-primary hover:text-primary"
+                    className="touch-target h-12 md:h-10 text-sm justify-center text-primary hover:text-primary"
                     onClick={() => handleViewAppointments(patient)}
                   >
                     <Calendar className="md:mr-1 h-3.5 w-3.5" />
                     <span className="md:inline-block ml-1">Janji Temu</span>
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="touch-target h-12 md:h-10 text-sm justify-center text-primary hover:text-primary"
+                    onClick={() => navigate(`/transactions?patientId=${patient.id}`)}
+                  >
+                    <Receipt className="md:mr-1 h-3.5 w-3.5" />
+                    <span className="md:inline-block ml-1">Riwayat</span>
                   </Button>
                 </div>
                 
