@@ -6,7 +6,7 @@ import {
   RegistrationLink, InsertRegistrationLink
 } from "@shared/schema";
 import { db, sql } from "./db";
-import { eq, gt, lt, and, desc, asc } from "drizzle-orm";
+import { eq, gt, lt, and, desc, asc, not } from "drizzle-orm";
 import * as schema from "../shared/schema";
 import { format } from "date-fns";
 import { IStorage } from "./storage";
@@ -687,7 +687,8 @@ export class DatabaseStorage implements IStorage {
     const appointments = await db.query.appointments.findMany({
       where: and(
         gt(schema.appointments.date, startDate),
-        lt(schema.appointments.date, endDate)
+        lt(schema.appointments.date, endDate),
+        not(eq(schema.appointments.status, "Cancelled")) // Filter out cancelled appointments
       )
     });
     
@@ -705,7 +706,10 @@ export class DatabaseStorage implements IStorage {
 
   async getAppointmentsByTherapySlot(therapySlotId: number): Promise<Appointment[]> {
     return db.query.appointments.findMany({
-      where: eq(schema.appointments.therapySlotId, therapySlotId)
+      where: and(
+        eq(schema.appointments.therapySlotId, therapySlotId),
+        not(eq(schema.appointments.status, "Cancelled")) // Filter out cancelled appointments
+      )
     });
   }
 

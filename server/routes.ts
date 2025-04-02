@@ -988,6 +988,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return slotDate >= startDate && slotDate < endDate;
       });
       
+      // Update currentCount based on active appointments
+      for (const slot of slots) {
+        // Get active appointments for this slot
+        const activeAppointments = await storage.getAppointmentsByTherapySlot(slot.id);
+        // Update currentCount to show actual registered patients (not cancelled)
+        slot.currentCount = activeAppointments.length;
+      }
+      
       // Add percentage
       const slotsWithPercentage = slots.map(slot => ({
         ...slot,
@@ -1012,6 +1020,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Mendapatkan semua slot terapi untuk hari ini
       const slots = await storage.getTherapySlotsByDate(today);
+      
+      // Untuk setiap slot, dapatkan jumlah appointment aktif (bukan yang dibatalkan)
+      for (const slot of slots) {
+        // Mendapatkan appointment aktif untuk slot ini
+        const activeAppointments = await storage.getAppointmentsByTherapySlot(slot.id);
+        // Update currentCount untuk menampilkan jumlah pasien yang benar-benar terdaftar (tidak dibatalkan)
+        slot.currentCount = activeAppointments.length;
+      }
       
       // Menambahkan persentase pengisian
       const slotsWithPercentage = slots.map(slot => ({
@@ -1042,8 +1058,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Therapy slot not found" });
       }
       
-      // Dapatkan semua appointment untuk slot terapi ini
+      // Dapatkan semua appointment aktif untuk slot terapi ini
+      // getAppointmentsByTherapySlot sudah termasuk filter yang mengecualikan appointment yang dibatalkan
       const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+      
+      // Update slot currentCount untuk menampilkan jumlah yang benar
+      // Update ini hanya untuk respons API, tidak menyimpan ke database
+      slot.currentCount = appointments.length;
       
       // Dapatkan informasi pasien dari tiap appointment
       // Gunakan Map untuk menghindari duplikasi pasien dengan ID yang sama
