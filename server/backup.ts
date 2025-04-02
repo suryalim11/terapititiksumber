@@ -176,42 +176,45 @@ export async function restoreData(req: Request, res: Response) {
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     const data = JSON.parse(fileContent);
     
-    // Hapus semua data yang ada terlebih dahulu (dalam transaksi)
+    // Hapus semua data yang ada terlebih dahulu (tanpa transaksi)
     // Catatan: Urutan penghapusan penting karena foreign key constraints
-    await db.transaction(async (tx) => {
+    try {
       // Hapus dalam urutan terbalik dari dependensi
-      await tx.delete(appointments);
-      await tx.delete(registrationLinks);
-      await tx.delete(sessions);
-      await tx.delete(transactions);
-      await tx.delete(therapySlots);
-      await tx.delete(patients);
-      await tx.delete(products);
-      await tx.delete(packages);
+      await db.delete(appointments);
+      await db.delete(registrationLinks);
+      await db.delete(sessions);
+      await db.delete(transactions);
+      await db.delete(therapySlots);
+      await db.delete(patients);
+      await db.delete(products);
+      await db.delete(packages);
       // Jangan hapus users untuk menjaga kredensial login
       
       // Masukkan data yang di-backup
-      if (data.products?.length) await tx.insert(products).values(data.products);
-      if (data.packages?.length) await tx.insert(packages).values(data.packages);
-      if (data.patients?.length) await tx.insert(patients).values(data.patients);
-      if (data.therapySlots?.length) await tx.insert(therapySlots).values(data.therapySlots);
-      if (data.transactions?.length) await tx.insert(transactions).values(data.transactions);
-      if (data.sessions?.length) await tx.insert(sessions).values(data.sessions);
-      if (data.registrationLinks?.length) await tx.insert(registrationLinks).values(data.registrationLinks);
-      if (data.appointments?.length) await tx.insert(appointments).values(data.appointments);
+      if (data.products?.length) await db.insert(products).values(data.products);
+      if (data.packages?.length) await db.insert(packages).values(data.packages);
+      if (data.patients?.length) await db.insert(patients).values(data.patients);
+      if (data.therapySlots?.length) await db.insert(therapySlots).values(data.therapySlots);
+      if (data.transactions?.length) await db.insert(transactions).values(data.transactions);
+      if (data.sessions?.length) await db.insert(sessions).values(data.sessions);
+      if (data.registrationLinks?.length) await db.insert(registrationLinks).values(data.registrationLinks);
+      if (data.appointments?.length) await db.insert(appointments).values(data.appointments);
       
       // Hanya update user jika ada perbedaan data (jangan ganti password)
       if (data.users?.length) {
         for (const backupUser of data.users) {
-          const existingUser = await tx.select().from(users).where(eq(users.id, backupUser.id));
+          const existingUser = await db.select().from(users).where(eq(users.id, backupUser.id));
           if (existingUser.length === 0) {
             // User tidak ada, tambahkan
-            await tx.insert(users).values(backupUser);
+            await db.insert(users).values(backupUser);
           }
           // Untuk user yang sudah ada, kita biarkan karena tidak ingin reset password
         }
       }
-    });
+    } catch (error) {
+      console.error("Error saat menghapus atau menambahkan data:", error);
+      throw error;
+    }
     
     return res.status(200).json({
       success: true,
