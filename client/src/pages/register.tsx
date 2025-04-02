@@ -15,6 +15,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   Form,
@@ -541,9 +548,6 @@ export default function RegisterPage() {
                                   }}
                                   initialFocus
                                   disabled={(date) => date > new Date()}
-                                  captionLayout="dropdown-buttons"
-                                  fromYear={1940}
-                                  toYear={new Date().getFullYear()}
                                 />
                               </PopoverContent>
                             </Popover>
