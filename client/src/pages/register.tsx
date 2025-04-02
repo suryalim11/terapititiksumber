@@ -10,6 +10,7 @@ import { format, parseISO, isAfter, isSameDay, addHours } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { formatDateDDMMYYYY, cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
+import { RegistrationPDF } from "@/components/registration/registration-pdf";
 import {
   Popover,
   PopoverContent,
@@ -848,6 +849,18 @@ export default function RegisterPage() {
               <p className="mb-4 text-gray-700">
                 Tim kami akan segera menghubungi Anda melalui WhatsApp untuk konfirmasi jadwal terapi.
               </p>
+              
+              {/* Add PDF download button */}
+              <div className="mb-4">
+                <RegistrationPDF 
+                  patientName={form.getValues("name")}
+                  registrationNumber={`TTS-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`}
+                  phoneNumber={form.getValues("phoneNumber")}
+                  therapyDate={selectedSlot?.date}
+                  therapyTime={selectedSlot?.timeSlot}
+                />
+              </div>
+              
               <Button 
                 onClick={() => window.location.href = "/"}
                 className="w-full bg-teal-600 hover:bg-teal-700"

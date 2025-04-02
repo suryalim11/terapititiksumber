@@ -1,0 +1,98 @@
+Berikut **prompt lengkap** untuk mengubah halaman konfirmasi pendaftaran menjadi bukti resmi dengan fitur unduh PDF:
+
+---
+
+### **Judul Proyek:**  
+Halaman Konfirmasi Pendaftaran dengan Bukti Resmi (PDF)  
+
+---
+
+### **1. Fitur Utama**  
+- **Bukti Pendaftaran Formal:**  
+  - Tampilkan nama pasien, tanggal pendaftaran, dan kode unik.  
+  - Sembunyikan pesan *"admin akan menghubungi Anda"*.  
+
+- **Unduh PDF:**  
+  - Tombol "Unduh Bukti Pendaftaran" yang menghasilkan file PDF.  
+
+---
+
+### **2. Teknis Implementasi**  
+#### **a. Frontend (React.js + jsPDF)**  
+```jsx
+import { useState } from 'react';
+import { saveAs } from 'file-saver'; // Untuk menyimpan file
+import jsPDF from 'jspdf';
+
+function RegistrationSuccess({ patient }) {
+  const [showPdf, setShowPdf] = useState(false);
+
+  // Fungsi untuk membuat PDF
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Bukti Pendaftaran Terapi Titik Sumber`, 10, 10);
+    doc.text(`Nama: ${patient.name}`, 10, 20);
+    doc.text(`Tanggal Pendaftaran: ${new Date().toLocaleDateString()}`, 10, 30);
+    doc.text(`Kode Pendaftaran: ${patient.registrationCode}`, 10, 40);
+    doc.save('bukti_pendaftaran.pdf');
+  };
+
+  return (
+    <div className="container">
+      <h2>Pendaftaran Berhasil!</h2>
+      <div className="card">
+        <h3>Detail Pendaftaran:</h3>
+        <p>Nama: {patient.name}</p>
+        <p>No. WA: {patient.phone}</p>
+        <p>Kode Pendaftaran: {patient.registrationCode}</p>
+      </div>
+
+      {/* Tombol Unduh PDF */}
+      <button onClick={generatePDF}>
+        Unduh Bukti Pendaftaran
+      </button>
+    </div>
+  );
+}
+```
+
+#### **b. Backend (Node.js/Express)**  
+- Pastikan data pasien tersimpan di database dengan field `registrationCode` (contoh: `TTS-20230820`).  
+
+#### **c. Styling (CSS)**  
+```css
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.card {
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+button {
+  background: #27ae60;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+```
+
+---
+
+### **3. Contoh Tampilan**  
+![Halaman Konfirmasi dengan PDF](https://via.placeholder.com/600x400.png/FFFFFF?text=Bukti+Pendaftaran%0ANama%3A+Budi+Santoso%0AKode%3A+TTS-20230820)
+
+---
+
+### **4. Keuntungan Fitur Ini**  
+- **Kepercayaan Pasien:** Bukti resmi meningkatkan kredibilitas terapi.  
+- **Dokumentasi:** Pasien bisa menyimpan bukti untuk keperluan klaim atau rekam medis.  
+
+Jika ada bagian yang kurang jelas, beri tahu! 🛠️
