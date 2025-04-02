@@ -535,7 +535,7 @@ export default function IntegratedManagement() {
   };
 
   const copyLinkToClipboard = (code: string) => {
-    const registrationLink = `${window.location.origin}/register?kode=${code}`;
+    const registrationLink = `${window.location.origin}/register?code=${code}`;
     navigator.clipboard.writeText(registrationLink);
     toast({
       title: "Link Disalin",
