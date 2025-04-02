@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 // Add formats for Indonesia locale
 const formatDate = (date: string | Date) => {
   try {
-    return format(new Date(date), "d MMMM yyyy", { locale: localeId });
+    return format(new Date(date), "dd/MM/yyyy", { locale: localeId });
   } catch (e) {
     return "Invalid date";
   }

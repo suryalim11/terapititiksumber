@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { format } from "date-fns";
+import { id as localeId } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   BarChart3, 
@@ -11,7 +13,7 @@ import {
   RefreshCw,
   Loader2
 } from "lucide-react";
-import { cn, formatRupiah } from "@/lib/utils";
+import { cn, formatRupiah, formatDateDDMMYYYY } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
@@ -215,7 +217,7 @@ export default function Dashboard() {
                     <div className="flex-1">
                       <p className="text-sm">{activity.description}</p>
                       <time className="text-xs text-muted-foreground">
-                        {new Date(activity.timestamp).toLocaleString()}
+                        {format(new Date(activity.timestamp), "dd/MM/yyyy, HH:mm", { locale: localeId })}
                       </time>
                     </div>
                   </div>
@@ -254,12 +256,7 @@ export default function Dashboard() {
             </div>
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
-                {new Date().toLocaleDateString('id-ID', { 
-                  weekday: 'long', 
-                  day: 'numeric', 
-                  month: 'long', 
-                  year: 'numeric' 
-                })}
+                {format(new Date(), "EEEE, dd/MM/yyyy", { locale: localeId })}
               </p>
             </div>
           </CardHeader>
@@ -304,11 +301,7 @@ export default function Dashboard() {
                               <div className="flex flex-col">
                                 <span>{slot.timeSlot}</span>
                                 <span className="text-xs text-muted-foreground">
-                                  {new Date(slot.date).toLocaleDateString('id-ID', {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    year: 'numeric'
-                                  })}
+                                  {formatDateDDMMYYYY(slot.date)}
                                 </span>
                               </div>
                             </td>
@@ -408,20 +401,12 @@ export default function Dashboard() {
                   <div className="flex justify-between items-center text-xs">
                     <div>
                       <span className="text-muted-foreground">Mulai: </span>
-                      {new Date(pkg.startDate).toLocaleDateString('id-ID', {
-                        day: 'numeric', 
-                        month: 'short',
-                        year: 'numeric'
-                      })}
+                      {formatDateDDMMYYYY(pkg.startDate)}
                     </div>
                     {pkg.lastSessionDate && (
                       <div>
                         <span className="text-muted-foreground">Terakhir: </span>
-                        {new Date(pkg.lastSessionDate).toLocaleDateString('id-ID', {
-                          day: 'numeric', 
-                          month: 'short',
-                          year: 'numeric'
-                        })}
+                        {formatDateDDMMYYYY(pkg.lastSessionDate)}
                       </div>
                     )}
                     <div className="font-medium">

@@ -288,7 +288,8 @@ export function PatientForm({
                     type="date" 
                     autoComplete="bday"
                     className="h-12 px-4 md:h-10"
-                    {...field} 
+                    {...field}
+                    // Format untuk input date tetap yyyy-MM-dd, format tampilan yang akan diubah
                   />
                 </FormControl>
                 <FormMessage />

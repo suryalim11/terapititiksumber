@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, CalendarIcon, ShoppingCart, X, Calendar, Ban } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { id as localeId } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
@@ -99,7 +100,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return format(date, 'dd MMMM yyyy');
+    return format(date, 'dd MMMM yyyy', { locale: localeId });
   };
   
   // Fungsi untuk mengarahkan ke halaman transaksi dan langsung membuka form baru

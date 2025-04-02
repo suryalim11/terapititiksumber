@@ -271,7 +271,11 @@ export function AppointmentForm({
               <FormItem>
                 <FormLabel>Tanggal</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                  <Input 
+                    type="date" 
+                    {...field}
+                    // Format untuk input date tetap yyyy-MM-dd, format tampilan yang akan diubah
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

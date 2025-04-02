@@ -172,7 +172,7 @@ export default function Transactions() {
 
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), "d MMMM yyyy, HH:mm", { locale: id });
+      return format(new Date(dateString), "dd/MM/yyyy, HH:mm", { locale: id });
     } catch (e) {
       return dateString;
     }

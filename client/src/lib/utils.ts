@@ -1,5 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { format as dateFnsFormat } from "date-fns";
+import { id } from "date-fns/locale";
 
 /**
  * Combines multiple class names into a single string using clsx and tailwind-merge.
@@ -7,6 +9,18 @@ import { twMerge } from "tailwind-merge";
  */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * Format a date string to dd/MM/yyyy format
+ */
+export function formatDateDDMMYYYY(dateString: string | Date): string {
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    return dateFnsFormat(date, "dd/MM/yyyy", { locale: id });
+  } catch (e) {
+    return "";
+  }
 }
 
 /**

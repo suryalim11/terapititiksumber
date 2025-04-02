@@ -401,7 +401,7 @@ export default function TherapySlots() {
   // Format tanggal untuk ditampilkan
   const formatSlotDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return format(date, "dd MMMM yyyy");
+    return format(date, "dd/MM/yyyy");
   };
 
   // Quick actions untuk membuat batch slot
@@ -494,7 +494,7 @@ export default function TherapySlots() {
                             )}
                           >
                             {field.value ? (
-                              format(field.value, "PPP")
+                              format(field.value, "dd/MM/yyyy")
                             ) : (
                               <span>Pilih tanggal</span>
                             )}
@@ -642,7 +642,7 @@ export default function TherapySlots() {
                                   )}
                                 >
                                   {field.value ? (
-                                    format(field.value, "PPP")
+                                    format(field.value, "dd/MM/yyyy")
                                   ) : (
                                     <span>Pilih tanggal</span>
                                   )}
@@ -768,7 +768,7 @@ export default function TherapySlots() {
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    Slot Terapi: {date && format(date, "dd MMMM yyyy")}
+                    Slot Terapi: {date && format(date, "dd/MM/yyyy")}
                   </CardTitle>
                   <CardDescription>
                     Daftar slot terapi untuk tanggal yang dipilih
@@ -886,7 +886,7 @@ export default function TherapySlots() {
                             </li>
                           ))}
                         </ul>
-                        <p className="mt-3">Mulai dari: {date ? format(date, "dd MMMM yyyy") : "hari ini"}</p>
+                        <p className="mt-3">Mulai dari: {date ? format(date, "dd/MM/yyyy") : "hari ini"}</p>
                         <p className="text-muted-foreground text-xs mt-1">Minggu libur, tidak ada sesi.</p>
                       </CardContent>
                       <CardFooter>

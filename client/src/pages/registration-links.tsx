@@ -206,7 +206,7 @@ export default function RegistrationLinksPage() {
   // Format date for display
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), "dd MMM yyyy, HH:mm");
+      return format(new Date(dateString), "dd/MM/yyyy, HH:mm");
     } catch (error) {
       return dateString;
     }
