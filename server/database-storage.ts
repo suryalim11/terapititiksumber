@@ -25,7 +25,7 @@ function formatRupiah(amount: number): string {
 
 function formatDateString(dateStr: string | Date): string {
   const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
-  return format(date, 'dd/MM/yyyy, HH:mm');
+  return format(date, 'dd MMMM yyyy');
 }
 
 const MemoryStore = createMemoryStore(session);
@@ -1141,7 +1141,7 @@ export class DatabaseStorage implements IStorage {
             activities.push({
               id: 1000 + appointment.id, // Menambahkan offset untuk menghindari konflik ID
               type: "appointment",
-              description: `${patient.name} terjadwal untuk sesi terapi pada ${dateStr}`,
+              description: `${patient.name} terjadwal untuk sesi terapi`,
               timestamp: appointmentDate.toISOString()
             });
           }
