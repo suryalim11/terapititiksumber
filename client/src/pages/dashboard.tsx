@@ -229,15 +229,12 @@ export default function Dashboard() {
                         {activity.timestamp ? 
                           (() => {
                             try {
-                              // Render timestamp langsung tanpa konversi tambahan
-                              // Format: jam:menit WIB DD/MM/YYYY
-                              const utcDate = new Date(activity.timestamp);
-                              // Tambahkan 7 jam untuk timezone WIB
-                              const wibTime = new Date(utcDate.getTime() + (7 * 60 * 60 * 1000));
-                              return format(wibTime, "HH:mm 'WIB' dd/MM/yyyy", { locale: localeId });
+                              // Gunakan fungsi formatDate dari utils yang sudah direfactor 
+                              // untuk mendapatkan waktu WIB yang konsisten
+                              return formatDate(activity.timestamp).replace(' WIB', ' WIB');
                             } catch (error) {
                               console.error("Error formatting activity timestamp:", error);
-                              return activity.timestamp;
+                              return "";
                             }
                           })() :
                           ""}
