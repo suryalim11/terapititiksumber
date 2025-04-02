@@ -126,12 +126,11 @@ export function formatISOtoWIB(isoString: string): string {
     // Parse ISO string to date object
     const date = parseISO(isoString);
     
-    // Add 7 hours to convert to WIB time (Indonesia)
-    // Untuk memastikan waktu tetap ditampilkan sebagai WIB (GMT+7)
-    const wibDate = addHours(date, 0); // Server sudah mengkonversi ke WIB
+    // Data dari server sudah dalam format UTC+7 (WIB)
+    // Tidak perlu menambahkan jam lagi
     
     // Format with date-fns
-    return dateFnsFormat(wibDate, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
+    return dateFnsFormat(date, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
   } catch (e) {
     console.error("Error formatting ISO date:", e);
     return "";
