@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isAfter, isSameDay } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { formatDateDDMMYYYY, cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
@@ -103,7 +103,8 @@ export default function RegisterPage() {
       }
       return response.json();
     },
-    enabled: registrationStatus === "idle" && !!registrationCode
+    enabled: registrationStatus === "idle" && !!registrationCode,
+    refetchInterval: 60000, // Refetch setiap 1 menit untuk memperbarui status slot yang tersedia
   });
 
   // Parse the URL for registration code
@@ -650,13 +651,28 @@ export default function RegisterPage() {
                                     const slotDate = parseISO(dateKey);
                                     const formattedDate = format(slotDate, "EEEE, dd MMMM yyyy", { locale: idLocale });
                                     
+                                    // Filter slots - hanya tampilkan slot yang belum lewat waktunya
+                                    const currentDateTime = new Date();
+                                    const validSlots = slots.filter((slot: any) => {
+                                      // Parse tanggal dan jam dari slot
+                                      const [hours, minutes] = slot.timeSlot.split(':').map(Number);
+                                      const slotDateTime = new Date(slotDate);
+                                      slotDateTime.setHours(hours, minutes, 0, 0);
+                                      
+                                      // Bandingkan dengan waktu sekarang, kembalikan true jika slot masih di masa depan
+                                      return isAfter(slotDateTime, currentDateTime);
+                                    });
+                                    
+                                    // Jika tidak ada slot valid di tanggal ini, jangan tampilkan harinya
+                                    if (validSlots.length === 0) return null;
+                                    
                                     return (
                                       <div key={dateKey} className="border rounded-lg overflow-hidden">
                                         <div className="bg-teal-50 px-4 py-2 border-b border-teal-100">
                                           <h3 className="font-medium text-teal-800">{formattedDate}</h3>
                                         </div>
                                         <div className="p-3 space-y-2">
-                                          {slots.map((slot: any) => {
+                                          {validSlots.map((slot: any) => {
                                             const availableSeats = slot.maxQuota - slot.currentCount;
                                             const isAlmostFull = availableSeats <= 2;
                                             
