@@ -274,8 +274,12 @@ export function PatientForm({
                     inputMode="email"
                     className="h-12 px-4 md:h-10" 
                     {...field} 
+                    value={field.value || ""}
                   />
                 </FormControl>
+                <FormDescription className="text-xs">
+                  Boleh dikosongkan jika tidak memiliki email
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

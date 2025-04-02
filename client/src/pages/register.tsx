@@ -60,7 +60,7 @@ import {
 const registerFormSchema = z.object({
   name: z.string().min(3, "Nama harus minimal 3 karakter"),
   phoneNumber: z.string().min(10, "Nomor telepon harus minimal 10 digit"),
-  email: z.string().email("Format email tidak valid").nullable().optional(),
+  email: z.string().email("Format email tidak valid").optional().or(z.literal("")),
   birthDate: z.string().refine(val => {
     const date = new Date(val);
     return !isNaN(date.getTime());
@@ -502,6 +502,9 @@ export default function RegisterPage() {
                               value={field.value || ''} 
                             />
                           </FormControl>
+                          <FormDescription className="text-xs">
+                            Boleh dikosongkan jika tidak memiliki email
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
