@@ -33,6 +33,7 @@ export function setupAuth(app: Express) {
     secret: process.env.SESSION_SECRET || "terapi-titik-sumber-secret-key",
     resave: false,
     saveUninitialized: false,
+    store: storage.sessionStore,
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,

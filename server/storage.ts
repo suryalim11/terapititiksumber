@@ -26,6 +26,9 @@ import memorystore from "memorystore";
 
 const MemoryStore = memorystore(session);
 
+// Set USE_DATABASE untuk menentukan apakah menggunakan database atau memory storage
+const USE_DATABASE = process.env.DATABASE_URL ? true : false;
+
 export interface IStorage {
   // Users
   getUser(id: number): Promise<User | undefined>;
@@ -91,6 +94,7 @@ export interface IStorage {
   getAllRegistrationLinks(): Promise<RegistrationLink[]>;
   incrementRegistrationCount(code: string): Promise<RegistrationLink | undefined>;
   deactivateRegistrationLink(id: number): Promise<boolean>;
+  deleteRegistrationLink(id: number): Promise<boolean>;
   
   // Dashboard data
   getDailyStats(): Promise<{
@@ -104,6 +108,9 @@ export interface IStorage {
   // Session store for authentication
   sessionStore: session.Store;
 }
+
+// Import Database Storage
+import { DatabaseStorage } from "./database-storage";
 
 // Memory Storage Implementation
 export class MemStorage implements IStorage {
@@ -1087,4 +1094,7 @@ export class MemStorage implements IStorage {
 // Export a singleton instance
 
 
-export const storage = new MemStorage();
+// Export storage implementation - use DatabaseStorage if DATABASE_URL is set, otherwise MemStorage
+export const storage: IStorage = USE_DATABASE 
+  ? new DatabaseStorage()
+  : new MemStorage();

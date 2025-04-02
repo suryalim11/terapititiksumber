@@ -746,7 +746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Jika status menjadi Cancelled, kurangi jumlah current count di therapy slot
-      if (status === 'Cancelled' && appointment.status !== 'Cancelled') {
+      if (status === 'Cancelled' && appointment.status !== 'Cancelled' && appointment.therapySlotId) {
         await storage.decrementTherapySlotUsage(appointment.therapySlotId);
         console.log(`Therapy slot ${appointment.therapySlotId} usage decremented after cancellation`);
       }
@@ -1032,8 +1032,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update status menjadi Cancelled
       const updatedAppointment = await storage.updateAppointmentStatus(id, 'Cancelled');
       
-      // Kurangi jumlah current count di therapy slot
-      await storage.decrementTherapySlotUsage(appointment.therapySlotId);
+      // Kurangi jumlah current count di therapy slot jika ada therapy slot terkait
+      if (appointment.therapySlotId) {
+        await storage.decrementTherapySlotUsage(appointment.therapySlotId);
+      }
       
       return res.status(200).json({ 
         success: true, 
@@ -1394,7 +1396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedAppointment = await storage.updateAppointmentStatus(id, "Cancelled");
       
       // Jika appointment terkait dengan therapy slot, kurangi current count
-      if (appointment.therapySlotId !== null) {
+      if (appointment.therapySlotId) {
         await storage.decrementTherapySlotUsage(appointment.therapySlotId);
         console.log(`Therapy slot ${appointment.therapySlotId} usage decremented after cancellation`);
       }
