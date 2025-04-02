@@ -712,7 +712,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
               )}
             />
 
-            {/* Active Packages Section */}
+            {/* Active Packages Section - Only show for non-single sessions */}
             {form.watch("patientId") && activeSessions && activeSessions.length > 0 && (
               <div className="border border-muted rounded-md p-4 bg-muted/10">
                 <div className="flex items-center justify-between mb-3">
@@ -720,18 +720,24 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                     <Package className="h-4 w-4 text-primary" />
                     Paket Terapi Aktif
                   </h4>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Gunakan sesi?</span>
-                    <Switch 
-                      checked={useExistingPackage} 
-                      onCheckedChange={setUseExistingPackage}
-                    />
-                  </div>
+                  {/* Only show the switch if there are non-single sessions */}
+                  {activeSessions.some(session => session.package && session.package.sessions > 1) && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Gunakan sesi?</span>
+                      <Switch 
+                        checked={useExistingPackage} 
+                        onCheckedChange={setUseExistingPackage}
+                      />
+                    </div>
+                  )}
                 </div>
                 
                 {useExistingPackage ? (
                   <Accordion type="single" collapsible className="w-full">
-                    {activeSessions.map(session => (
+                    {/* Filter to only show non-single session packages when using existing package */}
+                    {activeSessions
+                      .filter(session => session.package && session.package.sessions > 1)
+                      .map(session => (
                       <AccordionItem value={`session-${session.id}`} key={session.id}>
                         <AccordionTrigger className="py-2 text-sm hover:no-underline">
                           <div className="flex items-center justify-between w-full">
@@ -800,7 +806,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                 ) : (
                   <div className="text-sm text-muted-foreground border border-dashed rounded-md p-3 flex items-center gap-2">
                     <Info className="h-4 w-4" />
-                    <span>Pasien memiliki {activeSessions.length} paket terapi aktif. Aktifkan switch untuk menggunakan sesi dari paket yang ada.</span>
+                    {activeSessions.some(session => session.package && session.package.sessions > 1) ? (
+                      <span>Pasien memiliki {activeSessions.filter(session => session.package && session.package.sessions > 1).length} paket terapi multi-sesi aktif. Aktifkan switch untuk menggunakan sesi dari paket yang ada.</span>
+                    ) : (
+                      <span>Pasien memiliki paket terapi aktif, namun tidak ada paket yang memiliki lebih dari 1 sesi.</span>
+                    )}
                   </div>
                 )}
               </div>
