@@ -118,7 +118,9 @@ export default function Transactions() {
   // Mutation untuk menghapus transaksi
   const deleteTransactionMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest("DELETE", `/api/transactions/${id}`);
+      return await apiRequest(`/api/transactions/${id}`, {
+        method: "DELETE",
+      });
     },
     onSuccess: () => {
       toast({
