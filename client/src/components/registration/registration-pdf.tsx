@@ -39,7 +39,7 @@ export function RegistrationPDF({
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "normal");
-    doc.text("hubungi WA +6281277003608", 105, 30, { align: "center" });
+    doc.text("hubungi WA +628127003608", 105, 30, { align: "center" });
     
     // Divider line
     doc.setDrawColor(0, 128, 128);

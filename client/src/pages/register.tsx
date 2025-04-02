@@ -885,7 +885,7 @@ export default function RegisterPage() {
                   <div className="mt-3 pt-3 border-t border-green-200">
                     <p className="text-sm text-gray-700 mb-2">Hubungi kami jika ada pertanyaan:</p>
                     <a 
-                      href="https://wa.me/6281277003608" 
+                      href="https://wa.me/628127003608" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-md text-sm font-medium w-fit"
