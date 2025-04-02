@@ -351,7 +351,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
           id: session.packageId,
           type: "package",
           quantity: 1,
-          description: `(menggunakan sisa paket - sesi ${newSessionsUsed}/${session.totalSessions})`
+          description: "(menggunakan sisa paket)"
         }],
         notes: `Penggunaan sesi paket: ${session.package?.name}. Sesi ke-${newSessionsUsed} dari ${session.totalSessions}.`
       };
