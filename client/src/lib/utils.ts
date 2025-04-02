@@ -119,18 +119,18 @@ export function formatDate(date: Date): string {
 
 /**
  * Format ISO string timestamp to WIB time
- * This function handles the timezone offset correctly
+ * This function handles the timezone offset correctly by adding 7 hours to convert UTC to WIB (GMT+7)
  */
 export function formatISOtoWIB(isoString: string): string {
   try {
     // Parse ISO string to date object
     const date = parseISO(isoString);
     
-    // Data dari server sudah dalam format UTC+7 (WIB)
-    // Tidak perlu menambahkan jam lagi
+    // Data dari server dalam UTC, tambahkan 7 jam untuk mendapatkan waktu WIB (GMT+7)
+    const wibDate = addHours(date, 7);
     
     // Format with date-fns
-    return dateFnsFormat(date, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
+    return dateFnsFormat(wibDate, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
   } catch (e) {
     console.error("Error formatting ISO date:", e);
     return "";
