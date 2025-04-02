@@ -182,13 +182,26 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   
   // Atur pasien otomatis jika selectedPatientId diberikan
   useEffect(() => {
-    if (isOpen && selectedPatientId && patients.length > 0) {
+    if (isOpen && selectedPatientId !== null && selectedPatientId !== undefined && patients.length > 0) {
+      console.log("TransactionForm - selectedPatientId:", selectedPatientId, "type:", typeof selectedPatientId);
+      
       // Temukan pasien berdasarkan ID
-      const patient = patients.find((p: Patient) => p.id === selectedPatientId);
+      let patientIdToSearch: number;
+      
+      // Pastikan selectedPatientId adalah number
+      if (typeof selectedPatientId === 'string') {
+        patientIdToSearch = parseInt(selectedPatientId);
+      } else {
+        patientIdToSearch = selectedPatientId;
+      }
+      
+      const patient = patients.find((p: Patient) => p.id === patientIdToSearch);
       
       if (patient) {
+        console.log("Found patient:", patient);
+        
         // Set nilai pada form
-        form.setValue("patientId", selectedPatientId.toString());
+        form.setValue("patientId", patientIdToSearch.toString());
         console.log("Patient auto-selected:", patient.name);
         
         // Auto refetch active sessions untuk pasien yang dipilih
@@ -198,6 +211,15 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         toast({
           title: "Pasien terpilih",
           description: `Data ${patient.name} telah diisi otomatis`,
+        });
+      } else {
+        console.log("Patient not found with ID:", patientIdToSearch);
+        console.log("Available patients:", patients);
+        
+        toast({
+          title: "Perhatian",
+          description: `Pasien dengan ID ${patientIdToSearch} tidak ditemukan`,
+          variant: "destructive"
         });
       }
     }

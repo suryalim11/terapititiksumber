@@ -5,6 +5,7 @@ import { Loader2, CalendarIcon, ShoppingCart, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 interface SlotPatientsDialogProps {
   slotId: number | null;
@@ -14,6 +15,7 @@ interface SlotPatientsDialogProps {
 
 export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDialogProps) {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   
   const { data, isLoading, error } = useQuery({
     queryKey: ['/api/therapy-slots', slotId, 'patients'],
@@ -35,10 +37,21 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   
   // Fungsi untuk mengarahkan ke halaman transaksi baru dengan data pasien
   const navigateToTransaction = (patient: any) => {
+    console.log("Navigating to transaction for patient:", patient);
+    
     // Tutup dialog terlebih dahulu
     onClose();
+    
     // Arahkan ke halaman transaksi baru dengan ID pasien
     navigate(`/transactions/new?patientId=${patient.id}`);
+    
+    // Tambahkan notifikasi untuk feedback
+    setTimeout(() => {
+      toast({
+        title: "Membuat transaksi baru",
+        description: `Form transaksi untuk ${patient.name} akan segera dibuka`,
+      });
+    }, 300);
   };
 
   if (!isOpen) return null;

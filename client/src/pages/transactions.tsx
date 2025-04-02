@@ -63,12 +63,23 @@ export default function Transactions() {
       const params = new URLSearchParams(location.split('?')[1]);
       const patientId = params.get('patientId');
       
+      console.log("URL parameter patientId:", patientId);
+      
       if (patientId) {
-        setSelectedPatientId(parseInt(patientId));
+        const patientIdNum = parseInt(patientId);
+        console.log("Setting selected patient ID:", patientIdNum);
+        
+        setSelectedPatientId(patientIdNum);
         setIsTransactionFormOpen(true);
+        
+        // Debug notification
+        toast({
+          title: "Membuka form transaksi",
+          description: `ID Pasien: ${patientIdNum}`,
+        });
       }
     }
-  }, [location]);
+  }, [location, toast]);
 
   const { data: transactions, isLoading } = useQuery({
     queryKey: ["/api/transactions"],
