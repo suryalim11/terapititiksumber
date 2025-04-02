@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface SlotPatientsDialogProps {
@@ -63,34 +63,38 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   });
   
-  // Fungsi untuk membuka dialog konfirmasi batalkan janji
-  const handleCancelAppointment = (appointment: any, event: React.MouseEvent) => {
+  // Fungsi untuk membuka dialog konfirmasi batalkan janji (memoized)
+  const handleCancelAppointment = useCallback((appointment: any, event: React.MouseEvent) => {
     event.stopPropagation(); // Mencegah event propagation ke elemen parent
     setSelectedAppointment(appointment);
     setIsConfirmCancelOpen(true);
-  };
+  }, []);
   
-  // Fungsi untuk konfirmasi batalkan janji
-  const confirmCancelAppointment = () => {
+  // Fungsi untuk konfirmasi batalkan janji (memoized)
+  const confirmCancelAppointment = useCallback(() => {
     if (selectedAppointment) {
       cancelAppointmentMutation.mutate(selectedAppointment.id);
       setIsConfirmCancelOpen(false);
     }
-  };
+  }, [selectedAppointment, cancelAppointmentMutation]);
+  
+  // Menggunakan useCallback untuk queryFn agar tidak dirender ulang
+  const fetchPatients = useCallback(async () => {
+    if (!slotId) return null;
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Fetching patients for therapy slot:", slotId);
+    }
+    const res = await fetch(`/api/therapy-slots/${slotId}/patients`);
+    if (!res.ok) {
+      throw new Error('Failed to fetch patients');
+    }
+    const responseData = await res.json();
+    return responseData;
+  }, [slotId]);
   
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/therapy-slots', slotId, 'patients'],
-    queryFn: async () => {
-      if (!slotId) return null;
-      console.log("Fetching patients for therapy slot:", slotId);
-      const res = await fetch(`/api/therapy-slots/${slotId}/patients`);
-      if (!res.ok) {
-        throw new Error('Failed to fetch patients');
-      }
-      const responseData = await res.json();
-      console.log("Response data from API:", responseData);
-      return responseData;
-    },
+    queryFn: fetchPatients,
     enabled: !!slotId && isOpen
   });
   
@@ -101,15 +105,14 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }, [isOpen, slotId, refetch]);
 
-  const formatDate = (dateString: string) => {
+  // Menggunakan useMemo untuk memformat tanggal agar tidak dirender ulang
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return format(date, 'dd MMMM yyyy', { locale: localeId });
-  };
+  }, []);
   
-  // Fungsi untuk mengarahkan ke halaman transaksi dan langsung membuka form baru
-  const navigateToTransaction = (patient: any) => {
-    console.log("Navigating to transaction for patient:", patient);
-    
+  // Fungsi untuk mengarahkan ke halaman transaksi dan langsung membuka form baru (memoized)
+  const navigateToTransaction = useCallback((patient: any) => {
     // Tutup dialog terlebih dahulu
     onClose();
     
@@ -131,7 +134,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         description: `Form transaksi untuk ${patient.name} akan segera dibuka`,
       });
     }, 500);
-  };
+  }, [onClose, navigate, toast]);
 
   if (!isOpen) return null;
 
@@ -205,23 +208,24 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                       }
                       
                       // Sebagai alternatif dari pemeriksaan status yang sensitif terhadap huruf besar/kecil,
-                      // kita gunakan pendekatan case insensitive untuk pemeriksaan status
+                      // kita gunakan pendekatan case insensitive untuk pemeriksaan status dan cache hasilnya dengan useMemo
                       // Termasuk 'scheduled' sebagai status aktif
-                      const activeStatusPatterns = ['active', 'booked', 'confirmed', 'scheduled'];
-                      
-                      // Fungsi untuk memverifikasi apakah status termasuk status aktif (case insensitive)
-                      const isActiveStatus = (status: string): boolean => {
-                        const statusLower = status.toLowerCase();
-                        return activeStatusPatterns.some(pattern => statusLower.includes(pattern));
-                      };
-                      
-                      const activeAppointments = data.appointments.filter(
-                        (appointment: any) => {
-                          // Gunakan fungsi helpers untuk pemeriksaan status
-                          const isActive = isActiveStatus(appointment.status);
-                          return isActive;
-                        }
-                      );
+                      const activeAppointments = useMemo(() => {
+                        const activeStatusPatterns = ['active', 'booked', 'confirmed', 'scheduled'];
+                        
+                        // Fungsi untuk memverifikasi apakah status termasuk status aktif (case insensitive)
+                        const isActiveStatus = (status: string): boolean => {
+                          const statusLower = status.toLowerCase();
+                          return activeStatusPatterns.some(pattern => statusLower.includes(pattern));
+                        };
+                        
+                        return data.appointments.filter(
+                          (appointment: any) => {
+                            // Gunakan fungsi helpers untuk pemeriksaan status
+                            return isActiveStatus(appointment.status);
+                          }
+                        );
+                      }, [data.appointments]);
                       
                       return activeAppointments.length === 0 ? (
                         <p className="text-center py-4 text-sm text-muted-foreground border rounded">
@@ -236,20 +240,18 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                             >
                               <div className="font-medium flex items-center justify-between">
                                 <span>{appointment.patient.name}</span>
-                                <Badge className={
-                                  (() => {
-                                    const status = appointment.status.toLowerCase();
-                                    if (status.includes('booked')) {
-                                      return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
-                                    } else if (status.includes('confirmed')) {
-                                      return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-                                    } else if (status.includes('scheduled')) {
-                                      return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
-                                    } else {
-                                      return 'bg-green-100 text-green-800 hover:bg-green-200';
-                                    }
-                                  })()
-                                }>
+                                <Badge className={useMemo(() => {
+                                  const status = appointment.status.toLowerCase();
+                                  if (status.includes('booked')) {
+                                    return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
+                                  } else if (status.includes('confirmed')) {
+                                    return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+                                  } else if (status.includes('scheduled')) {
+                                    return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
+                                  } else {
+                                    return 'bg-green-100 text-green-800 hover:bg-green-200';
+                                  }
+                                }, [appointment.status])}>
                                   {appointment.status}
                                 </Badge>
                               </div>

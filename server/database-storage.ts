@@ -6,7 +6,7 @@ import {
   RegistrationLink, InsertRegistrationLink, ConfirmationToken, InsertConfirmationToken
 } from "@shared/schema";
 import { db, sql } from "./db";
-import { eq, gt, lt, and, desc, asc, not } from "drizzle-orm";
+import { eq, gt, lt, and, desc, asc, not, inArray } from "drizzle-orm";
 import * as schema from "../shared/schema";
 import { format } from "date-fns";
 import { IStorage } from "./storage";
@@ -862,9 +862,12 @@ export class DatabaseStorage implements IStorage {
         where: eq(schema.appointments.therapySlotId, therapySlotId)
       });
       
-      console.log(`All appointments for slot ${therapySlotId}:`, 
-        allAppointmentsForSlot.map(a => ({id: a.id, status: a.status}))
-      );
+      // Log hanya pada mode development
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`All appointments for slot ${therapySlotId}:`, 
+          allAppointmentsForSlot.map(a => ({id: a.id, status: a.status}))
+        );
+      }
       
       // Filter semua status yang aktif (tidak dibatalkan dan dalam status valid)
       const activeStatusPatterns = ['active', 'booked', 'confirmed', 'scheduled'];
@@ -879,7 +882,7 @@ export class DatabaseStorage implements IStorage {
           statusLower.includes(pattern)
         );
         
-        // Debug - Tambahkan log untuk mempermudah pelacakan
+        // Debug - Tambahkan log untuk mempermudah pelacakan (hanya pada mode development)
         if (process.env.NODE_ENV === 'development') {
           console.log(`Appointment ${app.id} (${app.status}): isActiveStatus=${isActiveStatus}`);
         }
@@ -887,9 +890,12 @@ export class DatabaseStorage implements IStorage {
         return isActiveStatus;
       });
       
-      console.log(`Non-cancelled appointments for slot ${therapySlotId}:`, 
-        nonCancelledAppointments.map(a => ({id: a.id, status: a.status}))
-      );
+      // Log hanya pada mode development
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Non-cancelled appointments for slot ${therapySlotId}:`, 
+          nonCancelledAppointments.map(a => ({id: a.id, status: a.status}))
+        );
+      }
       
       return nonCancelledAppointments;
     } catch (error) {
@@ -1056,72 +1062,100 @@ export class DatabaseStorage implements IStorage {
     // Mengambil berbagai jenis aktivitas dan menggabungkannya
     const activities: any[] = [];
     
-    // 1. Dapatkan transaksi terbaru
-    const recentTransactions = await db.query.transactions.findMany({
-      orderBy: [desc(schema.transactions.createdAt)],
-      limit: limit * 2 // Mengambil lebih banyak untuk difilter nanti
-    });
-    
-    // Dapatkan informasi pasien secara terpisah untuk menghindari masalah join
-    for (const transaction of recentTransactions) {
-      try {
-        const patient = await db.query.patients.findFirst({
-          where: eq(schema.patients.id, transaction.patientId)
+    try {
+      // 1. Dapatkan transaksi terbaru dan ID pasien terkait
+      const recentTransactions = await db.query.transactions.findMany({
+        orderBy: [desc(schema.transactions.createdAt)],
+        limit: limit
+      });
+      
+      if (recentTransactions.length > 0) {
+        // Ambil semua ID pasien dari transaksi
+        const patientIdArray = recentTransactions.map(t => t.patientId);
+        const uniquePatientIds = Array.from(new Set(patientIdArray));
+        
+        // Dapatkan semua pasien dalam satu query
+        const patientsQuery = await Promise.all(
+          uniquePatientIds.map(id => db.query.patients.findFirst({
+            where: eq(schema.patients.id, id)
+          }))
+        );
+        
+        // Filter undefined values dan buat map
+        const patients = patientsQuery.filter(p => p !== undefined);
+        
+        // Buat map untuk pencarian cepat
+        const patientMap = new Map();
+        patients.forEach(patient => {
+          if (patient) patientMap.set(patient.id, patient);
         });
         
-        activities.push({
-          id: transaction.id,
-          type: "transaction",
-          description: `${patient?.name || 'Pasien'} melakukan pembayaran sebesar Rp${Number(transaction.totalAmount).toLocaleString('id-ID')}`,
-          timestamp: transaction.createdAt.toISOString()
-        });
-      } catch (error) {
-        console.error("Error getting patient for transaction activity:", error);
-        // Tambahkan aktivitas tanpa informasi pasien sebagai fallback
-        activities.push({
-          id: transaction.id,
-          type: "transaction",
-          description: `Pembayaran sebesar Rp${Number(transaction.totalAmount).toLocaleString('id-ID')}`,
-          timestamp: transaction.createdAt.toISOString()
-        });
+        // Proses setiap transaksi dengan map pasien
+        for (const transaction of recentTransactions) {
+          const patient = patientMap.get(transaction.patientId);
+          
+          activities.push({
+            id: transaction.id,
+            type: "transaction",
+            description: `${patient?.name || 'Pasien'} melakukan pembayaran sebesar Rp${Number(transaction.totalAmount).toLocaleString('id-ID')}`,
+            timestamp: transaction.createdAt.toISOString()
+          });
+        }
       }
-    }
-    
-    // 2. Dapatkan appointment terbaru
-    const recentAppointments = await db.query.appointments.findMany({
-      orderBy: [desc(schema.appointments.date)],
-      limit: limit * 2 // Mengambil lebih banyak untuk difilter nanti
-    });
-    
-    // Tambahkan appointment ke aktivitas
-    for (const appointment of recentAppointments) {
-      try {
-        const patient = await db.query.patients.findFirst({
-          where: eq(schema.patients.id, appointment.patientId)
+      
+      // 2. Dapatkan appointment terbaru
+      const recentAppointments = await db.query.appointments.findMany({
+        orderBy: [desc(schema.appointments.date)],
+        limit: limit
+      });
+      
+      if (recentAppointments.length > 0) {
+        // Ambil semua ID pasien dari appointment
+        const patientIdArray = recentAppointments.map(a => a.patientId);
+        const uniquePatientIds = Array.from(new Set(patientIdArray));
+        
+        // Dapatkan semua pasien dalam satu query
+        const patientsQuery = await Promise.all(
+          uniquePatientIds.map(id => db.query.patients.findFirst({
+            where: eq(schema.patients.id, id)
+          }))
+        );
+        
+        // Filter undefined values
+        const patients = patientsQuery.filter(p => p !== undefined);
+        
+        // Buat map untuk pencarian cepat
+        const patientMap = new Map();
+        patients.forEach(patient => {
+          if (patient) patientMap.set(patient.id, patient);
         });
         
-        const appointmentDate = new Date(appointment.date);
-        const dateStr = appointmentDate.toLocaleDateString('id-ID', {
-          day: '2-digit', 
-          month: '2-digit', 
-          year: 'numeric'
-        });
-        
-        activities.push({
-          id: 1000 + appointment.id, // Menambahkan offset untuk menghindari konflik ID
-          type: "appointment",
-          description: `${patient?.name || 'Pasien'} terjadwal untuk sesi terapi pada ${dateStr}`,
-          timestamp: appointmentDate.toISOString()
-        });
-      } catch (error) {
-        console.error("Error getting patient for appointment activity:", error);
+        // Proses setiap appointment dengan map pasien
+        for (const appointment of recentAppointments) {
+          const patient = patientMap.get(appointment.patientId);
+          
+          if (patient) {
+            const appointmentDate = new Date(appointment.date);
+            const dateStr = formatDateString(appointmentDate);
+            
+            activities.push({
+              id: 1000 + appointment.id, // Menambahkan offset untuk menghindari konflik ID
+              type: "appointment",
+              description: `${patient.name} terjadwal untuk sesi terapi pada ${dateStr}`,
+              timestamp: appointmentDate.toISOString()
+            });
+          }
+        }
       }
+      
+      // 3. Mengurutkan semua aktivitas berdasarkan timestamp terbaru
+      activities.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      
+    } catch (error) {
+      console.error("Error in getRecentActivities:", error);
     }
-    
-    // 3. Mengurutkan semua aktivitas berdasarkan timestamp terbaru
-    activities.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
     
     // Mengembalikan hanya sejumlah limit
     return activities.slice(0, limit);
