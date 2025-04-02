@@ -532,7 +532,13 @@ export default function RegisterPage() {
                                 <Calendar
                                   mode="single"
                                   selected={field.value ? new Date(field.value) : undefined}
-                                  onSelect={field.onChange}
+                                  onSelect={(date) => {
+                                    if (date) {
+                                      // Konversi Date ke string format YYYY-MM-DD
+                                      const dateString = format(date, 'yyyy-MM-dd');
+                                      field.onChange(dateString);
+                                    }
+                                  }}
                                   initialFocus
                                   disabled={(date) => date > new Date()}
                                   captionLayout="dropdown-buttons"
