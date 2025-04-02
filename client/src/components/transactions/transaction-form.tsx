@@ -311,6 +311,15 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   // Fungsi untuk menggunakan sesi dari paket aktif
   const useSessionFromPackage = async (session: ActiveSession) => {
     try {
+      // Jangan lakukan apa-apa jika sesi ini sudah terpilih sebelumnya
+      if (selectedSession && selectedSession.id === session.id) {
+        toast({
+          title: "Sesi sudah dipilih",
+          description: "Paket terapi ini sudah terpilih untuk digunakan",
+        });
+        return;
+      }
+      
       console.log("Memproses penggunaan sesi dari paket aktif:", session);
       
       if (session.remainingSessions <= 0) {
@@ -753,31 +762,36 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
               )}
             />
 
-            {/* Active Packages Section - Only show for non-single sessions */}
-            {form.watch("patientId") && activeSessions && activeSessions.length > 0 && (
+            {/* Active Packages Section - Only show for multi-session packages */}
+            {form.watch("patientId") && activeSessions && 
+             activeSessions.filter(session => session.package && session.package.sessions > 1).length > 0 && (
               <div className="border border-muted rounded-md p-4 bg-muted/10">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-medium flex items-center gap-2">
                     <Package className="h-4 w-4 text-primary" />
-                    Paket Terapi Aktif
+                    Paket Terapi Multi-Sesi
                   </h4>
-                  {/* Only show the switch if there are non-single sessions */}
-                  {activeSessions.some(session => session.package && session.package.sessions > 1) && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Gunakan sesi?</span>
-                      <Switch 
-                        checked={useExistingPackage} 
-                        onCheckedChange={setUseExistingPackage}
-                      />
-                    </div>
-                  )}
+                  {/* Only show the switch if there are multi-session packages */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Gunakan sesi?</span>
+                    <Switch 
+                      checked={useExistingPackage} 
+                      onCheckedChange={(checked) => {
+                        // When disabling, also clear the selectedSession to prevent it from being reused
+                        if (!checked && selectedSession) {
+                          setSelectedSession(null);
+                        }
+                        setUseExistingPackage(checked);
+                      }}
+                    />
+                  </div>
                 </div>
                 
                 {useExistingPackage ? (
                   <Accordion type="single" collapsible className="w-full">
-                    {/* Filter to only show non-single session packages when using existing package */}
+                    {/* Only show multi-session packages that have remaining sessions */}
                     {activeSessions
-                      .filter(session => session.package && session.package.sessions > 1)
+                      .filter(session => session.package && session.package.sessions > 1 && session.remainingSessions > 0)
                       .map(session => (
                       <AccordionItem value={`session-${session.id}`} key={session.id}>
                         <AccordionTrigger className="py-2 text-sm hover:no-underline">
@@ -829,14 +843,19 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               
                               <Button 
                                 onClick={() => {
-                                  setSelectedSession(session);
-                                  useSessionFromPackage(session);
+                                  // Clear selectedSession first, set it after to prevent duplicate data issues
+                                  setSelectedSession(null);
+                                  setTimeout(() => {
+                                    setSelectedSession(session);
+                                    useSessionFromPackage(session);
+                                  }, 50);
                                 }}
-                                disabled={session.remainingSessions <= 0}
+                                disabled={session.remainingSessions <= 0 || selectedSession?.id === session.id}
                                 className="w-full"
                                 size="sm"
+                                variant={selectedSession?.id === session.id ? "secondary" : "default"}
                               >
-                                Gunakan 1 Sesi
+                                {selectedSession?.id === session.id ? "Sesi Terpilih" : "Gunakan 1 Sesi"}
                               </Button>
                             </CardContent>
                           </Card>
@@ -847,11 +866,10 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                 ) : (
                   <div className="text-sm text-muted-foreground border border-dashed rounded-md p-3 flex items-center gap-2">
                     <Info className="h-4 w-4" />
-                    {activeSessions.some(session => session.package && session.package.sessions > 1) ? (
-                      <span>Pasien memiliki {activeSessions.filter(session => session.package && session.package.sessions > 1).length} paket terapi multi-sesi aktif. Aktifkan switch untuk menggunakan sesi dari paket yang ada.</span>
-                    ) : (
-                      <span>Pasien memiliki paket terapi aktif, namun tidak ada paket yang memiliki lebih dari 1 sesi.</span>
-                    )}
+                    <span>
+                      Pasien memiliki {activeSessions.filter(session => session.package && session.package.sessions > 1 && session.remainingSessions > 0).length} paket terapi 12 sesi aktif. 
+                      Aktifkan switch untuk menggunakan sesi dari paket yang ada.
+                    </span>
                   </div>
                 )}
               </div>
