@@ -179,6 +179,14 @@ export default function Dashboard() {
             <CardTitle className="flex items-center gap-2">
               <span>Slot Tracker</span>
             </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {new Date().toLocaleDateString('id-ID', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+              })}
+            </p>
           </CardHeader>
           <CardContent>
             {isSlotsLoading ? (
@@ -190,7 +198,7 @@ export default function Dashboard() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-muted-foreground">
-                      <th className="pb-2 font-medium text-left">Waktu</th>
+                      <th className="pb-2 font-medium text-left">Tanggal / Waktu</th>
                       <th className="pb-2 font-medium text-center">Kuota</th>
                       <th className="pb-2 font-medium text-center">Terisi</th>
                       <th className="pb-2 font-medium text-right">Persentase</th>
@@ -203,7 +211,17 @@ export default function Dashboard() {
                         className="py-2 hover:bg-muted/50 cursor-pointer transition-colors"
                         onClick={() => handleSlotClick(slot.id)}
                       >
-                        <td className="py-3 text-left">{slot.timeSlot}</td>
+                        <td className="py-3 text-left">
+                          <div className="flex flex-col">
+                            <span>{slot.timeSlot}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(slot.date).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'short'
+                              })}
+                            </span>
+                          </div>
+                        </td>
                         <td className="py-3 text-center">{slot.maxQuota}</td>
                         <td className="py-3 text-center">{slot.currentCount}</td>
                         <td className="py-3 text-right">
