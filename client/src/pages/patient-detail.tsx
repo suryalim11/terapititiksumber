@@ -121,8 +121,7 @@ export default function PatientDetail() {
   const { data: patient, isLoading: isLoadingPatient, refetch: refetchPatient } = useQuery({
     queryKey: [`/api/patients/${patientId}`],
     queryFn: async () => {
-      const response = await apiRequest(`/api/patients/${patientId}`);
-      return response.json();
+      return await apiRequest(`/api/patients/${patientId}`);
     },
     enabled: !!patientId,
   });
@@ -131,8 +130,7 @@ export default function PatientDetail() {
   const { data: transactions, isLoading: isLoadingTransactions, refetch: refetchTransactions } = useQuery({
     queryKey: [`/api/transactions?patientId=${patientId}`],
     queryFn: async () => {
-      const response = await apiRequest(`/api/transactions?patientId=${patientId}`);
-      return response.json();
+      return await apiRequest(`/api/transactions?patientId=${patientId}`);
     },
     enabled: !!patientId,
   });
@@ -141,8 +139,7 @@ export default function PatientDetail() {
   const { data: activeSessions, isLoading: isLoadingSessions, refetch: refetchSessions } = useQuery({
     queryKey: [`/api/sessions?patientId=${patientId}&active=true`],
     queryFn: async () => {
-      const response = await apiRequest(`/api/sessions?patientId=${patientId}&active=true`);
-      return response.json();
+      return await apiRequest(`/api/sessions?patientId=${patientId}&active=true`);
     },
     enabled: !!patientId,
   });
@@ -151,8 +148,7 @@ export default function PatientDetail() {
   const { data: appointments, isLoading: isLoadingAppointments, refetch: refetchAppointments } = useQuery({
     queryKey: [`/api/appointments?patientId=${patientId}`],
     queryFn: async () => {
-      const response = await apiRequest(`/api/appointments?patientId=${patientId}`);
-      return response.json();
+      return await apiRequest(`/api/appointments?patientId=${patientId}`);
     },
     enabled: !!patientId,
   });
@@ -161,8 +157,7 @@ export default function PatientDetail() {
   const { data: medicalHistories, isLoading: isLoadingMedicalHistories, refetch: refetchMedicalHistories } = useQuery({
     queryKey: [`/api/medical-histories/patient/${patientId}`],
     queryFn: async () => {
-      const response = await apiRequest(`/api/medical-histories/patient/${patientId}`);
-      return response.json();
+      return await apiRequest(`/api/medical-histories/patient/${patientId}`);
     },
     enabled: !!patientId,
   });
