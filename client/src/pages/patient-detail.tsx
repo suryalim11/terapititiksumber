@@ -39,6 +39,18 @@ interface Transaction {
   createdAt: string;
 }
 
+interface MedicalHistory {
+  id: number;
+  patientId: number;
+  complaint: string;
+  beforeBloodPressure: string | null;
+  afterBloodPressure: string | null;
+  notes: string | null;
+  treatmentDate: string;
+  createdAt: string;
+  appointmentId: number | null;
+}
+
 interface Session {
   id: number;
   patientId: number;
@@ -71,17 +83,7 @@ interface Appointment {
   notes: string | null;
 }
 
-interface MedicalHistory {
-  id: number;
-  patientId: number;
-  appointmentId: number | null;
-  complaint: string;
-  beforeBloodPressure: string | null;
-  afterBloodPressure: string | null;
-  notes: string | null;
-  treatmentDate: string;
-  createdAt: string;
-}
+
 
 interface Patient {
   id: number;
