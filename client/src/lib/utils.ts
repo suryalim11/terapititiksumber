@@ -119,22 +119,40 @@ export function formatDate(date: Date): string {
 
 /**
  * Format ISO string timestamp to WIB time
- * This function handles the timezone offset correctly
+ * This function handles the timezone offset correctly for all activity types
  * 
  * @param isoString - The ISO string timestamp to format
- * @param transactionTimestamp - Set to true for transaction timestamps that need -7 hours adjustment
+ * @param isTransactionType - Set to true for transaction timestamps that are stored in local time
  */
-export function formatISOtoWIB(isoString: string, transactionTimestamp: boolean = false): string {
+export function formatISOtoWIB(isoString: string, isTransactionType: boolean = false): string {
   try {
     // Parse ISO string to date object
     const date = parseISO(isoString);
     
-    // Hanya kurangi 7 jam untuk timestamp transaksi jika diperlukan
-    // Ini dikarenakan adanya inkonsistensi format timestamp dari server
-    const adjustedDate = transactionTimestamp ? addHours(date, -7) : date;
+    // Untuk konsistensi, timestamps transaksi sudah dalam waktu lokal (WIB)
+    // sementara timestamp lain seperti appointment dan patient dalam UTC
+    // Jangan lakukan penyesuaian waktu untuk timestamp transaksi
+    let formattedDate;
     
-    // Format with date-fns
-    return dateFnsFormat(adjustedDate, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
+    if (isTransactionType) {
+      // Transaction timestamps are already in WIB time in the database
+      formattedDate = dateFnsFormat(date, "dd/MM/yyyy, HH:mm", { locale: id });
+    } else {
+      // Other timestamps (appointments, patients) need to be converted from UTC to WIB (+7)
+      // We don't use addHours here because it might cause issues with DST
+      // Instead, we use the timeZone option in Intl.DateTimeFormat
+      formattedDate = new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Jakarta'
+      }).format(date);
+    }
+    
+    return formattedDate + " WIB";
   } catch (e) {
     console.error("Error formatting ISO date:", e);
     return "";
