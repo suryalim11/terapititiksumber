@@ -161,7 +161,7 @@ export function setupAuth(app: Express) {
   // Alias for auth status to maintain backward compatibility
   app.get("/api/auth/status", (req, res) => {
     res.json({ 
-      isAuthenticated: req.isAuthenticated(),
+      authenticated: req.isAuthenticated(),
       user: req.isAuthenticated() ? req.user : null
     });
   });
