@@ -176,31 +176,45 @@ export default function Products() {
     
     try {
       setIsDeletingPackage(true);
-      const response = await apiRequest(`/api/packages/${packageToDelete.id}`, {
-        method: "DELETE",
-      });
       
-      // Check response status
-      if (response.ok) {
-        // Invalidate packages cache to refetch the data
-        queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
-        
-        toast({
-          title: "Paket terapi dihapus",
-          description: `${packageToDelete.name} telah dihapus`,
+      try {
+        // Gunakan fetch() langsung untuk mendapatkan lebih banyak kontrol terhadap response
+        const response = await fetch(`/api/packages/${packageToDelete.id}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
         });
         
-        setDeletePackageConfirmOpen(false);
-        setPackageToDelete(null);
-      } else {
-        // Parse error response
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal menghapus paket terapi");
+        // Ambil hasil JSON response
+        const result = await response.json();
+        
+        // Periksa status response
+        if (response.ok) {
+          // Invalidate packages cache untuk memperbarui data
+          queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
+          
+          toast({
+            title: "Paket terapi dihapus",
+            description: `${packageToDelete.name} telah dihapus`,
+          });
+          
+          setDeletePackageConfirmOpen(false);
+          setPackageToDelete(null);
+        } else {
+          // Jika response tidak ok, gunakan pesan error dari server
+          throw new Error(result.message || "Gagal menghapus paket terapi");
+        }
+      } catch (fetchError: any) {
+        // Tangkap error dari fetch atau parsing JSON
+        console.error("Fetch error:", fetchError);
+        throw fetchError;
       }
     } catch (error: any) {
       console.error("Error deleting package:", error);
       
-      // Display more specific error message if available
+      // Tampilkan pesan error yang spesifik jika tersedia
       let errorMessage = "Terjadi kesalahan, silakan coba lagi";
       
       if (error.message?.includes("masih digunakan oleh sesi terapi aktif")) {
@@ -535,17 +549,20 @@ export default function Products() {
               Konfirmasi Hapus Paket Terapi
             </DialogTitle>
             <DialogDescription>
-              Apakah Anda yakin ingin menghapus paket terapi <strong>{packageToDelete?.name}</strong>?<br />
-              <span className="text-yellow-600 block mt-2 mb-1 font-medium">Perhatian:</span> 
-              <ul className="list-disc ml-5 text-sm space-y-1">
-                <li>Paket yang sedang aktif digunakan oleh pasien <strong>tidak dapat dihapus</strong>.</li>
-                <li>Pastikan paket ini sudah tidak lagi dibutuhkan sebelum menghapusnya.</li>
-                <li>Tindakan ini tidak dapat dibatalkan.</li>
-              </ul>
+              <p className="mb-2">Apakah Anda yakin ingin menghapus paket terapi <strong>{packageToDelete?.name}</strong>?</p>
+              
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <span className="text-yellow-700 font-medium">Perhatian:</span> 
+                <ul className="list-disc ml-5 mt-1 text-sm space-y-1 text-yellow-700">
+                  <li>Paket yang sedang aktif digunakan oleh pasien <strong>tidak dapat dihapus</strong>.</li>
+                  <li>Pastikan paket ini sudah tidak lagi dibutuhkan sebelum menghapusnya.</li>
+                  <li>Tindakan ini tidak dapat dibatalkan.</li>
+                </ul>
+              </div>
             </DialogDescription>
           </DialogHeader>
           
-          <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between sm:space-x-0">
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between sm:space-x-0 mt-2">
             <Button 
               type="button" 
               variant="outline" 
