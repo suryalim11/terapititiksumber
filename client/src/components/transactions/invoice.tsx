@@ -276,27 +276,78 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       let bankInfo = '';
       if ((data.paymentMethod === 'bank_transfer' || data.paymentMethod === 'qris') &&
           (settings.bankName || settings.bankAccountNumber || settings.bankAccountName)) {
-        bankInfo = `
-*Informasi Pembayaran:*`;
-        if (settings.bankName) bankInfo += `
-Bank: ${settings.bankName}`;
-        if (settings.bankAccountNumber) bankInfo += `
-No. Rekening: ${settings.bankAccountNumber}`;
-        if (settings.bankAccountName) bankInfo += `
-Atas Nama: ${settings.bankAccountName}`;
-        bankInfo += '\n';
+        bankInfo = `*Informasi Pembayaran:*`;
+        if (settings.bankName) bankInfo += `\nBank: ${settings.bankName}`;
+        if (settings.bankAccountNumber) bankInfo += `\nNo. Rekening: ${settings.bankAccountNumber}`;
+        if (settings.bankAccountName) bankInfo += `\nAtas Nama: ${settings.bankAccountName}`;
       }
-
-      const message = `*INVOICE ${invoiceId}*
-Yth. ${data.patient.name},
-
-Terima kasih telah mengunjungi ${settings.companyName}.
-Total Pembayaran: ${formatPrice(data.transaction.totalAmount)}${bankInfo}
-Detail transaksi telah dikirim melalui invoice ini.
-${settings.invoiceThankYouMessage || "Semoga sehat selalu!"}
-
-Salam,
-Tim ${settings.companyName}`;
+      
+      // Format detail item jika opsi includeDetailedItems diaktifkan
+      let itemDetails = '';
+      if (settings.includeDetailedItems && data.items && data.items.length > 0) {
+        itemDetails = '\n*Detail Item:*';
+        data.items.forEach(item => {
+          itemDetails += `\n${item.quantity} x ${item.name} - ${formatPrice(item.price)}`;
+        });
+      }
+      
+      // Buat pesan berdasarkan template atau gunakan template default
+      let message = '';
+      
+      if (settings.whatsappTemplate) {
+        // Gunakan template kustom dan ganti variabel dengan nilai sebenarnya
+        message = settings.whatsappTemplate
+          .replace(/{{companyName}}/g, settings.companyName)
+          .replace(/{{invoiceId}}/g, invoiceId)
+          .replace(/{{totalAmount}}/g, formatPrice(data.transaction.totalAmount))
+          .replace(/{{patientName}}/g, data.patient.name)
+          .replace(/{{bankInfo}}/g, bankInfo || '')
+          .replace(/{{items}}/g, itemDetails || '');
+      } else {
+        // Gunakan format default jika tidak ada template kustom
+        message = `*INVOICE ${invoiceId}*`;
+        
+        // Tambahkan salam pembuka jika tersedia
+        if (settings.whatsappGreeting) {
+          message += `\n${settings.whatsappGreeting.replace(/{{patientName}}/g, data.patient.name)}`;
+        } else {
+          message += `\nYth. ${data.patient.name},`;
+        }
+        
+        message += `\n\nTerima kasih telah mengunjungi ${settings.companyName}.`;
+        message += `\nTotal Pembayaran: ${formatPrice(data.transaction.totalAmount)}`;
+        
+        // Tambahkan info bank jika ada
+        if (bankInfo) {
+          message += `\n\n${bankInfo}`;
+        }
+        
+        // Tambahkan detail item jika opsi diaktifkan
+        if (itemDetails) {
+          message += `\n${itemDetails}`;
+        }
+        
+        // Tambahkan pesan terima kasih
+        message += `\n\n${settings.invoiceThankYouMessage || "Semoga sehat selalu!"}`;
+        
+        // Tambahkan tanda tangan
+        if (settings.whatsappSignature) {
+          message += `\n\n${settings.whatsappSignature.replace(/{{companyName}}/g, settings.companyName)}`;
+        } else {
+          message += `\n\nSalam,\nTim ${settings.companyName}`;
+        }
+      }
+      
+      // Tambahkan pengingat jadwal jika diaktifkan
+      if (settings.includeAppointmentReminder) {
+        const appointments = data.items.filter(item => item.type === 'package')
+          .map(item => `\n• ${item.name}: Silahkan jadwalkan sesi terapi Anda melalui bagian resepsionis kami.`);
+          
+        if (appointments.length > 0) {
+          message += '\n\n*Pengingat Jadwal Terapi:*';
+          message += appointments.join('');
+        }
+      }
 
       // Encode pesan untuk URL WhatsApp
       const encodedMessage = encodeURIComponent(message);

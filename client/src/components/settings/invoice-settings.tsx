@@ -26,6 +26,13 @@ const invoiceSettingsSchema = z.object({
   invoiceFooterNote: z.string().optional(),
   invoicePrefix: z.string().optional(),
   invoiceThankYouMessage: z.string().optional(),
+  
+  // Pengaturan template WhatsApp
+  whatsappTemplate: z.string().optional(),
+  whatsappGreeting: z.string().optional(),
+  whatsappSignature: z.string().optional(),
+  includeDetailedItems: z.boolean().optional(),
+  includeAppointmentReminder: z.boolean().optional(),
 });
 
 export type InvoiceSettings = z.infer<typeof invoiceSettingsSchema>;
@@ -44,6 +51,13 @@ export const defaultInvoiceSettings: InvoiceSettings = {
   invoiceFooterNote: "Terima kasih atas kepercayaan Anda. Paket terapi yang telah dibeli dapat digunakan sesuai jadwal yang telah disepakati.",
   invoicePrefix: "",
   invoiceThankYouMessage: "Terima kasih telah mengunjungi Klinik Terapi Titik Sumber.",
+  
+  // Pengaturan WhatsApp default
+  whatsappTemplate: "Terima kasih telah mengunjungi *{{companyName}}*.\n\nBerikut adalah detail invoice Anda:\nNo. Invoice: *{{invoiceId}}*\nTotal: *{{totalAmount}}*\n\n{{bankInfo}}\n\n{{items}}\n\nSemoga sehat selalu!",
+  whatsappGreeting: "Yth. {{patientName}},",
+  whatsappSignature: "Salam,\nTim {{companyName}}",
+  includeDetailedItems: true,
+  includeAppointmentReminder: true,
 };
 
 export function InvoiceSettings() {
@@ -331,6 +345,139 @@ export function InvoiceSettings() {
                   </FormItem>
                 )}
               />
+            </div>
+            
+            <div className="pt-6 pb-2 space-y-4">
+              <h3 className="text-md font-semibold">Pengaturan WhatsApp</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                Kustomisasi pesan WhatsApp untuk pengiriman invoice
+              </p>
+              
+              <FormField
+                control={form.control}
+                name="whatsappGreeting"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Salam Pembuka</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder="Yth. {{patientName}}," 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="whatsappTemplate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Template Pesan WhatsApp</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        className="min-h-[120px]"
+                        placeholder="Template pesan WhatsApp dengan variabel {{companyName}}, {{invoiceId}}, dll."
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Gunakan variabel: {{companyName}}, {{invoiceId}}, {{totalAmount}}, {{bankInfo}}, {{items}}, {{patientName}}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="whatsappSignature"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tanda Tangan Pesan</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder="Salam, Tim {{companyName}}" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="includeDetailedItems"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Detail Item</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Sertakan daftar item transaksi
+                        </p>
+                      </div>
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="form-checkbox h-5 w-5 text-primary border-gray-300 rounded focus:ring-primary"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="includeAppointmentReminder"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Reminder Jadwal</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Sertakan pengingat jadwal terapi
+                        </p>
+                      </div>
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="form-checkbox h-5 w-5 text-primary border-gray-300 rounded focus:ring-primary"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-900 rounded-md">
+                <h4 className="text-sm font-medium mb-2">Contoh Format Pesan</h4>
+                <div className="text-xs bg-white dark:bg-slate-800 p-3 rounded border">
+                  <p>Yth. [Nama Pasien],</p>
+                  <p className="mt-2">Terima kasih telah mengunjungi <strong>Klinik Terapi Titik Sumber</strong>.</p>
+                  <p className="mt-2">Berikut adalah detail invoice Anda:<br />
+                  No. Invoice: <strong>TTS-1234</strong><br />
+                  Total: <strong>Rp500.000</strong></p>
+                  <div className="mt-2">
+                    <p>Informasi Pembayaran:</p>
+                    <p>Bank: BCA<br />
+                    No. Rekening: 1234567890<br />
+                    Atas Nama: Klinik TTS</p>
+                  </div>
+                  <div className="mt-2">
+                    <p>Detail Item:</p>
+                    <p>1 x Paket 5 Sesi - Rp500.000</p>
+                  </div>
+                  <p className="mt-2">Semoga sehat selalu!</p>
+                  <p className="mt-2">Salam,<br />Tim Klinik Terapi Titik Sumber</p>
+                </div>
+              </div>
             </div>
             
             <div className="flex justify-between pt-6">
