@@ -102,6 +102,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
   const handleDownload = () => {
     if (invoiceRef.current) {
       try {
+        // Debug pengaturan untuk memastikan data bank tersedia
+        console.log("Invoice settings for PDF:", settings);
+        
         // Buat instance jsPDF
         const doc = new jsPDF({
           orientation: 'portrait',
@@ -186,9 +189,17 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         doc.text("Total:", 140, y + 10, { align: 'right' });
         doc.text(formatPrice(data.transaction.totalAmount), 195, y + 10, { align: 'right' });
         
-        // Informasi Rekening Bank (jika ada)
+        // Informasi Rekening Bank (jika ada dan metode pembayaran adalah transfer bank atau QRIS)
         let bankY = y + 25;
-        if (settings.bankName || settings.bankAccountNumber || settings.bankAccountName) {
+        if ((data.paymentMethod === 'bank_transfer' || data.paymentMethod === 'qris') && 
+            (settings.bankName || settings.bankAccountNumber || settings.bankAccountName)) {
+          // Debugging
+          console.log("Adding bank info to PDF:", {
+            bankName: settings.bankName,
+            accountNumber: settings.bankAccountNumber,
+            accountName: settings.bankAccountName
+          });
+          
           doc.setFontSize(10);
           doc.setFont("helvetica", "bold");
           doc.text("Informasi Pembayaran:", 14, bankY);
@@ -214,6 +225,10 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
             bankY += 5;
           }
         } else {
+          console.log("Skipping bank info in PDF:", {
+            paymentMethod: data.paymentMethod,
+            hasBank: !!(settings.bankName || settings.bankAccountNumber || settings.bankAccountName)
+          });
           bankY += 5;
         }
         
@@ -407,7 +422,8 @@ Tim ${settings.companyName}`;
             </table>
 
             <div className="border-t border-gray-200 pt-4">
-              {(settings.bankName || settings.bankAccountNumber || settings.bankAccountName) && (
+              {(data.paymentMethod === 'bank_transfer' || data.paymentMethod === 'qris') && 
+                (settings.bankName || settings.bankAccountNumber || settings.bankAccountName) && (
                 <div className="mb-3 p-3 border border-gray-200 rounded-md bg-gray-50">
                   <h3 className="font-semibold text-gray-700 mb-1">Informasi Pembayaran:</h3>
                   {settings.bankName && (
