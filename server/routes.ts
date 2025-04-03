@@ -2424,6 +2424,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/backup/files/:filename", deleteBackup);
   app.post("/api/backup/restore/:filename", restoreData);
   app.post("/api/backup/upload", upload.single('backupFile'), uploadBackup);
+  
+  // Endpoint khusus untuk pengujian perbaikan sinkronisasi tanggal
+  app.post("/api/test/create-appointment", async (req: Request, res: Response) => {
+    try {
+      // Hanya untuk pengujian - Pastikan ini tidak digunakan di production
+      const { patientId, therapySlotId } = req.body;
+      
+      if (!patientId || !therapySlotId) {
+        return res.status(400).json({ 
+          message: "Pengujian memerlukan patientId dan therapySlotId",
+          example: {
+            patientId: 29,
+            therapySlotId: 169
+          }
+        });
+      }
+      
+      // Ambil data terapi slot untuk memperoleh tanggal dan waktu yang benar
+      const therapySlot = await storage.getTherapySlot(therapySlotId);
+      if (!therapySlot) {
+        return res.status(404).json({ message: "Therapy slot tidak ditemukan" });
+      }
+      
+      // Buat appointment dengan data yang valid
+      const appointmentData = {
+        patientId: patientId,
+        therapySlotId: therapySlotId,
+        notes: "Pengujian sinkronisasi tanggal",
+        status: "Scheduled",
+        date: new Date(therapySlot.date), // Menggunakan tanggal dari therapySlot
+        timeSlot: therapySlot.timeSlot,
+        sessionId: null,
+        registrationNumber: null
+      };
+      
+      console.log("Data appointment untuk pengujian:", {
+        ...appointmentData,
+        date: appointmentData.date.toISOString()
+      });
+      
+      // Buat appointment
+      const appointment = await storage.createAppointment(appointmentData);
+      
+      // Meningkatkan jumlah penggunaan terapi slot
+      await storage.incrementTherapySlotUsage(therapySlotId);
+      
+      return res.status(201).json({
+        message: "Appointment testing berhasil dibuat",
+        therapySlotDate: therapySlot.date,
+        appointmentDate: appointment.date,
+        appointment
+      });
+    } catch (error) {
+      console.error("Error pada endpoint pengujian:", error);
+      return res.status(500).json({ 
+        message: "Terjadi kesalahan saat pengujian",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);

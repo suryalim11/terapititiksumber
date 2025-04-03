@@ -1015,12 +1015,19 @@ export class DatabaseStorage implements IStorage {
 
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
     // Generate registration number with WIB time if not provided
-    const wibDate = getWIBDate(new Date());
+    const currentWibDate = getWIBDate(new Date());
     let regNum = appointment.registrationNumber;
     
     if (!regNum) {
-      regNum = `R-${format(wibDate, 'yyyyMMdd')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+      regNum = `R-${format(currentWibDate, 'yyyyMMdd')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
     }
+    
+    // PENTING: Gunakan tanggal appointment yang disediakan, atau fallback ke waktu saat ini
+    // Ini mencegah inconsistensi data antara slot terapi dan appointment
+    let appointmentDate = appointment.date;
+    
+    // Log untuk debugging
+    console.log(`[APPOINTMENT] Creating appointment with date: ${appointment.date}`);
     
     // Pastikan date menggunakan zona waktu WIB untuk konsistensi
     const result = await db.insert(schema.appointments)
@@ -1028,7 +1035,7 @@ export class DatabaseStorage implements IStorage {
         patientId: appointment.patientId,
         sessionId: appointment.sessionId,
         therapySlotId: appointment.therapySlotId,
-        date: wibDate, // Konsisten menggunakan waktu WIB untuk tanggal
+        date: appointmentDate, // Gunakan tanggal yang diberikan saat membuat appointment
         timeSlot: appointment.timeSlot,
         notes: appointment.notes,
         status: appointment.status,
