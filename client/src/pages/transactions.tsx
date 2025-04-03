@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, addHours } from "date-fns";
 import { id } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -172,8 +172,12 @@ export default function Transactions() {
 
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), "dd/MM/yyyy, HH:mm", { locale: id });
+      // Mengurangi 7 jam untuk menyesuaikan dengan timezone WIB (UTC+7)
+      const date = new Date(dateString);
+      const wibDate = addHours(date, -7);
+      return format(wibDate, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
     } catch (e) {
+      console.error("Error formatting date:", e);
       return dateString;
     }
   };
