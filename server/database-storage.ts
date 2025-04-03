@@ -516,18 +516,46 @@ export class DatabaseStorage implements IStorage {
   
   async deletePackage(id: number): Promise<boolean> {
     try {
+      console.log(`Attempting to delete package with ID ${id}`);
+      
       // Periksa apakah paket ada
       const existingPackage = await this.getPackage(id);
       if (!existingPackage) {
+        console.log(`Package with ID ${id} not found`);
         return false;
       }
       
-      // Hapus paket
-      await db
-        .delete(schema.packages)
-        .where(eq(schema.packages.id, id));
+      // Periksa apakah ada sesi aktif yang menggunakan paket ini
+      const activeSessions = await db.query.sessions.findMany({
+        where: and(
+          eq(schema.sessions.packageId, id),
+          eq(schema.sessions.status, "active")
+        )
+      });
       
-      return true;
+      if (activeSessions.length > 0) {
+        console.log(`Cannot delete package with ID ${id}. There are ${activeSessions.length} active sessions using this package.`);
+        // Kita bisa mempertimbangkan untuk mengembalikan informasi tambahan di sini
+        // Untuk saat ini, kita cukup mengembalikan false
+        return false;
+      }
+      
+      // Hapus semua sesi non-aktif yang terkait dengan paket ini
+      await db
+        .delete(schema.sessions)
+        .where(and(
+          eq(schema.sessions.packageId, id),
+          not(eq(schema.sessions.status, "active"))
+        ));
+      
+      // Hapus paket
+      const result = await db
+        .delete(schema.packages)
+        .where(eq(schema.packages.id, id))
+        .returning({ id: schema.packages.id });
+      
+      console.log(`Package deletion result:`, result);
+      return result.length > 0;
     } catch (error) {
       console.error("Error deleting package:", error);
       return false;

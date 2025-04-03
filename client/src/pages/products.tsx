@@ -176,25 +176,42 @@ export default function Products() {
     
     try {
       setIsDeletingPackage(true);
-      await apiRequest(`/api/packages/${packageToDelete.id}`, {
+      const response = await apiRequest(`/api/packages/${packageToDelete.id}`, {
         method: "DELETE",
       });
       
-      // Invalidate packages cache to refetch the data
-      queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
-      
-      toast({
-        title: "Paket terapi dihapus",
-        description: `${packageToDelete.name} telah dihapus`,
-      });
-      
-      setDeletePackageConfirmOpen(false);
-      setPackageToDelete(null);
-    } catch (error) {
+      // Check response status
+      if (response.ok) {
+        // Invalidate packages cache to refetch the data
+        queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
+        
+        toast({
+          title: "Paket terapi dihapus",
+          description: `${packageToDelete.name} telah dihapus`,
+        });
+        
+        setDeletePackageConfirmOpen(false);
+        setPackageToDelete(null);
+      } else {
+        // Parse error response
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Gagal menghapus paket terapi");
+      }
+    } catch (error: any) {
       console.error("Error deleting package:", error);
+      
+      // Display more specific error message if available
+      let errorMessage = "Terjadi kesalahan, silakan coba lagi";
+      
+      if (error.message?.includes("masih digunakan oleh sesi terapi aktif")) {
+        errorMessage = error.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Gagal menghapus paket terapi",
-        description: "Terjadi kesalahan, silakan coba lagi",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -518,8 +535,13 @@ export default function Products() {
               Konfirmasi Hapus Paket Terapi
             </DialogTitle>
             <DialogDescription>
-              Apakah Anda yakin ingin menghapus paket terapi <strong>{packageToDelete?.name}</strong>? 
-              Tindakan ini tidak dapat dibatalkan dan dapat memengaruhi transaksi yang menggunakan paket ini.
+              Apakah Anda yakin ingin menghapus paket terapi <strong>{packageToDelete?.name}</strong>?<br />
+              <span className="text-yellow-600 block mt-2 mb-1 font-medium">Perhatian:</span> 
+              <ul className="list-disc ml-5 text-sm space-y-1">
+                <li>Paket yang sedang aktif digunakan oleh pasien <strong>tidak dapat dihapus</strong>.</li>
+                <li>Pastikan paket ini sudah tidak lagi dibutuhkan sebelum menghapusnya.</li>
+                <li>Tindakan ini tidak dapat dibatalkan.</li>
+              </ul>
             </DialogDescription>
           </DialogHeader>
           

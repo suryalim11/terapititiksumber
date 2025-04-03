@@ -84,12 +84,18 @@ export const packages = pgTable("packages", {
   description: text("description"),
 });
 
-// Definisikan schema dengan validasi khusus
-export const insertPackageSchema = createInsertSchema(packages).pick({
-  name: true,
-  sessions: true,
-  price: true,
-  description: true,
+// Definisikan schema dengan validasi khusus untuk package
+export const insertPackageSchema = z.object({
+  name: z.string().min(3, { message: "Nama paket harus minimal 3 karakter" }),
+  sessions: z.preprocess(
+    (val) => (typeof val === 'string' ? parseInt(val, 10) : val),
+    z.number().int().min(1, { message: "Jumlah sesi harus minimal 1" })
+  ),
+  price: z.union([
+    z.string(),
+    z.number().transform(n => n.toString())
+  ]),
+  description: z.string().nullable().optional(),
 });
 
 // Transaction Schema

@@ -672,39 +672,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Menerima permintaan POST /api/packages dengan data:", req.body);
       
-      // Make a copy of request body
-      const packageDataRaw = { ...req.body };
-      
-      // Sanitize data and convert types as needed
+      // Validasi data menggunakan Zod schema yang telah diperbarui
+      // Schema sekarang sudah diperbarui di shared/schema.ts untuk menangani konversi tipe data
       try {
-        // Make sure sessions is a number
-        if (typeof packageDataRaw.sessions === 'string') {
-          packageDataRaw.sessions = parseInt(packageDataRaw.sessions);
-        }
+        const validatedData = insertPackageSchema.parse(req.body);
+        console.log("Data paket tervalidasi:", validatedData);
         
-        // Make sure price is a string representation of a number that Drizzle can handle
-        if (typeof packageDataRaw.price === 'number') {
-          packageDataRaw.price = packageDataRaw.price.toString();
+        const newPackage = await storage.createPackage(validatedData);
+        console.log("Paket baru dibuat:", newPackage);
+        return res.status(201).json(newPackage);
+      } catch (zodError) {
+        if (zodError instanceof z.ZodError) {
+          console.error("Validation error:", zodError.errors);
+          return res.status(400).json({ 
+            message: "Validasi data gagal", 
+            errors: zodError.errors.map(e => ({
+              path: e.path.join('.'),
+              message: e.message
+            }))
+          });
         }
-        
-        console.log("Data paket yang akan divalidasi:", packageDataRaw);
-      } catch (conversionError) {
-        console.error("Error saat konversi tipe data:", conversionError);
+        throw zodError; // re-throw jika bukan ZodError
       }
-      
-      // Validasi data menggunakan Zod schema
-      const validatedData = insertPackageSchema.parse(packageDataRaw);
-      console.log("Data paket tervalidasi:", validatedData);
-      
-      const newPackage = await storage.createPackage(validatedData);
-      console.log("Paket baru dibuat:", newPackage);
-      return res.status(201).json(newPackage);
     } catch (error) {
       console.error("Error creating package:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
-      return res.status(500).json({ message: "Internal server error", error: String(error) });
+      return res.status(500).json({ 
+        message: "Terjadi kesalahan saat membuat paket", 
+        error: String(error) 
+      });
     }
   });
   
@@ -718,44 +713,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       console.log(`Menerima permintaan PUT /api/packages/${id} dengan data:`, req.body);
       
-      // Make a copy of request body
-      const packageDataRaw = { ...req.body };
+      // Cek apakah paket ada
+      const existingPackage = await storage.getPackage(id);
+      if (!existingPackage) {
+        return res.status(404).json({ message: "Paket tidak ditemukan" });
+      }
       
-      // Sanitize data and convert types as needed
       try {
-        // Make sure sessions is a number
-        if (typeof packageDataRaw.sessions === 'string') {
-          packageDataRaw.sessions = parseInt(packageDataRaw.sessions);
+        // Validasi data menggunakan Zod schema yang telah diperbarui
+        const validatedData = insertPackageSchema.parse(req.body);
+        console.log("Data paket tervalidasi:", validatedData);
+        
+        // Cek apakah paket memiliki sesi aktif
+        if (existingPackage.sessions !== Number(validatedData.sessions)) {
+          console.log(`Package sessions changing from ${existingPackage.sessions} to ${validatedData.sessions}`);
+          
+          // Periksa jika ada sesi aktif, dan apakah perubahan jumlah sesi akan berdampak
+          const activeSessions = await db.query.sessions.findMany({
+            where: and(
+              eq(schema.sessions.packageId, id),
+              eq(schema.sessions.status, "active")
+            )
+          });
+          
+          if (activeSessions.length > 0) {
+            // Periksa apakah sesi baru lebih kecil dari sesi yang sudah digunakan
+            for (const session of activeSessions) {
+              if (session.sessionsUsed > Number(validatedData.sessions)) {
+                return res.status(400).json({ 
+                  message: "Jumlah sesi tidak dapat dikurangi di bawah jumlah sesi yang sudah digunakan",
+                  detail: `Paket ini memiliki sesi aktif dengan ${session.sessionsUsed} sesi yang sudah digunakan`
+                });
+              }
+            }
+          }
         }
         
-        // Make sure price is a string representation of a number that Drizzle can handle
-        if (typeof packageDataRaw.price === 'number') {
-          packageDataRaw.price = packageDataRaw.price.toString();
+        const updatedPackage = await storage.updatePackage(id, validatedData);
+        console.log("Paket berhasil diperbarui:", updatedPackage);
+        return res.status(200).json(updatedPackage);
+      } catch (zodError) {
+        if (zodError instanceof z.ZodError) {
+          console.error("Validation error:", zodError.errors);
+          return res.status(400).json({ 
+            message: "Validasi data gagal", 
+            errors: zodError.errors.map(e => ({
+              path: e.path.join('.'),
+              message: e.message
+            }))
+          });
         }
-        
-        console.log("Data paket yang akan divalidasi:", packageDataRaw);
-      } catch (conversionError) {
-        console.error("Error saat konversi tipe data:", conversionError);
+        throw zodError; // re-throw jika bukan ZodError
       }
-      
-      // Validasi data menggunakan Zod schema
-      const validatedData = insertPackageSchema.parse(packageDataRaw);
-      console.log("Data paket tervalidasi:", validatedData);
-      
-      const updatedPackage = await storage.updatePackage(id, validatedData);
-      
-      if (!updatedPackage) {
-        return res.status(404).json({ message: "Package not found" });
-      }
-      
-      console.log("Paket berhasil diperbarui:", updatedPackage);
-      return res.status(200).json(updatedPackage);
     } catch (error) {
       console.error("Error updating package:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
-      return res.status(500).json({ message: "Internal server error", error: String(error) });
+      return res.status(500).json({ 
+        message: "Terjadi kesalahan saat memperbarui paket", 
+        error: String(error) 
+      });
     }
   });
   
@@ -767,16 +782,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const id = parseInt(req.params.id);
+      console.log(`Processing delete request for package ID: ${id}`);
+      
+      // Periksa apakah ada sesi aktif yang terkait dengan paket ini
+      const activeSessions = await db.query.sessions.findMany({
+        where: and(
+          eq(schema.sessions.packageId, id),
+          eq(schema.sessions.status, "active")
+        )
+      });
+      
+      if (activeSessions.length > 0) {
+        console.log(`Cannot delete package ID ${id}: There are ${activeSessions.length} active sessions using this package.`);
+        return res.status(400).json({ 
+          message: "Paket tidak dapat dihapus karena masih digunakan oleh sesi terapi aktif",
+          detail: `Terdapat ${activeSessions.length} sesi aktif yang menggunakan paket ini`
+        });
+      }
+      
       const deleted = await storage.deletePackage(id);
       
       if (!deleted) {
-        return res.status(404).json({ message: "Package not found" });
+        return res.status(404).json({ message: "Paket tidak ditemukan atau tidak dapat dihapus" });
       }
       
-      return res.status(200).json({ success: true, message: "Package successfully deleted" });
+      return res.status(200).json({ success: true, message: "Paket berhasil dihapus" });
     } catch (error) {
       console.error("Error deleting package:", error);
-      return res.status(500).json({ message: "Internal server error" });
+      return res.status(500).json({ 
+        message: "Terjadi kesalahan saat menghapus paket", 
+        error: String(error) 
+      });
     }
   });
 

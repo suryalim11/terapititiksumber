@@ -28,9 +28,11 @@ const packageFormSchema = z.object({
   price: z.string().min(1, {
     message: "Harga harus diisi",
   }),
-  sessions: z.coerce.number().min(1, {
-    message: "Jumlah sesi harus minimal 1",
-  }),
+  // Pastikan sesi selalu dikonversi ke number, bahkan jika input berupa string
+  sessions: z.preprocess(
+    (val) => (typeof val === 'string' ? parseInt(val, 10) : val),
+    z.number().min(1, { message: "Jumlah sesi harus minimal 1" })
+  ),
   description: z.string().nullable().optional(),
 });
 
@@ -78,11 +80,9 @@ export function PackageForm({
       // Ensure we're sending a properly formatted object to the server
       const sanitizedData = {
         name: values.name.trim(),
-        // Make sure sessions is a number - the server expects this
-        sessions: typeof values.sessions === 'string' 
-          ? parseInt(values.sessions) 
-          : values.sessions,
-        // Format price - send as string to avoid precision issues
+        // Dengan zod preprocessor, sessions seharusnya sudah berupa angka
+        sessions: Number(values.sessions), // Pastikan bertipe number
+        // Format price - kirim sebagai string untuk menghindari masalah presisi
         price: values.price.replace(/\D/g, ""),
         description: values.description?.trim() || null
       };
@@ -132,11 +132,22 @@ export function PackageForm({
       if (onSuccess) {
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving package:", error);
+      
+      let errorMessage = "Terjadi kesalahan saat menyimpan paket. Silakan coba lagi.";
+      
+      // Cek apakah error memiliki response data
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        // Gunakan error.message jika ada
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Gagal menyimpan paket",
-        description: "Terjadi kesalahan saat menyimpan paket. Silakan coba lagi.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
