@@ -1,50 +1,19 @@
 import { useState } from "react";
-import { format, parseISO, addHours } from "date-fns";
+import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   BarChart3, 
   Calendar, 
-  DollarSign, 
+  DollarSign,
   PackageIcon, 
-  UserRound, 
+  UserRound,
   Users,
   AlertCircle,
   RefreshCw,
   Loader2
 } from "lucide-react";
 import { cn, formatRupiah, formatDateDDMMYYYY } from "@/lib/utils";
-
-// Fungsi khusus untuk memformat waktu aktivitas
-function formatActivityTime(timestampStr: string, activityType: string): string {
-  try {
-    const timestamp = parseISO(timestampStr);
-    
-    // Penyesuaian waktu untuk tipe aktivitas yang berbeda
-    let adjustedTime;
-    
-    if (activityType === "transaction") {
-      // Transaksi perlu dikurangi 7 jam
-      adjustedTime = addHours(timestamp, -7);
-    } else {
-      // Aktivitas lain perlu dikurangi 21 jam
-      adjustedTime = addHours(timestamp, -21);
-    }
-    
-    // Format tanggal dan waktu dengan format lokal
-    return new Intl.DateTimeFormat('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).format(adjustedTime) + " WIB";
-  } catch (error) {
-    console.error("Error formatting activity time:", error);
-    return "";
-  }
-}
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
@@ -102,11 +71,7 @@ export default function Dashboard() {
       refetchInterval: 10000, // Refresh every 10 seconds
     });
 
-  // Fetch recent activities with auto-refresh
-  const { data: activities = [], refetch: refetchActivities } = useQuery<RecentActivity[]>({
-    queryKey: ['/api/dashboard/activities'],
-    refetchInterval: 10000,
-  });
+  // Tidak lagi menampilkan aktivitas terbaru
   
   // Fetch today's appointments with auto-refresh
   const { data: todayAppointments = [], refetch: refetchAppointments } = useQuery<any[]>({
@@ -226,70 +191,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Recent Activities and Today's Schedule */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Recent Activities */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <span>Recent Activities</span>
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => {
-                    refetchActivities();
-                  }}
-                  className="h-8 w-8 p-0"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  <span className="sr-only">Refresh Activities</span>
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {activities.length > 0 ? (
-                activities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-start gap-3 rounded-lg border p-3"
-                  >
-                    <div className="rounded-full bg-primary/10 p-2">
-                      {activity.type === "patient" && (
-                        <UserRound className="h-4 w-4 text-primary" />
-                      )}
-                      {activity.type === "transaction" && (
-                        <DollarSign className="h-4 w-4 text-primary" />
-                      )}
-                      {activity.type === "appointment" && (
-                        <Calendar className="h-4 w-4 text-primary" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm">{activity.description}</p>
-                      <time className="text-xs text-muted-foreground">
-                        {activity.timestamp ? 
-                          formatActivityTime(activity.timestamp, activity.type) :
-                          ""}
-                      </time>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    No recent activities
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
+      {/* Dashboard Content */}
+      <div className="grid gap-4 md:grid-cols-1">
         {/* Slot Tracker */}
         <Card>
           <CardHeader>
