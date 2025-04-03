@@ -259,6 +259,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Skema yang diharapkan:", insertPatientSchema.shape);
       
+      // Ambil kode registrasi dari request body, jika ada
+      const registrationCode = req.body.registrationCode;
+      console.log("Kode registrasi:", registrationCode);
+      
+      // Jika kode registrasi ada, verifikasi kembali untuk memastikan valid dan masih memiliki kuota
+      // Langkah ini penting untuk mencegah pendaftaran yang melewati kuota saat traffic tinggi
+      if (registrationCode) {
+        const link = await storage.getRegistrationLinkByCode(registrationCode);
+        
+        if (!link) {
+          return res.status(400).json({ 
+            message: "Kode pendaftaran tidak valid", 
+            code: "INVALID_REGISTRATION_CODE" 
+          });
+        }
+        
+        // Periksa apakah link masih aktif
+        if (!link.isActive) {
+          return res.status(400).json({ 
+            message: "Link pendaftaran sudah tidak aktif", 
+            code: "INACTIVE_REGISTRATION_LINK" 
+          });
+        }
+        
+        // Periksa apakah link expired
+        const now = new Date();
+        if (now > link.expiryTime) {
+          return res.status(400).json({ 
+            message: "Link pendaftaran sudah kadaluarsa", 
+            code: "EXPIRED_REGISTRATION_LINK" 
+          });
+        }
+        
+        // PENTING: Periksa apakah kuota harian sudah tercapai (double-check)
+        if (link.currentRegistrations >= link.dailyLimit) {
+          return res.status(400).json({ 
+            message: "Kuota pendaftaran untuk hari ini sudah penuh. Silakan coba lagi besok.",
+            dailyLimit: link.dailyLimit,
+            currentRegistrations: link.currentRegistrations,
+            code: "QUOTA_REACHED" 
+          });
+        }
+      }
+      
       // Konversi data yang dikirim dari form menjadi format yang diharapkan oleh skema
       const patientData = {
         name: req.body.name || "",
@@ -356,6 +400,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let patientToUse;
       let appointmentResponse = null;
       
+      // Update registrasi hanya jika semua validasi awal berhasil
+      let updatedRegistrationLink = null;
+      if (registrationCode) {
+        try {
+          // PENTING: Increment registration count sebelum membuat pasien
+          // Ini memastikan kuota digunakan pada saat validasi sukses tapi sebelum data pasien dibuat
+          // Jika ada error setelah ini, pasien tidak akan dibuat tapi kuota tetap berkurang
+          // Ini mencegah serangan yang mencoba melewati kuota
+          console.log("Incrementing registration count for code:", registrationCode);
+          updatedRegistrationLink = await storage.incrementRegistrationCount(registrationCode);
+          console.log("Updated registration link:", updatedRegistrationLink);
+          
+          if (!updatedRegistrationLink) {
+            return res.status(400).json({ 
+              message: "Gagal memperbarui kuota registrasi. Silakan coba lagi.", 
+              code: "INCREMENT_FAILED" 
+            });
+          }
+        } catch (error) {
+          console.error("Error saat increment registration count:", error);
+          return res.status(500).json({ 
+            message: "Terjadi kesalahan saat memproses pendaftaran", 
+            code: "INCREMENT_ERROR" 
+          });
+        }
+      }
+      
+      // Procede to create patient data and appointment only after the registration count is incremented
       if (existingPatient) {
         console.log(`Pasien dengan nomor telepon ${validatedData.phoneNumber} sudah ada, menggunakan ID: ${existingPatient.id}`);
         patientToUse = existingPatient;
@@ -440,7 +512,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         appointment: appointmentResponse,
         confirmationLink: confirmationToken ? 
           `${req.protocol}://${req.get('host')}/confirm/${confirmationToken.token}` : 
-          null
+          null,
+        // Include updated registration information if available
+        registrationInfo: updatedRegistrationLink ? {
+          currentRegistrations: updatedRegistrationLink.currentRegistrations,
+          dailyLimit: updatedRegistrationLink.dailyLimit
+        } : null
       };
       
       return res.status(201).json(responseData);

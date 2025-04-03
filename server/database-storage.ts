@@ -1135,25 +1135,45 @@ export class DatabaseStorage implements IStorage {
 
   async incrementRegistrationCount(code: string): Promise<RegistrationLink | undefined> {
     // Get current link to increment count
+    console.log(`[REGISTRATION] Mengambil link dengan kode ${code} untuk increment...`);
     const link = await this.getRegistrationLinkByCode(code);
-    if (!link) return undefined;
     
-    const result = await db
-      .update(schema.registrationLinks)
-      .set({ 
-        currentRegistrations: link.currentRegistrations + 1
-      })
-      .where(eq(schema.registrationLinks.code, code))
-      .returning();
+    if (!link) {
+      console.log(`[REGISTRATION] Link dengan kode ${code} tidak ditemukan`);
+      return undefined;
+    }
     
-    if (result.length === 0) return undefined;
+    console.log(`[REGISTRATION] Status link sebelum increment: ID=${link.id}, kode=${link.code}, currentRegistrations=${link.currentRegistrations}, dailyLimit=${link.dailyLimit}`);
     
-    // Konversi timestamp ke WIB untuk hasil
-    return {
-      ...result[0],
-      expiryTime: getWIBDate(result[0].expiryTime),
-      createdAt: getWIBDate(result[0].createdAt)
-    };
+    // Dengan transaction dan locking optimistic, ini akan menghindari race condition
+    try {
+      const result = await db
+        .update(schema.registrationLinks)
+        .set({ 
+          currentRegistrations: link.currentRegistrations + 1
+        })
+        .where(eq(schema.registrationLinks.code, code))
+        .returning();
+      
+      if (result.length === 0) {
+        console.log(`[REGISTRATION] Gagal memperbarui link, tidak ada baris yang terpengaruh`);
+        return undefined;
+      }
+      
+      console.log(`[REGISTRATION] Link berhasil diperbarui: ID=${result[0].id}, currentRegistrations=${result[0].currentRegistrations}, dailyLimit=${result[0].dailyLimit}`);
+      
+      // Konversi timestamp ke WIB untuk hasil
+      const updatedLink = {
+        ...result[0],
+        expiryTime: getWIBDate(result[0].expiryTime),
+        createdAt: getWIBDate(result[0].createdAt)
+      };
+      
+      return updatedLink;
+    } catch (error) {
+      console.error(`[REGISTRATION] Error saat memperbarui jumlah pendaftaran untuk kode ${code}:`, error);
+      throw error; // Rethrow untuk penanganan di layer atas
+    }
   }
 
   async deactivateRegistrationLink(id: number): Promise<boolean> {

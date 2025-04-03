@@ -80,6 +80,58 @@ const registerFormSchema = z.object({
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
+// Patient response types
+type PatientSearchResponse = {
+  success: boolean;
+  found: boolean;
+  message?: string;
+  patient?: {
+    id: number;
+    name: string;
+    phoneNumber: string;
+    email: string | null;
+    birthDate: string;
+    gender: string;
+    address: string;
+    complaints?: string;
+  }
+}
+
+// Registration response types
+type TherapySlotDetails = {
+  date: string;
+  timeSlot: string;
+  formattedDate: string;
+}
+
+type AppointmentResponse = {
+  id: number;
+  patientId: number;
+  therapySlotId: number;
+  therapySlotDetails: TherapySlotDetails;
+  date: string;
+  timeSlot: string;
+  status: string;
+}
+
+type RegistrationResponse = {
+  id?: number;
+  name?: string;
+  phoneNumber?: string;
+  email?: string | null; 
+  birthDate?: string;
+  gender?: string;
+  address?: string;
+  appointment?: AppointmentResponse;
+  confirmationLink?: string;
+  code?: string;
+  message?: string;
+  registrationInfo?: {
+    currentRegistrations: number;
+    dailyLimit: number;
+  }
+}
+
 export default function RegisterPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -196,12 +248,12 @@ export default function RegisterPage() {
 
     setIsSearching(true);
     try {
-      const response = await apiRequest(`/api/search-patient?query=${encodeURIComponent(searchQuery)}`, {
+      const response = await apiRequest<PatientSearchResponse>(`/api/search-patient?query=${encodeURIComponent(searchQuery)}`, {
         method: "GET",
       });
 
       if (response.success) {
-        if (response.found) {
+        if (response.found && response.patient) {
           setPatientFound(true);
           setFoundPatient(response.patient);
           
@@ -302,7 +354,7 @@ export default function RegisterPage() {
       console.log("Mengirim data pendaftaran pasien:", payload);
 
       // Submit the form data to patients endpoint
-      const response = await apiRequest("/api/patients", {
+      const response = await apiRequest<RegistrationResponse>("/api/patients", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -329,19 +381,17 @@ export default function RegisterPage() {
           description: "Terima kasih telah mendaftar. Anda akan segera dihubungi oleh tim kami.",
         });
         
-        // Notify the server about successful usage of registration code
-        if (registrationCode) {
-          try {
-            await apiRequest("/api/registration-links/increment", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ code: registrationCode }),
-            });
-          } catch (error) {
-            console.error("Error updating registration count:", error);
-            // Non-critical error, don't show to user
+        // Sekarang kita tidak perlu menaikkan jumlah pendaftaran di sini
+        // karena servernya telah menangani itu secara otomatis saat pendaftaran
+        
+        // Tampilkan informasi kuota jika tersedia
+        if (response.registrationInfo) {
+          console.log("Registration info from server:", response.registrationInfo);
+          if (response.registrationInfo.currentRegistrations !== undefined) {
+            setCurrentRegistrations(response.registrationInfo.currentRegistrations);
+          }
+          if (response.registrationInfo.dailyLimit) {
+            setRegistrationLimit(response.registrationInfo.dailyLimit);
           }
         }
       } else if (response && response.code === "DUPLICATE_APPOINTMENT") {
