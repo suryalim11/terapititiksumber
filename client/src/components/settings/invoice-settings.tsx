@@ -362,7 +362,7 @@ export function InvoiceSettings() {
                     <FormControl>
                       <Input 
                         {...field} 
-                        placeholder="Yth. {{patientName}}," 
+                        placeholder="Yth. [Nama Pasien]," 
                       />
                     </FormControl>
                     <FormMessage />
@@ -380,11 +380,11 @@ export function InvoiceSettings() {
                       <Textarea
                         {...field}
                         className="min-h-[120px]"
-                        placeholder="Template pesan WhatsApp dengan variabel {{companyName}}, {{invoiceId}}, dll."
+                        placeholder="Template pesan WhatsApp dengan variabel yang didukung sistem"
                       />
                     </FormControl>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Gunakan variabel: {{companyName}}, {{invoiceId}}, {{totalAmount}}, {{bankInfo}}, {{items}}, {{patientName}}
+                      Gunakan variabel: &#123;&#123;companyName&#125;&#125;, &#123;&#123;invoiceId&#125;&#125;, &#123;&#123;totalAmount&#125;&#125;, &#123;&#123;bankInfo&#125;&#125;, &#123;&#123;items&#125;&#125;, &#123;&#123;patientName&#125;&#125;
                     </p>
                     <FormMessage />
                   </FormItem>
@@ -400,7 +400,7 @@ export function InvoiceSettings() {
                     <FormControl>
                       <Input 
                         {...field} 
-                        placeholder="Salam, Tim {{companyName}}" 
+                        placeholder="Salam, Tim Klinik" 
                       />
                     </FormControl>
                     <FormMessage />
