@@ -258,6 +258,18 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result[0];
   }
+  
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    // Pastikan password tidak diperbarui melalui fungsi ini
+    const { password, ...safeUserData } = userData;
+    
+    const result = await db
+      .update(schema.users)
+      .set(safeUserData)
+      .where(eq(schema.users.id, id))
+      .returning();
+    return result[0];
+  }
 
   // Patient methods
   async getPatient(id: number): Promise<Patient | undefined> {

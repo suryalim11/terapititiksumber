@@ -103,6 +103,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update profile endpoint
+  app.put("/api/update-profile", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, message: "Tidak terautentikasi" });
+      }
+      
+      const { name, username } = req.body;
+      
+      if (!name || !username) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Nama dan username diperlukan" 
+        });
+      }
+      
+      const userId = (req.user as User).id;
+      
+      // Periksa apakah username sudah digunakan oleh pengguna lain
+      if (username !== (req.user as User).username) {
+        const existingUser = await storage.getUserByUsername(username);
+        if (existingUser && existingUser.id !== userId) {
+          return res.status(400).json({ 
+            success: false, 
+            message: "Username sudah digunakan oleh pengguna lain" 
+          });
+        }
+      }
+      
+      // Update profil pengguna
+      const updatedUser = await storage.updateUser(userId, { name, username });
+      
+      if (!updatedUser) {
+        return res.status(500).json({ 
+          success: false, 
+          message: "Gagal memperbarui profil" 
+        });
+      }
+      
+      // Update data user di session
+      req.login(updatedUser, (err) => {
+        if (err) {
+          console.error("Error updating session:", err);
+          return res.status(500).json({ 
+            success: false, 
+            message: "Profil diperbarui tapi gagal memperbaharui session" 
+          });
+        }
+        
+        return res.status(200).json({ 
+          success: true, 
+          message: "Profil berhasil diperbarui", 
+          user: updatedUser 
+        });
+      });
+    } catch (error: any) {
+      console.error('Error saat memperbarui profil:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: error.message || "Terjadi kesalahan saat memperbarui profil" 
+      });
+    }
+  });
+
   // User routes
   app.post("/api/users", async (req: Request, res: Response) => {
     try {

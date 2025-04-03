@@ -158,14 +158,47 @@ export default function SettingsPage() {
   // Handle profile form submission
   const onSubmitProfile = async (values: ProfileFormValues) => {
     try {
-      // Only include password fields if the current password is provided
-      const payload = {
-        name: values.name,
-        username: values.username,
-      };
-
+      // Perbarui informasi profil terlebih dahulu
+      try {
+        // Jika nama atau username berubah, perbarui profil
+        if (values.name !== user?.name || values.username !== user?.username) {
+          const profileResponse = await apiRequest('/api/update-profile', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: values.name,
+              username: values.username,
+            }),
+          });
+          
+          console.log('Profil berhasil diperbarui:', profileResponse);
+          
+          // Perbarui data user di context
+          if (profileResponse?.user) {
+            queryClient.setQueryData(['/api/user'], profileResponse.user);
+          }
+          
+          toast({
+            title: "Profil diperbarui",
+            description: "Informasi profil berhasil disimpan",
+          });
+        }
+      } catch (profileError: any) {
+        console.error('Error saat memperbarui profil:', profileError);
+        
+        toast({
+          variant: "destructive",
+          title: "Gagal memperbarui profil",
+          description: profileError.message || "Terjadi kesalahan saat menyimpan profil",
+        });
+        
+        // Jangan return di sini, karena password update masih perlu dijalankan
+      }
+      
+      // Jika password diisi, gunakan API untuk mengubah password
       if (values.currentPassword) {
-        // Jika password diisi, gunakan API untuk mengubah password
         try {
           const passwordResponse = await apiRequest('/api/change-password', {
             method: 'POST',
@@ -180,6 +213,11 @@ export default function SettingsPage() {
           
           console.log('Password berhasil diperbarui:', passwordResponse);
           
+          // Reset form password fields
+          profileForm.setValue('currentPassword', '');
+          profileForm.setValue('newPassword', '');
+          profileForm.setValue('confirmPassword', '');
+          
           toast({
             title: "Kata sandi diperbarui",
             description: "Kata sandi baru berhasil disimpan",
@@ -192,26 +230,10 @@ export default function SettingsPage() {
             title: "Gagal memperbarui kata sandi",
             description: passwordError.message || "Kata sandi lama mungkin salah",
           });
-          
-          // Return early since password update failed
-          return;
         }
       }
-
-      // Perbarui profil lainnya jika diperlukan
-      // Saat ini hanya nama yang disimpan di localStorage untuk prototipe
-      if (user) {
-        localStorage.setItem('user_profile', JSON.stringify({
-          ...user,
-          name: values.name,
-        }));
-      }
-
-      toast({
-        title: "Profil diperbarui",
-        description: "Perubahan profil telah disimpan",
-      });
     } catch (error: any) {
+      console.error('Error umum saat memperbarui profil:', error);
       toast({
         variant: "destructive",
         title: "Gagal memperbarui profil",
