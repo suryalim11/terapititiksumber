@@ -12,6 +12,7 @@ import {
   insertTherapySlotSchema,
   insertConfirmationTokenSchema,
   insertRegistrationLinkSchema,
+  insertMedicalHistorySchema,
   User
 } from "@shared/schema";
 import * as schema from "../shared/schema";
@@ -2100,6 +2101,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error saat reset dan pembuatan slot terapi:", error);
       return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Medical History Routes
+  app.get("/api/medical-histories/patient/:patientId", async (req: Request, res: Response) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      
+      if (isNaN(patientId)) {
+        return res.status(400).json({ message: "ID pasien harus berupa angka" });
+      }
+      
+      const histories = await storage.getMedicalHistoriesByPatient(patientId);
+      return res.json(histories);
+    } catch (error) {
+      console.error("Error getting medical histories:", error);
+      return res.status(500).json({ message: "Terjadi kesalahan saat mengambil riwayat medis" });
+    }
+  });
+  
+  app.get("/api/medical-histories/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID harus berupa angka" });
+      }
+      
+      const history = await storage.getMedicalHistory(id);
+      
+      if (!history) {
+        return res.status(404).json({ message: "Riwayat medis tidak ditemukan" });
+      }
+      
+      return res.json(history);
+    } catch (error) {
+      console.error("Error getting medical history:", error);
+      return res.status(500).json({ message: "Terjadi kesalahan saat mengambil riwayat medis" });
+    }
+  });
+  
+  app.post("/api/medical-histories", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertMedicalHistorySchema.parse(req.body);
+      
+      // Verifikasi patientId valid
+      const patient = await storage.getPatient(validatedData.patientId);
+      if (!patient) {
+        return res.status(400).json({ message: "Pasien tidak ditemukan" });
+      }
+      
+      const newHistory = await storage.createMedicalHistory(validatedData);
+      return res.status(201).json(newHistory);
+    } catch (error) {
+      console.error("Error creating medical history:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Data tidak valid", 
+          errors: error.errors 
+        });
+      }
+      return res.status(500).json({ message: "Terjadi kesalahan saat menyimpan riwayat medis" });
+    }
+  });
+  
+  app.put("/api/medical-histories/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID harus berupa angka" });
+      }
+      
+      // Pastikan riwayat medis ada
+      const existingHistory = await storage.getMedicalHistory(id);
+      if (!existingHistory) {
+        return res.status(404).json({ message: "Riwayat medis tidak ditemukan" });
+      }
+      
+      // Validasi data
+      const updateData = req.body;
+      
+      const updatedHistory = await storage.updateMedicalHistory(id, updateData);
+      return res.json(updatedHistory);
+    } catch (error) {
+      console.error("Error updating medical history:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Data tidak valid", 
+          errors: error.errors 
+        });
+      }
+      return res.status(500).json({ message: "Terjadi kesalahan saat memperbarui riwayat medis" });
+    }
+  });
+  
+  app.delete("/api/medical-histories/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID harus berupa angka" });
+      }
+      
+      // Pastikan riwayat medis ada
+      const existingHistory = await storage.getMedicalHistory(id);
+      if (!existingHistory) {
+        return res.status(404).json({ message: "Riwayat medis tidak ditemukan" });
+      }
+      
+      const success = await storage.deleteMedicalHistory(id);
+      
+      if (success) {
+        return res.json({ message: "Riwayat medis berhasil dihapus" });
+      } else {
+        return res.status(500).json({ message: "Gagal menghapus riwayat medis" });
+      }
+    } catch (error) {
+      console.error("Error deleting medical history:", error);
+      return res.status(500).json({ message: "Terjadi kesalahan saat menghapus riwayat medis" });
     }
   });
 

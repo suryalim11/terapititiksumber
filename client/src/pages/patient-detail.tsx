@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, RefreshCcw, User, Package, Calendar, Receipt, AlertTriangle } from "lucide-react";
+import { ArrowLeft, RefreshCcw, User, Package, Calendar, Receipt, AlertTriangle, Activity, Plus, Edit, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +12,12 @@ import { id as localeId } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { formatBirthDate } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 // Add formats for Indonesia locale
 // Menggunakan formatBirthDate dari utils untuk tanggal lahir
@@ -65,6 +71,18 @@ interface Appointment {
   notes: string | null;
 }
 
+interface MedicalHistory {
+  id: number;
+  patientId: number;
+  appointmentId: number | null;
+  complaint: string;
+  beforeBloodPressure: string | null;
+  afterBloodPressure: string | null;
+  notes: string | null;
+  treatmentDate: string;
+  createdAt: string;
+}
+
 interface Patient {
   id: number;
   patientId: string;
@@ -84,6 +102,17 @@ export default function PatientDetail() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [medicalHistoryDialogOpen, setMedicalHistoryDialogOpen] = useState(false);
+  const [editMedicalHistoryId, setEditMedicalHistoryId] = useState<number | null>(null);
+  const [deleteMedicalHistoryId, setDeleteMedicalHistoryId] = useState<number | null>(null);
+  const [deleteMedicalHistoryDialogOpen, setDeleteMedicalHistoryDialogOpen] = useState(false);
+  const [medicalHistoryForm, setMedicalHistoryForm] = useState({
+    complaint: "",
+    beforeBloodPressure: "",
+    afterBloodPressure: "",
+    notes: "",
+    treatmentDate: format(new Date(), "yyyy-MM-dd")
+  });
   const patientId = params?.id ? parseInt(params.id) : null;
 
   // Fetch patient data
@@ -125,16 +154,146 @@ export default function PatientDetail() {
     },
     enabled: !!patientId,
   });
+  
+  // Fetch medical histories
+  const { data: medicalHistories, isLoading: isLoadingMedicalHistories, refetch: refetchMedicalHistories } = useQuery({
+    queryKey: [`/api/medical-histories/patient/${patientId}`],
+    queryFn: async () => {
+      const response = await apiRequest(`/api/medical-histories/patient/${patientId}`);
+      return response.json();
+    },
+    enabled: !!patientId,
+  });
 
   const refreshAll = () => {
     refetchPatient();
     refetchTransactions();
     refetchSessions();
     refetchAppointments();
+    refetchMedicalHistories();
     toast({
       title: "Data diperbarui",
       description: "Semua data telah diperbarui",
     });
+  };
+  
+  const openCreateMedicalHistoryDialog = () => {
+    setEditMedicalHistoryId(null);
+    setMedicalHistoryForm({
+      complaint: "",
+      beforeBloodPressure: "",
+      afterBloodPressure: "",
+      notes: "",
+      treatmentDate: format(new Date(), "yyyy-MM-dd")
+    });
+    setMedicalHistoryDialogOpen(true);
+  };
+  
+  const openEditMedicalHistoryDialog = (medicalHistory: MedicalHistory) => {
+    setEditMedicalHistoryId(medicalHistory.id);
+    setMedicalHistoryForm({
+      complaint: medicalHistory.complaint,
+      beforeBloodPressure: medicalHistory.beforeBloodPressure || "",
+      afterBloodPressure: medicalHistory.afterBloodPressure || "",
+      notes: medicalHistory.notes || "",
+      treatmentDate: format(new Date(medicalHistory.treatmentDate), "yyyy-MM-dd")
+    });
+    setMedicalHistoryDialogOpen(true);
+  };
+  
+  const openDeleteMedicalHistoryDialog = (id: number) => {
+    setDeleteMedicalHistoryId(id);
+    setDeleteMedicalHistoryDialogOpen(true);
+  };
+  
+  const handleMedicalHistorySubmit = async () => {
+    try {
+      if (!medicalHistoryForm.complaint || !medicalHistoryForm.treatmentDate) {
+        toast({
+          title: "Form tidak lengkap",
+          description: "Keluhan dan tanggal terapi wajib diisi",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const payload = {
+        patientId,
+        complaint: medicalHistoryForm.complaint,
+        beforeBloodPressure: medicalHistoryForm.beforeBloodPressure || null,
+        afterBloodPressure: medicalHistoryForm.afterBloodPressure || null,
+        notes: medicalHistoryForm.notes || null,
+        treatmentDate: medicalHistoryForm.treatmentDate
+      };
+      
+      let url = `/api/medical-histories`;
+      let method = "POST";
+      
+      if (editMedicalHistoryId) {
+        url = `/api/medical-histories/${editMedicalHistoryId}`;
+        method = "PUT";
+      }
+      
+      const response = await apiRequest(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      if (response.ok) {
+        toast({
+          title: editMedicalHistoryId ? "Riwayat medis diperbarui" : "Riwayat medis ditambahkan",
+          description: editMedicalHistoryId 
+            ? "Data riwayat medis berhasil diperbarui" 
+            : "Data riwayat medis baru berhasil ditambahkan",
+        });
+        setMedicalHistoryDialogOpen(false);
+        refetchMedicalHistories();
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || "Gagal menyimpan riwayat medis");
+      }
+    } catch (error) {
+      console.error("Error submitting medical history:", error);
+      toast({
+        title: "Gagal menyimpan riwayat medis",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const deleteMedicalHistory = async () => {
+    try {
+      if (!deleteMedicalHistoryId) return;
+      
+      const response = await apiRequest(`/api/medical-histories/${deleteMedicalHistoryId}`, {
+        method: "DELETE",
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Riwayat medis dihapus",
+          description: "Data riwayat medis berhasil dihapus",
+        });
+        setDeleteMedicalHistoryDialogOpen(false);
+        refetchMedicalHistories();
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || "Gagal menghapus riwayat medis");
+      }
+    } catch (error) {
+      console.error("Error deleting medical history:", error);
+      toast({
+        title: "Gagal menghapus riwayat medis",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteMedicalHistoryDialogOpen(false);
+    }
   };
 
   const deletePatient = async () => {
@@ -325,7 +484,7 @@ export default function PatientDetail() {
 
         <div className="md:col-span-2">
           <Tabs defaultValue="appointments">
-            <TabsList className="grid grid-cols-3 mb-4">
+            <TabsList className="grid grid-cols-4 mb-4">
               <TabsTrigger value="appointments">
                 <Calendar className="h-4 w-4 mr-2" />
                 Janji Temu
@@ -337,6 +496,10 @@ export default function PatientDetail() {
               <TabsTrigger value="transactions">
                 <Receipt className="h-4 w-4 mr-2" />
                 Transaksi
+              </TabsTrigger>
+              <TabsTrigger value="medical-history">
+                <Activity className="h-4 w-4 mr-2" />
+                Riwayat Medis
               </TabsTrigger>
             </TabsList>
 
@@ -497,9 +660,201 @@ export default function PatientDetail() {
                 </CardContent>
               </Card>
             </TabsContent>
+            
+            <TabsContent value="medical-history">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Riwayat Medis</CardTitle>
+                    <CardDescription>
+                      Catatan riwayat pemeriksaan dan terapi pasien
+                    </CardDescription>
+                  </div>
+                  <Button onClick={openCreateMedicalHistoryDialog}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah Catatan
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingMedicalHistories ? (
+                    <p>Memuat data riwayat medis...</p>
+                  ) : !medicalHistories || medicalHistories.length === 0 ? (
+                    <div className="text-center py-6">
+                      <AlertTriangle className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                      <p>Tidak ada riwayat medis yang ditemukan</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {medicalHistories.map((history: MedicalHistory) => (
+                        <div key={history.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="font-bold">Terapi: {formatDate(history.treatmentDate)}</h3>
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => openEditMedicalHistoryDialog(history)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => openDeleteMedicalHistoryDialog(history.id)}
+                              >
+                                <Trash className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="grid gap-3">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Keluhan</p>
+                              <p className="font-medium">{history.complaint}</p>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                              {history.beforeBloodPressure && (
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Tekanan Darah (Sebelum)</p>
+                                  <p className="font-medium">{history.beforeBloodPressure}</p>
+                                </div>
+                              )}
+                              
+                              {history.afterBloodPressure && (
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Tekanan Darah (Sesudah)</p>
+                                  <p className="font-medium">{history.afterBloodPressure}</p>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {history.notes && (
+                              <div>
+                                <p className="text-sm text-muted-foreground">Catatan</p>
+                                <p className="font-medium">{history.notes}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
       </div>
+      
+      {/* Dialog untuk tambah/edit catatan medis */}
+      <Dialog open={medicalHistoryDialogOpen} onOpenChange={setMedicalHistoryDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editMedicalHistoryId ? "Edit Catatan Medis" : "Tambah Catatan Medis"}
+            </DialogTitle>
+            <DialogDescription>
+              {editMedicalHistoryId 
+                ? "Ubah informasi catatan medis pasien" 
+                : "Tambahkan catatan medis baru untuk pasien"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="treatmentDate">Tanggal Terapi</Label>
+              <Input
+                id="treatmentDate"
+                type="date"
+                value={medicalHistoryForm.treatmentDate}
+                onChange={(e) => setMedicalHistoryForm({
+                  ...medicalHistoryForm,
+                  treatmentDate: e.target.value
+                })}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="complaint">Keluhan</Label>
+              <Textarea
+                id="complaint"
+                placeholder="Masukkan keluhan pasien"
+                value={medicalHistoryForm.complaint}
+                onChange={(e) => setMedicalHistoryForm({
+                  ...medicalHistoryForm,
+                  complaint: e.target.value
+                })}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="beforeBloodPressure">Tekanan Darah (Sebelum)</Label>
+                <Input
+                  id="beforeBloodPressure"
+                  placeholder="Contoh: 120/80"
+                  value={medicalHistoryForm.beforeBloodPressure}
+                  onChange={(e) => setMedicalHistoryForm({
+                    ...medicalHistoryForm,
+                    beforeBloodPressure: e.target.value
+                  })}
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="afterBloodPressure">Tekanan Darah (Sesudah)</Label>
+                <Input
+                  id="afterBloodPressure"
+                  placeholder="Contoh: 120/80"
+                  value={medicalHistoryForm.afterBloodPressure}
+                  onChange={(e) => setMedicalHistoryForm({
+                    ...medicalHistoryForm,
+                    afterBloodPressure: e.target.value
+                  })}
+                />
+              </div>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Catatan</Label>
+              <Textarea
+                id="notes"
+                placeholder="Catatan tambahan tentang terapi"
+                value={medicalHistoryForm.notes}
+                onChange={(e) => setMedicalHistoryForm({
+                  ...medicalHistoryForm,
+                  notes: e.target.value
+                })}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMedicalHistoryDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleMedicalHistorySubmit}>
+              {editMedicalHistoryId ? "Simpan Perubahan" : "Tambah Catatan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog konfirmasi hapus catatan medis */}
+      <AlertDialog open={deleteMedicalHistoryDialogOpen} onOpenChange={setDeleteMedicalHistoryDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Catatan Medis</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus catatan medis ini? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteMedicalHistory}>Hapus</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

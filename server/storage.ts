@@ -1,11 +1,11 @@
 import { 
   users, patients, products, packages, transactions, sessions, appointments, therapySlots,
-  registrationLinks, confirmationTokens,
+  registrationLinks, confirmationTokens, medicalHistories,
   type User, type InsertUser, type Patient, type InsertPatient,
   type Product, type InsertProduct, type Package, type InsertPackage, type Transaction,
   type InsertTransaction, type Session, type InsertSession,
   type Appointment, type InsertAppointment, type TherapySlot, type InsertTherapySlot,
-  type ConfirmationToken, type InsertConfirmationToken
+  type ConfirmationToken, type InsertConfirmationToken, type MedicalHistory, type InsertMedicalHistory
 } from "@shared/schema";
 import { format } from "date-fns";
 
@@ -111,6 +111,13 @@ export interface IStorage {
   deactivateRegistrationLink(id: number): Promise<boolean>;
   deleteRegistrationLink(id: number): Promise<boolean>;
   
+  // Medical History
+  getMedicalHistory(id: number): Promise<MedicalHistory | undefined>;
+  getMedicalHistoriesByPatient(patientId: number): Promise<MedicalHistory[]>;
+  createMedicalHistory(medicalHistory: InsertMedicalHistory): Promise<MedicalHistory>;
+  updateMedicalHistory(id: number, medicalHistory: Partial<InsertMedicalHistory>): Promise<MedicalHistory | undefined>;
+  deleteMedicalHistory(id: number): Promise<boolean>;
+  
   // Dashboard data
   getDailyStats(): Promise<{
     patientsToday: number;
@@ -139,6 +146,7 @@ export class MemStorage implements IStorage {
   private appointments: Map<number, Appointment>;
   private registrationLinks: Map<number, RegistrationLink>;
   private confirmationTokens: Map<string, ConfirmationToken>;
+  private medicalHistories: Map<number, MedicalHistory>;
   
   private userCurrentId: number;
   private patientCurrentId: number;
@@ -150,6 +158,7 @@ export class MemStorage implements IStorage {
   private appointmentCurrentId: number;
   private registrationLinkCurrentId: number;
   private confirmationTokenCurrentId: number;
+  private medicalHistoryCurrentId: number;
 
   // Session store for authentication
   sessionStore: session.Store;
@@ -165,6 +174,7 @@ export class MemStorage implements IStorage {
     this.appointments = new Map();
     this.registrationLinks = new Map();
     this.confirmationTokens = new Map();
+    this.medicalHistories = new Map();
     
     this.userCurrentId = 1;
     this.patientCurrentId = 1;
@@ -176,6 +186,7 @@ export class MemStorage implements IStorage {
     this.appointmentCurrentId = 1;
     this.registrationLinkCurrentId = 1;
     this.confirmationTokenCurrentId = 1;
+    this.medicalHistoryCurrentId = 1;
     
     // Initialize session store
     this.sessionStore = new MemoryStore({
@@ -748,6 +759,60 @@ export class MemStorage implements IStorage {
   async getActiveTherapySlots(): Promise<TherapySlot[]> {
     return Array.from(this.therapySlots.values())
       .filter(slot => slot.isActive && slot.currentCount < slot.maxQuota);
+  }
+  
+  // Medical History methods
+  async getMedicalHistory(id: number): Promise<MedicalHistory | undefined> {
+    return this.medicalHistories.get(id);
+  }
+
+  async getMedicalHistoriesByPatient(patientId: number): Promise<MedicalHistory[]> {
+    return Array.from(this.medicalHistories.values())
+      .filter(history => history.patientId === patientId)
+      .sort((a, b) => new Date(b.treatmentDate).getTime() - new Date(a.treatmentDate).getTime()); // Descending by date
+  }
+
+  async createMedicalHistory(medicalHistory: InsertMedicalHistory): Promise<MedicalHistory> {
+    const id = this.medicalHistoryCurrentId++;
+    const createdAt = new Date();
+    const newHistory: MedicalHistory = { 
+      ...medicalHistory, 
+      id, 
+      createdAt,
+      appointmentId: medicalHistory.appointmentId || null,
+      beforeBloodPressure: medicalHistory.beforeBloodPressure || null,
+      afterBloodPressure: medicalHistory.afterBloodPressure || null,
+      notes: medicalHistory.notes || null,
+      treatmentDate: medicalHistory.treatmentDate || new Date()
+    };
+    
+    this.medicalHistories.set(id, newHistory);
+    return newHistory;
+  }
+
+  async updateMedicalHistory(id: number, medicalHistory: Partial<InsertMedicalHistory>): Promise<MedicalHistory | undefined> {
+    const existingHistory = this.medicalHistories.get(id);
+    if (!existingHistory) return undefined;
+    
+    const updatedHistory: MedicalHistory = {
+      ...existingHistory,
+      ...medicalHistory,
+      appointmentId: medicalHistory.appointmentId !== undefined ? medicalHistory.appointmentId : existingHistory.appointmentId,
+      beforeBloodPressure: medicalHistory.beforeBloodPressure !== undefined ? medicalHistory.beforeBloodPressure : existingHistory.beforeBloodPressure,
+      afterBloodPressure: medicalHistory.afterBloodPressure !== undefined ? medicalHistory.afterBloodPressure : existingHistory.afterBloodPressure,
+      notes: medicalHistory.notes !== undefined ? medicalHistory.notes : existingHistory.notes,
+      treatmentDate: medicalHistory.treatmentDate || existingHistory.treatmentDate
+    };
+    
+    this.medicalHistories.set(id, updatedHistory);
+    return updatedHistory;
+  }
+
+  async deleteMedicalHistory(id: number): Promise<boolean> {
+    if (!this.medicalHistories.has(id)) return false;
+    
+    this.medicalHistories.delete(id);
+    return true;
   }
   
   async createTherapySlot(insertSlot: InsertTherapySlot): Promise<TherapySlot> {

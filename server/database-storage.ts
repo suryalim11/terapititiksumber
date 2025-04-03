@@ -3,7 +3,10 @@ import {
   Product, InsertProduct, Package, InsertPackage, Transaction,
   InsertTransaction, Session, InsertSession,
   Appointment, InsertAppointment, TherapySlot, InsertTherapySlot,
-  RegistrationLink, InsertRegistrationLink, ConfirmationToken, InsertConfirmationToken
+  RegistrationLink, InsertRegistrationLink, ConfirmationToken, InsertConfirmationToken,
+  MedicalHistory, InsertMedicalHistory,
+  medicalHistories, patients, users, products, packages, transactions, 
+  sessions, appointments, therapySlots, registrationLinks, confirmationTokens
 } from "@shared/schema";
 import { db, sql } from "./db";
 import { eq, gt, lt, and, desc, asc, not, inArray } from "drizzle-orm";
@@ -1312,5 +1315,75 @@ export class DatabaseStorage implements IStorage {
     
     // Mengembalikan hanya sejumlah limit
     return activities.slice(0, limit);
+  }
+  
+  // Medical History methods
+  async getMedicalHistory(id: number): Promise<MedicalHistory | undefined> {
+    try {
+      const [record] = await db.select()
+        .from(medicalHistories)
+        .where(eq(medicalHistories.id, id));
+      
+      return record;
+    } catch (error) {
+      console.error('[DB] Error getting medical history:', error);
+      return undefined;
+    }
+  }
+
+  async getMedicalHistoriesByPatient(patientId: number): Promise<MedicalHistory[]> {
+    try {
+      const records = await db.select()
+        .from(medicalHistories)
+        .where(eq(medicalHistories.patientId, patientId))
+        .orderBy(desc(medicalHistories.treatmentDate));
+      
+      return records;
+    } catch (error) {
+      console.error('[DB] Error getting medical histories by patient:', error);
+      return [];
+    }
+  }
+
+  async createMedicalHistory(medicalHistory: InsertMedicalHistory): Promise<MedicalHistory> {
+    try {
+      const [record] = await db.insert(medicalHistories)
+        .values({
+          ...medicalHistory,
+          createdAt: new Date()
+        })
+        .returning();
+      
+      return record;
+    } catch (error) {
+      console.error('[DB] Error creating medical history:', error);
+      throw error;
+    }
+  }
+
+  async updateMedicalHistory(id: number, medicalHistory: Partial<InsertMedicalHistory>): Promise<MedicalHistory | undefined> {
+    try {
+      const [updated] = await db.update(medicalHistories)
+        .set(medicalHistory)
+        .where(eq(medicalHistories.id, id))
+        .returning();
+      
+      return updated;
+    } catch (error) {
+      console.error('[DB] Error updating medical history:', error);
+      return undefined;
+    }
+  }
+
+  async deleteMedicalHistory(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(medicalHistories)
+        .where(eq(medicalHistories.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error('[DB] Error deleting medical history:', error);
+      return false;
+    }
   }
 }

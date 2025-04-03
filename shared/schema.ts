@@ -227,5 +227,31 @@ export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 export type RegistrationLink = typeof registrationLinks.$inferSelect;
 export type InsertRegistrationLink = z.infer<typeof insertRegistrationLinkSchema>;
 
+// Medical History Schema
+export const medicalHistories = pgTable("medical_histories", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull(),
+  appointmentId: integer("appointment_id"),
+  complaint: text("complaint").notNull(),
+  beforeBloodPressure: text("before_blood_pressure"),
+  afterBloodPressure: text("after_blood_pressure"),
+  notes: text("notes"),
+  treatmentDate: timestamp("treatment_date").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMedicalHistorySchema = createInsertSchema(medicalHistories).pick({
+  patientId: true,
+  appointmentId: true,
+  complaint: true,
+  beforeBloodPressure: true,
+  afterBloodPressure: true,
+  notes: true,
+  treatmentDate: true,
+});
+
 export type ConfirmationToken = typeof confirmationTokens.$inferSelect;
 export type InsertConfirmationToken = z.infer<typeof insertConfirmationTokenSchema>;
+
+export type MedicalHistory = typeof medicalHistories.$inferSelect;
+export type InsertMedicalHistory = z.infer<typeof insertMedicalHistorySchema>;
