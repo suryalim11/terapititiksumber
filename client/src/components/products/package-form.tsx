@@ -2,7 +2,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { insertPackageSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { formatRupiah } from "@/lib/utils";
@@ -22,7 +21,7 @@ import { DialogClose } from "@/components/ui/dialog";
 import { useEffect } from "react";
 
 // Extend the package schema with form validations
-const packageFormSchema = insertPackageSchema.extend({
+const packageFormSchema = z.object({
   name: z.string().min(3, {
     message: "Nama paket harus minimal 3 karakter",
   }),
@@ -32,6 +31,7 @@ const packageFormSchema = insertPackageSchema.extend({
   sessions: z.coerce.number().min(1, {
     message: "Jumlah sesi harus minimal 1",
   }),
+  description: z.string().nullable().optional(),
 });
 
 export type PackageFormValues = z.infer<typeof packageFormSchema>;
@@ -75,11 +75,14 @@ export function PackageForm({
   // 2. Define a submit handler.
   async function onSubmit(values: PackageFormValues) {
     try {
-      // Prepare data to send - make sure we sanitize price by removing formatting
+      // Ensure we're sending a properly formatted object to the server
       const sanitizedData = {
         name: values.name.trim(),
-        sessions: values.sessions,
-        // Remove all non-numeric characters from price
+        // Make sure sessions is a number - the server expects this
+        sessions: typeof values.sessions === 'string' 
+          ? parseInt(values.sessions) 
+          : values.sessions,
+        // Format price - send as string to avoid precision issues
         price: values.price.replace(/\D/g, ""),
         description: values.description?.trim() || null
       };
@@ -88,26 +91,31 @@ export function PackageForm({
       
       if (mode === "create") {
         // Create new package
-        await apiRequest("/api/packages", {
+        const response = await apiRequest("/api/packages", {
           method: "POST",
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(sanitizedData)
         });
+        
+        console.log("Server response:", response);
+        
         toast({
           title: "Paket berhasil dibuat",
           description: `${values.name} telah berhasil ditambahkan ke daftar paket`,
         });
       } else if (mode === "edit" && id) {
         // Update existing package
-        await apiRequest(`/api/packages/${id}`, {
+        const response = await apiRequest(`/api/packages/${id}`, {
           method: "PUT",
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(sanitizedData)
         });
+        
+        console.log("Server response:", response);
         toast({
           title: "Paket berhasil diperbarui",
           description: `${values.name} telah berhasil diperbarui`,

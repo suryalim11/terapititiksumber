@@ -5,6 +5,7 @@ import { z } from "zod";
 import { 
   insertPatientSchema, 
   insertProductSchema, 
+  insertPackageSchema,
   insertTransactionSchema,
   insertSessionSchema,
   insertAppointmentSchema,
@@ -669,18 +670,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized, only admin can create packages" });
       }
       
-      const packageData = {
-        name: req.body.name,
-        sessions: req.body.sessions,
-        price: req.body.price,
-        description: req.body.description
-      };
+      console.log("Menerima permintaan POST /api/packages dengan data:", req.body);
       
-      const newPackage = await storage.createPackage(packageData);
+      // Make a copy of request body
+      const packageDataRaw = { ...req.body };
+      
+      // Sanitize data and convert types as needed
+      try {
+        // Make sure sessions is a number
+        if (typeof packageDataRaw.sessions === 'string') {
+          packageDataRaw.sessions = parseInt(packageDataRaw.sessions);
+        }
+        
+        // Make sure price is a string representation of a number that Drizzle can handle
+        if (typeof packageDataRaw.price === 'number') {
+          packageDataRaw.price = packageDataRaw.price.toString();
+        }
+        
+        console.log("Data paket yang akan divalidasi:", packageDataRaw);
+      } catch (conversionError) {
+        console.error("Error saat konversi tipe data:", conversionError);
+      }
+      
+      // Validasi data menggunakan Zod schema
+      const validatedData = insertPackageSchema.parse(packageDataRaw);
+      console.log("Data paket tervalidasi:", validatedData);
+      
+      const newPackage = await storage.createPackage(validatedData);
+      console.log("Paket baru dibuat:", newPackage);
       return res.status(201).json(newPackage);
     } catch (error) {
       console.error("Error creating package:", error);
-      return res.status(500).json({ message: "Internal server error" });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      return res.status(500).json({ message: "Internal server error", error: String(error) });
     }
   });
   
@@ -692,23 +716,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const id = parseInt(req.params.id);
-      const packageData = {
-        name: req.body.name,
-        sessions: req.body.sessions,
-        price: req.body.price,
-        description: req.body.description
-      };
+      console.log(`Menerima permintaan PUT /api/packages/${id} dengan data:`, req.body);
       
-      const updatedPackage = await storage.updatePackage(id, packageData);
+      // Make a copy of request body
+      const packageDataRaw = { ...req.body };
+      
+      // Sanitize data and convert types as needed
+      try {
+        // Make sure sessions is a number
+        if (typeof packageDataRaw.sessions === 'string') {
+          packageDataRaw.sessions = parseInt(packageDataRaw.sessions);
+        }
+        
+        // Make sure price is a string representation of a number that Drizzle can handle
+        if (typeof packageDataRaw.price === 'number') {
+          packageDataRaw.price = packageDataRaw.price.toString();
+        }
+        
+        console.log("Data paket yang akan divalidasi:", packageDataRaw);
+      } catch (conversionError) {
+        console.error("Error saat konversi tipe data:", conversionError);
+      }
+      
+      // Validasi data menggunakan Zod schema
+      const validatedData = insertPackageSchema.parse(packageDataRaw);
+      console.log("Data paket tervalidasi:", validatedData);
+      
+      const updatedPackage = await storage.updatePackage(id, validatedData);
       
       if (!updatedPackage) {
         return res.status(404).json({ message: "Package not found" });
       }
       
+      console.log("Paket berhasil diperbarui:", updatedPackage);
       return res.status(200).json(updatedPackage);
     } catch (error) {
       console.error("Error updating package:", error);
-      return res.status(500).json({ message: "Internal server error" });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      return res.status(500).json({ message: "Internal server error", error: String(error) });
     }
   });
   

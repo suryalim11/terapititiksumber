@@ -84,6 +84,7 @@ export const packages = pgTable("packages", {
   description: text("description"),
 });
 
+// Definisikan schema dengan validasi khusus
 export const insertPackageSchema = createInsertSchema(packages).pick({
   name: true,
   sessions: true,
