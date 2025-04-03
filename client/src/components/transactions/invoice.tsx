@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
-import { InvoiceSettings, defaultInvoiceSettings } from "@/components/settings/invoice-settings";
+import { InvoiceSettings, defaultInvoiceSettings, INVOICE_SETTINGS_KEY } from "@/components/settings/invoice-settings";
 
 type InvoiceProps = {
   isOpen: boolean;
@@ -32,9 +32,11 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
   // Load saved invoice settings from localStorage
   useEffect(() => {
     try {
-      const savedSettings = localStorage.getItem("invoice_settings");
+      const savedSettings = localStorage.getItem(INVOICE_SETTINGS_KEY);
       if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
+        const parsedSettings = JSON.parse(savedSettings);
+        console.log("Loaded invoice settings:", parsedSettings);
+        setSettings(parsedSettings);
       }
     } catch (error) {
       console.error("Error loading invoice settings:", error);

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
 // Local storage key untuk menyimpan pengaturan invoice
-const INVOICE_SETTINGS_KEY = "invoice_settings";
+export const INVOICE_SETTINGS_KEY = "invoice_settings";
 
 // Schema validasi untuk form pengaturan invoice
 const invoiceSettingsSchema = z.object({
@@ -423,8 +423,8 @@ export function InvoiceSettings() {
                       <FormControl>
                         <input
                           type="checkbox"
-                          checked={field.value}
-                          onChange={field.onChange}
+                          checked={field.value === true}
+                          onChange={(e) => field.onChange(e.target.checked)}
                           className="form-checkbox h-5 w-5 text-primary border-gray-300 rounded focus:ring-primary"
                         />
                       </FormControl>
@@ -446,8 +446,8 @@ export function InvoiceSettings() {
                       <FormControl>
                         <input
                           type="checkbox"
-                          checked={field.value}
-                          onChange={field.onChange}
+                          checked={field.value === true}
+                          onChange={(e) => field.onChange(e.target.checked)}
                           className="form-checkbox h-5 w-5 text-primary border-gray-300 rounded focus:ring-primary"
                         />
                       </FormControl>
