@@ -11,8 +11,10 @@ import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { formatBirthDate } from "@/lib/utils";
 
 // Add formats for Indonesia locale
+// Menggunakan formatBirthDate dari utils untuk tanggal lahir
 const formatDate = (date: string | Date) => {
   try {
     return format(new Date(date), "dd/MM/yyyy", { locale: localeId });
@@ -299,7 +301,7 @@ export default function PatientDetail() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tanggal Lahir</span>
-                <span className="font-medium">{formatDate(patient.birthDate)}</span>
+                <span className="font-medium">{formatBirthDate(patient.birthDate)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Usia</span>

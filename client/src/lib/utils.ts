@@ -13,11 +13,25 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Format a date string to dd/MM/yyyy format with WIB timezone
+ * (for appointment dates and times)
  */
 export function formatDateDDMMYYYY(dateString: string | Date): string {
   try {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
     return dateFnsFormat(date, "dd/MM/yyyy", { locale: id }) + " WIB";
+  } catch (e) {
+    return "";
+  }
+}
+
+/**
+ * Format a birth date string to dd/MM/yyyy format without timezone
+ * (specifically for birth dates)
+ */
+export function formatBirthDate(dateString: string | Date): string {
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    return dateFnsFormat(date, "dd/MM/yyyy", { locale: id });
   } catch (e) {
     return "";
   }

@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO, isAfter, isSameDay, addHours } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { formatDateDDMMYYYY, cn } from "@/lib/utils";
+import { formatDateDDMMYYYY, formatBirthDate, cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { RegistrationPDF } from "@/components/registration/registration-pdf";
 import {
@@ -581,7 +581,7 @@ export default function RegisterPage() {
                                     )}
                                   >
                                     {field.value ? (
-                                      formatDateDDMMYYYY(field.value)
+                                      formatBirthDate(field.value)
                                     ) : (
                                       <span>Pilih tanggal lahir</span>
                                     )}
