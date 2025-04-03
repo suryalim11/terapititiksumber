@@ -35,10 +35,11 @@ export function setupAuth(app: Express) {
     saveUninitialized: false,
     store: storage.sessionStore,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: false, // Disable secure untuk development
       httpOnly: true,
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 hari (dalam milidetik)
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 hari (dalam milidetik)
+      path: '/'
     }
   };
 
@@ -125,9 +126,17 @@ export function setupAuth(app: Express) {
       req.login(user, (err) => {
         if (err) return next(err);
         
-        // Jika remember_me dicentang, perpanjang masa cookie session
-        if (rememberMe && req.session.cookie) {
-          req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 hari
+        // Set cookie maxAge berdasarkan pilihan "Ingat Saya"
+        if (req.session && req.session.cookie) {
+          if (rememberMe) {
+            // Jika remember_me dicentang, perpanjang masa cookie session
+            req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 hari
+            console.log("Login dengan 'Remember Me': Cookie akan berlaku selama 30 hari");
+          } else {
+            // Jika tidak dicentang, gunakan session sementara (cookie hilang saat browser ditutup)
+            req.session.cookie.maxAge = 0; // 0 mengindikasikan "session cookie" yang akan hilang saat browser ditutup
+            console.log("Login tanpa 'Remember Me': Cookie akan hilang saat browser ditutup");
+          }
         }
         
         res.status(200).json({ success: true, user });

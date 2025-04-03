@@ -11,8 +11,7 @@ import * as schema from "../shared/schema";
 import { format } from "date-fns";
 import { IStorage } from "./storage";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
-import { pool } from "./db";
+import createMemoryStore from "memorystore";
 
 // Utility functions for formatting
 function formatRupiah(amount: number): string {
@@ -47,19 +46,17 @@ function formatDateString(dateStr: string | Date): string {
   return format(date, 'dd MMMM yyyy');
 }
 
-// Setup PostgreSQL session store with connect-pg-simple
-const PostgresSessionStore = connectPgSimple(session);
+// Menggunakan MemoryStore yang lebih sederhana dan handal
+const MemoryStore = createMemoryStore(session);
 
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    // Initialize session store with PostgreSQL
-    this.sessionStore = new PostgresSessionStore({
-      pool,
-      tableName: 'session', // Default table name is "session"
-      createTableIfMissing: true, // Auto-create the session table
-      ttl: 30 * 24 * 60 * 60 // 30 days in seconds
+    // Gunakan memory store dengan TTL yang panjang
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000, // Bersihkan entri yang kedaluwarsa setiap 24 jam
+      ttl: 30 * 24 * 60 * 60 * 1000 // 30 hari dalam milidetik
     });
     
     // Initialize default data if needed
