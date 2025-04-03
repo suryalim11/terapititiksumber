@@ -47,6 +47,9 @@ export interface IStorage {
   deletePatient(id: number): Promise<boolean>;
   searchPatientByNameOrPhone(query: string): Promise<Patient[]>;
   
+  // Data Maintenance
+  resyncAppointmentDates(): Promise<{ fixed: number, errors: any[] }>;
+  
   // Confirmation Tokens
   createConfirmationToken(token: InsertConfirmationToken): Promise<ConfirmationToken>;
   getConfirmationTokenByToken(token: string): Promise<ConfirmationToken | undefined>;
@@ -1187,6 +1190,65 @@ export class MemStorage implements IStorage {
     
     this.registrationLinks.delete(id);
     return true;
+  }
+  
+  // Data Maintenance methods
+  async resyncAppointmentDates(): Promise<{ fixed: number, errors: any[] }> {
+    let fixedCount = 0;
+    const errors: any[] = [];
+    
+    try {
+      // Dapatkan semua appointment
+      const allAppointments = Array.from(this.appointments.values());
+      
+      for (const appointment of allAppointments) {
+        try {
+          if (appointment.therapySlotId) {
+            // Dapatkan therapy slot terkait
+            const therapySlot = this.therapySlots.get(appointment.therapySlotId);
+            
+            if (therapySlot) {
+              // Periksa apakah tanggal appointment berbeda dengan tanggal therapy slot
+              const appointmentDate = new Date(appointment.date);
+              const slotDate = new Date(therapySlot.date);
+              
+              // Bandingkan tanggal (mengabaikan waktu)
+              const appointmentDay = new Date(appointmentDate.setHours(0, 0, 0, 0)).getTime();
+              const slotDay = new Date(slotDate.setHours(0, 0, 0, 0)).getTime();
+              
+              if (appointmentDay !== slotDay) {
+                console.log(`Perbedaan tanggal ditemukan untuk appointment ID ${appointment.id}:`,
+                  `Appointment: ${appointmentDate.toISOString()}, Slot: ${slotDate.toISOString()}`);
+                
+                // Perbarui tanggal appointment agar sesuai dengan tanggal therapy slot
+                const updatedAppointment: Appointment = {
+                  ...appointment,
+                  date: new Date(therapySlot.date)
+                };
+                
+                // Simpan perubahan
+                this.appointments.set(appointment.id, updatedAppointment);
+                fixedCount++;
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error fixing appointment ${appointment.id}:`, error);
+          errors.push({ 
+            appointmentId: appointment.id, 
+            error: error instanceof Error ? error.message : String(error) 
+          });
+        }
+      }
+      
+      return { fixed: fixedCount, errors };
+    } catch (error) {
+      console.error("Error in resyncAppointmentDates:", error);
+      return { 
+        fixed: 0, 
+        errors: [error instanceof Error ? error.message : String(error)] 
+      };
+    }
   }
   
   // Inisialisasi data pasien dan janji temu untuk pengujian

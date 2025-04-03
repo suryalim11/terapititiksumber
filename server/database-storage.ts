@@ -1026,8 +1026,17 @@ export class DatabaseStorage implements IStorage {
     // Ini mencegah inconsistensi data antara slot terapi dan appointment
     let appointmentDate = appointment.date;
     
+    // Jika therapySlotId disediakan, gunakan tanggal dari therapy slot untuk konsistensi
+    if (appointment.therapySlotId) {
+      const therapySlot = await this.getTherapySlot(appointment.therapySlotId);
+      if (therapySlot) {
+        appointmentDate = therapySlot.date;
+        console.log(`[APPOINTMENT] Using therapy slot date: ${appointmentDate} for new appointment`);
+      }
+    }
+    
     // Log untuk debugging
-    console.log(`[APPOINTMENT] Creating appointment with date: ${appointment.date}`);
+    console.log(`[APPOINTMENT] Creating appointment with date: ${appointmentDate}`);
     
     // Pastikan date menggunakan zona waktu WIB untuk konsistensi
     const result = await db.insert(schema.appointments)
@@ -1035,7 +1044,7 @@ export class DatabaseStorage implements IStorage {
         patientId: appointment.patientId,
         sessionId: appointment.sessionId,
         therapySlotId: appointment.therapySlotId,
-        date: appointmentDate, // Gunakan tanggal yang diberikan saat membuat appointment
+        date: appointmentDate, // Gunakan tanggal therapy slot
         timeSlot: appointment.timeSlot,
         notes: appointment.notes,
         status: appointment.status,
@@ -1048,6 +1057,64 @@ export class DatabaseStorage implements IStorage {
       ...result[0],
       date: getWIBDate(result[0].date)
     };
+  }
+  
+  /**
+   * Memperbaiki ketidakkonsistenan antara tanggal appointment dan tanggal therapy slot
+   */
+  async resyncAppointmentDates(): Promise<{ fixed: number, errors: any[] }> {
+    try {
+      // Mengambil semua appointment dengan status scheduled
+      const activeAppointments = await db.query.appointments.findMany({
+        where: eq(schema.appointments.status, "Scheduled")
+      });
+      
+      console.log(`Found ${activeAppointments.length} scheduled appointments to check for date consistency`);
+      
+      let fixedCount = 0;
+      const errors = [];
+      
+      // Memeriksa dan memperbaiki setiap appointment
+      for (const appointment of activeAppointments) {
+        try {
+          // Hanya proses appointment yang memiliki therapySlotId
+          if (appointment.therapySlotId) {
+            const therapySlot = await this.getTherapySlot(appointment.therapySlotId);
+            
+            if (therapySlot) {
+              // Bandingkan tanggal appointment dengan tanggal therapy slot
+              const appointmentDate = new Date(appointment.date).toISOString().split('T')[0];
+              const therapySlotDate = new Date(therapySlot.date).toISOString().split('T')[0];
+              
+              if (appointmentDate !== therapySlotDate) {
+                console.log(`Fixing appointment ${appointment.id}: changing date from ${appointmentDate} to ${therapySlotDate}`);
+                
+                // Perbarui tanggal appointment agar sesuai dengan tanggal therapy slot
+                await db.update(schema.appointments)
+                  .set({ date: therapySlot.date })
+                  .where(eq(schema.appointments.id, appointment.id));
+                
+                fixedCount++;
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error fixing appointment ${appointment.id}:`, error);
+          errors.push({ 
+            appointmentId: appointment.id, 
+            error: error instanceof Error ? error.message : String(error) 
+          });
+        }
+      }
+      
+      return { fixed: fixedCount, errors };
+    } catch (error) {
+      console.error("Error in resyncAppointmentDates:", error);
+      return { 
+        fixed: 0, 
+        errors: [error instanceof Error ? error.message : String(error)] 
+      };
+    }
   }
 
   async updateAppointmentStatus(id: number, status: string): Promise<Appointment | undefined> {

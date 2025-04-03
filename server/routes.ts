@@ -2485,6 +2485,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint untuk memperbaiki ketidakkonsistenan tanggal appointment
+  app.post("/api/resync-appointments", async (req: Request, res: Response) => {
+    try {
+      // Pastikan hanya admin yang bisa mengakses endpoint ini
+      if (!req.isAuthenticated() || req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Unauthorized, admin access required" });
+      }
+      
+      console.log("Memulai sinkronisasi data appointment...");
+      
+      // Panggil fungsi untuk memperbaiki tanggal
+      const result = await storage.resyncAppointmentDates();
+      
+      console.log(`Sinkronisasi selesai: ${result.fixed} appointment diperbaiki, ${result.errors.length} error`);
+      
+      return res.status(200).json({
+        message: `Sinkronisasi selesai: ${result.fixed} appointment diperbaiki`,
+        result
+      });
+    } catch (error) {
+      console.error("Error dalam menyinkronkan tanggal appointment:", error);
+      return res.status(500).json({ 
+        message: "Terjadi kesalahan dalam menyinkronkan data", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);
 

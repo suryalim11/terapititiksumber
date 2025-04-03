@@ -282,10 +282,11 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile">Profil</TabsTrigger>
           <TabsTrigger value="invoice">Invoice</TabsTrigger>
           <TabsTrigger value="app">Aplikasi</TabsTrigger>
+          <TabsTrigger value="maintenance">Pemeliharaan</TabsTrigger>
         </TabsList>
 
         {/* Profile Settings */}
@@ -515,6 +516,89 @@ export default function SettingsPage() {
               >
                 Simpan Pengaturan
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Database Maintenance Tab */}
+        <TabsContent value="maintenance">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-heading">Pemeliharaan Data</CardTitle>
+              <CardDescription>
+                Pemeliharaan dan perbaikan data sistem
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Database Maintenance Section */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                  Perbaikan Konsistensi Data
+                </h3>
+                
+                <div className="border p-4 rounded-md bg-gray-50 dark:bg-gray-800 mb-4">
+                  <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-2">Sinkronisasi Tanggal Appointment</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Operasi ini akan memperbaiki ketidakkonsistenan antara tanggal janji temu (appointment) 
+                    dengan tanggal slot terapi yang terkait. Gunakan fitur ini jika Anda mengalami masalah 
+                    dengan penampilan janji temu di kalender.
+                  </p>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="w-full sm:w-auto"
+                    onClick={async () => {
+                      try {
+                        // Tampilkan konfirmasi
+                        if (!window.confirm("Anda yakin ingin menjalankan sinkronisasi tanggal appointment? Proses ini mungkin memerlukan waktu beberapa saat.")) {
+                          return;
+                        }
+                        
+                        const response = await apiRequest("POST", "/api/resync-appointments");
+                        const result = await response.json();
+                        
+                        console.log("Hasil sinkronisasi:", result);
+                        
+                        toast({
+                          title: "Sinkronisasi Berhasil",
+                          description: `${result.message || `${result.result.fixed} appointment diperbaiki`}`,
+                        });
+                      } catch (error: any) {
+                        console.error("Error saat sinkronisasi tanggal appointment:", error);
+                        toast({
+                          variant: "destructive",
+                          title: "Gagal Menjalankan Sinkronisasi",
+                          description: error.message || "Terjadi kesalahan saat sinkronisasi data",
+                        });
+                      }
+                    }}
+                  >
+                    Jalankan Sinkronisasi
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Data Cleanup Section */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                  Pembersihan Data
+                </h3>
+                
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  <p>Fitur pembersihan data lainnya akan ditambahkan di masa mendatang.</p>
+                </div>
+              </div>
+              
+              {/* Backup & Restore */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                  Cadangan & Pemulihan
+                </h3>
+                
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  <p>Fitur cadangan dan pemulihan data akan ditambahkan di masa mendatang.</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
