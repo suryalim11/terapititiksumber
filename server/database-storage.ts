@@ -354,13 +354,13 @@ export class DatabaseStorage implements IStorage {
   async searchPatientByNameOrPhone(query: string): Promise<Patient[]> {
     const queryLowerCase = query.toLowerCase();
     
-    // Use the SQL ILIKE operator for case-insensitive search
-    // Create the SQL condition separately to fix type issues
-    const searchCondition = sql`(LOWER(${schema.patients.name}) LIKE ${`%${queryLowerCase}%`} OR 
-                               ${schema.patients.phoneNumber} LIKE ${`%${query}%`})`;
-    
+    // Using direct column equality approach instead of raw SQL to fix type issues
     const results = await db.query.patients.findMany({
-      where: searchCondition,
+      where: (fields, { or, like, eq }) => 
+        or(
+          like(fields.name, `%${queryLowerCase}%`),
+          like(fields.phoneNumber, `%${query}%`)
+        ),
       orderBy: [desc(schema.patients.createdAt)]
     });
     

@@ -200,9 +200,24 @@ export default function Dashboard() {
         {/* Recent Activities */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span>Recent Activities</span>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <span>Recent Activities</span>
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    refetchActivities();
+                  }}
+                  className="h-8 w-8 p-0"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="sr-only">Refresh Activities</span>
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -371,9 +386,24 @@ export default function Dashboard() {
       {/* Active Packages Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span>Paket Aktif Pasien</span>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <span>Paket Aktif Pasien</span>
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  refetchPackages();
+                }}
+                className="h-8 w-8 p-0"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span className="sr-only">Refresh Packages</span>
+              </Button>
+            </div>
+          </div>
           <p className="text-sm text-muted-foreground">
             Progress paket terapi pasien yang masih aktif
           </p>
