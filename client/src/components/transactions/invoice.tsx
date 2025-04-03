@@ -102,8 +102,13 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
   const handleDownload = () => {
     if (invoiceRef.current) {
       try {
-        // Debug pengaturan untuk memastikan data bank tersedia
-        console.log("Invoice settings for PDF:", settings);
+        // Debug informasi yang diperlukan
+        console.log("PDF Generation - Payment Method:", data.paymentMethod);
+        console.log("PDF Generation - Bank Settings:", {
+          bankName: settings.bankName,
+          bankAccountNumber: settings.bankAccountNumber,
+          bankAccountName: settings.bankAccountName
+        });
         
         // Buat instance jsPDF
         const doc = new jsPDF({
@@ -112,7 +117,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           format: 'a4',
         });
         
-        // Judul invoice menggunakan pengaturan yang disimpan
+        // Judul invoice
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
         doc.text(settings.companyName, 14, 20);
@@ -128,11 +133,10 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.text(
-          settings.invoicePrefix 
-            ? `${settings.invoicePrefix}${data.transaction.transactionId}` 
-            : data.transaction.transactionId, 
-          180, 26, { align: 'right' });
+        const invoiceId = settings.invoicePrefix 
+          ? `${settings.invoicePrefix}${data.transaction.transactionId}` 
+          : data.transaction.transactionId;
+        doc.text(invoiceId, 180, 26, { align: 'right' });
         
         const formattedDate = format(new Date(data.transaction.createdAt), "d MMMM yyyy", { locale: id });
         doc.text(formattedDate, 180, 32, { align: 'right' });
@@ -189,53 +193,46 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         doc.text("Total:", 140, y + 10, { align: 'right' });
         doc.text(formatPrice(data.transaction.totalAmount), 195, y + 10, { align: 'right' });
         
-        // Informasi Rekening Bank (jika ada dan metode pembayaran adalah transfer bank atau QRIS)
-        let bankY = y + 25;
-        if ((data.paymentMethod === 'bank_transfer' || data.paymentMethod === 'qris') && 
-            (settings.bankName || settings.bankAccountNumber || settings.bankAccountName)) {
-          // Debugging
-          console.log("Adding bank info to PDF:", {
-            bankName: settings.bankName,
-            accountNumber: settings.bankAccountNumber,
-            accountName: settings.bankAccountName
-          });
-          
+        // Mulai posisi untuk catatan dan info bank
+        let nextY = y + 25;
+        
+        // Tentukan apakah perlu menampilkan info bank
+        const showBankInfo = (data.paymentMethod === 'bank_transfer' || data.paymentMethod === 'qris') && 
+                             (settings.bankName || settings.bankAccountNumber || settings.bankAccountName);
+        
+        // Informasi Rekening Bank (jika perlu)
+        if (showBankInfo) {
           doc.setFontSize(10);
           doc.setFont("helvetica", "bold");
-          doc.text("Informasi Pembayaran:", 14, bankY);
-          bankY += 6;
+          doc.text("Informasi Pembayaran:", 14, nextY);
+          nextY += 6;
           
           doc.setFontSize(9);
           doc.setFont("helvetica", "normal");
           
           if (settings.bankName) {
-            doc.text(`Bank: ${settings.bankName}`, 14, bankY);
-            bankY += 5;
+            doc.text(`Bank: ${settings.bankName}`, 14, nextY);
+            nextY += 5;
           }
           
           if (settings.bankAccountNumber) {
-            doc.text(`No. Rekening: ${settings.bankAccountNumber}`, 14, bankY);
-            bankY += 5;
+            doc.text(`No. Rekening: ${settings.bankAccountNumber}`, 14, nextY);
+            nextY += 5;
           }
           
           if (settings.bankAccountName) {
-            doc.text(`Atas Nama: ${settings.bankAccountName}`, 14, bankY);
-            bankY += 10;
-          } else {
-            bankY += 5;
+            doc.text(`Atas Nama: ${settings.bankAccountName}`, 14, nextY);
+            nextY += 8;
           }
-        } else {
-          console.log("Skipping bank info in PDF:", {
-            paymentMethod: data.paymentMethod,
-            hasBank: !!(settings.bankName || settings.bankAccountNumber || settings.bankAccountName)
-          });
-          bankY += 5;
+          
+          // Tambah spasi setelah info bank
+          nextY += 5;
         }
         
         // Catatan
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
-        doc.text(`Catatan: ${settings.invoiceFooterNote || defaultInvoiceSettings.invoiceFooterNote}`, 14, bankY);
+        doc.text(`Catatan: ${settings.invoiceFooterNote || defaultInvoiceSettings.invoiceFooterNote}`, 14, nextY);
         
         // Footer
         doc.setFontSize(9);
