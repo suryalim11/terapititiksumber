@@ -123,38 +123,36 @@ export function formatDate(date: Date): string {
  * 
  * @param isoString - ISO string timestamp yang akan diformat
  * @param isLocalTime - Set ke true jika timestamp sudah dalam waktu lokal (WIB)
+ * @param activityType - Tipe aktivitas, untuk format yang konsisten
  */
-export function formatISOtoWIB(isoString: string, isLocalTime: boolean = false): string {
+export function formatISOtoWIB(isoString: string, isLocalTime: boolean = false, activityType: string = ""): string {
   try {
     // Parse string ISO ke objek date
     const date = parseISO(isoString);
     
-    // Jika perlu mengurangi 14 jam untuk penyesuaian timezone
-    // Hal ini diperlukan untuk aktivitas di recent activities
-    if (!isLocalTime) {
-      // Kurangi 14 jam untuk menyesuaikan timezone (UTC-7)
-      const adjustedDate = addHours(date, -14);
-      
-      // Format tanggal dan waktu dengan konsisten
-      return new Intl.DateTimeFormat('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }).format(adjustedDate) + " WIB";
+    let adjustedDate;
+    
+    // Pengaturan penyesuaian waktu berdasarkan sumber data
+    if (activityType === "transaction") {
+      // Transaksi dari server memerlukan penyesuaian -7 jam
+      adjustedDate = addHours(date, -7);
+    } else if (!isLocalTime) {
+      // Recent activities dari server memerlukan penyesuaian -14 jam
+      adjustedDate = addHours(date, -14);
     } else {
-      // Format tanggal dan waktu dengan konsisten jika sudah dalam waktu lokal
-      return new Intl.DateTimeFormat('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }).format(date) + " WIB";
+      // Gunakan waktu apa adanya jika sudah dalam format lokal
+      adjustedDate = date;
     }
+    
+    // Format tanggal dan waktu dengan konsisten
+    return new Intl.DateTimeFormat('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(adjustedDate) + " WIB";
   } catch (e) {
     console.error("Error formatting ISO date:", e);
     return "";
