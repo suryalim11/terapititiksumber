@@ -31,8 +31,8 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "terapi-titik-sumber-secret-key",
-    resave: false,
-    saveUninitialized: false,
+    resave: true, // Ubah menjadi true untuk memastikan session selalu disimpan ulang
+    saveUninitialized: true, // Ubah menjadi true untuk mempertahankan session baru
     store: storage.sessionStore,
     cookie: {
       secure: false, // Disable secure untuk development
@@ -137,19 +137,32 @@ export function setupAuth(app: Express) {
         }
         
         // Set cookie maxAge berdasarkan pilihan "Ingat Saya"
-        if (req.session && req.session.cookie) {
+        if (req.session) {
           if (rememberMe) {
             // Jika remember_me dicentang, perpanjang masa cookie session
             req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 hari
             console.log("Login dengan 'Remember Me': Cookie akan berlaku selama 30 hari");
           } else {
-            // Jika tidak dicentang, gunakan session sementara (cookie hilang saat browser ditutup)
-            req.session.cookie.maxAge = 0; // 0 mengindikasikan "session cookie" yang akan hilang saat browser ditutup
-            console.log("Login tanpa 'Remember Me': Cookie akan hilang saat browser ditutup");
+            // Jika tidak dicentang, tetapkan masa cookie lebih pendek tetapi tidak hilang segera
+            // Kita tetapkan 24 jam sebagai default
+            req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 jam
+            console.log("Login tanpa 'Remember Me': Cookie akan berlaku selama 24 jam");
           }
+          
+          // Simpan session secara eksplisit
+          req.session.save(err => {
+            if (err) {
+              console.error("Error saving session:", err);
+              return next(err);
+            }
+            
+            console.log("Session tersimpan dengan sukses. Session ID:", req.sessionID);
+            res.status(200).json({ success: true, user });
+          });
+        } else {
+          console.error("Session tidak tersedia setelah login!");
+          res.status(200).json({ success: true, user });
         }
-        
-        res.status(200).json({ success: true, user });
       });
     })(req, res, next);
   });
@@ -172,14 +185,48 @@ export function setupAuth(app: Express) {
   app.get("/api/auth/status", (req, res) => {
     // Debug: log req.user and authenticity status
     console.log("Auth status check - isAuthenticated:", req.isAuthenticated());
+    console.log("Auth status check - session ID:", req.sessionID);
     console.log("Auth status check - user:", req.user);
     if (req.user) {
       console.log("Auth status check - user role:", req.user.role);
     }
     
-    res.json({ 
-      authenticated: req.isAuthenticated(),
-      user: req.isAuthenticated() ? req.user : null
-    });
+    // Re-fetch user from session to ensure data integrity
+    if (req.isAuthenticated() && req.user && req.user.id) {
+      storage.getUser(req.user.id)
+        .then(freshUser => {
+          if (freshUser) {
+            console.log("Fresh user data fetched:", freshUser);
+            // Update session user data
+            req.user = freshUser;
+            
+            res.json({ 
+              authenticated: true,
+              user: freshUser
+            });
+          } else {
+            console.log("User not found in database, logging out");
+            req.logout((err) => {
+              if (err) console.error("Error logging out:", err);
+              res.json({ 
+                authenticated: false,
+                user: null
+              });
+            });
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching fresh user data:", err);
+          res.json({ 
+            authenticated: req.isAuthenticated(),
+            user: req.isAuthenticated() ? req.user : null
+          });
+        });
+    } else {
+      res.json({ 
+        authenticated: req.isAuthenticated(),
+        user: req.isAuthenticated() ? req.user : null
+      });
+    }
   });
 }
