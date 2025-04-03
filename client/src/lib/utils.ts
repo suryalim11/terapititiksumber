@@ -129,17 +129,32 @@ export function formatISOtoWIB(isoString: string, isLocalTime: boolean = false):
     // Parse string ISO ke objek date
     const date = parseISO(isoString);
     
-    // Format tanggal dan waktu dengan konsisten
-    // Gunakan Intl.DateTimeFormat yang lebih reliable untuk handling timezone
-    return new Intl.DateTimeFormat('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: isLocalTime ? undefined : 'Asia/Jakarta' // Gunakan timezone Jakarta jika bukan waktu lokal
-    }).format(date) + " WIB";
+    // Jika perlu mengurangi 14 jam untuk penyesuaian timezone
+    // Hal ini diperlukan untuk aktivitas di recent activities
+    if (!isLocalTime) {
+      // Kurangi 14 jam untuk menyesuaikan timezone (UTC-7)
+      const adjustedDate = addHours(date, -14);
+      
+      // Format tanggal dan waktu dengan konsisten
+      return new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(adjustedDate) + " WIB";
+    } else {
+      // Format tanggal dan waktu dengan konsisten jika sudah dalam waktu lokal
+      return new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(date) + " WIB";
+    }
   } catch (e) {
     console.error("Error formatting ISO date:", e);
     return "";
