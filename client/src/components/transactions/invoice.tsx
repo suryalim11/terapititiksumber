@@ -186,10 +186,41 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         doc.text("Total:", 140, y + 10, { align: 'right' });
         doc.text(formatPrice(data.transaction.totalAmount), 195, y + 10, { align: 'right' });
         
+        // Informasi Rekening Bank (jika ada)
+        let bankY = y + 25;
+        if (settings.bankName || settings.bankAccountNumber || settings.bankAccountName) {
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "bold");
+          doc.text("Informasi Pembayaran:", 14, bankY);
+          bankY += 6;
+          
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "normal");
+          
+          if (settings.bankName) {
+            doc.text(`Bank: ${settings.bankName}`, 14, bankY);
+            bankY += 5;
+          }
+          
+          if (settings.bankAccountNumber) {
+            doc.text(`No. Rekening: ${settings.bankAccountNumber}`, 14, bankY);
+            bankY += 5;
+          }
+          
+          if (settings.bankAccountName) {
+            doc.text(`Atas Nama: ${settings.bankAccountName}`, 14, bankY);
+            bankY += 10;
+          } else {
+            bankY += 5;
+          }
+        } else {
+          bankY += 5;
+        }
+        
         // Catatan
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
-        doc.text(`Catatan: ${settings.invoiceFooterNote || defaultInvoiceSettings.invoiceFooterNote}`, 14, y + 25);
+        doc.text(`Catatan: ${settings.invoiceFooterNote || defaultInvoiceSettings.invoiceFooterNote}`, 14, bankY);
         
         // Footer
         doc.setFontSize(9);
@@ -229,12 +260,26 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         ? `${settings.invoicePrefix}${data.transaction.transactionId}` 
         : data.transaction.transactionId;
         
+      // Tambahkan info rekening bank jika tersedia
+      let bankInfo = '';
+      if ((data.paymentMethod === 'bank_transfer' || data.paymentMethod === 'qris') &&
+          (settings.bankName || settings.bankAccountNumber || settings.bankAccountName)) {
+        bankInfo = `
+*Informasi Pembayaran:*`;
+        if (settings.bankName) bankInfo += `
+Bank: ${settings.bankName}`;
+        if (settings.bankAccountNumber) bankInfo += `
+No. Rekening: ${settings.bankAccountNumber}`;
+        if (settings.bankAccountName) bankInfo += `
+Atas Nama: ${settings.bankAccountName}`;
+        bankInfo += '\n';
+      }
+
       const message = `*INVOICE ${invoiceId}*
 Yth. ${data.patient.name},
 
 Terima kasih telah mengunjungi ${settings.companyName}.
-Total Pembayaran: ${formatPrice(data.transaction.totalAmount)}
-
+Total Pembayaran: ${formatPrice(data.transaction.totalAmount)}${bankInfo}
 Detail transaksi telah dikirim melalui invoice ini.
 ${settings.invoiceThankYouMessage || "Semoga sehat selalu!"}
 
@@ -362,6 +407,27 @@ Tim ${settings.companyName}`;
             </table>
 
             <div className="border-t border-gray-200 pt-4">
+              {(settings.bankName || settings.bankAccountNumber || settings.bankAccountName) && (
+                <div className="mb-3 p-3 border border-gray-200 rounded-md bg-gray-50">
+                  <h3 className="font-semibold text-gray-700 mb-1">Informasi Pembayaran:</h3>
+                  {settings.bankName && (
+                    <p className="text-gray-600 text-sm">
+                      <strong>Bank:</strong> {settings.bankName}
+                    </p>
+                  )}
+                  {settings.bankAccountNumber && (
+                    <p className="text-gray-600 text-sm">
+                      <strong>No. Rekening:</strong> {settings.bankAccountNumber}
+                    </p>
+                  )}
+                  {settings.bankAccountName && (
+                    <p className="text-gray-600 text-sm">
+                      <strong>Atas Nama:</strong> {settings.bankAccountName}
+                    </p>
+                  )}
+                </div>
+              )}
+              
               <p className="text-gray-600 text-sm">
                 <strong>Catatan:</strong> {settings.invoiceFooterNote || defaultInvoiceSettings.invoiceFooterNote}
               </p>

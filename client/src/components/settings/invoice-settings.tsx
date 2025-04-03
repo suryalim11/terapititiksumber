@@ -20,6 +20,9 @@ const invoiceSettingsSchema = z.object({
   companyPhone: z.string().optional(),
   companyEmail: z.string().email("Email harus valid").optional().or(z.literal("")),
   companyWebsite: z.string().optional(),
+  bankName: z.string().optional(),
+  bankAccountNumber: z.string().optional(),
+  bankAccountName: z.string().optional(),
   invoiceFooterNote: z.string().optional(),
   invoicePrefix: z.string().optional(),
   invoiceThankYouMessage: z.string().optional(),
@@ -35,6 +38,9 @@ export const defaultInvoiceSettings: InvoiceSettings = {
   companyPhone: "",
   companyEmail: "",
   companyWebsite: "",
+  bankName: "",
+  bankAccountNumber: "",
+  bankAccountName: "",
   invoiceFooterNote: "Terima kasih atas kepercayaan Anda. Paket terapi yang telah dibeli dapat digunakan sesuai jadwal yang telah disepakati.",
   invoicePrefix: "",
   invoiceThankYouMessage: "Terima kasih telah mengunjungi Klinik Terapi Titik Sumber.",
@@ -222,6 +228,57 @@ export function InvoiceSettings() {
                   </FormItem>
                 )}
               />
+
+              <div className="pt-4 pb-2">
+                <h3 className="text-md font-semibold mb-2">Informasi Rekening Bank</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                  Informasi rekening bank untuk pembayaran (opsional)
+                </p>
+                
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="bankName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nama Bank</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Contoh: BCA, Mandiri, BRI" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="bankAccountNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nomor Rekening</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Contoh: 1234567890" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="bankAccountName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Atas Nama</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Nama pemilik rekening" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             </div>
             
             <div className="pt-4 space-y-4">
