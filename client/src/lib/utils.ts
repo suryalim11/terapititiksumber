@@ -132,16 +132,16 @@ export function formatISOtoWIB(isoString: string, isLocalTime: boolean = false, 
     
     let adjustedDate;
     
-    // Pengaturan penyesuaian waktu berdasarkan sumber data
+    // Pengaturan penyesuaian waktu berdasarkan tipe aktivitas
     if (activityType === "transaction") {
       // Transaksi dari server memerlukan penyesuaian -7 jam
       adjustedDate = addHours(date, -7);
-    } else if (!isLocalTime) {
-      // Recent activities dari server memerlukan penyesuaian -14 jam
-      adjustedDate = addHours(date, -14);
+    } else if (activityType === "appointment") {
+      // Appointment dari server memerlukan penyesuaian -21 jam (sesuai kebutuhan)
+      adjustedDate = addHours(date, -21);
     } else {
-      // Gunakan waktu apa adanya jika sudah dalam format lokal
-      adjustedDate = date;
+      // Semua aktivitas lain dari server memerlukan penyesuaian -21 jam
+      adjustedDate = addHours(date, -21);
     }
     
     // Format tanggal dan waktu dengan konsisten
