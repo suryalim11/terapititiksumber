@@ -24,7 +24,15 @@ function formatRupiah(amount: number): string {
 }
 
 // Utility function untuk mendapatkan waktu dengan zona waktu Indonesia (GMT+7/WIB)
+// Konsisten untuk digunakan di seluruh aplikasi saat menyimpan atau mengambil data dari database
 function getWIBDate(date: Date): Date {
+  // Jika tanggal sudah dalam format WIB (misalnya dari input lokal), kembalikan sebagaimana adanya
+  if (date.toString().includes('(Western Indonesia Time)') || 
+      date.toString().includes('(WIB)') ||
+      date.toString().includes('GMT+0700')) {
+    return date;
+  }
+  
   // Waktu Indonesia Barat adalah GMT+7
   const offset = 7 * 60 * 60 * 1000; // 7 jam dalam milidetik
   // Mendapatkan UTC time
@@ -347,9 +355,12 @@ export class DatabaseStorage implements IStorage {
     const queryLowerCase = query.toLowerCase();
     
     // Use the SQL ILIKE operator for case-insensitive search
+    // Create the SQL condition separately to fix type issues
+    const searchCondition = sql`(LOWER(${schema.patients.name}) LIKE ${`%${queryLowerCase}%`} OR 
+                               ${schema.patients.phoneNumber} LIKE ${`%${query}%`})`;
+    
     const results = await db.query.patients.findMany({
-      where: sql`(LOWER(${schema.patients.name}) LIKE ${`%${queryLowerCase}%`} OR 
-                  ${schema.patients.phoneNumber} LIKE ${`%${query}%`})`,
+      where: searchCondition,
       orderBy: [desc(schema.patients.createdAt)]
     });
     
@@ -534,16 +545,15 @@ export class DatabaseStorage implements IStorage {
     const transactionId = `T-${format(wibDate, 'yyyyMMdd')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
     
     // Semua transaksi baru akan disimpan dengan createdAt yang sudah disesuaikan ke WIB
-    const wibNow = new Date();
     const result = await db.insert(schema.transactions)
       .values({ 
         ...transaction, 
         transactionId,
-        createdAt: wibNow // timestamp ini akan otomatis dikonversi ke UTC oleh database
+        createdAt: wibDate // Gunakan waktu WIB yang konsisten
       })
       .returning();
     
-    // Jika perlu transform hasil untuk memastikan waktu dikonversi ke WIB
+    // Pastikan data yang dikembalikan juga dalam format waktu WIB
     const transactionResult = { 
       ...result[0],
       createdAt: getWIBDate(result[0].createdAt)
@@ -974,7 +984,7 @@ export class DatabaseStorage implements IStorage {
         patientId: appointment.patientId,
         sessionId: appointment.sessionId,
         therapySlotId: appointment.therapySlotId,
-        date: wibDate, // gunakan waktu WIB untuk tanggal
+        date: wibDate, // Konsisten menggunakan waktu WIB untuk tanggal
         timeSlot: appointment.timeSlot,
         notes: appointment.notes,
         status: appointment.status,

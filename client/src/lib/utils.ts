@@ -119,40 +119,27 @@ export function formatDate(date: Date): string {
 
 /**
  * Format ISO string timestamp to WIB time
- * This function handles the timezone offset correctly for all activity types
+ * This function menangani konversi timezone dengan benar untuk semua tipe aktivitas
  * 
- * @param isoString - The ISO string timestamp to format
- * @param isTransactionType - Set to true for transaction timestamps that are stored in local time
+ * @param isoString - ISO string timestamp yang akan diformat
+ * @param isLocalTime - Set ke true jika timestamp sudah dalam waktu lokal (WIB)
  */
-export function formatISOtoWIB(isoString: string, isTransactionType: boolean = false): string {
+export function formatISOtoWIB(isoString: string, isLocalTime: boolean = false): string {
   try {
-    // Parse ISO string to date object
+    // Parse string ISO ke objek date
     const date = parseISO(isoString);
     
-    // Untuk konsistensi, timestamps transaksi sudah dalam waktu lokal (WIB)
-    // sementara timestamp lain seperti appointment dan patient dalam UTC
-    // Jangan lakukan penyesuaian waktu untuk timestamp transaksi
-    let formattedDate;
-    
-    if (isTransactionType) {
-      // Transaction timestamps are already in WIB time in the database
-      formattedDate = dateFnsFormat(date, "dd/MM/yyyy, HH:mm", { locale: id });
-    } else {
-      // Other timestamps (appointments, patients) need to be converted from UTC to WIB (+7)
-      // We don't use addHours here because it might cause issues with DST
-      // Instead, we use the timeZone option in Intl.DateTimeFormat
-      formattedDate = new Intl.DateTimeFormat('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-        timeZone: 'Asia/Jakarta'
-      }).format(date);
-    }
-    
-    return formattedDate + " WIB";
+    // Format tanggal dan waktu dengan konsisten
+    // Gunakan Intl.DateTimeFormat yang lebih reliable untuk handling timezone
+    return new Intl.DateTimeFormat('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: isLocalTime ? undefined : 'Asia/Jakarta' // Gunakan timezone Jakarta jika bukan waktu lokal
+    }).format(date) + " WIB";
   } catch (e) {
     console.error("Error formatting ISO date:", e);
     return "";

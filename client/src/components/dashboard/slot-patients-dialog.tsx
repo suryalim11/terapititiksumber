@@ -62,10 +62,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // States
+  // Estados para el diálogo
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
-
+  
   // Data fetching
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/therapy-slots', slotId, 'patients'],
