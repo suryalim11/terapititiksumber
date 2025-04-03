@@ -554,14 +554,31 @@ export default function SettingsPage() {
                           return;
                         }
                         
-                        const response = await apiRequest("POST", "/api/resync-appointments");
-                        const result = await response.json();
+                        // Definisikan tipe yang diharapkan
+                        interface SyncResult {
+                          message?: string;
+                          result?: {
+                            fixed: number;
+                            errors: any[];
+                          }
+                        }
+                        
+                        const result = await apiRequest<SyncResult>("/api/resync-appointments", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json"
+                          }
+                        });
                         
                         console.log("Hasil sinkronisasi:", result);
                         
+                        // Tampilkan notifikasi berhasil
                         toast({
                           title: "Sinkronisasi Berhasil",
-                          description: `${result.message || `${result.result.fixed} appointment diperbaiki`}`,
+                          description: result?.message || 
+                            (result?.result ? 
+                              `${result.result.fixed} appointment diperbaiki` : 
+                              "Proses sinkronisasi selesai"),
                         });
                       } catch (error: any) {
                         console.error("Error saat sinkronisasi tanggal appointment:", error);
