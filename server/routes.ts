@@ -22,7 +22,7 @@ import path from "path";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, ne, isNotNull } from "drizzle-orm";
 import {
   exportData,
   getBackupFiles,
@@ -1930,6 +1930,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error saat sinkronisasi kuota slot terapi:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Endpoint untuk reset dan buat ulang slot terapi default
+  app.post("/api/therapy-slots/reset-and-create-default", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated() || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      console.log("Memulai proses reset dan pembuatan slot terapi default...");
+      
+      // Cek apakah ada janji temu aktif yang tidak dibatalkan
+      const activeAppointments = await db.query.appointments.findMany({
+        where: and(
+          ne(schema.appointments.status, "Cancelled"),
+          isNotNull(schema.appointments.therapySlotId)
+        )
+      });
+      
+      // Jika masih ada janji temu aktif, jangan hapus slot terapinya
+      if (activeAppointments.length > 0) {
+        return res.status(400).json({ 
+          message: "Tidak dapat mereset slot terapi. Masih ada janji temu yang aktif.", 
+          activeAppointmentCount: activeAppointments.length 
+        });
+      }
+      
+      // Hapus semua slot terapi
+      const deleteResult = await db.delete(schema.therapySlots);
+      console.log(`${deleteResult.rowCount} slot terapi berhasil dihapus`);
+      
+      // Definisi slot waktu baru sesuai permintaan
+      const timeSlots = [
+        { time: "10:00-12:00", quota: 4 },
+        { time: "13:00-15:00", quota: 3 },
+        { time: "15:00-17:00", quota: 3 }
+      ];
+      
+      const today = new Date();
+      let slotsCreated = 0;
+      
+      // Buat slot untuk 14 hari ke depan (2 minggu)
+      for (let i = 0; i < 14; i++) {
+        const slotDate = new Date(today);
+        slotDate.setDate(slotDate.getDate() + i);
+        
+        // Skip Sundays (0 = Sunday, 1 = Monday, etc.)
+        if (slotDate.getDay() === 0) continue;
+        
+        // Create all time slots for this day
+        for (const slot of timeSlots) {
+          await db.insert(schema.therapySlots).values({
+            date: slotDate,
+            timeSlot: slot.time,
+            maxQuota: slot.quota,
+            currentCount: 0,
+            isActive: true
+          });
+          slotsCreated++;
+        }
+      }
+      
+      return res.status(200).json({
+        message: "Reset dan pembuatan slot terapi berhasil",
+        deleted: deleteResult.rowCount || 0,
+        created: slotsCreated
+      });
+    } catch (error) {
+      console.error("Error saat reset dan pembuatan slot terapi:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });

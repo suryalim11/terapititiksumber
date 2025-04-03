@@ -197,16 +197,15 @@ export class DatabaseStorage implements IStorage {
         // Create therapy slots for the next 7 days
         const today = new Date();
         
-        // Definisi slot waktu default
+        // Definisi slot waktu default sesuai permintaan
         const timeSlots = [
-          { time: "10:00-11:30", quota: 4 },
-          { time: "12:30-14:00", quota: 4 },
-          { time: "14:00-15:30", quota: 4 },
-          { time: "15:30-17:00", quota: 5 }
+          { time: "10:00-12:00", quota: 4 },
+          { time: "13:00-15:00", quota: 3 },
+          { time: "15:00-17:00", quota: 3 }
         ];
         
-        // Create slots for 7 days
-        for (let i = 0; i < 7; i++) {
+        // Create slots for 14 days (2 minggu ke depan)
+        for (let i = 0; i < 14; i++) {
           const slotDate = new Date(today);
           slotDate.setDate(slotDate.getDate() + i);
           
