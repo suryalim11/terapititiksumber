@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, parseISO, addHours } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
@@ -13,7 +13,38 @@ import {
   RefreshCw,
   Loader2
 } from "lucide-react";
-import { cn, formatRupiah, formatDateDDMMYYYY, formatISOtoWIB } from "@/lib/utils";
+import { cn, formatRupiah, formatDateDDMMYYYY } from "@/lib/utils";
+
+// Fungsi khusus untuk memformat waktu aktivitas
+function formatActivityTime(timestampStr: string, activityType: string): string {
+  try {
+    const timestamp = parseISO(timestampStr);
+    
+    // Penyesuaian waktu untuk tipe aktivitas yang berbeda
+    let adjustedTime;
+    
+    if (activityType === "transaction") {
+      // Transaksi perlu dikurangi 7 jam
+      adjustedTime = addHours(timestamp, -7);
+    } else {
+      // Aktivitas lain perlu dikurangi 21 jam
+      adjustedTime = addHours(timestamp, -21);
+    }
+    
+    // Format tanggal dan waktu dengan format lokal
+    return new Intl.DateTimeFormat('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(adjustedTime) + " WIB";
+  } catch (error) {
+    console.error("Error formatting activity time:", error);
+    return "";
+  }
+}
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
@@ -242,7 +273,7 @@ export default function Dashboard() {
                       <p className="text-sm">{activity.description}</p>
                       <time className="text-xs text-muted-foreground">
                         {activity.timestamp ? 
-                          formatISOtoWIB(activity.timestamp, false, activity.type) :
+                          formatActivityTime(activity.timestamp, activity.type) :
                           ""}
                       </time>
                     </div>
