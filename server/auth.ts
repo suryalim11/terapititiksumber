@@ -120,11 +120,21 @@ export function setupAuth(app: Express) {
         });
       }
       
+      // Debug: log user data for debugging
+      console.log("Login - User object:", user);
+      console.log("Login - User role:", user.role);
+      
       // Gunakan opsi remember_me jika disediakan
       const rememberMe = req.body.remember_me === true;
       
       req.login(user, (err) => {
         if (err) return next(err);
+        
+        // Debug: after login
+        console.log("Login - req.user after login:", req.user);
+        if (req.user) {
+          console.log("Login - req.user.role after login:", req.user.role);
+        }
         
         // Set cookie maxAge berdasarkan pilihan "Ingat Saya"
         if (req.session && req.session.cookie) {
@@ -160,6 +170,13 @@ export function setupAuth(app: Express) {
   
   // Alias for auth status to maintain backward compatibility
   app.get("/api/auth/status", (req, res) => {
+    // Debug: log req.user and authenticity status
+    console.log("Auth status check - isAuthenticated:", req.isAuthenticated());
+    console.log("Auth status check - user:", req.user);
+    if (req.user) {
+      console.log("Auth status check - user role:", req.user.role);
+    }
+    
     res.json({ 
       authenticated: req.isAuthenticated(),
       user: req.isAuthenticated() ? req.user : null

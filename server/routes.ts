@@ -666,7 +666,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new therapy package
   app.post("/api/packages", async (req: Request, res: Response) => {
     try {
-      if (!req.isAuthenticated() || req.user.role !== "admin") {
+      console.log("POST /api/packages - isAuthenticated:", req.isAuthenticated());
+      console.log("POST /api/packages - req.user:", req.user);
+      
+      if (req.user) {
+        console.log("POST /api/packages - req.user.role:", req.user.role);
+      }
+      
+      if (!req.isAuthenticated()) {
+        return res.status(403).json({ message: "Unauthorized, please login first" });
+      }
+      
+      if (req.user.role !== "admin") {
         return res.status(403).json({ message: "Unauthorized, only admin can create packages" });
       }
       
@@ -706,7 +717,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update a therapy package
   app.put("/api/packages/:id", async (req: Request, res: Response) => {
     try {
-      if (!req.isAuthenticated() || req.user.role !== "admin") {
+      console.log("PUT /api/packages/:id - isAuthenticated:", req.isAuthenticated());
+      console.log("PUT /api/packages/:id - req.user:", req.user);
+      
+      if (req.user) {
+        console.log("PUT /api/packages/:id - req.user.role:", req.user.role);
+      }
+      
+      if (!req.isAuthenticated()) {
+        return res.status(403).json({ message: "Unauthorized, please login first" });
+      }
+      
+      if (req.user.role !== "admin") {
         return res.status(403).json({ message: "Unauthorized, only admin can update packages" });
       }
       
@@ -777,7 +799,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete a therapy package
   app.delete("/api/packages/:id", async (req: Request, res: Response) => {
     try {
-      if (!req.isAuthenticated() || req.user.role !== "admin") {
+      console.log("DELETE /api/packages/:id - isAuthenticated:", req.isAuthenticated());
+      console.log("DELETE /api/packages/:id - req.user:", req.user);
+      
+      if (req.user) {
+        console.log("DELETE /api/packages/:id - req.user.role:", req.user.role);
+      }
+      
+      if (!req.isAuthenticated()) {
+        return res.status(403).json({ message: "Unauthorized, please login first" });
+      }
+      
+      if (req.user.role !== "admin") {
         return res.status(403).json({ message: "Unauthorized, only admin can delete packages" });
       }
       
