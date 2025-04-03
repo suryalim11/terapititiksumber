@@ -362,8 +362,8 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         phoneNumber = '62' + phoneNumber.substring(1);
       }
       
-      // Buka WhatsApp Web dengan pesan yang sudah disiapkan
-      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+      // Buka WhatsApp Business API dengan pesan yang sudah disiapkan
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
       window.open(whatsappUrl, '_blank');
       
       toast({
