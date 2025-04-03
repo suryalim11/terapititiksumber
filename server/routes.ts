@@ -283,33 +283,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       // Jika ada therapySlotId, periksa apakah pasien sudah punya jadwal di hari yang sama
-      if (therapySlotId && existingPatient) {
+      if (therapySlotId) {
         try {
           // Ambil therapy slot untuk mendapatkan tanggalnya
           const therapySlot = await storage.getTherapySlot(therapySlotId);
           
           if (therapySlot) {
-            // Dapatkan semua janji temu pasien
-            const appointments = await storage.getAppointmentsByPatient(existingPatient.id);
-            
-            // Cek apakah ada janji temu pada hari yang sama dengan therapySlot
             const slotDate = new Date(therapySlot.date);
             
-            const hasSameDayAppointment = appointments.some(appointment => {
-              const appointmentDate = new Date(appointment.date);
-              return (
-                appointmentDate.getFullYear() === slotDate.getFullYear() &&
-                appointmentDate.getMonth() === slotDate.getMonth() &&
-                appointmentDate.getDate() === slotDate.getDate() &&
-                appointment.status !== 'Cancelled'
-              );
-            });
-            
-            if (hasSameDayAppointment) {
-              return res.status(400).json({ 
-                message: "Anda sudah memiliki janji terapi pada hari yang sama. Silakan pilih hari lain.", 
-                code: "DUPLICATE_APPOINTMENT" 
+            // Jika pasien sudah ada, periksa apakah mereka memiliki janji di hari yang sama
+            if (existingPatient) {
+              // Dapatkan semua janji temu pasien yang sudah ada
+              const appointments = await storage.getAppointmentsByPatient(existingPatient.id);
+              
+              // Cek apakah ada janji temu pada hari yang sama dengan therapySlot
+              const hasSameDayAppointment = appointments.some(appointment => {
+                const appointmentDate = new Date(appointment.date);
+                return (
+                  appointmentDate.getFullYear() === slotDate.getFullYear() &&
+                  appointmentDate.getMonth() === slotDate.getMonth() &&
+                  appointmentDate.getDate() === slotDate.getDate() &&
+                  appointment.status !== 'Cancelled'
+                );
               });
+              
+              if (hasSameDayAppointment) {
+                return res.status(400).json({ 
+                  message: "Anda sudah memiliki janji terapi pada hari yang sama. Silakan pilih hari lain.", 
+                  code: "DUPLICATE_APPOINTMENT" 
+                });
+              }
+            }
+            
+            // Periksa apakah ada pasien dengan nama yang sama dan tanggal yang sama (mencegah pendaftaran duplikat)
+            if (therapySlot) {
+              // Dapatkan semua janji untuk hari tersebut
+              const appointmentsForDate = await storage.getAppointmentsByDate(slotDate);
+              
+              // Periksa janji dengan nama sama tapi mungkin nomor telepon berbeda
+              for (const appointment of appointmentsForDate) {
+                if (appointment.status === 'Cancelled') {
+                  continue; // Lewati janji yang sudah dibatalkan
+                }
+                
+                const patient = await storage.getPatient(appointment.patientId);
+                
+                // Jika pasien ditemukan dan namanya sama persis (case-insensitive) dengan yang baru mendaftar
+                if (patient && patient.name.toLowerCase() === validatedData.name.toLowerCase()) {
+                  return res.status(400).json({
+                    message: "Sudah ada pasien dengan nama yang sama terdaftar pada hari ini. Pastikan Anda belum melakukan pendaftaran sebelumnya.",
+                    code: "DUPLICATE_PATIENT_NAME"
+                  });
+                }
+                
+                // Jika nomor telepon sama
+                if (patient && patient.phoneNumber === validatedData.phoneNumber) {
+                  return res.status(400).json({
+                    message: "Anda sudah memiliki jadwal terapi pada hari yang sama. Silakan pilih tanggal lain.",
+                    code: "DUPLICATE_APPOINTMENT"
+                  });
+                }
+              }
             }
           }
         } catch (err) {
