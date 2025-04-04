@@ -104,6 +104,8 @@ export const transactions = pgTable("transactions", {
   transactionId: text("transaction_id").notNull().unique(),
   patientId: integer("patient_id").notNull(),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  discount: decimal("discount", { precision: 10, scale: 2 }).default("0").notNull(),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).default("0"),
   paymentMethod: text("payment_method").notNull(),
   items: json("items").notNull(), // array of purchased items (packages and products)
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -112,6 +114,8 @@ export const transactions = pgTable("transactions", {
 export const insertTransactionSchema = createInsertSchema(transactions).pick({
   patientId: true,
   totalAmount: true,
+  discount: true,
+  subtotal: true,
   paymentMethod: true,
   items: true,
 });

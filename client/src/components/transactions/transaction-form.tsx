@@ -240,19 +240,21 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   // Create transaction mutation
   const mutation = useMutation({
     mutationFn: async (values: TransactionFormValues) => {
-      // Calculate total amount
-      const totalAmount = cartItems.reduce(
+      // Calculate subtotal
+      const subtotal = cartItems.reduce(
         (sum, item) => sum + parseFloat(item.price) * item.quantity,
         0
       );
+      
+      // Get discount amount
+      const discount = parseFloat(values.discount || "0");
+      
+      // Calculate total amount (subtotal - discount)
+      const totalAmount = Math.max(0, subtotal - discount);
 
       try {
-        // Calculate subtotal and discount
-        const subtotal = cartItems.reduce(
-          (sum, item) => sum + parseFloat(item.price) * item.quantity,
-          0
-        );
-        const discountAmount = parseInt(values.discount || "0");
+        // Use already calculated values
+        const discountAmount = parseFloat(values.discount || "0");
         
         console.log("Mengirim request ke API dengan data:", {
           patientId: parseInt(values.patientId),

@@ -961,7 +961,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/transactions", async (req: Request, res: Response) => {
     try {
-      const validatedData = insertTransactionSchema.parse(req.body);
+      // Parse schema with additional fields
+      const { subtotal, discount, ...restData } = req.body;
+      
+      // Ensure all required fields are present
+      const validatedData = insertTransactionSchema.parse({
+        ...restData,
+        discount: discount || "0",
+        subtotal: subtotal || restData.totalAmount || "0"
+      });
+      
       const newTransaction = await storage.createTransaction(validatedData);
       
       // Process transaction items

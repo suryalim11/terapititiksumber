@@ -519,6 +519,31 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               </tfoot>
             </table>
 
+            {/* Total section dengan subtotal dan diskon */}
+            <div className="border-t border-gray-200 pt-4 mb-4">
+              {/* Subtotal */}
+              {data.subtotal && (
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium">Subtotal</span>
+                  <span>{formatPrice(data.subtotal.toString())}</span>
+                </div>
+              )}
+              
+              {/* Diskon jika ada dan lebih dari 0 */}
+              {data.discount && parseInt(data.discount.toString()) > 0 && (
+                <div className="flex justify-between text-sm mb-2 text-red-500">
+                  <span className="font-medium">Diskon</span>
+                  <span>- {formatPrice(data.discount.toString())}</span>
+                </div>
+              )}
+              
+              {/* Total akhir */}
+              <div className="flex justify-between text-base font-bold mt-2 pt-2 border-t border-gray-200">
+                <span>Total</span>
+                <span>{formatPrice(data.transaction.totalAmount)}</span>
+              </div>
+            </div>
+
             <div className="border-t border-gray-200 pt-4">
               {(data.paymentMethod === 'bank_transfer' || data.paymentMethod === 'qris') && 
                 (settings.bankName || settings.bankAccountNumber || settings.bankAccountName) && (
