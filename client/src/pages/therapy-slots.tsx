@@ -551,7 +551,7 @@ export default function TherapySlots() {
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={field.value instanceof Date ? field.value : undefined}
+                          selected={typeof field.value === 'string' ? parseISO(field.value) : field.value}
                           onSelect={(date) => {
                             if (date) {
                               // Konversi Date ke string format YYYY-MM-DD sebelum update field
@@ -706,7 +706,7 @@ export default function TherapySlots() {
                             <PopoverContent className="w-auto p-0" align="start">
                               <Calendar
                                 mode="single"
-                                selected={field.value instanceof Date ? field.value : undefined}
+                                selected={typeof field.value === 'string' ? parseISO(field.value) : field.value}
                                 onSelect={(date) => {
                                   if (date) {
                                     // Konversi Date ke string format YYYY-MM-DD sebelum update field
