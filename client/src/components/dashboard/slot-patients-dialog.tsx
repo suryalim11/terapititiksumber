@@ -373,10 +373,6 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             <DialogTitle className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5" />
               Detail Slot Terapi
-              <DialogClose className="ml-auto">
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </DialogClose>
             </DialogTitle>
             <DialogDescription>
               Menampilkan detail slot terapi dan daftar pasien yang terdaftar.

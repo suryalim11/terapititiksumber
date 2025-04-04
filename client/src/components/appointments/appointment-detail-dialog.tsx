@@ -75,10 +75,6 @@ export function AppointmentDetailDialog({ appointment, isOpen, onClose }: Appoin
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             Janji Temu Pasien
-            <DialogClose className="ml-auto">
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
-            </DialogClose>
           </DialogTitle>
           <DialogDescription>
             Detail dan manajemen janji temu pasien
