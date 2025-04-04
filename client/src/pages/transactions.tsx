@@ -255,12 +255,18 @@ export default function Transactions() {
         quantity: item.quantity
       }));
       
+      // Dapatkan subtotal dan diskon dari transaksi
+      const subtotal = parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString());
+      const discount = parseFloat(transaction.discount?.toString() || "0");
+      
       // Set data untuk invoice
       setInvoiceData({
         transaction,
         patient,
         items,
-        paymentMethod: transaction.paymentMethod
+        paymentMethod: transaction.paymentMethod,
+        subtotal: subtotal,
+        discount: discount
       });
       
       // Buka dialog invoice
@@ -301,16 +307,25 @@ export default function Transactions() {
         quantity: item.quantity
       }));
       
+      // Dapatkan subtotal dan diskon dari transaksi
+      const subtotal = parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString());
+      const discount = parseFloat(transaction.discount?.toString() || "0");
+      
       // Set data untuk invoice
       setInvoiceData({
         transaction,
         patient,
         items,
-        paymentMethod: transaction.paymentMethod
+        paymentMethod: transaction.paymentMethod,
+        subtotal: subtotal,
+        discount: discount
       });
       
-      // Buka dialog invoice
-      setIsInvoiceOpen(true);
+      // Buka dialog invoice dengan flag untuk langsung print
+      setTimeout(() => {
+        // Buka dialog invoice terlebih dahulu
+        setIsInvoiceOpen(true);
+      }, 100);
     } catch (error) {
       console.error("Error printing transaction:", error);
       toast({
