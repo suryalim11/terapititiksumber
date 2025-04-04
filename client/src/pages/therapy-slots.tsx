@@ -844,7 +844,7 @@ export default function TherapySlots() {
                 </Form>
               </DialogContent>
             </Dialog>
-            <CreateBatchDialog />
+            {/* Kosongkan - sudah di-render di bagian bawah */}
             <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] })}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
