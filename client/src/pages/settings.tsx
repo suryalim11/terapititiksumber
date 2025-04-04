@@ -563,7 +563,7 @@ export default function SettingsPage() {
                           }
                         }
                         
-                        const result = await apiRequest<SyncResult>("/api/resync-appointments", {
+                        const result = await apiRequest<SyncResult>("/api/appointments/resync", {
                           method: "POST",
                           headers: {
                             "Content-Type": "application/json"

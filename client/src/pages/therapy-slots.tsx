@@ -1142,32 +1142,66 @@ export default function TherapySlots() {
                       
                       <Button 
                         variant="outline" 
-                        onClick={() => {
-                          fetch('/api/resync-appointments', {
-                            method: 'POST'
-                          })
-                          .then(async res => {
-                            if (res.ok) {
-                              const result = await res.json();
-                              console.log("Hasil sinkronisasi:", result);
-                              queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-                              queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
-                              toast({
-                                title: "Sinkronisasi Appointment Berhasil",
-                                description: `${result.result.fixed} appointment diperbaiki`
-                              });
+                        onClick={async () => {
+                          try {
+                            // Gunakan endpoint yang benar
+                            const response = await fetch('/api/appointments/resync', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json'
+                              },
+                              credentials: 'include'
+                            });
+                            
+                            // Periksa format respons
+                            const contentType = response.headers.get("content-type");
+                            
+                            if (response.ok) {
+                              let result;
+                              if (contentType && contentType.includes("application/json")) {
+                                result = await response.json();
+                                console.log("Hasil sinkronisasi:", result);
+                                
+                                // Refresh data setelah sinkronisasi
+                                queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+                                queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+                                
+                                toast({
+                                  title: "Sinkronisasi Appointment Berhasil",
+                                  description: `${result.result?.fixed || 0} appointment diperbaiki`
+                                });
+                              } else {
+                                // Jika respons bukan JSON
+                                toast({
+                                  title: "Sinkronisasi Berhasil",
+                                  description: "Data appointment telah disinkronkan"
+                                });
+                              }
                             } else {
-                              const error = await res.json();
-                              throw new Error(error.message || "Gagal melakukan sinkronisasi appointment");
+                              let errorMessage = "Gagal melakukan sinkronisasi appointment";
+                              
+                              if (contentType && contentType.includes("application/json")) {
+                                const errorData = await response.json();
+                                if (errorData && errorData.message) {
+                                  errorMessage = errorData.message;
+                                }
+                              } else {
+                                const errorText = await response.text();
+                                if (errorText) {
+                                  errorMessage = errorText;
+                                }
+                              }
+                              
+                              throw new Error(errorMessage);
                             }
-                          })
-                          .catch(err => {
+                          } catch (err) {
+                            console.error("Error saat sinkronisasi:", err);
                             toast({
                               title: "Gagal Sinkronisasi",
-                              description: err.message,
+                              description: err instanceof Error ? err.message : "Terjadi kesalahan",
                               variant: "destructive"
                             });
-                          });
+                          }
                         }}
                       >
                         Sinkronisasi Tanggal Appointment
