@@ -193,6 +193,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       return data;
     },
     enabled: !!form.watch("patientId"), // hanya jalankan jika patientId ada
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Fetch active sessions for a patient
@@ -385,8 +387,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         }
       }
       
-      // If there are no items in the cart, return after debt payment
-      if (cartItems.length === 0) {
+      // If this is a debt-only payment (no new items) and we've processed the debt payment successfully, return
+      if (debtOnlyPayment || cartItems.length === 0) {
         return { message: "Pembayaran utang berhasil" };
       }
       
