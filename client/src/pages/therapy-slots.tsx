@@ -705,6 +705,10 @@ export default function TherapySlots() {
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-medium">Manajemen Slot Terapi</h3>
           <div className="flex gap-2">
+            <Button variant="default" onClick={() => setBatchDialogOpen(true)}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Buat Slot Manual
+            </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
