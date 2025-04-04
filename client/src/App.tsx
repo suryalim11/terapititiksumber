@@ -12,7 +12,6 @@ import Products from "@/pages/products";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import Register from "@/pages/register";
-import IntegratedManagement from "@/pages/integrated-management";
 import Login from "@/pages/login";
 import BackupRestore from "@/pages/backup-restore";
 import DateTest from "@/pages/date-test";
@@ -34,7 +33,6 @@ function Router() {
       <ProtectedRoute path="/products" component={Products} />
       <ProtectedRoute path="/reports" component={Reports} />
       <ProtectedRoute path="/settings" component={Settings} />
-      <ProtectedRoute path="/pendaftaran" component={IntegratedManagement} />
       <ProtectedRoute path="/backup-restore" component={BackupRestore} />
       <ProtectedRoute path="/date-test" component={DateTest} />
       <Route path="/login" component={Login} />

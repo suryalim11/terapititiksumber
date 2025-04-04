@@ -403,7 +403,7 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
                       Aktif
                     </FormLabel>
                     <FormDescription>
-                      Slot terapi ini dapat dipilih oleh pasien saat pendaftaran.
+                      Slot terapi ini dapat dipilih oleh pasien saat akan melakukan terapi.
                     </FormDescription>
                   </div>
                 </FormItem>

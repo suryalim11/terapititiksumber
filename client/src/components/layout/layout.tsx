@@ -13,7 +13,6 @@ import {
   ShoppingCart,
   UserRound,
   X,
-  CalendarRange,
   LogOut,
   Database,
 } from "lucide-react";
@@ -25,7 +24,6 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Patients", href: "/patients", icon: UserRound },
-  { name: "Pendaftaran", href: "/pendaftaran", icon: CalendarRange },
   { name: "Therapy Slots", href: "/therapy-slots", icon: ClipboardList },
   { name: "Products", href: "/products", icon: PackageIcon },
   { name: "Transactions", href: "/transactions", icon: ShoppingCart },
