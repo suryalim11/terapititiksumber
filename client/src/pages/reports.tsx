@@ -76,7 +76,9 @@ export default function Reports() {
       const transactionDate = format(new Date(transaction.createdAt), "yyyy-MM-dd");
       const dataPoint = dailyData.find(d => d.date === transactionDate);
       if (dataPoint) {
-        dataPoint.amount += parseFloat(transaction.totalAmount);
+        const total = parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
+                     parseFloat(transaction.discount?.toString() || "0");
+        dataPoint.amount += total;
       }
     });
 
@@ -101,7 +103,9 @@ export default function Reports() {
     transactions.forEach((transaction: any) => {
       const transactionDate = new Date(transaction.createdAt);
       const monthIndex = transactionDate.getMonth();
-      monthlyData[monthIndex].amount += parseFloat(transaction.totalAmount);
+      const total = parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
+                    parseFloat(transaction.discount?.toString() || "0");
+      monthlyData[monthIndex].amount += total;
     });
 
     return monthlyData;
@@ -156,7 +160,8 @@ export default function Reports() {
           transaction.transactionId,
           "Pasien ID: " + transaction.patientId, // In real app, get patient name
           transaction.paymentMethod,
-          transaction.totalAmount,
+          (parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
+          parseFloat(transaction.discount?.toString() || "0")).toString(),
         ].join(",");
         csvContent += row + "\n";
       });
@@ -410,7 +415,10 @@ export default function Reports() {
                                transaction.paymentMethod === "qris" ? "QRIS" : "Tunai"}
                             </td>
                             <td className="px-4 py-2 text-right">
-                              Rp{parseInt(transaction.totalAmount).toLocaleString('id-ID')}
+                              Rp{(
+                                parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
+                                parseFloat(transaction.discount?.toString() || "0")
+                              ).toLocaleString('id-ID')}
                             </td>
                           </tr>
                         ))}

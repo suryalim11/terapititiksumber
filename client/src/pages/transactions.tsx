@@ -466,7 +466,10 @@ export default function Transactions() {
                           ? `- ${formatPrice(transaction.discount.toString())}` 
                           : '-'}
                       </TableCell>
-                      <TableCell>{formatPrice(transaction.totalAmount)}</TableCell>
+                      <TableCell>{formatPrice((
+                        parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
+                        parseFloat(transaction.discount?.toString() || "0")
+                      ).toString())}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Button 

@@ -791,7 +791,10 @@ export default function PatientDetail() {
                           <div className="flex justify-between items-start mb-2">
                             <h3 className="font-bold">{transaction.transactionId}</h3>
                             <p className="text-green-600 font-semibold">
-                              Rp {Number(transaction.totalAmount).toLocaleString('id-ID')}
+                              Rp {(
+                                parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
+                                parseFloat(transaction.discount?.toString() || "0")
+                              ).toLocaleString('id-ID')}
                             </p>
                           </div>
                           <p className="text-sm text-muted-foreground mb-2">
