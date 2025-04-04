@@ -1885,48 +1885,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeOnly = req.query.active === 'true';
       const availableOnly = req.query.available === 'true';
       
+      console.log(`Fetching therapy slots with params - date: ${dateParam}, activeOnly: ${activeOnly}, availableOnly: ${availableOnly}`);
+      
+      let slots;
+      
+      // Step 1: Get initial slots based on date parameter
       if (dateParam) {
         const date = new Date(dateParam);
         if (isNaN(date.getTime())) {
           return res.status(400).json({ message: "Invalid date format" });
         }
-        
-        const slots = await storage.getTherapySlotsByDate(date);
-        
-        // Filter slots by availability if requested
-        if (availableOnly) {
-          const availableSlots = slots.filter(slot => 
-            slot.isActive && slot.currentCount < slot.maxQuota
-          );
-          return res.status(200).json(availableSlots);
-        }
-        
-        return res.status(200).json(slots);
+        slots = await storage.getTherapySlotsByDate(date);
       } else if (activeOnly) {
-        const slots = await storage.getActiveTherapySlots();
-        
-        // Filter slots by availability if requested
-        if (availableOnly) {
-          const availableSlots = slots.filter(slot => 
-            slot.currentCount < slot.maxQuota
-          );
-          return res.status(200).json(availableSlots);
-        }
-        
-        return res.status(200).json(slots);
+        slots = await storage.getActiveTherapySlots();
       } else {
-        const slots = await storage.getAllTherapySlots();
-        
-        // Filter slots by availability if requested
-        if (availableOnly) {
-          const availableSlots = slots.filter(slot => 
-            slot.isActive && slot.currentCount < slot.maxQuota
-          );
-          return res.status(200).json(availableSlots);
-        }
-        
-        return res.status(200).json(slots);
+        slots = await storage.getAllTherapySlots();
       }
+      
+      // Step 2: Apply additional filters
+      let filteredSlots = [...slots]; // Create a copy to avoid mutation issues
+      
+      // Apply active filter if needed and not already filtered by the storage method
+      if (activeOnly && dateParam) {
+        filteredSlots = filteredSlots.filter(slot => slot.isActive);
+      }
+      
+      // Apply available filter (slots that aren't full)
+      if (availableOnly) {
+        filteredSlots = filteredSlots.filter(slot => 
+          slot.currentCount < slot.maxQuota
+        );
+      }
+      
+      console.log(`Returning ${filteredSlots.length} slots after filtering`);
+      return res.status(200).json(filteredSlots);
     } catch (error) {
       console.error("Error ketika mengambil therapy slots:", error);
       return res.status(500).json({ message: "Internal server error" });

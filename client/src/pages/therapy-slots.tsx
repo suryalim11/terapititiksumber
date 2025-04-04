@@ -124,13 +124,40 @@ export default function TherapySlots() {
     },
   });
 
+  // State untuk filter
+  const [showActiveOnly, setShowActiveOnly] = useState(true);
+  const [showAvailableOnly, setShowAvailableOnly] = useState(false);
+
   // Query untuk mendapatkan slot terapi
   const { data: therapySlots = [], isLoading } = useQuery<TherapySlot[]>({
-    queryKey: ['/api/therapy-slots', date ? format(date, 'yyyy-MM-dd') : 'all'],
+    queryKey: [
+      '/api/therapy-slots', 
+      date ? format(date, 'yyyy-MM-dd') : 'all',
+      showActiveOnly ? 'active' : 'all',
+      showAvailableOnly ? 'available' : 'all'
+    ],
     queryFn: async () => {
-      const endpoint = date 
-        ? `/api/therapy-slots?date=${format(date, 'yyyy-MM-dd')}` 
-        : '/api/therapy-slots';
+      let endpoint = '/api/therapy-slots';
+      const params = new URLSearchParams();
+      
+      if (date) {
+        params.append('date', format(date, 'yyyy-MM-dd'));
+      }
+      
+      if (showActiveOnly) {
+        params.append('active', 'true');
+      }
+      
+      if (showAvailableOnly) {
+        params.append('available', 'true');
+      }
+      
+      // Menambahkan parameters ke URL jika ada
+      if (params.toString()) {
+        endpoint += `?${params.toString()}`;
+      }
+      
+      console.log("Fetching therapy slots with URL:", endpoint);
       const response = await fetch(endpoint);
       if (!response.ok) throw new Error('Failed to fetch therapy slots');
       return response.json();
@@ -744,6 +771,7 @@ export default function TherapySlots() {
             <TabsTrigger value="calendar">Kalender</TabsTrigger>
             <TabsTrigger value="quick">Buat Batch</TabsTrigger>
             <TabsTrigger value="list">Daftar Semua Slot</TabsTrigger>
+            <TabsTrigger value="filter">Filter & Opsi</TabsTrigger>
           </TabsList>
           
           <TabsContent value="calendar" className="space-y-4">
@@ -899,6 +927,153 @@ export default function TherapySlots() {
                       </CardFooter>
                     </Card>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="filter">
+            <Card>
+              <CardHeader>
+                <CardTitle>Filter & Pengaturan</CardTitle>
+                <CardDescription>
+                  Atur preferensi tampilan dan filter untuk slot terapi
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Filter Slot Terapi</h3>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="activeOnly" 
+                          checked={showActiveOnly}
+                          onCheckedChange={() => setShowActiveOnly(!showActiveOnly)}
+                        />
+                        <label
+                          htmlFor="activeOnly"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Tampilkan hanya slot aktif
+                        </label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="availableOnly" 
+                          checked={showAvailableOnly}
+                          onCheckedChange={() => setShowAvailableOnly(!showAvailableOnly)}
+                        />
+                        <label
+                          htmlFor="availableOnly"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Tampilkan hanya slot yang masih tersedia (belum penuh)
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Opsi Tampilan</h3>
+                      
+                      <div className="rounded-md border p-4">
+                        <div className="font-medium">Status filter saat ini:</div>
+                        <ul className="mt-2 space-y-1">
+                          <li className="text-sm">
+                            • Tanggal: {date ? formatDateDDMMYYYY(date) : "Semua tanggal"}
+                          </li>
+                          <li className="text-sm">
+                            • Filter aktif: {showActiveOnly ? "Ya" : "Tidak"}
+                          </li>
+                          <li className="text-sm">
+                            • Filter tersedia: {showAvailableOnly ? "Ya" : "Tidak"}
+                          </li>
+                        </ul>
+                        
+                        <Button 
+                          onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] })}
+                          className="mt-4"
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Refresh Data
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-medium mb-2">Fitur Pemeliharaan</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Gunakan fitur ini untuk memperbaiki atau mereset sistem jika terjadi masalah.
+                    </p>
+                    
+                    <div className="flex flex-wrap gap-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          fetch('/api/therapy-slots/sync-quota', {
+                            method: 'POST'
+                          })
+                          .then(async res => {
+                            if (res.ok) {
+                              queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+                              toast({
+                                title: "Sinkronisasi Berhasil",
+                                description: "Kuota slot terapi telah disinkronisasi dengan janji temu"
+                              });
+                            } else {
+                              const error = await res.json();
+                              throw new Error(error.message || "Gagal melakukan sinkronisasi kuota");
+                            }
+                          })
+                          .catch(err => {
+                            toast({
+                              title: "Gagal Sinkronisasi",
+                              description: err.message,
+                              variant: "destructive"
+                            });
+                          });
+                        }}
+                      >
+                        Sinkronisasi Kuota Slot
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          fetch('/api/resync-appointments', {
+                            method: 'POST'
+                          })
+                          .then(async res => {
+                            if (res.ok) {
+                              const result = await res.json();
+                              console.log("Hasil sinkronisasi:", result);
+                              queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+                              queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+                              toast({
+                                title: "Sinkronisasi Appointment Berhasil",
+                                description: `${result.result.fixed} appointment diperbaiki`
+                              });
+                            } else {
+                              const error = await res.json();
+                              throw new Error(error.message || "Gagal melakukan sinkronisasi appointment");
+                            }
+                          })
+                          .catch(err => {
+                            toast({
+                              title: "Gagal Sinkronisasi",
+                              description: err.message,
+                              variant: "destructive"
+                            });
+                          });
+                        }}
+                      >
+                        Sinkronisasi Tanggal Appointment
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
