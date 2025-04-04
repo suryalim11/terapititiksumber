@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
+
 import {
   Dialog,
   DialogContent,
@@ -36,7 +37,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Search, Info, AlertCircle, Package, CreditCard } from "lucide-react";
+import { Search, Info, AlertCircle, Package, CreditCard, Receipt } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -156,6 +157,10 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   
   // State untuk menangani kredit/utang
   const [useCredit, setUseCredit] = useState(false);
+  // State untuk menangani pembayaran utang sekaligus transaksi baru
+  const [payDebt, setPayDebt] = useState(false);
+  const [selectedDebtTransaction, setSelectedDebtTransaction] = useState<any>(null);
+  const [paymentAmount, setPaymentAmount] = useState<string>("0");
 
   // Fetch patients
   const { data: patients = [] } = useQuery<Patient[]>({
@@ -170,6 +175,23 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   // Fetch products
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
+  });
+
+  // Fetch unpaid transactions (with debt) for the selected patient
+  const { data: unpaidTransactions = [], refetch: refetchUnpaidTransactions } = useQuery({
+    queryKey: ["/api/transactions/unpaid", form.watch("patientId")],
+    queryFn: async () => {
+      const patientId = form.watch("patientId");
+      if (!patientId) return [];
+      
+      const response = await fetch(`/api/transactions/unpaid-by-patient/${patientId}`);
+      if (!response.ok) throw new Error("Failed to fetch unpaid transactions");
+      
+      const data = await response.json();
+      console.log("Unpaid transactions data:", data);
+      return data;
+    },
+    enabled: !!form.watch("patientId"), // hanya jalankan jika patientId ada
   });
 
   // Fetch active sessions for a patient
@@ -197,13 +219,17 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       setSelectedPackage("");
       setSelectedSession(null);
       setUseExistingPackage(false);
+      setPayDebt(false);
+      setSelectedDebtTransaction(null);
+      setPaymentAmount("0");
       setFormKey(Date.now()); // Force a complete re-render on close
       form.reset();
     } else if (isOpen && form.watch("patientId")) {
       // Refresh data when form is opened and patient is selected
       refetchActiveSessions();
+      refetchUnpaidTransactions();
     }
-  }, [isOpen, form, refetchActiveSessions]);
+  }, [isOpen, form, refetchActiveSessions, refetchUnpaidTransactions]);
   
   // Atur pasien otomatis jika selectedPatientId diberikan
   useEffect(() => {
@@ -266,10 +292,92 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     // Return total amount (subtotal - discount)
     return Math.max(0, subtotal - discount);
   };
+  
+  // Fungsi untuk menangani pemilihan transaksi utang
+  const handleDebtSelect = (transaction: any) => {
+    setSelectedDebtTransaction(transaction);
+    
+    // Hitung sisa utang
+    const remainingDebt = parseFloat(transaction.creditAmount) - parseFloat(transaction.paidAmount);
+    setPaymentAmount(remainingDebt.toString());
+    
+    toast({
+      title: "Transaksi kredit dipilih",
+      description: `Transaksi ${transaction.transactionId} dengan sisa utang ${formatPrice(remainingDebt.toString())}`,
+    });
+  };
+
+  // Function to handle debt payment
+  const handleDebtPayment = async () => {
+    if (!selectedDebtTransaction || !paymentAmount || parseFloat(paymentAmount) <= 0) {
+      toast({
+        title: "Error",
+        description: "Pilih transaksi dan masukkan jumlah pembayaran",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    try {
+      const paymentData = {
+        transactionId: selectedDebtTransaction.id,
+        amount: paymentAmount,
+        paymentMethod: form.getValues().paymentMethod,
+        notes: `Pembayaran utang melalui transaksi baru`
+      };
+
+      console.log("Sending debt payment data:", paymentData);
+
+      const response = await apiRequest("/api/transactions/payment", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(paymentData)
+      });
+
+      console.log("Debt payment response:", response);
+      
+      // Refresh unpaid transactions data
+      await queryClient.invalidateQueries({ queryKey: ["/api/transactions/unpaid"] });
+      
+      return response;
+    } catch (error) {
+      console.error("Error processing debt payment:", error);
+      throw error;
+    }
+  };
 
   // Create transaction mutation
   const mutation = useMutation({
     mutationFn: async (values: TransactionFormValues) => {
+      // Process debt payment first if enabled
+      if (payDebt && selectedDebtTransaction) {
+        try {
+          const paymentResult = await handleDebtPayment();
+          if (!paymentResult) return null; // Stop if debt payment failed
+          
+          toast({
+            title: "Pembayaran utang berhasil",
+            description: `Utang ${formatPrice(paymentAmount)} telah dibayarkan`,
+          });
+        } catch (error) {
+          console.error("Error during debt payment:", error);
+          toast({
+            title: "Gagal membayar utang",
+            description: error.message || "Terjadi kesalahan saat membayar utang",
+            variant: "destructive",
+          });
+          return null;
+        }
+      }
+      
+      // If there are no items in the cart, return after debt payment
+      if (cartItems.length === 0) {
+        return { message: "Pembayaran utang berhasil" };
+      }
+      
+      // Continue with normal transaction processing
       // Calculate subtotal
       const subtotal = cartItems.reduce(
         (sum, item) => sum + parseFloat(item.price) * item.quantity,
@@ -699,7 +807,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   };
 
   // Handle form submission
-  const onSubmit = (values: TransactionFormValues) => {
+  const onSubmit = async (values: TransactionFormValues) => {
     console.log("Form submission triggered with values:", values);
     
     // Validasi input
@@ -713,6 +821,70 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       return;
     }
     
+    // Mode pembayaran utang sekaligus transaksi baru
+    if (payDebt && selectedDebtTransaction) {
+      // Validasi pembayaran utang
+      if (parseFloat(paymentAmount) <= 0) {
+        toast({
+          title: "Jumlah pembayaran tidak valid",
+          description: "Silakan masukkan jumlah pembayaran utang yang valid",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Hitung sisa utang
+      const remainingDebt = parseFloat(selectedDebtTransaction.creditAmount) - parseFloat(selectedDebtTransaction.paidAmount);
+      if (parseFloat(paymentAmount) > remainingDebt) {
+        toast({
+          title: "Jumlah pembayaran melebihi utang",
+          description: `Sisa utang hanya ${formatPrice(remainingDebt.toString())}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      try {
+        // Kirim pembayaran utang terlebih dahulu
+        await apiRequest(`/api/transactions/${selectedDebtTransaction.id}/debt-payment`, {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: paymentAmount,
+            paymentMethod: values.paymentMethod,
+            notes: cartItems.length > 0 ? 
+              `Pembayaran sebagian dengan transaksi baru: ${cartItems.map(item => item.name).join(', ')}` :
+              "Pembayaran utang"
+          })
+        });
+        
+        toast({
+          title: "Pembayaran utang berhasil",
+          description: `Utang ${formatPrice(paymentAmount)} telah dibayarkan`,
+        });
+        
+        // Invalidate transaksi yang terlibat
+        await queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/transactions/unpaid"] });
+        
+        // Jika tidak ada item untuk transaksi baru, selesai di sini
+        if (cartItems.length === 0 && !useExistingPackage) {
+          setShowInvoice(false);
+          onClose();
+          return;
+        }
+      } catch (error: any) {
+        console.error("Error membayar utang:", error);
+        toast({
+          title: "Gagal membayar utang",
+          description: error.message || "Terjadi kesalahan saat membayar utang",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // Validasi keranjang untuk transaksi baru
     // Jika dalam mode 'Gunakan sesi' kita skip validasi keranjang kosong
     if (!useExistingPackage && cartItems.length === 0) {
       console.log("Validasi gagal: keranjang kosong");
@@ -777,6 +949,43 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
           description: "Mohon tunggu, transaksi sedang diproses",
         });
         return; // Prevent multiple submissions
+      }
+      
+      // Jika hanya membayar utang dan tidak ada item baru di keranjang, proses khusus pembayaran utang
+      if (payDebt && selectedDebtTransaction && cartItems.length === 0) {
+        setIsSubmitting(true);
+        
+        try {
+          // Panggil fungsi pembayaran utang
+          const result = await handleDebtPayment();
+          
+          if (result) {
+            toast({
+              title: "Pembayaran utang berhasil",
+              description: `Pembayaran utang senilai ${formatPrice(paymentAmount)} telah berhasil dicatat`,
+            });
+            
+            // Invalidate queries to refresh data
+            await queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+            await queryClient.invalidateQueries({ queryKey: ["/api/transactions/unpaid"] });
+            await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+            await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activities"] });
+            
+            // Close form
+            onClose();
+          }
+        } catch (error: any) {
+          console.error("Error processing debt payment:", error);
+          toast({
+            title: "Gagal memproses pembayaran utang",
+            description: error.message || "Terjadi kesalahan saat memproses pembayaran utang",
+            variant: "destructive"
+          });
+        } finally {
+          setIsSubmitting(false);
+        }
+        
+        return;
       }
       
       console.log("Manual submit triggered");
@@ -1404,6 +1613,101 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
             />
             
             {/* Credit Option Toggle */}
+            {/* Bagian Bayar Utang */}
+            {form.watch("patientId") && unpaidTransactions.length > 0 && (
+              <div className="flex flex-col space-y-3 p-3 border rounded-md border-muted bg-amber-50 dark:bg-amber-950/30 mb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-amber-600 dark:text-amber-400" /> 
+                    <span className="text-sm font-medium">Bayar Utang Sebelumnya</span>
+                  </div>
+                  <Switch
+                    checked={payDebt}
+                    onCheckedChange={(checked) => {
+                      setPayDebt(checked);
+                      if (!checked) {
+                        setSelectedDebtTransaction(null);
+                        setPaymentAmount("0");
+                      }
+                    }}
+                  />
+                </div>
+                
+                <FormDescription className="text-xs mb-2">
+                  Aktifkan untuk membayar utang sebelumnya sambil melakukan transaksi baru.
+                </FormDescription>
+                
+                {payDebt && (
+                  <div className="grid gap-3 pt-2 border-t border-amber-200 dark:border-amber-800">
+                    <div className="text-sm font-medium">Pilih Transaksi Kredit:</div>
+                    <div className="max-h-40 overflow-y-auto space-y-2">
+                      {unpaidTransactions
+                        .filter((tx: any) => parseInt(tx.patientId) === parseInt(form.getValues().patientId))
+                        .map((transaction: any) => {
+                          const remainingDebt = parseFloat(transaction.creditAmount) - parseFloat(transaction.paidAmount);
+                          return (
+                            <div 
+                              key={transaction.id}
+                              className={`flex justify-between items-center p-2 rounded-md cursor-pointer border ${
+                                selectedDebtTransaction?.id === transaction.id 
+                                  ? 'border-primary bg-primary/10' 
+                                  : 'border-muted bg-card'
+                              }`}
+                              onClick={() => handleDebtSelect(transaction)}
+                            >
+                              <div className="overflow-hidden">
+                                <div className="font-medium text-sm truncate">
+                                  {transaction.transactionId}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {new Date(transaction.createdAt).toLocaleDateString('id-ID')}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold text-sm">
+                                  {formatPrice(remainingDebt.toString())}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Utang tersisa
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                    
+                    {selectedDebtTransaction && (
+                      <div className="grid gap-2">
+                        <FormLabel>Jumlah Pembayaran (Rp)</FormLabel>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1000"
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
+                            className="flex-grow"
+                          />
+                          <Button 
+                            type="button" 
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const remainingDebt = parseFloat(selectedDebtTransaction.creditAmount) - parseFloat(selectedDebtTransaction.paidAmount);
+                              setPaymentAmount(remainingDebt.toString());
+                            }}
+                          >
+                            Bayar Lunas
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+                    
+            {/* Bagian Opsi Kredit */}
             <div className="flex flex-col space-y-3 p-3 border rounded-md border-muted bg-muted/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
