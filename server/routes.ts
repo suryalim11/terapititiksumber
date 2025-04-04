@@ -966,9 +966,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Transaction request received:", req.body);
       
+      // Calculate actual total amount after discount
+      const discountAmount = parseFloat(discount || "0");
+      const subtotalAmount = parseFloat(subtotal || restData.totalAmount || "0");
+      const actualTotalAmount = Math.max(0, subtotalAmount - discountAmount).toString();
+      
       // Ensure all required fields are present
       const validatedData = insertTransactionSchema.parse({
         ...restData,
+        totalAmount: actualTotalAmount, // Use the corrected total amount
         discount: discount || "0",
         subtotal: subtotal || restData.totalAmount || "0"
       });
