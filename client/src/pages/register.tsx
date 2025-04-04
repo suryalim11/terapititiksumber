@@ -150,13 +150,16 @@ export default function RegisterPage() {
   
   // Mendapatkan data slot terapi yang tersedia
   const { data: therapySlots, isLoading: isLoadingSlots } = useQuery({
-    queryKey: ['/api/therapy-slots', { available: true, active: true }],
+    queryKey: ['/api/therapy-slots', 'available-active'],
     queryFn: async () => {
+      console.log("Mengambil slot terapi untuk form pendaftaran");
       const response = await fetch('/api/therapy-slots?available=true&active=true');
       if (!response.ok) {
         throw new Error('Gagal mengambil data slot terapi');
       }
-      return response.json();
+      const data = await response.json();
+      console.log("Slot terapi yang diterima di form pendaftaran:", data.length, "slot");
+      return data;
     },
     enabled: registrationStatus === "idle" && !!registrationCode,
     refetchInterval: 60000, // Refetch setiap 1 menit untuk memperbarui status slot yang tersedia

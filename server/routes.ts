@@ -1909,9 +1909,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`Error parsing date ${dateParam}:`, error);
           return res.status(400).json({ message: "Invalid date format" });
         }
-      } else if (activeOnly) {
+      } else if (activeOnly && !availableOnly) {
+        // Dapatkan semua slot aktif jika hanya filter active yang diberikan
+        console.log("Mendapatkan semua slot terapi aktif (tanpa filter available)");
         slots = await storage.getActiveTherapySlots();
       } else {
+        // Default: Dapatkan semua slot terapi
+        console.log("Mendapatkan semua slot terapi (default)");
         slots = await storage.getAllTherapySlots();
       }
       
@@ -1920,15 +1924,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Apply active filter if needed and not already filtered by the storage method
       if (activeOnly && dateParam) {
+        console.log("Filtering for active slots after date filter");
         filteredSlots = filteredSlots.filter(slot => slot.isActive);
+      }
+      
+      // Tambahkan filter tambahan untuk memastikan tanggal di masa depan (hari ini atau nanti)
+      if (activeOnly && availableOnly) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset ke awal hari
+        
+        console.log("Filtering for slots on or after today:", today.toISOString());
+        
+        filteredSlots = filteredSlots.filter(slot => {
+          const slotDate = new Date(slot.date);
+          slotDate.setHours(0, 0, 0, 0); // Normalize to start of day
+          return slotDate.getTime() >= today.getTime();
+        });
       }
       
       // Apply available filter (slots that aren't full)
       if (availableOnly) {
+        console.log("Filtering for available slots (currentCount < maxQuota)");
         filteredSlots = filteredSlots.filter(slot => 
           slot.currentCount < slot.maxQuota
         );
       }
+      
+      // Sort by date (nearest first) and then by time slot
+      filteredSlots.sort((a, b) => {
+        // Sort by date first
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        
+        // Then by time slot if dates are the same
+        return a.timeSlot.localeCompare(b.timeSlot);
+      });
       
       console.log(`Returning ${filteredSlots.length} slots after filtering`);
       return res.status(200).json(filteredSlots);
@@ -2522,7 +2553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/test/date-handler", handleDateTest);
   
   // Endpoint untuk memperbaiki ketidakkonsistenan tanggal appointment
-  app.post("/api/resync-appointments", async (req: Request, res: Response) => {
+  app.post("/api/appointments/resync", async (req: Request, res: Response) => {
     try {
       // Pastikan hanya admin yang bisa mengakses endpoint ini
       if (!req.isAuthenticated() || req.user.role !== 'admin') {
