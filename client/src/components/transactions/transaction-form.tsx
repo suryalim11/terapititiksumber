@@ -1906,7 +1906,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
               <Button
                 type="button"
                 onClick={handleSubmitForm}
-                disabled={mutation.isPending || (!useExistingPackage && cartItems.length === 0)}
+                disabled={mutation.isPending || (!useExistingPackage && cartItems.length === 0 && !payDebt)}
               >
                 {mutation.isPending ? "Memproses..." : "Proses Pembayaran"}
               </Button>
