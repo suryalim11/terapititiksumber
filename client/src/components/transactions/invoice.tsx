@@ -605,6 +605,22 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                 <span>Total</span>
                 <span>{formatPrice(data.transaction.totalAmount.toString())}</span>
               </div>
+              
+              {/* Informasi kredit jika transaksi belum lunas */}
+              {(data.isPaid === false || data.transaction.isPaid === false) && 
+               data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
+                <div className="mt-3 p-3 bg-gray-50 border border-red-200 rounded-md">
+                  <div className="font-medium text-sm mb-2 text-red-700">Informasi Kredit:</div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Dibayar Dimuka</span>
+                    <span>{formatPrice(data.transaction.paidAmount?.toString() || "0")}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold text-red-600">
+                    <span>Sisa Hutang</span>
+                    <span>{formatPrice(data.transaction.creditAmount.toString())}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-gray-200 pt-4">
