@@ -823,25 +823,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTherapySlotsByDate(date: Date): Promise<TherapySlot[]> {
-    // Perbaikan: Kita perlu mendapatkan tanggal yang tepat berdasarkan tanggal yang diinginkan
-
-    // 1. Cetak debugging info
+    // Simplifikasi: Terima tanggal apa adanya dan gunakan untuk filter
+    // Cetak debugging info
     console.log("Input date untuk getTherapySlotsByDate:", date, "ISO:", date.toISOString());
     
-    // 2. Standardisasi tanggal: ambil tahun, bulan, tanggal saja dan buat Date baru
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const day = date.getDate();
+    // Buat tanggal awal dan akhir hari untuk filter range (tetap diperlukan untuk query)
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0); // Awal hari
     
-    // 3. Membuat tanggal awal (00:00:00) dan akhir (23:59:59)
-    const startDate = new Date(year, month, day, 0, 0, 0, 0);
-    const endDate = new Date(year, month, day, 23, 59, 59, 999);
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999); // Akhir hari
     
-    console.log("Mencari slot terapi antara:", 
-                startDate, "ISO:", startDate.toISOString(),
-                "dan", endDate, "ISO:", endDate.toISOString());
+    console.log("Mencari slot terapi untuk tanggal yang sama dengan:", date.toISOString());
+    console.log("Range filter: ", startDate.toISOString(), "sampai", endDate.toISOString());
     
-    // 4. Gunakan fungsi query di Drizzle ORM untuk memfilter berdasarkan tanggal
+    // Gunakan fungsi query di Drizzle ORM untuk memfilter berdasarkan tanggal
     return db.query.therapySlots.findMany({
       where: and(
         // Gunakan gte dan lte untuk mendapatkan semua record pada tanggal yang sama
