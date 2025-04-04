@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { format, addDays, parseISO } from "date-fns";
+import { format, addDays, parseISO, set, parse } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TherapySlot } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { formatDateDDMMYYYY } from "@/lib/utils";
+import { formatDateDDMMYYYY, fixTimezone } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -283,8 +284,8 @@ export default function TherapySlots() {
         // Skip Sundays (0 = Sunday, 1 = Monday, etc.)
         if (slotDate.getDay() === 0) continue;
         
-        // Konversi ke string format 'yyyy-MM-dd'
-        const slotDateString = format(slotDate, 'yyyy-MM-dd');
+        // Gunakan fixTimezone untuk mendapatkan format 'yyyy-MM-dd' yang konsisten
+        const slotDateString = fixTimezone(slotDate);
         
         // Create all time slots for this day
         for (const slot of timeSlots) {
@@ -348,26 +349,9 @@ export default function TherapySlots() {
     const timeSlot = `${data.startTime}-${data.endTime}`;
     console.log("Time slot:", timeSlot);
     
-    // PERBAIKAN: Gunakan Date.UTC untuk mengatasi masalah timezone
-    let yearMonthDay;
-    
-    if (typeof data.date === 'string') {
-      // String format sudah benar, gunakan langsung
-      yearMonthDay = data.date; 
-      console.log("Menggunakan string date langsung:", yearMonthDay);
-    } else if (data.date instanceof Date) {
-      // Ekstrak tahun, bulan, tanggal tanpa timezone offset
-      const year = data.date.getFullYear();
-      const month = data.date.getMonth() + 1; // +1 karena getMonth() dimulai dari 0
-      const day = data.date.getDate();
-      
-      // Format ke yyyy-MM-dd (pastikan bulan dan tanggal selalu 2 digit)
-      yearMonthDay = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-      console.log("Dikonversi dari Date object:", yearMonthDay);
-    } else {
-      console.error("Tipe tanggal tidak dikenali:", typeof data.date);
-      yearMonthDay = format(new Date(), 'yyyy-MM-dd'); // Fallback ke hari ini
-    }
+    // PERBAIKAN: Gunakan fungsi fixTimezone untuk mengatasi masalah timezone
+    const yearMonthDay = fixTimezone(data.date);
+    console.log("Date setelah fixTimezone:", yearMonthDay);
     
     console.log("Submitting date as string format:", yearMonthDay);
     console.log("------------ END DEBUGGING FORM SUBMISSION ------------");
@@ -454,26 +438,9 @@ export default function TherapySlots() {
     const timeSlot = `${data.startTime}-${data.endTime}`;
     console.log("Edit - Time slot:", timeSlot);
     
-    // PERBAIKAN: Gunakan cara yang sama dengan onSubmit
-    let yearMonthDay;
-    
-    if (typeof data.date === 'string') {
-      // String format sudah benar, gunakan langsung
-      yearMonthDay = data.date; 
-      console.log("Edit - Menggunakan string date langsung:", yearMonthDay);
-    } else if (data.date instanceof Date) {
-      // Ekstrak tahun, bulan, tanggal tanpa timezone offset
-      const year = data.date.getFullYear();
-      const month = data.date.getMonth() + 1; // +1 karena getMonth() dimulai dari 0
-      const day = data.date.getDate();
-      
-      // Format ke yyyy-MM-dd (pastikan bulan dan tanggal selalu 2 digit)
-      yearMonthDay = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-      console.log("Edit - Dikonversi dari Date object:", yearMonthDay);
-    } else {
-      console.error("Edit - Tipe tanggal tidak dikenali:", typeof data.date);
-      yearMonthDay = format(new Date(), 'yyyy-MM-dd'); // Fallback ke hari ini
-    }
+    // PERBAIKAN: Gunakan fungsi fixTimezone untuk mengatasi masalah timezone
+    const yearMonthDay = fixTimezone(data.date);
+    console.log("Edit - Date setelah fixTimezone:", yearMonthDay);
     
     console.log("Edit - Updating date as string format:", yearMonthDay);
     console.log("------------ END DEBUGGING EDIT FORM SUBMISSION ------------");
@@ -625,19 +592,11 @@ export default function TherapySlots() {
                               console.log("toString():", date.toString());
                               console.log("toISOString():", date.toISOString());
                               console.log("Timezone offset (menit):", date.getTimezoneOffset());
-                              console.log("getFullYear():", date.getFullYear());
-                              console.log("getMonth() (0-based):", date.getMonth());
-                              console.log("getDate():", date.getDate());
                               
-                              // Konversi Date ke string format YYYY-MM-DD sebelum update field
-                              const year = date.getFullYear();
-                              const month = date.getMonth() + 1; // +1 karena getMonth() dimulai dari 0
-                              const day = date.getDate();
+                              // Gunakan fixTimezone untuk mendapatkan string tanggal yang konsisten
+                              const dateString = fixTimezone(date);
                               
-                              // Format ke yyyy-MM-dd (pastikan bulan dan tanggal selalu 2 digit)
-                              const dateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                              
-                              console.log("Calendar (edit): selected date converted to string format:", dateString);
+                              console.log("Calendar (edit): date setelah fixTimezone:", dateString);
                               console.log("============= END CALENDAR EDIT DEBUG =============");
                               
                               field.onChange(dateString); // Simpan string, bukan Date object
@@ -797,19 +756,11 @@ export default function TherapySlots() {
                                     console.log("toString():", date.toString());
                                     console.log("toISOString():", date.toISOString());
                                     console.log("Timezone offset (menit):", date.getTimezoneOffset());
-                                    console.log("getFullYear():", date.getFullYear());
-                                    console.log("getMonth() (0-based):", date.getMonth());
-                                    console.log("getDate():", date.getDate());
                                     
-                                    // Konversi Date ke string format YYYY-MM-DD sebelum update field
-                                    const year = date.getFullYear();
-                                    const month = date.getMonth() + 1; // +1 karena getMonth() dimulai dari 0
-                                    const day = date.getDate();
+                                    // Gunakan fixTimezone untuk mendapatkan string tanggal yang konsisten
+                                    const dateString = fixTimezone(date);
                                     
-                                    // Format ke yyyy-MM-dd (pastikan bulan dan tanggal selalu 2 digit)
-                                    const dateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                                    
-                                    console.log("Calendar: selected date converted to string format:", dateString);
+                                    console.log("Calendar: date setelah fixTimezone:", dateString);
                                     console.log("============= END CALENDAR DEBUG =============");
                                     
                                     field.onChange(dateString); // Simpan string, bukan Date object
@@ -927,19 +878,11 @@ export default function TherapySlots() {
                         console.log("toString():", selectedDate.toString());
                         console.log("toISOString():", selectedDate.toISOString());
                         console.log("Timezone offset (menit):", selectedDate.getTimezoneOffset());
-                        console.log("getFullYear():", selectedDate.getFullYear());
-                        console.log("getMonth() (0-based):", selectedDate.getMonth());
-                        console.log("getDate():", selectedDate.getDate());
                         
-                        // Konversi Date ke string format YYYY-MM-DD sebelum update field
-                        const year = selectedDate.getFullYear();
-                        const month = selectedDate.getMonth() + 1; // +1 karena getMonth() dimulai dari 0
-                        const day = selectedDate.getDate();
+                        // Gunakan fixTimezone untuk mendapatkan string tanggal yang konsisten
+                        const dateString = fixTimezone(selectedDate);
                         
-                        // Format ke yyyy-MM-dd (pastikan bulan dan tanggal selalu 2 digit)
-                        const dateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                        
-                        console.log("Calendar (main): selected date converted to string format:", dateString);
+                        console.log("Calendar (main): date setelah fixTimezone:", dateString);
                         console.log("============= END CALENDAR MAIN DEBUG =============");
                         
                         setDate(dateString); // Simpan string, bukan Date object

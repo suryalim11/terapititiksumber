@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format as dateFnsFormat, parseISO, addHours } from "date-fns";
+import { format as dateFnsFormat, parseISO, addHours, parse } from "date-fns";
 import { id } from "date-fns/locale";
 
 /**
@@ -188,4 +188,51 @@ export function generateTimeSlots(startHour: number = 8, endHour: number = 17, i
   }
   
   return slots;
+}
+
+/**
+ * Perbaikan masalah timezone dengan metode tanggal sebagai string YYYY-MM-DD
+ * Fungsi ini mencegah pergeseran tanggal akibat konversi timezone dengan
+ * melakukan ekstraksi komponen tanggal (tahun, bulan, tanggal) dan
+ * menyusunnya ulang sebagai string yang tidak terpengaruh timezone
+ * 
+ * @param dateValue - Date object yang akan diperbaiki atau string tanggal
+ * @returns string format 'YYYY-MM-DD' yang konsisten
+ */
+export function fixTimezone(dateValue: Date | string): string {
+  console.log("fixTimezone Input:", dateValue, typeof dateValue);
+  
+  try {
+    // Jika input adalah string dalam format YYYY-MM-DD, kembalikan langsung
+    if (typeof dateValue === 'string') {
+      // Jika sudah dalam format YYYY-MM-DD, kembalikan langsung
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+        console.log("fixTimezone: Already in YYYY-MM-DD format:", dateValue);
+        return dateValue;
+      }
+      
+      // Jika string dalam format lain, parse dulu ke Date
+      const parsedDate = new Date(dateValue);
+      if (isNaN(parsedDate.getTime())) {
+        throw new Error("Invalid date string");
+      }
+      
+      dateValue = parsedDate;
+    }
+    
+    // Ekstrak tahun, bulan, hari tanpa terpengaruh timezone
+    const year = dateValue.getFullYear();
+    const month = (dateValue.getMonth() + 1).toString().padStart(2, '0');
+    const day = dateValue.getDate().toString().padStart(2, '0');
+    
+    // Format ke YYYY-MM-DD
+    const result = `${year}-${month}-${day}`;
+    console.log("fixTimezone Result:", result);
+    return result;
+  } catch (error) {
+    console.error("Error in fixTimezone:", error);
+    // Fallback ke hari ini jika ada error
+    const today = new Date();
+    return `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+  }
 }
