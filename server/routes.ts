@@ -1058,8 +1058,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Transaction not found" });
       }
       
+      // Hitung total transaksi dan jumlah yang sudah dibayar
+      const totalAmount = parseFloat(transaction.totalAmount);
+      const paidAmount = parseFloat(transaction.paidAmount);
+      
       // Calculate remaining debt
-      const remainingDebt = parseFloat(transaction.creditAmount) - parseFloat(transaction.paidAmount);
+      const remainingDebt = totalAmount - paidAmount;
       if (remainingDebt <= 0) {
         return res.status(400).json({ message: "Transaction has no remaining debt" });
       }
@@ -1079,10 +1083,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Update transaction's paid amount
-      let newPaidAmount = parseFloat(transaction.paidAmount) + paymentAmount;
+      let newPaidAmount = paidAmount + paymentAmount;
       
-      // If new paid amount exceeds or equals credit amount, mark as fully paid
-      let isPaid = newPaidAmount >= parseFloat(transaction.creditAmount);
+      // If new paid amount exceeds or equals total amount, mark as fully paid
+      let isPaid = newPaidAmount >= totalAmount;
       
       // Update the transaction
       const updatedTransaction = await storage.updateTransaction(transactionId, {
@@ -1090,11 +1094,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPaid
       });
       
+      // Log payment information
+      console.log(`Debt payment processed - TransactionID: ${transactionId}, Amount: ${paymentAmount}, New status: ${isPaid ? 'Paid' : 'Unpaid'}`);
+      
       return res.status(201).json({
         success: true,
         payment,
         transaction: updatedTransaction,
-        remainingDebt: parseFloat(transaction.creditAmount) - newPaidAmount
+        remainingDebt: remainingDebt - paymentAmount
       });
     } catch (error) {
       console.error("Error processing debt payment:", error);

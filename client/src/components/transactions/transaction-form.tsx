@@ -378,7 +378,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
           console.error("Error during debt payment:", error);
           toast({
             title: "Gagal membayar utang",
-            description: error.message || "Terjadi kesalahan saat membayar utang",
+            description: error instanceof Error ? error.message : "Terjadi kesalahan saat membayar utang",
             variant: "destructive",
           });
           return null;
