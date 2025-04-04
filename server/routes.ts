@@ -16,6 +16,7 @@ import {
   insertMedicalHistorySchema,
   User
 } from "@shared/schema";
+import { handleDateTest } from "./test-route";
 import * as schema from "../shared/schema";
 import crypto from "crypto";
 import { setupAuth } from "./auth";
@@ -1969,12 +1970,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           // Jika body.date adalah string ISO format (dari Date.toISOString())
           if (typeof req.body.date === 'string' && req.body.date.includes('T')) {
-            // Gunakan string parsing untuk mengekstrak tahun, bulan, dan hari
+            // Cek apakah string memiliki format 'yyyy-MM-ddTHH:mm:ss.sssZ'
             const dateMatch = req.body.date.match(/^(\d{4})-(\d{2})-(\d{2})/);
             if (dateMatch) {
               // Index 1,2,3 adalah group captures dari regex matching
               const [_, year, month, day] = dateMatch.map(Number);
-              slotDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+              // Buat Date dengan waktu 00:00:00 (awal hari)
+              slotDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+              // Reset ke local time zone untuk memastikan tanggal yang benar
+              slotDate = new Date(slotDate.getUTCFullYear(), slotDate.getUTCMonth(), slotDate.getUTCDate());
               console.log(`Tanggal ISO string diparsing: ${req.body.date} -> ${slotDate.toISOString()}`);
             } else {
               throw new Error(`Cannot parse date: ${req.body.date}`);
@@ -2052,7 +2056,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const dateMatch = req.body.date.match(/^(\d{4})-(\d{2})-(\d{2})/);
             if (dateMatch) {
               const [_, year, month, day] = dateMatch.map(Number);
-              slotDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+              // Buat Date dengan waktu 00:00:00 (awal hari)
+              slotDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+              // Reset ke local time zone untuk memastikan tanggal yang benar
+              slotDate = new Date(slotDate.getUTCFullYear(), slotDate.getUTCMonth(), slotDate.getUTCDate());
               console.log(`UPDATE: Tanggal ISO diparsing: ${req.body.date} -> ${slotDate.toISOString()}`);
             } else {
               throw new Error(`Cannot parse date: ${req.body.date}`);
@@ -2588,6 +2595,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint test untuk pengujian penanganan tanggal
+  app.post("/api/test/date-handler", handleDateTest);
+  
   // Endpoint untuk memperbaiki ketidakkonsistenan tanggal appointment
   app.post("/api/resync-appointments", async (req: Request, res: Response) => {
     try {

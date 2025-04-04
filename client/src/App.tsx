@@ -15,6 +15,7 @@ import Register from "@/pages/register";
 import IntegratedManagement from "@/pages/integrated-management";
 import Login from "@/pages/login";
 import BackupRestore from "@/pages/backup-restore";
+import DateTest from "@/pages/date-test";
 import Layout from "@/components/layout/layout";
 import { AuthProvider } from "@/lib/auth";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -34,6 +35,7 @@ function Router() {
       <ProtectedRoute path="/settings" component={Settings} />
       <ProtectedRoute path="/pendaftaran" component={IntegratedManagement} />
       <ProtectedRoute path="/backup-restore" component={BackupRestore} />
+      <ProtectedRoute path="/date-test" component={DateTest} />
       <Route path="/login" component={Login} />
       <Route path="/daftar" component={Register} />
       <Route path="/register" component={Register} />
