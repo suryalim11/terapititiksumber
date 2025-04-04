@@ -506,7 +506,7 @@ export default function Transactions() {
                       </TableCell>
                       <TableCell className="text-red-500">
                         {transaction.discount && parseFloat(transaction.discount.toString()) > 0 
-                          ? `- ${formatPrice(transaction.discount.toString())}` 
+                          ? formatPrice(transaction.discount.toString())
                           : '-'}
                       </TableCell>
                       <TableCell>{formatPrice(transaction.totalAmount.toString())}</TableCell>

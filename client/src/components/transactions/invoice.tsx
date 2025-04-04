@@ -215,7 +215,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Tambahkan diskon jika ada
         if (data.discount && parseFloat(data.discount.toString()) > 0) {
           doc.text("Diskon:", 140, y + 10, { align: 'right' });
-          doc.text(`-${formatPrice(data.discount.toString())}`, 195, y + 10, { align: 'right' });
+          doc.text(`${formatPrice(data.discount.toString())}`, 195, y + 10, { align: 'right' });
           y += 7;
         }
         
@@ -358,7 +358,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Tambahkan informasi subtotal dan diskon jika tersedia
         if (data.subtotal && data.discount && data.discount > 0) {
           message += `\nSubtotal: ${formatPrice(data.subtotal.toString())}`;
-          message += `\nDiskon: -${formatPrice(data.discount.toString())}`;
+          message += `\nDiskon: ${formatPrice(data.discount.toString())}`;
         }
         
         // Gunakan nilai totalAmount dari transaksi
@@ -521,7 +521,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                     <td colSpan={2}></td>
                     <td className="px-4 py-2 text-right text-red-500">Diskon:</td>
                     <td className="px-4 py-2 text-right text-red-500">
-                      -{formatPrice(data.discount.toString())}
+                      {formatPrice(data.discount.toString())}
                     </td>
                   </tr>
                 )}
@@ -550,7 +550,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               {data.discount && parseFloat(data.discount.toString()) > 0 && (
                 <div className="flex justify-between text-sm mb-2 text-red-500">
                   <span className="font-medium">Diskon</span>
-                  <span>- {formatPrice(data.discount.toString())}</span>
+                  <span>{formatPrice(data.discount.toString())}</span>
                 </div>
               )}
               
