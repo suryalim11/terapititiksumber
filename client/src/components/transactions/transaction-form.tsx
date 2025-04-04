@@ -297,8 +297,17 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const handleDebtSelect = (transaction: any) => {
     setSelectedDebtTransaction(transaction);
     
-    // Hitung sisa utang
-    const remainingDebt = parseFloat(transaction.creditAmount) - parseFloat(transaction.paidAmount);
+    // Hitung sisa utang dengan benar (total amount - paid amount)
+    const totalAmount = parseFloat(transaction.totalAmount);
+    const paidAmount = parseFloat(transaction.paidAmount);
+    const remainingDebt = totalAmount - paidAmount;
+    
+    console.log("Utang yang tersisa:", {
+      totalAmount,
+      paidAmount,
+      remainingDebt
+    });
+    
     setPaymentAmount(remainingDebt.toString());
     
     toast({
@@ -1644,7 +1653,20 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                       {unpaidTransactions
                         .filter((tx: any) => parseInt(tx.patientId) === parseInt(form.getValues().patientId))
                         .map((transaction: any) => {
-                          const remainingDebt = parseFloat(transaction.creditAmount) - parseFloat(transaction.paidAmount);
+                          // Hitung sisa utang yang benar
+                          // creditAmount adalah jumlah total kredit, paidAmount adalah yang sudah dibayar
+                          const totalTransactionAmount = parseFloat(transaction.totalAmount);
+                          const paidAmount = parseFloat(transaction.paidAmount);
+                          const remainingDebt = totalTransactionAmount - paidAmount;
+                          
+                          console.log("Detail utang transaksi:", {
+                            id: transaction.id,
+                            transactionId: transaction.transactionId, 
+                            totalAmount: totalTransactionAmount,
+                            paidAmount: paidAmount,
+                            remainingDebt: remainingDebt
+                          });
+                          
                           return (
                             <div 
                               key={transaction.id}
@@ -1693,7 +1715,9 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              const remainingDebt = parseFloat(selectedDebtTransaction.creditAmount) - parseFloat(selectedDebtTransaction.paidAmount);
+                              const totalAmount = parseFloat(selectedDebtTransaction.totalAmount);
+                              const paidAmount = parseFloat(selectedDebtTransaction.paidAmount);
+                              const remainingDebt = totalAmount - paidAmount;
                               setPaymentAmount(remainingDebt.toString());
                             }}
                           >

@@ -1,0 +1,1681 @@
+{
+  "users": [
+    {
+      "id": 2,
+      "username": "suryalim11",
+      "password": "asdfghjkl",
+      "name": "Surya Lim",
+      "role": "admin",
+      "createdAt": "2025-04-02T01:34:24.953Z"
+    },
+    {
+      "id": 1,
+      "username": "aguslim",
+      "password": "Jahetuano1",
+      "name": "Agus Lim",
+      "role": "admin",
+      "createdAt": "2025-04-02T01:34:24.874Z"
+    }
+  ],
+  "patients": [
+    {
+      "id": 30,
+      "patientId": "P-2025-030",
+      "name": "Erison",
+      "phoneNumber": "081364466823",
+      "email": "erisonbpbatam@gmail.com",
+      "birthDate": "1973-12-25",
+      "gender": "Laki-laki",
+      "address": "Ruko pandawa asri blok i4 15",
+      "complaints": "Nyeri belikat kiri sampai k lengan",
+      "createdAt": "2025-04-03T04:48:46.450Z",
+      "therapySlotId": 175
+    },
+    {
+      "id": 33,
+      "patientId": "P-2025-031",
+      "name": "Novaleo Putra",
+      "phoneNumber": "082373425085",
+      "email": null,
+      "birthDate": "1989-11-26",
+      "gender": "Laki-laki",
+      "address": "perumahan batam nirwana",
+      "complaints": "sakit telapak kaki kiri kanan dan asam lambung",
+      "createdAt": "2025-04-03T07:48:30.532Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 29,
+      "patientId": "P-2025-001",
+      "name": "Lia Apianti",
+      "phoneNumber": "08117752313",
+      "email": "liaapianti2018@gmail.com",
+      "birthDate": "1972-10-18",
+      "gender": "Perempuan",
+      "address": "Ruko pandawa asri blok i4 15 batuaji",
+      "complaints": "Nyeri tulang ekor sama tumit kaki kiri",
+      "createdAt": "2025-04-03T04:41:44.563Z",
+      "therapySlotId": 175
+    },
+    {
+      "id": 34,
+      "patientId": "P-2025-034",
+      "name": "Sahat Sitorus",
+      "phoneNumber": "082213815646",
+      "email": null,
+      "birthDate": "1987-12-12",
+      "gender": "Laki-laki",
+      "address": "Botania Cendana Tahap 1 Batam Centre",
+      "complaints": "Tangan kiri dan Kaki kiri kebas",
+      "createdAt": "2025-04-03T08:09:13.355Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 36,
+      "patientId": "P-2025-035",
+      "name": "M.Rafik",
+      "phoneNumber": "087895724340",
+      "email": null,
+      "birthDate": "1984-04-01",
+      "gender": "Laki-laki",
+      "address": "",
+      "complaints": "---",
+      "createdAt": "2025-04-03T08:41:14.157Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 39,
+      "patientId": "P-2025-037",
+      "name": "Nurbaya",
+      "phoneNumber": "081277113283",
+      "email": null,
+      "birthDate": "1974-08-17",
+      "gender": "Perempuan",
+      "address": "ruko legenda malaka ",
+      "complaints": "kebas tangan,nyeri telapak kaki",
+      "createdAt": "2025-04-03T09:47:09.889Z",
+      "therapySlotId": 172
+    },
+    {
+      "id": 40,
+      "patientId": "P-2025-040",
+      "name": "Syarivudin",
+      "phoneNumber": "08117777407",
+      "email": null,
+      "birthDate": "1979-09-22",
+      "gender": "Laki-laki",
+      "address": "Komp siriaon Regency blok H 12B Tiban Indah Sekupang",
+      "complaints": "Sakit pinggang bawah kiri dan paha kiri terasa agak kebas",
+      "createdAt": "2025-04-03T10:20:19.088Z",
+      "therapySlotId": 175
+    },
+    {
+      "id": 42,
+      "patientId": "P-2025-042",
+      "name": "Cunita",
+      "phoneNumber": "0895343965254",
+      "email": "aderoybatamade@gmail.com",
+      "birthDate": "1966-07-10",
+      "gender": "Perempuan",
+      "address": "Taman Kartini raya blok j 12 b",
+      "complaints": "Sakit pada pinggang menjalar ke kaki sebelah kirim",
+      "createdAt": "2025-04-03T10:51:06.122Z",
+      "therapySlotId": 175
+    },
+    {
+      "id": 44,
+      "patientId": "P-2025-043",
+      "name": "AHMAD DANIAL SAPUTRA",
+      "phoneNumber": "085714119345",
+      "email": null,
+      "birthDate": "1988-09-24",
+      "gender": "Laki-laki",
+      "address": "Bukit sentosa blok j no 6",
+      "complaints": "Sakit badan semua susah tidur\n",
+      "createdAt": "2025-04-03T12:09:41.389Z",
+      "therapySlotId": 173
+    },
+    {
+      "id": 47,
+      "patientId": "P-2025-045",
+      "name": "Sumarni",
+      "phoneNumber": "081364561992",
+      "email": null,
+      "birthDate": "1965-12-31",
+      "gender": "Perempuan",
+      "address": "Ruli Eden park batam center",
+      "complaints": "migran",
+      "createdAt": "2025-04-03T13:55:12.765Z",
+      "therapySlotId": 174
+    },
+    {
+      "id": 48,
+      "patientId": "P-2025-048",
+      "name": "Agus lim",
+      "phoneNumber": "08127003608",
+      "email": "aguslim_bdi@yahoo.com",
+      "birthDate": "1969-01-20",
+      "gender": "Laki-laki",
+      "address": "Sakit pinggang ",
+      "complaints": "Sakit pinggang ",
+      "createdAt": "2025-04-03T21:46:58.482Z",
+      "therapySlotId": 206
+    },
+    {
+      "id": 49,
+      "patientId": "P-2025-049",
+      "name": "Sabam Gultom ",
+      "phoneNumber": "081364286443",
+      "email": null,
+      "birthDate": "1978-02-12",
+      "gender": "Laki-laki",
+      "address": "Punggur",
+      "complaints": "kebas betis ketarik sampe kebokong sampai ke tangan sebelah kanan. tidur kebangun terus waktu malam. hasil rontagen tulang belakang ada penyempitanb",
+      "createdAt": "2025-04-04T03:03:53.543Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 50,
+      "patientId": "P-2025-050",
+      "name": "Farida",
+      "phoneNumber": "082181394876",
+      "email": null,
+      "birthDate": "1970-09-15",
+      "gender": "Perempuan",
+      "address": "Sagulung Baru Batu Aji",
+      "complaints": "lutu, mata, kepala pinggang, vertio, lambung, jantung",
+      "createdAt": "2025-04-04T03:12:34.499Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 51,
+      "patientId": "P-2025-051",
+      "name": "Evi",
+      "phoneNumber": "081270701254",
+      "email": null,
+      "birthDate": "1976-02-11",
+      "gender": "Perempuan",
+      "address": "Duta Plamo",
+      "complaints": "maag, asam urat. kalau jalan sakit",
+      "createdAt": "2025-04-04T03:34:18.884Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 53,
+      "patientId": "P-2025-052",
+      "name": "Feriska ",
+      "phoneNumber": "60167400599",
+      "email": null,
+      "birthDate": "1972-02-27",
+      "gender": "Perempuan",
+      "address": "bengkong permai blok F no 11",
+      "complaints": "syaraf terjepit jantung asma gerd",
+      "createdAt": "2025-04-04T04:21:03.620Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 54,
+      "patientId": "P-2025-054",
+      "name": "Rensianna",
+      "phoneNumber": "08127791656",
+      "email": null,
+      "birthDate": "1971-02-15",
+      "gender": "Perempuan",
+      "address": "Batu Aji Buana view",
+      "complaints": "kakinya sakit",
+      "createdAt": "2025-04-04T04:35:21.174Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 55,
+      "patientId": "P-2025-055",
+      "name": "Morris Mart Dapor",
+      "phoneNumber": "081277193840",
+      "email": null,
+      "birthDate": "1970-03-15",
+      "gender": "Laki-laki",
+      "address": "buana View Batu Aji",
+      "complaints": "Sakit Pinggang",
+      "createdAt": "2025-04-04T04:36:28.067Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 56,
+      "patientId": "P-2025-056",
+      "name": "Hendriyanto",
+      "phoneNumber": "081261591029",
+      "email": null,
+      "birthDate": "1968-04-18",
+      "gender": "Laki-laki",
+      "address": "Batu Aji Marina",
+      "complaints": "Freezing Shoulder dan sesak nafas karena asam lambung",
+      "createdAt": "2025-04-04T04:49:51.541Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 57,
+      "patientId": "P-2025-057",
+      "name": "Handayani",
+      "phoneNumber": "081262146981",
+      "email": null,
+      "birthDate": "1971-03-05",
+      "gender": "Perempuan",
+      "address": "Marina",
+      "complaints": "tangan kanan kaku tidak bisa naik",
+      "createdAt": "2025-04-04T04:51:27.125Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 58,
+      "patientId": "P-2025-058",
+      "name": "Welly",
+      "phoneNumber": "081277883336",
+      "email": null,
+      "birthDate": "1987-03-08",
+      "gender": "Laki-laki",
+      "address": "Batu Aji",
+      "complaints": "Lemah Syawat (Ejakulasi Dini)",
+      "createdAt": "2025-04-04T05:27:34.440Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 59,
+      "patientId": "P-2025-059",
+      "name": "Siok Cen",
+      "phoneNumber": "081279403392",
+      "email": null,
+      "birthDate": "1943-04-03",
+      "gender": "Perempuan",
+      "address": "Tiban Cental Raya",
+      "complaints": "tangan kiri sakit gabisa angkat tinggi",
+      "createdAt": "2025-04-04T06:04:07.400Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 60,
+      "patientId": "P-2025-060",
+      "name": "Cai Son",
+      "phoneNumber": "08127747779",
+      "email": null,
+      "birthDate": "1952-04-03",
+      "gender": "Laki-laki",
+      "address": "nagoya",
+      "complaints": "sakit pinggang, kaki gakuat, gabisa jalan tiba2",
+      "createdAt": "2025-04-04T06:59:28.724Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 61,
+      "patientId": "P-2025-061",
+      "name": "Anriati",
+      "phoneNumber": "082177679339",
+      "email": null,
+      "birthDate": "1977-04-21",
+      "gender": "Perempuan",
+      "address": "Cipta Land",
+      "complaints": "punggung sebelah kiri sakit. dan asam lambung tinggi. suka kambuh",
+      "createdAt": "2025-04-04T09:09:20.674Z",
+      "therapySlotId": null
+    },
+    {
+      "id": 62,
+      "patientId": "P-2025-062",
+      "name": "Surya Darma Gultom",
+      "phoneNumber": "085374294316",
+      "email": null,
+      "birthDate": "1986-06-30",
+      "gender": "Laki-laki",
+      "address": "perumahan cipta village,blok halimun,no 39\n",
+      "complaints": "1. kaki nyeri perih,kebas dari pantat,paha,betis k telapak kaki\n2.buang air kecil & buang air besar belum bisa respon setelah pasca oprasi d bagian tulang bokong pada tgl 28 februari 2025.\n",
+      "createdAt": "2025-04-04T12:23:51.995Z",
+      "therapySlotId": 177
+    }
+  ],
+  "products": [
+    {
+      "id": 19,
+      "name": "Bawang Hitam (1 pack)",
+      "price": "200000.00",
+      "stock": 99,
+      "description": "isi 9 bongkol. Fermentasi bawang putih baik untuk koresterol dan melawan kanker. ",
+      "createdAt": "2025-04-03T04:06:07.568Z"
+    },
+    {
+      "id": 17,
+      "name": "Gingseng Bubuk",
+      "price": "2000000.00",
+      "stock": 100,
+      "description": "Dragon Gingseng 150 Gram",
+      "createdAt": "2025-04-02T10:19:51.319Z"
+    },
+    {
+      "id": 20,
+      "name": "Jahe Iris",
+      "price": "100000.00",
+      "stock": 100,
+      "description": "Jahe Iris Kering berat 100 gram",
+      "createdAt": "2025-04-03T05:07:06.189Z"
+    },
+    {
+      "id": 23,
+      "name": "Alat terapi (DP)",
+      "price": "500000.00",
+      "stock": 100,
+      "description": null,
+      "createdAt": "2025-04-04T04:24:04.617Z"
+    },
+    {
+      "id": 21,
+      "name": "Bantal Panas",
+      "price": "800000.00",
+      "stock": 100,
+      "description": "bantal panas kecil",
+      "createdAt": "2025-04-03T08:11:04.707Z"
+    },
+    {
+      "id": 18,
+      "name": "Kasur Panas (kepala)",
+      "price": "1800000.00",
+      "stock": 99,
+      "description": "Perawatan untuk pemulihan lebih cepat",
+      "createdAt": "2025-04-03T04:03:33.626Z"
+    },
+    {
+      "id": 14,
+      "name": "Gingseng Pil",
+      "price": "220000.00",
+      "stock": 90,
+      "description": "1 papan isi 10 butir",
+      "createdAt": "2025-04-02T10:19:51.115Z"
+    },
+    {
+      "id": 15,
+      "name": "Jahe Tua Bubuk",
+      "price": "100000.00",
+      "stock": 88,
+      "description": "berat 100 Gram",
+      "createdAt": "2025-04-02T10:19:51.183Z"
+    },
+    {
+      "id": 22,
+      "name": "Bawang Hitam (Satuan)",
+      "price": "20000.00",
+      "stock": 98,
+      "description": null,
+      "createdAt": "2025-04-03T08:42:26.478Z"
+    }
+  ],
+  "packages": [
+    {
+      "id": 7,
+      "name": "Sesi Tunggal",
+      "sessions": 1,
+      "price": "150000.00",
+      "description": "Paket terapi untuk satu sesi"
+    },
+    {
+      "id": 8,
+      "name": "Paket 12 Sesi",
+      "sessions": 12,
+      "price": "1500000.00",
+      "description": "Paket terapi untuk 12 sesi dengan harga spesial"
+    },
+    {
+      "id": 11,
+      "name": "Terapi untuk 2 orang",
+      "sessions": 1,
+      "price": "300000.00",
+      "description": null
+    },
+    {
+      "id": 13,
+      "name": "paket gratis",
+      "sessions": 1,
+      "price": "0.00",
+      "description": "gratis"
+    }
+  ],
+  "transactions": [
+    {
+      "id": 67,
+      "transactionId": "T-20250403-077",
+      "patientId": 30,
+      "totalAmount": "470000.00",
+      "discount": "0.00",
+      "subtotal": "470000.00",
+      "paymentMethod": "qris",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        },
+        {
+          "id": 14,
+          "type": "product",
+          "quantity": 1,
+          "price": "220000.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-03T12:56:44.699Z"
+    },
+    {
+      "id": 96,
+      "transactionId": "T-20250404-448",
+      "patientId": 60,
+      "totalAmount": "150000.00",
+      "discount": "0.00",
+      "subtotal": "0.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-04T16:25:13.701Z"
+    },
+    {
+      "id": 98,
+      "transactionId": "T-20250404-531",
+      "patientId": 47,
+      "totalAmount": "150000.00",
+      "discount": "0.00",
+      "subtotal": "150000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-04T16:44:20.050Z"
+    },
+    {
+      "id": 100,
+      "transactionId": "T-20250404-815",
+      "patientId": 58,
+      "totalAmount": "650000.00",
+      "discount": "20000.00",
+      "subtotal": "670000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        },
+        {
+          "id": 14,
+          "type": "product",
+          "quantity": 1,
+          "price": "220000.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        },
+        {
+          "id": 19,
+          "type": "product",
+          "quantity": 1,
+          "price": "200000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-04T16:48:56.241Z"
+    },
+    {
+      "id": 102,
+      "transactionId": "T-20250404-842",
+      "patientId": 61,
+      "totalAmount": "250000.00",
+      "discount": "0.00",
+      "subtotal": "0.00",
+      "paymentMethod": "qris",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-04T17:36:42.204Z"
+    },
+    {
+      "id": 103,
+      "transactionId": "T-20250404-024",
+      "patientId": 53,
+      "totalAmount": "2270000.00",
+      "discount": "0.00",
+      "subtotal": "2270000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        },
+        {
+          "id": 14,
+          "type": "product",
+          "quantity": 1,
+          "price": "220000.00"
+        },
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        },
+        {
+          "id": 18,
+          "type": "product",
+          "quantity": 1,
+          "price": "1800000.00"
+        }
+      ],
+      "creditAmount": "1300000.00",
+      "isPaid": false,
+      "paidAmount": "970000.00",
+      "createdAt": "2025-04-04T18:22:07.788Z"
+    },
+    {
+      "id": 83,
+      "transactionId": "T-20250404-750",
+      "patientId": 59,
+      "totalAmount": "150000.00",
+      "discount": "0.00",
+      "subtotal": "150000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-04T13:48:25.708Z"
+    },
+    {
+      "id": 82,
+      "transactionId": "T-20250404-213",
+      "patientId": 57,
+      "totalAmount": "320000.00",
+      "discount": "0.00",
+      "subtotal": "320000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 13,
+          "type": "package",
+          "quantity": 1,
+          "price": "0.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        },
+        {
+          "id": 14,
+          "type": "product",
+          "quantity": 1,
+          "price": "220000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-04T13:14:04.900Z"
+    },
+    {
+      "id": 81,
+      "transactionId": "T-20250404-777",
+      "patientId": 56,
+      "totalAmount": "470000.00",
+      "discount": "0.00",
+      "subtotal": "470000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 14,
+          "type": "product",
+          "quantity": 1,
+          "price": "220000.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        },
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-04T13:11:18.219Z"
+    },
+    {
+      "id": 80,
+      "transactionId": "T-20250404-804",
+      "patientId": 51,
+      "totalAmount": "470000.00",
+      "discount": "0.00",
+      "subtotal": "470000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        },
+        {
+          "id": 14,
+          "type": "product",
+          "quantity": 1,
+          "price": "220000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-04T12:55:06.544Z"
+    },
+    {
+      "id": 79,
+      "transactionId": "T-20250404-975",
+      "patientId": 50,
+      "totalAmount": "150000.00",
+      "discount": "0.00",
+      "subtotal": "150000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-04T11:33:07.194Z"
+    },
+    {
+      "id": 78,
+      "transactionId": "T-20250404-341",
+      "patientId": 49,
+      "totalAmount": "250000.00",
+      "discount": "0.00",
+      "subtotal": "250000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-04T11:32:06.535Z"
+    },
+    {
+      "id": 76,
+      "transactionId": "T-20250404-247",
+      "patientId": 39,
+      "totalAmount": "470000.00",
+      "discount": "0.00",
+      "subtotal": "470000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 14,
+          "type": "product",
+          "quantity": 1,
+          "price": "220000.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        },
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-04T11:22:10.508Z"
+    },
+    {
+      "id": 75,
+      "transactionId": "T-20250403-946",
+      "patientId": 42,
+      "totalAmount": "150000.00",
+      "discount": "0.00",
+      "subtotal": "150000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-03T18:02:01.025Z"
+    },
+    {
+      "id": 74,
+      "transactionId": "T-20250403-231",
+      "patientId": 36,
+      "totalAmount": "660000.00",
+      "discount": "0.00",
+      "subtotal": "660000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 11,
+          "type": "package",
+          "quantity": 1,
+          "price": "300000.00"
+        },
+        {
+          "id": 22,
+          "type": "product",
+          "quantity": 2,
+          "price": "20000.00"
+        },
+        {
+          "id": 14,
+          "type": "product",
+          "quantity": 1,
+          "price": "220000.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-03T16:05:32.592Z"
+    },
+    {
+      "id": 69,
+      "transactionId": "T-20250403-404",
+      "patientId": 34,
+      "totalAmount": "470000.00",
+      "discount": "0.00",
+      "subtotal": "470000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        },
+        {
+          "id": 14,
+          "type": "product",
+          "quantity": 1,
+          "price": "220000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-03T15:21:36.729Z"
+    },
+    {
+      "id": 68,
+      "transactionId": "T-20250403-073",
+      "patientId": 33,
+      "totalAmount": "470000.00",
+      "discount": "0.00",
+      "subtotal": "470000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        },
+        {
+          "id": 14,
+          "type": "product",
+          "quantity": 1,
+          "price": "220000.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        }
+      ],
+      "creditAmount": "0.00",
+      "isPaid": true,
+      "paidAmount": "0.00",
+      "createdAt": "2025-04-03T14:49:47.755Z"
+    }
+  ],
+  "sessions": [
+    {
+      "id": 59,
+      "patientId": 30,
+      "transactionId": 67,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-03T12:56:44.943Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 60,
+      "patientId": 33,
+      "transactionId": 68,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-03T14:49:47.945Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 61,
+      "patientId": 34,
+      "transactionId": 69,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-03T15:21:36.933Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 66,
+      "patientId": 36,
+      "transactionId": 74,
+      "packageId": 11,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-03T16:05:32.716Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 67,
+      "patientId": 42,
+      "transactionId": 75,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-03T18:02:01.155Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 68,
+      "patientId": 39,
+      "transactionId": 76,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T11:22:10.766Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 70,
+      "patientId": 49,
+      "transactionId": 78,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T11:32:06.661Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 71,
+      "patientId": 50,
+      "transactionId": 79,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T11:33:07.319Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 72,
+      "patientId": 51,
+      "transactionId": 80,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T12:55:06.705Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 73,
+      "patientId": 56,
+      "transactionId": 81,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T13:11:18.505Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 74,
+      "patientId": 57,
+      "transactionId": 82,
+      "packageId": 13,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T13:14:05.027Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 75,
+      "patientId": 59,
+      "transactionId": 83,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T13:48:25.857Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 87,
+      "patientId": 60,
+      "transactionId": 96,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T16:25:13.826Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 89,
+      "patientId": 47,
+      "transactionId": 98,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T16:44:20.335Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 91,
+      "patientId": 58,
+      "transactionId": 100,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T16:48:56.525Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 93,
+      "patientId": 61,
+      "transactionId": 102,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T17:36:42.321Z",
+      "lastSessionDate": null
+    },
+    {
+      "id": 94,
+      "patientId": 53,
+      "transactionId": 103,
+      "packageId": 7,
+      "totalSessions": 1,
+      "sessionsUsed": 0,
+      "status": "active",
+      "startDate": "2025-04-04T18:22:08.372Z",
+      "lastSessionDate": null
+    }
+  ],
+  "therapySlots": [
+    {
+      "id": 187,
+      "date": "2025-04-10T03:07:41.562Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:42.854Z"
+    },
+    {
+      "id": 285,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:45:16.358Z"
+    },
+    {
+      "id": 203,
+      "date": "2025-04-16T03:07:41.562Z",
+      "timeSlot": "13:00-15:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": false,
+      "createdAt": "2025-04-03T03:07:43.927Z"
+    },
+    {
+      "id": 294,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "14:00-15:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:45:16.390Z"
+    },
+    {
+      "id": 295,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "15:30-17:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:45:16.392Z"
+    },
+    {
+      "id": 323,
+      "date": "2025-04-05T00:00:00.000Z",
+      "timeSlot": "10:00-11:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-04T04:06:38.091Z"
+    },
+    {
+      "id": 327,
+      "date": "2025-04-09T00:00:00.000Z",
+      "timeSlot": "13:00-15:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-04T04:16:00.580Z"
+    },
+    {
+      "id": 326,
+      "date": "2025-04-10T00:00:00.000Z",
+      "timeSlot": "15:00-17:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-04T04:15:03.365Z"
+    },
+    {
+      "id": 329,
+      "date": "2025-04-10T17:00:00.000Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-04T04:30:51.349Z"
+    },
+    {
+      "id": 175,
+      "date": "2025-04-05T03:07:41.562Z",
+      "timeSlot": "10:00-12:00",
+      "maxQuota": 4,
+      "currentCount": 4,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:42.044Z"
+    },
+    {
+      "id": 336,
+      "date": "2025-04-06T00:00:00.000Z",
+      "timeSlot": "15:00-19:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-04T06:53:09.248Z"
+    },
+    {
+      "id": 173,
+      "date": "2025-04-04T03:07:41.562Z",
+      "timeSlot": "13:00-15:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:41.881Z"
+    },
+    {
+      "id": 337,
+      "date": "2025-04-09T00:00:00.000Z",
+      "timeSlot": "10:00-12:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-04T12:18:30.868Z"
+    },
+    {
+      "id": 169,
+      "date": "2025-04-03T03:07:41.562Z",
+      "timeSlot": "10:00-12:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": false,
+      "createdAt": "2025-04-03T03:07:41.599Z"
+    },
+    {
+      "id": 171,
+      "date": "2025-04-03T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": false,
+      "createdAt": "2025-04-03T03:07:41.746Z"
+    },
+    {
+      "id": 207,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "15:30-17:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:41.081Z"
+    },
+    {
+      "id": 177,
+      "date": "2025-04-05T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "maxQuota": 3,
+      "currentCount": 2,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:42.178Z"
+    },
+    {
+      "id": 214,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "14:00-15:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:41.119Z"
+    },
+    {
+      "id": 179,
+      "date": "2025-04-07T03:07:41.562Z",
+      "timeSlot": "13:00-15:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:42.314Z"
+    },
+    {
+      "id": 183,
+      "date": "2025-04-08T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:42.582Z"
+    },
+    {
+      "id": 216,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:41.125Z"
+    },
+    {
+      "id": 220,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "12:30-14:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:41.145Z"
+    },
+    {
+      "id": 231,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "12:30-14:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:43.891Z"
+    },
+    {
+      "id": 235,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "15:30-17:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:43.900Z"
+    },
+    {
+      "id": 176,
+      "date": "2025-04-05T03:07:41.562Z",
+      "timeSlot": "13:00-15:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:42.111Z"
+    },
+    {
+      "id": 180,
+      "date": "2025-04-07T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:42.381Z"
+    },
+    {
+      "id": 186,
+      "date": "2025-04-09T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:42.785Z"
+    },
+    {
+      "id": 202,
+      "date": "2025-04-16T03:07:41.562Z",
+      "timeSlot": "10:00-12:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": false,
+      "createdAt": "2025-04-03T03:07:43.859Z"
+    },
+    {
+      "id": 204,
+      "date": "2025-04-16T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": false,
+      "createdAt": "2025-04-03T03:07:43.994Z"
+    },
+    {
+      "id": 182,
+      "date": "2025-04-08T03:07:41.562Z",
+      "timeSlot": "13:00-15:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:42.515Z"
+    },
+    {
+      "id": 206,
+      "date": "2025-04-05T17:00:00.000Z",
+      "timeSlot": "15:00-19:00",
+      "maxQuota": 6,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T10:31:07.779Z"
+    },
+    {
+      "id": 316,
+      "date": "2025-04-07T00:00:00.000Z",
+      "timeSlot": "10:00-12:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-04T03:19:56.405Z"
+    },
+    {
+      "id": 170,
+      "date": "2025-04-03T03:07:41.562Z",
+      "timeSlot": "13:00-15:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": false,
+      "createdAt": "2025-04-03T03:07:41.678Z"
+    },
+    {
+      "id": 330,
+      "date": "2025-04-11T00:00:00.000Z",
+      "timeSlot": "13:00-15:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-04T04:30:59.742Z"
+    },
+    {
+      "id": 335,
+      "date": "2025-04-08T00:00:00.000Z",
+      "timeSlot": "10:00-12:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-04T05:00:06.261Z"
+    },
+    {
+      "id": 172,
+      "date": "2025-04-04T03:07:41.562Z",
+      "timeSlot": "10:00-12:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:41.813Z"
+    },
+    {
+      "id": 174,
+      "date": "2025-04-04T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "maxQuota": 3,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:41.948Z"
+    },
+    {
+      "id": 233,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:43.895Z"
+    },
+    {
+      "id": 234,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "14:00-15:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:43.898Z"
+    },
+    {
+      "id": 255,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "15:30-17:00",
+      "maxQuota": 5,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:46.233Z"
+    },
+    {
+      "id": 256,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "12:30-14:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:46.235Z"
+    },
+    {
+      "id": 257,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "10:00-11:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:46.238Z"
+    },
+    {
+      "id": 261,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "14:00-15:30",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:44:46.247Z"
+    },
+    {
+      "id": 288,
+      "date": "2025-04-03T23:44:29.532Z",
+      "timeSlot": "12:30-14:00",
+      "maxQuota": 4,
+      "currentCount": 0,
+      "isActive": true,
+      "createdAt": "2025-04-03T23:45:16.372Z"
+    }
+  ],
+  "appointments": [
+    {
+      "id": 50,
+      "patientId": 48,
+      "sessionId": null,
+      "therapySlotId": 206,
+      "date": "2025-04-05T17:00:00.000Z",
+      "timeSlot": "15:00-19:00",
+      "registrationNumber": "R-20250404-689",
+      "status": "Completed",
+      "notes": "Sakit pinggang "
+    },
+    {
+      "id": 41,
+      "patientId": 39,
+      "sessionId": null,
+      "therapySlotId": 172,
+      "date": "2025-04-04T03:07:41.562Z",
+      "timeSlot": "10:00-12:00",
+      "registrationNumber": "R-20250403-916",
+      "status": "Completed",
+      "notes": "kebas tangan,nyeri telapak kaki"
+    },
+    {
+      "id": 49,
+      "patientId": 47,
+      "sessionId": null,
+      "therapySlotId": 174,
+      "date": "2025-04-04T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "registrationNumber": "R-20250403-899",
+      "status": "Completed",
+      "notes": "migran"
+    },
+    {
+      "id": 47,
+      "patientId": 44,
+      "sessionId": null,
+      "therapySlotId": 173,
+      "date": "2025-04-04T03:07:41.562Z",
+      "timeSlot": "13:00-15:00",
+      "registrationNumber": "R-20250403-312",
+      "status": "Cancelled",
+      "notes": "Sakit badan semua susah tidur\n"
+    },
+    {
+      "id": 29,
+      "patientId": 29,
+      "sessionId": null,
+      "therapySlotId": 175,
+      "date": "2025-04-03T11:41:44.993Z",
+      "timeSlot": "10:00-12:00",
+      "registrationNumber": "R-20250403-234",
+      "status": "Cancelled",
+      "notes": "Nyeri tulang ekor sama tumit kaki kiri"
+    },
+    {
+      "id": 51,
+      "patientId": 62,
+      "sessionId": null,
+      "therapySlotId": 177,
+      "date": "2025-04-05T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "registrationNumber": "R-20250404-425",
+      "status": "Scheduled",
+      "notes": "1. kaki nyeri perih,kebas dari pantat,paha,betis k telapak kaki\n2.buang air kecil & buang air besar belum bisa respon setelah pasca oprasi d bagian tulang bokong pada tgl 28 februari 2025.\n"
+    },
+    {
+      "id": 44,
+      "patientId": 29,
+      "sessionId": null,
+      "therapySlotId": 169,
+      "date": "2025-04-03T03:07:41.562Z",
+      "timeSlot": "10:00-12:00",
+      "registrationNumber": "R-20250403-667",
+      "status": "Cancelled",
+      "notes": "Pengujian sinkronisasi tanggal"
+    },
+    {
+      "id": 45,
+      "patientId": 29,
+      "sessionId": null,
+      "therapySlotId": 170,
+      "date": "2025-04-03T03:07:41.562Z",
+      "timeSlot": "13:00-15:00",
+      "registrationNumber": "R-20250403-820",
+      "status": "Cancelled",
+      "notes": "Pengujian sinkronisasi tanggal"
+    },
+    {
+      "id": 28,
+      "patientId": 29,
+      "sessionId": null,
+      "therapySlotId": 175,
+      "date": "2025-04-05T03:07:41.562Z",
+      "timeSlot": "10:00-12:00",
+      "registrationNumber": "R-20250403-925",
+      "status": "Scheduled",
+      "notes": "Nyeri tulang ekor sama tumit kaki kiri"
+    },
+    {
+      "id": 30,
+      "patientId": 30,
+      "sessionId": null,
+      "therapySlotId": 175,
+      "date": "2025-04-05T03:07:41.562Z",
+      "timeSlot": "10:00-12:00",
+      "registrationNumber": "R-20250403-760",
+      "status": "Scheduled",
+      "notes": "Nyeri belikat kiri sampai k lengan"
+    },
+    {
+      "id": 42,
+      "patientId": 40,
+      "sessionId": null,
+      "therapySlotId": 175,
+      "date": "2025-04-05T03:07:41.562Z",
+      "timeSlot": "10:00-12:00",
+      "registrationNumber": "R-20250403-806",
+      "status": "Scheduled",
+      "notes": "Sakit pinggang bawah kiri dan paha kiri terasa agak kebas"
+    },
+    {
+      "id": 43,
+      "patientId": 42,
+      "sessionId": null,
+      "therapySlotId": 175,
+      "date": "2025-04-05T03:07:41.562Z",
+      "timeSlot": "10:00-12:00",
+      "registrationNumber": "R-20250403-717",
+      "status": "Scheduled",
+      "notes": "----------"
+    }
+  ],
+  "registrationLinks": [
+    {
+      "id": 8,
+      "code": "TTS-4M4X6M",
+      "expiryTime": "2025-04-09T15:50:16.572Z",
+      "dailyLimit": 100,
+      "currentRegistrations": 28,
+      "createdAt": "2025-04-02T15:50:16.654Z",
+      "isActive": true,
+      "createdBy": 1,
+      "specificDate": null
+    }
+  ]
+}
