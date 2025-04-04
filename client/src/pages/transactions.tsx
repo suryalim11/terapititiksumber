@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { format, addHours } from "date-fns";
+import { format, addHours, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { id } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -232,6 +232,40 @@ export default function Transactions() {
       : <ArrowDown className="h-4 w-4" />;
   };
 
+  // Fungsi untuk memfilter berdasarkan periode
+  const getFilteredByPeriod = (transaction: Transaction) => {
+    try {
+      const now = new Date();
+      const createdAt = new Date(transaction.createdAt);
+      
+      // Fix timezone: mengurangi 7 jam untuk WIB
+      const createdAtWIB = addHours(createdAt, -7);
+      
+      switch (filterStatus) {
+        case 'today':
+          const todayStart = startOfDay(now);
+          const todayEnd = endOfDay(now);
+          return isWithinInterval(createdAtWIB, { start: todayStart, end: todayEnd });
+          
+        case 'week':
+          const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // 1 = Senin
+          const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+          return isWithinInterval(createdAtWIB, { start: weekStart, end: weekEnd });
+          
+        case 'month':
+          const monthStart = startOfMonth(now);
+          const monthEnd = endOfMonth(now);
+          return isWithinInterval(createdAtWIB, { start: monthStart, end: monthEnd });
+          
+        default:
+          return true; // 'all' atau nilai lainnya
+      }
+    } catch (e) {
+      console.error("Error filtering by period:", e);
+      return true; // Default to showing all if error
+    }
+  };
+
   const filteredTransactions = transactions
     ? transactions
         .filter((transaction: Transaction) => {
@@ -245,10 +279,11 @@ export default function Transactions() {
           const patientName = getPatientName(transaction.patientId).toLowerCase();
           const searchLower = searchTerm.toLowerCase();
           
-          return (
-            transactionId.includes(searchLower) ||
-            patientName.includes(searchLower)
-          );
+          const matchesSearch = transactionId.includes(searchLower) ||
+                               patientName.includes(searchLower);
+          
+          // Combine search filter with period filter
+          return matchesSearch && getFilteredByPeriod(transaction);
         })
         .sort((a: Transaction, b: Transaction) => {
           if (!sortConfig) {
