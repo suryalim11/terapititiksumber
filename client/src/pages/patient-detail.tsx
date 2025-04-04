@@ -319,12 +319,13 @@ export default function PatientDetail() {
         method = "PUT";
       }
       
-      const response = await apiRequest(url, {
+      const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
+        credentials: 'include'
       });
       
       if (response.ok) {
@@ -339,23 +340,20 @@ export default function PatientDetail() {
       } else {
         // Tangani respons error dengan lebih baik
         let errorMessage = "Gagal menyimpan riwayat medis";
-        try {
-          // Coba parse response sebagai JSON
-          const errorData = await response.text();
-          if (errorData) {
-            try {
-              const parsedError = JSON.parse(errorData);
-              if (parsedError && parsedError.message) {
-                errorMessage = parsedError.message;
-              }
-            } catch (e) {
-              // Jika tidak bisa di-parse sebagai JSON, gunakan text langsung
-              errorMessage = errorData;
-            }
+        
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          if (errorData && errorData.message) {
+            errorMessage = errorData.message;
           }
-        } catch (e) {
-          console.error("Error parsing error response:", e);
+        } else {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
         }
+        
         throw new Error(errorMessage);
       }
     } catch (error) {
@@ -372,8 +370,9 @@ export default function PatientDetail() {
     try {
       if (!deleteMedicalHistoryId) return;
       
-      const response = await apiRequest(`/api/medical-histories/${deleteMedicalHistoryId}`, {
+      const response = await fetch(`/api/medical-histories/${deleteMedicalHistoryId}`, {
         method: "DELETE",
+        credentials: 'include'
       });
       
       if (response.ok) {
@@ -386,23 +385,20 @@ export default function PatientDetail() {
       } else {
         // Tangani respons error dengan lebih baik
         let errorMessage = "Gagal menghapus riwayat medis";
-        try {
-          // Coba parse response sebagai JSON
-          const errorData = await response.text();
-          if (errorData) {
-            try {
-              const parsedError = JSON.parse(errorData);
-              if (parsedError && parsedError.message) {
-                errorMessage = parsedError.message;
-              }
-            } catch (e) {
-              // Jika tidak bisa di-parse sebagai JSON, gunakan text langsung
-              errorMessage = errorData;
-            }
+        
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          if (errorData && errorData.message) {
+            errorMessage = errorData.message;
           }
-        } catch (e) {
-          console.error("Error parsing error response:", e);
+        } else {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
         }
+        
         throw new Error(errorMessage);
       }
     } catch (error) {
@@ -419,8 +415,9 @@ export default function PatientDetail() {
 
   const deletePatient = async () => {
     try {
-      const response = await apiRequest(`/api/patients/${patientId}`, {
+      const response = await fetch(`/api/patients/${patientId}`, {
         method: "DELETE",
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -432,23 +429,20 @@ export default function PatientDetail() {
       } else {
         // Tangani respons error dengan lebih baik
         let errorMessage = "Gagal menghapus pasien";
-        try {
-          // Coba parse response sebagai JSON
-          const errorData = await response.text();
-          if (errorData) {
-            try {
-              const parsedError = JSON.parse(errorData);
-              if (parsedError && parsedError.message) {
-                errorMessage = parsedError.message;
-              }
-            } catch (e) {
-              // Jika tidak bisa di-parse sebagai JSON, gunakan text langsung
-              errorMessage = errorData;
-            }
+        
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          if (errorData && errorData.message) {
+            errorMessage = errorData.message;
           }
-        } catch (e) {
-          console.error("Error parsing error response:", e);
+        } else {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
         }
+        
         throw new Error(errorMessage);
       }
     } catch (error) {
