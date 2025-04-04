@@ -2586,6 +2586,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Endpoint untuk memperbaiki transaksi yang tidak memiliki subtotal dan discount yang tepat
+  app.post("/api/transactions/fix-missing-fields", async (req: Request, res: Response) => {
+    try {
+      // Pastikan hanya admin yang bisa mengakses endpoint ini
+      if (!req.isAuthenticated() || req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Unauthorized, admin access required" });
+      }
+      
+      console.log("Memulai perbaikan data transaksi...");
+      
+      // Ambil semua transaksi
+      const transactions = await storage.getAllTransactions();
+      let fixed = 0;
+      let errors = [];
+      
+      // Perbaiki setiap transaksi yang tidak memiliki subtotal atau discount
+      for (const transaction of transactions) {
+        try {
+          // Jika subtotal kosong atau null, gunakan totalAmount
+          if (!transaction.subtotal) {
+            // Update transaksi di database
+            const updatedTransaction = await db
+              .update(schema.transactions)
+              .set({ subtotal: transaction.totalAmount })
+              .where(eq(schema.transactions.id, transaction.id))
+              .returning();
+              
+            if (updatedTransaction.length > 0) {
+              fixed++;
+              console.log(`Transaksi #${transaction.id} diperbarui: subtotal diatur ke ${transaction.totalAmount}`);
+            }
+          }
+          
+          // Jika discount kosong atau null, atur ke 0
+          if (!transaction.discount) {
+            const updatedTransaction = await db
+              .update(schema.transactions)
+              .set({ discount: "0" })
+              .where(eq(schema.transactions.id, transaction.id))
+              .returning();
+              
+            if (updatedTransaction.length > 0) {
+              fixed++;
+              console.log(`Transaksi #${transaction.id} diperbarui: discount diatur ke 0`);
+            }
+          }
+        } catch (err) {
+          console.error(`Error memperbaiki transaksi #${transaction.id}:`, err);
+          errors.push({
+            transactionId: transaction.id,
+            error: err instanceof Error ? err.message : String(err)
+          });
+        }
+      }
+      
+      console.log(`Perbaikan transaksi selesai: ${fixed} field transaksi diperbaiki, ${errors.length} error`);
+      
+      return res.status(200).json({
+        message: `Perbaikan transaksi selesai: ${fixed} field transaksi diperbaiki`,
+        fixed,
+        errors
+      });
+    } catch (error) {
+      console.error("Error dalam memperbaiki data transaksi:", error);
+      return res.status(500).json({ 
+        message: "Terjadi kesalahan dalam memperbaiki data transaksi", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
 
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);

@@ -237,6 +237,21 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     }
   }, [isOpen, selectedPatientId, patients, form, refetchActiveSessions, toast]);
 
+  // Function to calculate total amount (subtotal - discount)
+  const calculateTotal = () => {
+    // Calculate subtotal
+    const subtotal = cartItems.reduce(
+      (sum, item) => sum + parseFloat(item.price) * item.quantity,
+      0
+    );
+    
+    // Get discount amount
+    const discount = parseFloat(form.watch("discount") || "0");
+    
+    // Return total amount (subtotal - discount)
+    return Math.max(0, subtotal - discount);
+  };
+
   // Create transaction mutation
   const mutation = useMutation({
     mutationFn: async (values: TransactionFormValues) => {
@@ -645,20 +660,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     }
   };
 
-  // Calculate total amount with discount
-  const calculateTotal = () => {
-    // Calculate subtotal
-    const subtotal = cartItems.reduce(
-      (sum, item) => sum + parseFloat(item.price) * item.quantity,
-      0
-    );
-    
-    // Apply discount - use parseFloat for consistency with other parts of the code
-    const discountAmount = parseFloat(form.watch("discount") || "0");
-    const discountedTotal = Math.max(0, subtotal - discountAmount);
-    
-    return discountedTotal;
-  };
+
 
   // Format price
   const formatPrice = (price: string) => {

@@ -790,12 +790,22 @@ export default function PatientDetail() {
                         <div key={transaction.id} className="border rounded-lg p-4">
                           <div className="flex justify-between items-start mb-2">
                             <h3 className="font-bold">{transaction.transactionId}</h3>
-                            <p className="text-green-600 font-semibold">
-                              Rp {(
-                                parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
-                                parseFloat(transaction.discount?.toString() || "0")
-                              ).toLocaleString('id-ID')}
-                            </p>
+                            <div className="text-right">
+                              <p className="text-gray-600">
+                                Subtotal: Rp {parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()).toLocaleString('id-ID')}
+                              </p>
+                              {transaction.discount && parseFloat(transaction.discount.toString()) > 0 && (
+                                <p className="text-red-500">
+                                  Diskon: -Rp {parseFloat(transaction.discount.toString()).toLocaleString('id-ID')}
+                                </p>
+                              )}
+                              <p className="text-green-600 font-semibold">
+                                Total: Rp {(
+                                  parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
+                                  parseFloat(transaction.discount?.toString() || "0")
+                                ).toLocaleString('id-ID')}
+                              </p>
+                            </div>
                           </div>
                           <p className="text-sm text-muted-foreground mb-2">
                             {formatDate(transaction.createdAt)}

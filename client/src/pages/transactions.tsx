@@ -449,6 +449,7 @@ export default function Transactions() {
                     <TableHead>Pasien</TableHead>
                     <TableHead>Tanggal</TableHead>
                     <TableHead>Metode Pembayaran</TableHead>
+                    <TableHead>Subtotal</TableHead>
                     <TableHead>Diskon</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Aksi</TableHead>
@@ -461,8 +462,11 @@ export default function Transactions() {
                       <TableCell>{getPatientName(transaction.patientId)}</TableCell>
                       <TableCell>{formatDate(transaction.createdAt)}</TableCell>
                       <TableCell>{formatPaymentMethod(transaction.paymentMethod)}</TableCell>
+                      <TableCell>
+                        {formatPrice(transaction.subtotal?.toString() || transaction.totalAmount.toString())}
+                      </TableCell>
                       <TableCell className="text-red-500">
-                        {transaction.discount && parseInt(transaction.discount.toString()) > 0 
+                        {transaction.discount && parseFloat(transaction.discount.toString()) > 0 
                           ? `- ${formatPrice(transaction.discount.toString())}` 
                           : '-'}
                       </TableCell>
