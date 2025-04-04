@@ -110,6 +110,7 @@ const transactionFormSchema = z.object({
   paymentMethod: z.enum(["bank_transfer", "qris", "cash"], {
     required_error: "Pilih metode pembayaran",
   }),
+  discount: z.string().optional().transform(val => val === '' ? '0' : val),
   items: z.array(
     z.object({
       id: z.number(),
@@ -138,6 +139,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     defaultValues: {
       patientId: "",
       paymentMethod: "cash",
+      discount: "0",
       items: [],
     },
   });
@@ -245,10 +247,19 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       );
 
       try {
+        // Calculate subtotal and discount
+        const subtotal = cartItems.reduce(
+          (sum, item) => sum + parseFloat(item.price) * item.quantity,
+          0
+        );
+        const discountAmount = parseInt(values.discount || "0");
+        
         console.log("Mengirim request ke API dengan data:", {
           patientId: parseInt(values.patientId),
           totalAmount: totalAmount.toString(),
           paymentMethod: values.paymentMethod,
+          discount: discountAmount.toString(),
+          subtotal: subtotal.toString(),
           items: cartItems.map(item => ({
             id: item.id,
             type: item.type,
@@ -266,6 +277,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
             patientId: parseInt(values.patientId),
             totalAmount: totalAmount.toString(),
             paymentMethod: values.paymentMethod,
+            discount: discountAmount.toString(),
+            subtotal: subtotal.toString(),
             items: cartItems.map(item => ({
               id: item.id,
               type: item.type,
@@ -292,12 +305,19 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
 
       // Prepare invoice data
       const patient = patients.find((p: Patient) => p.id === parseInt(form.getValues().patientId));
+      const discountAmount = parseInt(form.getValues().discount || "0");
+      const subtotal = cartItems.reduce(
+        (sum, item) => sum + parseFloat(item.price) * item.quantity,
+        0
+      );
       
       setInvoiceData({
         transaction: data,
         patient,
         items: cartItems,
         paymentMethod: form.getValues().paymentMethod,
+        discount: discountAmount,
+        subtotal: subtotal,
       });
       
       setShowInvoice(true);
@@ -623,12 +643,19 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     }
   };
 
-  // Calculate total amount
+  // Calculate total amount with discount
   const calculateTotal = () => {
-    return cartItems.reduce(
+    // Calculate subtotal
+    const subtotal = cartItems.reduce(
       (sum, item) => sum + parseFloat(item.price) * item.quantity,
       0
     );
+    
+    // Apply discount
+    const discountAmount = parseInt(form.watch("discount") || "0");
+    const discountedTotal = Math.max(0, subtotal - discountAmount);
+    
+    return discountedTotal;
   };
 
   // Format price
@@ -1272,6 +1299,32 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                 </FormItem>
               )}
             />
+            
+            {/* Discount */}
+            <FormField
+              control={form.control}
+              name="discount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Diskon (Rp)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      placeholder="0"
+                      {...field}
+                      onChange={(e) => {
+                        // Ensure value is not negative
+                        const value = Math.max(0, parseInt(e.target.value) || 0);
+                        field.onChange(value.toString());
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Transaction Summary */}
             {cartItems.length > 0 && (
@@ -1288,6 +1341,29 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                       </span>
                     </div>
                   ))}
+                  
+                  {/* Subtotal */}
+                  <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between">
+                    <span className="text-gray-700 dark:text-gray-300">Subtotal</span>
+                    <span className="text-gray-800 dark:text-gray-200">
+                      {formatPrice(
+                        cartItems.reduce(
+                          (sum, item) => sum + parseFloat(item.price) * item.quantity,
+                          0
+                        ).toString()
+                      )}
+                    </span>
+                  </div>
+                  
+                  {/* Discount */}
+                  {parseInt(form.watch("discount") || "0") > 0 && (
+                    <div className="flex justify-between text-red-500">
+                      <span>Diskon</span>
+                      <span>-{formatPrice(form.watch("discount") || "0")}</span>
+                    </div>
+                  )}
+                  
+                  {/* Total after discount */}
                   <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between font-semibold">
                     <span className="text-gray-700 dark:text-gray-300">Total</span>
                     <span className="text-primary dark:text-primary-light">

@@ -21,6 +21,8 @@ type InvoiceProps = {
       quantity: number;
     }>;
     paymentMethod: string;
+    discount?: number;
+    subtotal?: number;
   };
 };
 
@@ -190,7 +192,24 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         doc.setLineWidth(0.3);
         doc.line(14, y + 2, 196, y + 2);
         
-        // Total
+        // Subtotal, Discount, and Total
+        doc.setFont("helvetica", "normal");
+        
+        // Tambahkan subtotal jika tersedia
+        if (data.subtotal) {
+          doc.text("Subtotal:", 140, y + 10, { align: 'right' });
+          doc.text(formatPrice(data.subtotal.toString()), 195, y + 10, { align: 'right' });
+          y += 7;
+        }
+        
+        // Tambahkan diskon jika ada
+        if (data.discount && data.discount > 0) {
+          doc.text("Diskon:", 140, y + 10, { align: 'right' });
+          doc.text(`-${formatPrice(data.discount.toString())}`, 195, y + 10, { align: 'right' });
+          y += 7;
+        }
+        
+        // Total akhir
         doc.setFont("helvetica", "bold");
         doc.text("Total:", 140, y + 10, { align: 'right' });
         doc.text(formatPrice(data.transaction.totalAmount), 195, y + 10, { align: 'right' });
@@ -304,7 +323,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           .replace(/{{totalAmount}}/g, formatPrice(data.transaction.totalAmount))
           .replace(/{{patientName}}/g, data.patient.name)
           .replace(/{{bankInfo}}/g, bankInfo || '')
-          .replace(/{{items}}/g, itemDetails || '');
+          .replace(/{{items}}/g, itemDetails || '')
+          .replace(/{{subtotal}}/g, data.subtotal ? formatPrice(data.subtotal.toString()) : formatPrice(data.transaction.totalAmount))
+          .replace(/{{discount}}/g, data.discount && data.discount > 0 ? formatPrice(data.discount.toString()) : '0');
       } else {
         // Gunakan format default jika tidak ada template kustom
         message = `*INVOICE ${invoiceId}*`;
@@ -317,6 +338,13 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         }
         
         message += `\n\nTerima kasih telah mengunjungi ${settings.companyName}.`;
+        
+        // Tambahkan informasi subtotal dan diskon jika tersedia
+        if (data.subtotal && data.discount && data.discount > 0) {
+          message += `\nSubtotal: ${formatPrice(data.subtotal.toString())}`;
+          message += `\nDiskon: -${formatPrice(data.discount.toString())}`;
+        }
+        
         message += `\nTotal Pembayaran: ${formatPrice(data.transaction.totalAmount)}`;
         
         // Tambahkan info bank jika ada
@@ -461,6 +489,26 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                 ))}
               </tbody>
               <tfoot>
+                {data.subtotal && (
+                  <tr>
+                    <td colSpan={2}></td>
+                    <td className="px-4 py-2 text-right text-gray-700">Subtotal:</td>
+                    <td className="px-4 py-2 text-right text-gray-700">
+                      {formatPrice(data.subtotal.toString())}
+                    </td>
+                  </tr>
+                )}
+                
+                {data.discount && data.discount > 0 && (
+                  <tr>
+                    <td colSpan={2}></td>
+                    <td className="px-4 py-2 text-right text-red-500">Diskon:</td>
+                    <td className="px-4 py-2 text-right text-red-500">
+                      -{formatPrice(data.discount.toString())}
+                    </td>
+                  </tr>
+                )}
+                
                 <tr>
                   <td colSpan={2}></td>
                   <td className="px-4 py-2 text-right font-semibold text-gray-700">Total:</td>
