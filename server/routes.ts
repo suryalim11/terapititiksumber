@@ -962,7 +962,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/transactions", async (req: Request, res: Response) => {
     try {
       // Parse schema with additional fields
-      const { subtotal, discount, ...restData } = req.body;
+      const { subtotal, discount, createSession = true, ...restData } = req.body;
+      
+      console.log("Transaction request received:", req.body);
       
       // Ensure all required fields are present
       const validatedData = insertTransactionSchema.parse({
@@ -971,7 +973,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subtotal: subtotal || restData.totalAmount || "0"
       });
       
+      console.log("Validated transaction data:", validatedData);
+      
       const newTransaction = await storage.createTransaction(validatedData);
+      console.log("Transaction created:", newTransaction);
       
       // Process transaction items
       const items = validatedData.items as any[];
@@ -982,8 +987,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateProductStock(item.id, -(item.quantity || 1));
         }
         
-        // If item is a package, create a session
-        if (item.type === 'package') {
+        // If item is a package and createSession flag is true, create a session
+        if (item.type === 'package' && createSession !== false) {
           const package_ = await storage.getPackage(item.id);
           
           if (package_) {
@@ -1002,6 +1007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      console.error("Error creating transaction:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });

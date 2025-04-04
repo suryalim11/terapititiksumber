@@ -584,18 +584,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    // Generate transaction ID dengan menggunakan waktu WIB
-    const wibDate = getWIBDate(new Date());
-    const transactionId = `T-${format(wibDate, 'yyyyMMdd')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
-    
-    // Semua transaksi baru akan disimpan dengan createdAt yang sudah disesuaikan ke WIB
-    const result = await db.insert(schema.transactions)
-      .values({ 
-        ...transaction, 
-        transactionId,
-        createdAt: wibDate // Gunakan waktu WIB yang konsisten
-      })
-      .returning();
+    try {
+      console.log("Database Storage: Creating transaction with data:", transaction);
+      
+      // Pastikan discount dan subtotal ada, jika tidak set default
+      const transactionData = {
+        ...transaction,
+        discount: transaction.discount || "0",
+        subtotal: transaction.subtotal || transaction.totalAmount || "0"
+      };
+      
+      // Generate transaction ID dengan menggunakan waktu WIB
+      const wibDate = getWIBDate(new Date());
+      const transactionId = `T-${format(wibDate, 'yyyyMMdd')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+      
+      // Semua transaksi baru akan disimpan dengan createdAt yang sudah disesuaikan ke WIB
+      const result = await db.insert(schema.transactions)
+        .values({ 
+          ...transactionData, 
+          transactionId,
+          createdAt: wibDate // Gunakan waktu WIB yang konsisten
+        })
+        .returning();
     
     // Pastikan data yang dikembalikan juga dalam format waktu WIB
     const transactionResult = { 
@@ -604,6 +614,10 @@ export class DatabaseStorage implements IStorage {
     };
     
     return transactionResult;
+    } catch (error) {
+      console.error("Error creating transaction:", error);
+      throw error;
+    }
   }
   
   async deleteTransaction(id: number): Promise<boolean> {
