@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
+import { CreateBatchDialog } from "@/components/therapy-slots/create-batch-dialog";
 import {
   Card,
   CardContent,
@@ -707,7 +708,7 @@ export default function TherapySlots() {
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Tambah Slot Baru
+                  Buat Slot Terapi
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -842,7 +843,7 @@ export default function TherapySlots() {
                 </Form>
               </DialogContent>
             </Dialog>
-            
+            <CreateBatchDialog />
             <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] })}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
@@ -978,7 +979,7 @@ export default function TherapySlots() {
                         onClick={() => setDialogOpen(true)}
                       >
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        Tambahkan Slot Baru
+                        Buat Slot Terapi
                       </Button>
                     </div>
                   )}
