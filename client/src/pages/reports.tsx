@@ -53,6 +53,13 @@ export default function Reports() {
   // Fetch sessions
   const { data: sessions, isLoading: isLoadingSessions } = useQuery({
     queryKey: ["/api/sessions"],
+    queryFn: async () => {
+      const response = await fetch("/api/sessions?reportMode=true");
+      if (!response.ok) {
+        throw new Error("Failed to fetch sessions for reporting");
+      }
+      return response.json();
+    }
   });
 
   // Generate daily financial data for chart

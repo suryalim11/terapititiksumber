@@ -1167,7 +1167,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const patientId = req.query.patientId;
       const active = req.query.active;
+      const reportMode = req.query.reportMode === 'true';
       
+      // Jika dalam mode laporan, ambil semua sesi untuk reporting
+      if (reportMode) {
+        const allSessions = await storage.getAllActiveSessions();
+        return res.status(200).json(allSessions);
+      }
+      
+      // Jika patientId ditentukan, ambil sesi spesifik pasien
       if (patientId) {
         if (active === 'true') {
           const activeSessions = await storage.getActiveSessionsByPatient(parseInt(patientId as string));
@@ -1191,7 +1199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // No patientId specified, return error for now since we're in memory
+      // Tidak ada patientId dan bukan mode laporan, kembalikan error
       return res.status(400).json({ message: "Patient ID is required" });
     } catch (error) {
       console.error("Error fetching patient sessions:", error);
