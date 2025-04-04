@@ -9,7 +9,7 @@ import {
   sessions, appointments, therapySlots, registrationLinks, confirmationTokens
 } from "@shared/schema";
 import { db, sql } from "./db";
-import { eq, gt, lt, and, desc, asc, not, inArray } from "drizzle-orm";
+import { eq, gt, lt, gte, lte, and, desc, asc, not, inArray } from "drizzle-orm";
 import * as schema from "../shared/schema";
 import { format } from "date-fns";
 import { IStorage } from "./storage";
@@ -823,17 +823,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTherapySlotsByDate(date: Date): Promise<TherapySlot[]> {
-    // Create date range for the given date (start of day to end of day)
-    const startDate = new Date(date);
-    startDate.setHours(0, 0, 0, 0);
+    // Perbaikan: Kita perlu mendapatkan tanggal yang tepat berdasarkan tanggal yang diinginkan
+
+    // 1. Cetak debugging info
+    console.log("Input date untuk getTherapySlotsByDate:", date, "ISO:", date.toISOString());
     
-    const endDate = new Date(date);
-    endDate.setHours(23, 59, 59, 999);
+    // 2. Standardisasi tanggal: ambil tahun, bulan, tanggal saja dan buat Date baru
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
     
+    // 3. Membuat tanggal awal (00:00:00) dan akhir (23:59:59)
+    const startDate = new Date(year, month, day, 0, 0, 0, 0);
+    const endDate = new Date(year, month, day, 23, 59, 59, 999);
+    
+    console.log("Mencari slot terapi antara:", 
+                startDate, "ISO:", startDate.toISOString(),
+                "dan", endDate, "ISO:", endDate.toISOString());
+    
+    // 4. Gunakan fungsi query di Drizzle ORM untuk memfilter berdasarkan tanggal
     return db.query.therapySlots.findMany({
       where: and(
-        gt(schema.therapySlots.date, startDate),
-        lt(schema.therapySlots.date, endDate)
+        // Gunakan gte dan lte untuk mendapatkan semua record pada tanggal yang sama
+        gte(schema.therapySlots.date, startDate),
+        lte(schema.therapySlots.date, endDate)
       ),
       orderBy: [asc(schema.therapySlots.timeSlot)]
     });
@@ -846,13 +859,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveTherapySlots(): Promise<TherapySlot[]> {
+    // Perbaikan: mendapatkan semua slot terapi aktif, termasuk hari ini
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    console.log("Mencari slot terapi aktif mulai dari:", today, "ISO:", today.toISOString());
+    
+    // Gunakan query builder yang standar untuk konsistensi
     return db.query.therapySlots.findMany({
       where: and(
         eq(schema.therapySlots.isActive, true),
-        gt(schema.therapySlots.date, today)
+        gte(schema.therapySlots.date, today)
       ),
       orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
     });
@@ -934,19 +951,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAppointmentsByDate(date: Date): Promise<Appointment[]> {
-    // Create date range for the given date (start of day to end of day)
-    const startDate = new Date(date);
-    startDate.setHours(0, 0, 0, 0);
+    // Perbaikan: Buat rentang tanggal untuk satu hari penuh (00:00:00 hingga 23:59:59)
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
     
-    const endDate = new Date(date);
-    endDate.setHours(23, 59, 59, 999);
+    const startDate = new Date(year, month, day, 0, 0, 0, 0);
+    const endDate = new Date(year, month, day, 23, 59, 59, 999);
     
     console.log(`Fetching appointments for date: ${date.toISOString().split('T')[0]}`);
+    console.log(`Start date: ${startDate.toISOString()}, End date: ${endDate.toISOString()}`);
     
     const appointments = await db.query.appointments.findMany({
       where: and(
-        gt(schema.appointments.date, startDate),
-        lt(schema.appointments.date, endDate),
+        gte(schema.appointments.date, startDate),
+        lte(schema.appointments.date, endDate),
         not(eq(schema.appointments.status, "Cancelled")) // Filter out cancelled appointments
       )
     });
@@ -1287,16 +1306,16 @@ export class DatabaseStorage implements IStorage {
     // Count patients registered today
     const patientsToday = await db.query.patients.findMany({
       where: and(
-        gt(schema.patients.createdAt, startOfDay),
-        lt(schema.patients.createdAt, endOfDay)
+        gte(schema.patients.createdAt, startOfDay),
+        lte(schema.patients.createdAt, endOfDay)
       )
     });
     
     // Calculate income from today's transactions
     const todayTransactions = await db.query.transactions.findMany({
       where: and(
-        gt(schema.transactions.createdAt, startOfDay),
-        lt(schema.transactions.createdAt, endOfDay)
+        gte(schema.transactions.createdAt, startOfDay),
+        lte(schema.transactions.createdAt, endOfDay)
       )
     });
     
