@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, CalendarIcon, ShoppingCart, X, Ban, CheckCircle, ChevronDown } from "lucide-react";
+import { Loader2, CalendarIcon, ShoppingCart, X, Ban, CheckCircle, ChevronDown, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -68,12 +68,14 @@ interface AppointmentStatusChangerProps {
   appointment: any;
   updateStatus: (status: string) => void;
   isUpdating: boolean;
+  stopPropagation?: boolean;
 }
 
 function AppointmentStatusChanger({ 
   appointment, 
   updateStatus, 
-  isUpdating 
+  isUpdating,
+  stopPropagation = false
 }: AppointmentStatusChangerProps) {
   const statusOptions = ["Scheduled", "Active", "Completed", "Cancelled"];
   const currentStatus = appointment?.status || "Unknown";
@@ -86,6 +88,7 @@ function AppointmentStatusChanger({
           size="sm" 
           className="h-6 px-2 text-xs"
           disabled={isUpdating}
+          onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}
         >
           {isUpdating ? (
             <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -101,7 +104,10 @@ function AppointmentStatusChanger({
         {statusOptions.map((status) => (
           <DropdownMenuItem
             key={status}
-            onClick={() => updateStatus(status)}
+            onClick={(e) => {
+              if (stopPropagation) e.stopPropagation();
+              updateStatus(status);
+            }}
             disabled={isUpdating || status === currentStatus}
             className={status === currentStatus ? "bg-muted font-medium" : ""}
           >
@@ -316,6 +322,38 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }
   
+  function navigateToPatientDetail(patient: any) {
+    if (!patient || !patient.id) {
+      toast({
+        title: "Error",
+        description: "Data pasien tidak lengkap atau tidak ditemukan.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Tutup dialog terlebih dahulu
+      onClose();
+      
+      // Arahkan ke halaman detail pasien
+      navigate(`/patients/${patient.id}`);
+      
+      // Tambahkan notifikasi untuk feedback
+      toast({
+        title: "Melihat detail pasien",
+        description: `Membuka detail pasien: ${patient.name || 'pasien terpilih'}`,
+      });
+    } catch (error) {
+      console.error("Error navigating to patient detail:", error);
+      toast({
+        title: "Terjadi kesalahan",
+        description: "Gagal membuka detail pasien. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    }
+  }
+  
   // Prepare data
   const activeAppointments = data?.appointments ? filterActiveAppointments(data.appointments) : [];
   
@@ -397,7 +435,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                     {activeAppointments.map((appointment: any) => (
                       <div 
                         key={appointment.id} 
-                        className="p-3 text-sm hover:bg-teal-50 transition-colors"
+                        className="p-3 text-sm hover:bg-teal-50 transition-colors cursor-pointer"
+                        onClick={() => navigateToPatientDetail(appointment.patient)}
                       >
                         <div className="font-medium flex items-center justify-between">
                           <span>{appointment.patient?.name || 'Pasien tidak diketahui'}</span>
@@ -408,16 +447,32 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                         <div className="flex justify-between text-muted-foreground text-xs mt-1">
                           <span>{appointment.patient?.phoneNumber || '-'}</span>
                           <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Mencegah event bubbling ke parent div
+                                navigateToPatientDetail(appointment.patient);
+                              }}
+                            >
+                              <User className="h-3 w-3 mr-1" />
+                              Detail
+                            </Button>
                             <AppointmentStatusChanger
                               appointment={appointment}
                               updateStatus={(status) => updateStatusMutation.mutate({ id: appointment.id, status })}
                               isUpdating={updateStatusMutation.isPending}
+                              stopPropagation={true}
                             />
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-6 px-2 text-xs"
-                              onClick={() => navigateToTransaction(appointment.patient)}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Mencegah event bubbling ke parent div
+                                navigateToTransaction(appointment.patient);
+                              }}
                             >
                               <ShoppingCart className="h-3 w-3 mr-1" />
                               Transaksi
