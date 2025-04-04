@@ -544,8 +544,15 @@ export default function TherapySlots() {
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
+                          selected={field.value instanceof Date ? field.value : undefined}
+                          onSelect={(date) => {
+                            if (date) {
+                              // Konversi Date ke string format YYYY-MM-DD sebelum update field
+                              const dateString = format(date, 'yyyy-MM-dd');
+                              console.log("Calendar (edit): selected date converted to string format:", dateString);
+                              field.onChange(date); // Tetap simpan date object untuk tampilan UI
+                            }
+                          }}
                           initialFocus
                         />
                       </PopoverContent>
@@ -692,8 +699,15 @@ export default function TherapySlots() {
                             <PopoverContent className="w-auto p-0" align="start">
                               <Calendar
                                 mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
+                                selected={field.value instanceof Date ? field.value : undefined}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    // Konversi Date ke string format YYYY-MM-DD sebelum update field
+                                    const dateString = format(date, 'yyyy-MM-dd');
+                                    console.log("Calendar: selected date converted to string format:", dateString);
+                                    field.onChange(date); // Tetap simpan date object untuk tampilan UI
+                                  }
+                                }}
                                 initialFocus
                               />
                             </PopoverContent>
@@ -798,8 +812,15 @@ export default function TherapySlots() {
                 <CardContent>
                   <Calendar
                     mode="single"
-                    selected={date}
-                    onSelect={setDate}
+                    selected={date instanceof Date ? date : undefined}
+                    onSelect={(selectedDate) => {
+                      if (selectedDate) {
+                        // Konversi Date ke string format YYYY-MM-DD
+                        const dateString = format(selectedDate, 'yyyy-MM-dd');
+                        console.log("Calendar (main): selected date converted to string:", dateString);
+                        setDate(selectedDate); // Tetap simpan Date object untuk UI
+                      }
+                    }}
                     className="rounded-md border"
                   />
                 </CardContent>
