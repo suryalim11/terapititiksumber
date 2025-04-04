@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { format, addDays } from "date-fns";
+import { format, addDays, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TherapySlot } from "@shared/schema";
@@ -92,7 +92,7 @@ const therapySlotSchema = z.object({
 type TherapySlotFormValues = z.infer<typeof therapySlotSchema>;
 
 export default function TherapySlots() {
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [date, setDate] = useState<string | Date>(format(new Date(), 'yyyy-MM-dd')); // Ubah tipe menjadi string | Date
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<TherapySlot | null>(null);
@@ -132,7 +132,7 @@ export default function TherapySlots() {
   const { data: therapySlots = [], isLoading } = useQuery<TherapySlot[]>({
     queryKey: [
       '/api/therapy-slots', 
-      date ? format(date, 'yyyy-MM-dd') : 'all',
+      date || 'all',
       showActiveOnly ? 'active' : 'all',
       showAvailableOnly ? 'available' : 'all'
     ],
@@ -141,7 +141,10 @@ export default function TherapySlots() {
       const params = new URLSearchParams();
       
       if (date) {
-        params.append('date', format(date, 'yyyy-MM-dd'));
+        // Jika date sudah dalam format string 'yyyy-MM-dd', gunakan langsung
+        // Jika date dalam format Date object, gunakan format()
+        const dateValue = typeof date === 'string' ? date : format(date as Date, 'yyyy-MM-dd');
+        params.append('date', dateValue);
       }
       
       if (showActiveOnly) {
@@ -270,7 +273,8 @@ export default function TherapySlots() {
   // Membuat slot terapi untuk beberapa hari ke depan
   const createBatchSlots = async (days: number, timeSlots: {time: string, quota: number}[]) => {
     try {
-      const baseDate = date || new Date();
+      // Pastikan kita menggunakan Date object di sini untuk perhitungan
+      const baseDate = typeof date === 'string' ? parseISO(date) : (date || new Date());
       const creationPromises = [];
 
       for (let i = 0; i < days; i++) {
@@ -279,10 +283,13 @@ export default function TherapySlots() {
         // Skip Sundays (0 = Sunday, 1 = Monday, etc.)
         if (slotDate.getDay() === 0) continue;
         
+        // Konversi ke string format 'yyyy-MM-dd'
+        const slotDateString = format(slotDate, 'yyyy-MM-dd');
+        
         // Create all time slots for this day
         for (const slot of timeSlots) {
           const slotData = {
-            date: slotDate,
+            date: slotDateString, // Kirim string, bukan Date object
             timeSlot: slot.time,
             maxQuota: slot.quota,
             isActive: true,
@@ -550,7 +557,7 @@ export default function TherapySlots() {
                               // Konversi Date ke string format YYYY-MM-DD sebelum update field
                               const dateString = format(date, 'yyyy-MM-dd');
                               console.log("Calendar (edit): selected date converted to string format:", dateString);
-                              field.onChange(date); // Tetap simpan date object untuk tampilan UI
+                              field.onChange(dateString); // Simpan string, bukan Date object
                             }
                           }}
                           initialFocus
@@ -705,7 +712,7 @@ export default function TherapySlots() {
                                     // Konversi Date ke string format YYYY-MM-DD sebelum update field
                                     const dateString = format(date, 'yyyy-MM-dd');
                                     console.log("Calendar: selected date converted to string format:", dateString);
-                                    field.onChange(date); // Tetap simpan date object untuk tampilan UI
+                                    field.onChange(dateString); // Simpan string, bukan Date object
                                   }
                                 }}
                                 initialFocus
@@ -812,13 +819,13 @@ export default function TherapySlots() {
                 <CardContent>
                   <Calendar
                     mode="single"
-                    selected={date instanceof Date ? date : undefined}
+                    selected={typeof date === 'string' ? parseISO(date) : date}
                     onSelect={(selectedDate) => {
                       if (selectedDate) {
                         // Konversi Date ke string format YYYY-MM-DD
                         const dateString = format(selectedDate, 'yyyy-MM-dd');
                         console.log("Calendar (main): selected date converted to string:", dateString);
-                        setDate(selectedDate); // Tetap simpan Date object untuk UI
+                        setDate(dateString); // Simpan string, bukan Date object
                       }
                     }}
                     className="rounded-md border"
