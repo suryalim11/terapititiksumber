@@ -256,8 +256,18 @@ export default function Transactions() {
       }));
       
       // Dapatkan subtotal dan diskon dari transaksi
-      const subtotal = parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString());
+      // Jika subtotal adalah 0 atau null, gunakan totalAmount sebagai subtotal
+      const subtotalValue = parseFloat(transaction.subtotal?.toString() || "0");
+      const subtotal = subtotalValue > 0 ? subtotalValue : parseFloat(transaction.totalAmount.toString());
       const discount = parseFloat(transaction.discount?.toString() || "0");
+      
+      console.log("Invoice data preparation:", {
+        subtotalValue,
+        subtotal,
+        discount,
+        totalInTransaction: transaction.totalAmount,
+        subtotalInTransaction: transaction.subtotal
+      });
       
       // Set data untuk invoice
       setInvoiceData({
@@ -308,8 +318,18 @@ export default function Transactions() {
       }));
       
       // Dapatkan subtotal dan diskon dari transaksi
-      const subtotal = parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString());
+      // Jika subtotal adalah 0 atau null, gunakan totalAmount sebagai subtotal
+      const subtotalValue = parseFloat(transaction.subtotal?.toString() || "0");
+      const subtotal = subtotalValue > 0 ? subtotalValue : parseFloat(transaction.totalAmount.toString());
       const discount = parseFloat(transaction.discount?.toString() || "0");
+      
+      console.log("Print Invoice data preparation:", {
+        subtotalValue,
+        subtotal,
+        discount,
+        totalInTransaction: transaction.totalAmount,
+        subtotalInTransaction: transaction.subtotal
+      });
       
       // Set data untuk invoice
       setInvoiceData({
@@ -478,17 +498,18 @@ export default function Transactions() {
                       <TableCell>{formatDate(transaction.createdAt)}</TableCell>
                       <TableCell>{formatPaymentMethod(transaction.paymentMethod)}</TableCell>
                       <TableCell>
-                        {formatPrice(transaction.subtotal?.toString() || transaction.totalAmount.toString())}
+                        {formatPrice(
+                          parseFloat(transaction.subtotal?.toString() || "0") > 0 
+                            ? transaction.subtotal?.toString() || "0" 
+                            : transaction.totalAmount.toString()
+                        )}
                       </TableCell>
                       <TableCell className="text-red-500">
                         {transaction.discount && parseFloat(transaction.discount.toString()) > 0 
                           ? `- ${formatPrice(transaction.discount.toString())}` 
                           : '-'}
                       </TableCell>
-                      <TableCell>{formatPrice((
-                        parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
-                        parseFloat(transaction.discount?.toString() || "0")
-                      ).toString())}</TableCell>
+                      <TableCell>{formatPrice(transaction.totalAmount.toString())}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Button 

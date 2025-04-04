@@ -108,6 +108,12 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       try {
         // Debug informasi yang diperlukan
         console.log("PDF Generation - Payment Method:", data.paymentMethod);
+        console.log("PDF Generation - Transaction Data:", {
+          subtotal: data.subtotal,
+          discount: data.discount,
+          totalAmount: data.transaction.totalAmount,
+          items: data.items
+        });
         console.log("PDF Generation - Bank Settings:", {
           bankName: settings.bankName,
           bankAccountNumber: settings.bankAccountNumber,
@@ -196,14 +202,18 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         doc.setFont("helvetica", "normal");
         
         // Tambahkan subtotal jika tersedia
-        if (data.subtotal) {
-          doc.text("Subtotal:", 140, y + 10, { align: 'right' });
-          doc.text(formatPrice(data.subtotal.toString()), 195, y + 10, { align: 'right' });
-          y += 7;
-        }
+        // Jika subtotal adalah 0, gunakan totalAmount + discount sebagai subtotal
+        const subtotalValue = parseFloat(data.subtotal?.toString() || "0");
+        const subtotalToShow = subtotalValue > 0 
+          ? subtotalValue 
+          : parseFloat(data.transaction.totalAmount.toString()) + parseFloat(data.discount?.toString() || "0");
+        
+        doc.text("Subtotal:", 140, y + 10, { align: 'right' });
+        doc.text(formatPrice(subtotalToShow.toString()), 195, y + 10, { align: 'right' });
+        y += 7;
         
         // Tambahkan diskon jika ada
-        if (data.discount && data.discount > 0) {
+        if (data.discount && parseFloat(data.discount.toString()) > 0) {
           doc.text("Diskon:", 140, y + 10, { align: 'right' });
           doc.text(`-${formatPrice(data.discount.toString())}`, 195, y + 10, { align: 'right' });
           y += 7;
@@ -212,9 +222,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Total akhir
         doc.setFont("helvetica", "bold");
         doc.text("Total:", 140, y + 10, { align: 'right' });
-        // Hitung total = subtotal - diskon
-        const calculatedTotal = (parseFloat(data.subtotal?.toString() || "0") - parseFloat(data.discount?.toString() || "0")).toString();
-        doc.text(formatPrice(calculatedTotal), 195, y + 10, { align: 'right' });
+        // Gunakan totalAmount dari transaksi sebagai total akhir 
+        // (lebih konsisten dan mencegah hasil perhitungan yang berbeda)
+        doc.text(formatPrice(data.transaction.totalAmount.toString()), 195, y + 10, { align: 'right' });
         
         // Mulai posisi untuk catatan dan info bank
         let nextY = y + 25;
@@ -318,19 +328,20 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       let message = '';
       
       if (settings.whatsappTemplate) {
-        // Hitung total aktual
-        const calculatedTotal = (parseFloat(data.subtotal?.toString() || "0") - parseFloat(data.discount?.toString() || "0")).toString();
+        // Gunakan totalAmount dari transaksi sebagai total akhir
+        // untuk mencegah perbedaan perhitungan dan memastikan konsistensi
+        const totalAmount = data.transaction.totalAmount.toString();
         
         // Gunakan template kustom dan ganti variabel dengan nilai sebenarnya
         message = settings.whatsappTemplate
           .replace(/{{companyName}}/g, settings.companyName)
           .replace(/{{invoiceId}}/g, invoiceId)
-          .replace(/{{totalAmount}}/g, formatPrice(calculatedTotal))
+          .replace(/{{totalAmount}}/g, formatPrice(totalAmount))
           .replace(/{{patientName}}/g, data.patient.name)
           .replace(/{{bankInfo}}/g, bankInfo || '')
           .replace(/{{items}}/g, itemDetails || '')
-          .replace(/{{subtotal}}/g, data.subtotal ? formatPrice(data.subtotal.toString()) : formatPrice(calculatedTotal))
-          .replace(/{{discount}}/g, data.discount && data.discount > 0 ? formatPrice(data.discount.toString()) : '0');
+          .replace(/{{subtotal}}/g, data.subtotal ? formatPrice(data.subtotal.toString()) : formatPrice(totalAmount))
+          .replace(/{{discount}}/g, data.discount && parseFloat(data.discount.toString()) > 0 ? formatPrice(data.discount.toString()) : '0');
       } else {
         // Gunakan format default jika tidak ada template kustom
         message = `*INVOICE ${invoiceId}*`;
@@ -350,9 +361,8 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           message += `\nDiskon: -${formatPrice(data.discount.toString())}`;
         }
         
-        // Hitung total yang benar
-        const calculatedTotal = (parseFloat(data.subtotal?.toString() || "0") - parseFloat(data.discount?.toString() || "0")).toString();
-        message += `\nTotal Pembayaran: ${formatPrice(calculatedTotal)}`;
+        // Gunakan nilai totalAmount dari transaksi
+        message += `\nTotal Pembayaran: ${formatPrice(data.transaction.totalAmount.toString())}`;
         
         // Tambahkan info bank jika ada
         if (bankInfo) {
@@ -520,7 +530,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   <td colSpan={2}></td>
                   <td className="px-4 py-2 text-right font-semibold text-gray-700">Total:</td>
                   <td className="px-4 py-2 text-right font-semibold text-primary">
-                    {formatPrice((parseFloat(data.subtotal?.toString() || "0") - parseFloat(data.discount?.toString() || "0")).toString())}
+                    {formatPrice(data.transaction.totalAmount.toString())}
                   </td>
                 </tr>
               </tfoot>
@@ -547,7 +557,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               {/* Total akhir */}
               <div className="flex justify-between text-base font-bold mt-2 pt-2 border-t border-gray-200">
                 <span>Total</span>
-                <span>{formatPrice((parseFloat(data.subtotal?.toString() || "0") - parseFloat(data.discount?.toString() || "0")).toString())}</span>
+                <span>{formatPrice(data.transaction.totalAmount.toString())}</span>
               </div>
             </div>
 
