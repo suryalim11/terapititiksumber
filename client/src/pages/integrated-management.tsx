@@ -201,11 +201,15 @@ export default function IntegratedManagement() {
     mutationFn: async (data: TherapySlotFormValues) => {
       const timeSlot = `${data.startTime}-${data.endTime}`;
       
+      // Konversi date ke format string yyyy-MM-dd untuk konsistensi
+      const formattedDate = format(data.date, 'yyyy-MM-dd');
+      console.log("Mengirim data slot terapi dengan tanggal:", formattedDate);
+      
       const res = await fetch("/api/therapy-slots", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date: data.date,
+          date: formattedDate, // Kirim format tanggal yyyy-MM-dd tanpa komponen waktu
           timeSlot: timeSlot,
           maxQuota: data.maxQuota,
           isActive: data.isActive
@@ -397,8 +401,11 @@ export default function IntegratedManagement() {
         
         // Create all time slots for this day
         for (const slot of timeSlots) {
+          // Konversi tanggal ke format string yyyy-MM-dd untuk konsistensi
+          const formattedDate = format(slotDate, 'yyyy-MM-dd');
+          
           const slotData = {
-            date: slotDate,
+            date: formattedDate, // Format tanggal yang konsisten
             timeSlot: slot.time,
             maxQuota: slot.quota,
             isActive: true,
@@ -507,12 +514,15 @@ export default function IntegratedManagement() {
     // Gabungkan startTime dan endTime menjadi timeSlot
     const timeSlot = `${data.startTime}-${data.endTime}`;
     
+    // Konversi date ke format string yyyy-MM-dd untuk konsistensi
+    const formattedDate = format(data.date, 'yyyy-MM-dd');
+    
     // Kirim request update
     fetch(`/api/therapy-slots/${selectedSlot.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        date: data.date,
+        date: formattedDate, // Format tanggal yang konsisten
         timeSlot: timeSlot,
         maxQuota: data.maxQuota,
         isActive: data.isActive
