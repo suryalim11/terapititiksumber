@@ -212,7 +212,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Total akhir
         doc.setFont("helvetica", "bold");
         doc.text("Total:", 140, y + 10, { align: 'right' });
-        doc.text(formatPrice(data.transaction.totalAmount), 195, y + 10, { align: 'right' });
+        // Hitung total = subtotal - diskon
+        const calculatedTotal = (parseFloat(data.subtotal?.toString() || "0") - parseFloat(data.discount?.toString() || "0")).toString();
+        doc.text(formatPrice(calculatedTotal), 195, y + 10, { align: 'right' });
         
         // Mulai posisi untuk catatan dan info bank
         let nextY = y + 25;
@@ -316,15 +318,18 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       let message = '';
       
       if (settings.whatsappTemplate) {
+        // Hitung total aktual
+        const calculatedTotal = (parseFloat(data.subtotal?.toString() || "0") - parseFloat(data.discount?.toString() || "0")).toString();
+        
         // Gunakan template kustom dan ganti variabel dengan nilai sebenarnya
         message = settings.whatsappTemplate
           .replace(/{{companyName}}/g, settings.companyName)
           .replace(/{{invoiceId}}/g, invoiceId)
-          .replace(/{{totalAmount}}/g, formatPrice(data.transaction.totalAmount))
+          .replace(/{{totalAmount}}/g, formatPrice(calculatedTotal))
           .replace(/{{patientName}}/g, data.patient.name)
           .replace(/{{bankInfo}}/g, bankInfo || '')
           .replace(/{{items}}/g, itemDetails || '')
-          .replace(/{{subtotal}}/g, data.subtotal ? formatPrice(data.subtotal.toString()) : formatPrice(data.transaction.totalAmount))
+          .replace(/{{subtotal}}/g, data.subtotal ? formatPrice(data.subtotal.toString()) : formatPrice(calculatedTotal))
           .replace(/{{discount}}/g, data.discount && data.discount > 0 ? formatPrice(data.discount.toString()) : '0');
       } else {
         // Gunakan format default jika tidak ada template kustom
@@ -345,7 +350,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           message += `\nDiskon: -${formatPrice(data.discount.toString())}`;
         }
         
-        message += `\nTotal Pembayaran: ${formatPrice(data.transaction.totalAmount)}`;
+        // Hitung total yang benar
+        const calculatedTotal = (parseFloat(data.subtotal?.toString() || "0") - parseFloat(data.discount?.toString() || "0")).toString();
+        message += `\nTotal Pembayaran: ${formatPrice(calculatedTotal)}`;
         
         // Tambahkan info bank jika ada
         if (bankInfo) {
@@ -513,7 +520,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   <td colSpan={2}></td>
                   <td className="px-4 py-2 text-right font-semibold text-gray-700">Total:</td>
                   <td className="px-4 py-2 text-right font-semibold text-primary">
-                    {formatPrice(data.transaction.totalAmount)}
+                    {formatPrice((parseFloat(data.subtotal?.toString() || "0") - parseFloat(data.discount?.toString() || "0")).toString())}
                   </td>
                 </tr>
               </tfoot>
@@ -540,7 +547,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               {/* Total akhir */}
               <div className="flex justify-between text-base font-bold mt-2 pt-2 border-t border-gray-200">
                 <span>Total</span>
-                <span>{formatPrice(data.transaction.totalAmount)}</span>
+                <span>{formatPrice((parseFloat(data.subtotal?.toString() || "0") - parseFloat(data.discount?.toString() || "0")).toString())}</span>
               </div>
             </div>
 
