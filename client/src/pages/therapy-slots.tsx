@@ -333,9 +333,11 @@ export default function TherapySlots() {
     // Gabungkan startTime dan endTime menjadi timeSlot
     const timeSlot = `${data.startTime}-${data.endTime}`;
     
-    // Perbaikan: Kirim tanggal dalam format YYYY-MM-DD tanpa informasi waktu
-    // untuk menghindari masalah timezone
-    const yearMonthDay = format(data.date, 'yyyy-MM-dd');
+    // Jika data.date adalah string, gunakan string tersebut
+    // Jika data.date adalah Date object, format ke string 'yyyy-MM-dd'
+    const yearMonthDay = typeof data.date === 'string' 
+      ? data.date 
+      : format(data.date, 'yyyy-MM-dd');
     
     console.log("Submitting date as string format:", yearMonthDay);
     
@@ -406,9 +408,11 @@ export default function TherapySlots() {
     // Gabungkan startTime dan endTime menjadi timeSlot
     const timeSlot = `${data.startTime}-${data.endTime}`;
     
-    // Perbaikan: Kirim tanggal dalam format YYYY-MM-DD tanpa informasi waktu
-    // untuk menghindari masalah timezone
-    const yearMonthDay = format(data.date, 'yyyy-MM-dd');
+    // Jika data.date adalah string, gunakan string tersebut
+    // Jika data.date adalah Date object, format ke string 'yyyy-MM-dd'
+    const yearMonthDay = typeof data.date === 'string' 
+      ? data.date 
+      : format(data.date, 'yyyy-MM-dd');
     
     console.log("Updating date as string format:", yearMonthDay);
     
