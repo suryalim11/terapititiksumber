@@ -337,8 +337,26 @@ export default function PatientDetail() {
         setMedicalHistoryDialogOpen(false);
         refetchMedicalHistories();
       } else {
-        const error = await response.json();
-        throw new Error(error.message || "Gagal menyimpan riwayat medis");
+        // Tangani respons error dengan lebih baik
+        let errorMessage = "Gagal menyimpan riwayat medis";
+        try {
+          // Coba parse response sebagai JSON
+          const errorData = await response.text();
+          if (errorData) {
+            try {
+              const parsedError = JSON.parse(errorData);
+              if (parsedError && parsedError.message) {
+                errorMessage = parsedError.message;
+              }
+            } catch (e) {
+              // Jika tidak bisa di-parse sebagai JSON, gunakan text langsung
+              errorMessage = errorData;
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error("Error submitting medical history:", error);
@@ -366,8 +384,26 @@ export default function PatientDetail() {
         setDeleteMedicalHistoryDialogOpen(false);
         refetchMedicalHistories();
       } else {
-        const error = await response.json();
-        throw new Error(error.message || "Gagal menghapus riwayat medis");
+        // Tangani respons error dengan lebih baik
+        let errorMessage = "Gagal menghapus riwayat medis";
+        try {
+          // Coba parse response sebagai JSON
+          const errorData = await response.text();
+          if (errorData) {
+            try {
+              const parsedError = JSON.parse(errorData);
+              if (parsedError && parsedError.message) {
+                errorMessage = parsedError.message;
+              }
+            } catch (e) {
+              // Jika tidak bisa di-parse sebagai JSON, gunakan text langsung
+              errorMessage = errorData;
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error("Error deleting medical history:", error);
@@ -394,8 +430,26 @@ export default function PatientDetail() {
         });
         navigate("/patients");
       } else {
-        const error = await response.json();
-        throw new Error(error.message || "Gagal menghapus pasien");
+        // Tangani respons error dengan lebih baik
+        let errorMessage = "Gagal menghapus pasien";
+        try {
+          // Coba parse response sebagai JSON
+          const errorData = await response.text();
+          if (errorData) {
+            try {
+              const parsedError = JSON.parse(errorData);
+              if (parsedError && parsedError.message) {
+                errorMessage = parsedError.message;
+              }
+            } catch (e) {
+              // Jika tidak bisa di-parse sebagai JSON, gunakan text langsung
+              errorMessage = errorData;
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error("Error deleting patient:", error);
