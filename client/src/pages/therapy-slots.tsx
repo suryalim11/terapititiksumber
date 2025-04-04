@@ -707,7 +707,7 @@ export default function TherapySlots() {
           <div className="flex gap-2">
             <Button variant="default" onClick={() => setBatchDialogOpen(true)}>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Buat Slot Manual
+              Buat Slot Batch
             </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
@@ -1003,10 +1003,9 @@ export default function TherapySlots() {
               </CardHeader>
               <CardContent>
                 <div className="mb-6">
-                  <Button variant="default" onClick={() => setBatchDialogOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Buat Slot Terapi Batch
-                  </Button>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Gunakan tombol "Buat Slot Batch" di header untuk membuat beberapa slot terapi sekaligus.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
