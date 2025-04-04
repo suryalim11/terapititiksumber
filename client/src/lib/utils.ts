@@ -12,13 +12,13 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Format a date string to dd/MM/yyyy format with WIB timezone
- * (for appointment dates and times)
+ * Format a date string to dd/MM/yyyy format without timezone
+ * (for appointment dates - timezone should only be used with times)
  */
 export function formatDateDDMMYYYY(dateString: string | Date): string {
   try {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-    return dateFnsFormat(date, "dd/MM/yyyy", { locale: id }) + " WIB";
+    return dateFnsFormat(date, "dd/MM/yyyy", { locale: id });
   } catch (e) {
     return "";
   }
@@ -126,9 +126,15 @@ export function isValidDate(dateString: string): boolean {
 
 /**
  * Format a date with time for display with WIB timezone
+ * Only add WIB indication when displaying time
  */
 export function formatDate(date: Date): string {
-  return dateFnsFormat(date, "dd/MM/yyyy HH:mm", { locale: id }) + " WIB";
+  const hasTimeComponent = date.getHours() !== 0 || date.getMinutes() !== 0;
+  if (hasTimeComponent) {
+    return dateFnsFormat(date, "dd/MM/yyyy HH:mm", { locale: id }) + " WIB";
+  } else {
+    return dateFnsFormat(date, "dd/MM/yyyy", { locale: id });
+  }
 }
 
 /**
@@ -158,15 +164,31 @@ export function formatISOtoWIB(isoString: string, isLocalTime: boolean = false, 
       adjustedDate = addHours(date, -21);
     }
     
-    // Format tanggal dan waktu dengan konsisten
-    return new Intl.DateTimeFormat('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(adjustedDate) + " WIB";
+    // Check if there's a time component
+    const hasTimeComponent = 
+      adjustedDate.getHours() !== 0 || 
+      adjustedDate.getMinutes() !== 0 || 
+      adjustedDate.getSeconds() !== 0;
+    
+    // Format the date based on whether it has a time component
+    if (hasTimeComponent) {
+      // Format with time and WIB timezone
+      return new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(adjustedDate) + " WIB";
+    } else {
+      // Format date only without WIB
+      return new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(adjustedDate);
+    }
   } catch (e) {
     console.error("Error formatting ISO date:", e);
     return "";

@@ -608,7 +608,19 @@ export default function IntegratedManagement() {
   // Format date for display
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), "dd MMM yyyy, HH:mm");
+      const date = new Date(dateString);
+      // Check if there's a time component
+      const hasTimeComponent = 
+        date.getHours() !== 0 || 
+        date.getMinutes() !== 0 || 
+        date.getSeconds() !== 0;
+      
+      // Only add WIB for timestamps with time component
+      if (hasTimeComponent) {
+        return format(date, "dd MMM yyyy, HH:mm") + " WIB";
+      } else {
+        return format(date, "dd MMM yyyy");
+      }
     } catch (error) {
       return dateString;
     }

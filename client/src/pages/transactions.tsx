@@ -181,7 +181,19 @@ export default function Transactions() {
       // Mengurangi 7 jam untuk menyesuaikan dengan timezone WIB (UTC+7)
       const date = new Date(dateString);
       const wibDate = addHours(date, -7);
-      return format(wibDate, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
+      
+      // Check if there's a time component
+      const hasTimeComponent = 
+        wibDate.getHours() !== 0 || 
+        wibDate.getMinutes() !== 0 || 
+        wibDate.getSeconds() !== 0;
+      
+      // Only add WIB for timestamps with time component
+      if (hasTimeComponent) {
+        return format(wibDate, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
+      } else {
+        return format(wibDate, "dd/MM/yyyy", { locale: id });
+      }
     } catch (e) {
       console.error("Error formatting date:", e);
       return dateString;
