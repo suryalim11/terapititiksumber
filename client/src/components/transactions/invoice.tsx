@@ -375,6 +375,12 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // untuk mencegah perbedaan perhitungan dan memastikan konsistensi
         const totalAmount = data.transaction.totalAmount.toString();
         
+        // Buat informasi kredit jika transaksi menggunakan kredit
+        let creditInfo = '';
+        if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0) {
+          creditInfo = `*Informasi Kredit:*\nTotal Belanja: ${formatPrice(totalAmount)}\nJumlah Dibayar: ${formatPrice(data.transaction.paidAmount || '0')}\nSisa Kredit: ${formatPrice(data.transaction.creditAmount.toString())}`;
+        }
+        
         // Gunakan template kustom dan ganti variabel dengan nilai sebenarnya
         message = settings.whatsappTemplate
           .replace(/{{companyName}}/g, settings.companyName)
@@ -383,6 +389,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           .replace(/{{patientName}}/g, data.patient.name)
           .replace(/{{bankInfo}}/g, bankInfo || '')
           .replace(/{{items}}/g, itemDetails || '')
+          .replace(/{{creditInfo}}/g, creditInfo || '')
           .replace(/{{subtotal}}/g, data.subtotal ? formatPrice(data.subtotal.toString()) : formatPrice(totalAmount))
           .replace(/{{discount}}/g, data.discount && parseFloat(data.discount.toString()) > 0 ? formatPrice(data.discount.toString()) : '0');
       } else {
@@ -406,6 +413,14 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         
         // Gunakan nilai totalAmount dari transaksi
         message += `\nTotal Pembayaran: ${formatPrice(data.transaction.totalAmount.toString())}`;
+        
+        // Tambahkan informasi kredit jika ada
+        if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0) {
+          message += `\n\n*Informasi Kredit:*`;
+          message += `\nTotal Belanja: ${formatPrice(data.transaction.totalAmount.toString())}`;
+          message += `\nJumlah Dibayar: ${formatPrice(data.transaction.paidAmount || '0')}`;
+          message += `\nSisa Kredit: ${formatPrice(data.transaction.creditAmount.toString())}`;
+        }
         
         // Tambahkan info bank jika ada
         if (bankInfo) {
