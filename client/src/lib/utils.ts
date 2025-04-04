@@ -139,6 +139,19 @@ export function formatDate(date: Date): string {
 }
 
 /**
+ * Format ISO date string to a readable format
+ * @param dateString - ISO date string to format
+ */
+export function formatISODate(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return dateFnsFormat(date, "dd/MM/yyyy", { locale: id });
+  } catch (error) {
+    return dateString;
+  }
+}
+
+/**
  * Format ISO string timestamp to WIB time
  * This function menangani konversi timezone dengan benar untuk semua tipe aktivitas
  * 

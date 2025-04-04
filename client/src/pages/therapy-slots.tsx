@@ -4,11 +4,12 @@ import { format, addDays, parseISO, set, parse } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TherapySlot } from "@shared/schema";
+import { TherapySlot, RegistrationLink } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { formatDateDDMMYYYY, fixTimezone } from "@/lib/utils";
+import { formatDateDDMMYYYY, fixTimezone, formatISODate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { CreateBatchDialog } from "@/components/therapy-slots/create-batch-dialog";
@@ -67,12 +68,31 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { CalendarIcon, PencilIcon, PlusCircle, RefreshCw, Trash2 } from "lucide-react";
+import { 
+  CalendarIcon, 
+  PencilIcon, 
+  PlusCircle, 
+  RefreshCw, 
+  Trash2,
+  Link as Link2,
+  Copy,
+  Ban,
+  MoreHorizontal
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import Layout from "@/components/layout/layout";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Form Schema
 const therapySlotSchema = z.object({
@@ -102,6 +122,27 @@ export default function TherapySlots() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deletingSlotId, setDeletingSlotId] = useState<number | null>(null);
+  
+  // State untuk link pendaftaran
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [expiryHours, setExpiryHours] = useState(168); // Default 1 minggu (168 jam)
+  const [dailyLimit, setDailyLimit] = useState(10);
+  const [specificDate, setSpecificDate] = useState<Date | null>(null);
+  const [useSpecificDate, setUseSpecificDate] = useState(false);
+  const [linkToDeactivate, setLinkToDeactivate] = useState<number | null>(null);
+  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
+  const [linkToDelete, setLinkToDelete] = useState<number | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  // Query untuk mendapatkan link pendaftaran
+  const { data: links = [], isLoading: isLoadingLinks, error: linksError } = useQuery({
+    queryKey: ['/api/registration-links'],
+    queryFn: async () => {
+      const response = await fetch('/api/registration-links');
+      if (!response.ok) throw new Error('Failed to fetch registration links');
+      return response.json();
+    },
+  });
 
   // Form untuk membuat slot terapi baru
   const form = useForm<TherapySlotFormValues>({
@@ -862,6 +903,7 @@ export default function TherapySlots() {
             <TabsTrigger value="quick">Buat Batch</TabsTrigger>
             <TabsTrigger value="list">Daftar Semua Slot</TabsTrigger>
             <TabsTrigger value="filter">Filter & Opsi</TabsTrigger>
+            <TabsTrigger value="links">Link Pendaftaran</TabsTrigger>
           </TabsList>
           
           <TabsContent value="calendar" className="space-y-4">
@@ -1305,6 +1347,147 @@ export default function TherapySlots() {
               </CardContent>
             </Card>
           </TabsContent>
+          
+          <TabsContent value="links" className="space-y-4">
+            <div className="flex justify-end">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button onClick={() => setIsCreateDialogOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Buat Link Baru
+                  </Button>
+                </DialogTrigger>
+              </Dialog>
+            </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Daftar Link Pendaftaran</CardTitle>
+                <CardDescription>
+                  Link ini dapat dibagikan kepada calon pasien untuk mendaftar secara mandiri
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingLinks ? (
+                  <div className="space-y-3">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="flex items-center space-x-4">
+                        <Skeleton className="h-12 w-12 rounded-full" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-[250px]" />
+                          <Skeleton className="h-4 w-[200px]" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : linksError ? (
+                  <div className="text-center py-4 text-red-500">
+                    Terjadi kesalahan saat memuat data. Silakan coba lagi.
+                  </div>
+                ) : links && Array.isArray(links) && links.length > 0 ? (
+                  <Table>
+                    <TableCaption>Daftar link pendaftaran pasien</TableCaption>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Kode</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Tanggal Dibuat</TableHead>
+                        <TableHead>Berlaku Hingga</TableHead>
+                        <TableHead>Batas Harian</TableHead>
+                        <TableHead>Pendaftaran</TableHead>
+                        <TableHead className="text-right">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {links.map((link: RegistrationLink) => (
+                        <TableRow key={link.id}>
+                          <TableCell className="font-medium">{link.code}</TableCell>
+                          <TableCell>
+                            {link.isActive ? (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-50">
+                                Aktif
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-red-50 text-red-700 hover:bg-red-50">
+                                Non-aktif
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>{formatISODate(link.createdAt.toString())}</TableCell>
+                          <TableCell>{formatISODate(link.expiryTime.toString())}</TableCell>
+                          <TableCell>{link.dailyLimit} / hari</TableCell>
+                          <TableCell>{link.currentRegistrations} pendaftaran</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Menu</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                                <DropdownMenuItem 
+                                  onClick={() => {
+                                    const publicUrl = window.location.origin;
+                                    const registrationUrl = `${publicUrl}/register?code=${link.code}`;
+                                    navigator.clipboard.writeText(registrationUrl);
+                                    toast({
+                                      title: "Link Disalin",
+                                      description: "Link pendaftaran telah disalin ke clipboard",
+                                    });
+                                  }}
+                                >
+                                  <Copy className="h-4 w-4 mr-2" />
+                                  Salin Link
+                                </DropdownMenuItem>
+                                {link.isActive && (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setLinkToDeactivate(link.id);
+                                      setIsDeactivateDialogOpen(true);
+                                    }}
+                                  >
+                                    <Ban className="h-4 w-4 mr-2" />
+                                    Nonaktifkan
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setLinkToDelete(link.id);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Hapus Link
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8">
+                    <Link2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium">Belum Ada Link Pendaftaran</h3>
+                    <p className="text-gray-500 mt-2 mb-6">
+                      Anda belum membuat link pendaftaran. Klik tombol "Buat Link Baru" untuk membuat.
+                    </p>
+                    <Button 
+                      onClick={() => setIsCreateDialogOpen(true)}
+                      className="mx-auto"
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Buat Link Baru
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -1313,6 +1496,232 @@ export default function TherapySlots() {
         open={batchDialogOpen} 
         onOpenChange={setBatchDialogOpen} 
       />
+      
+      {/* Dialog untuk membuat link pendaftaran */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Buat Link Pendaftaran Baru</DialogTitle>
+            <DialogDescription>
+              Buat link pendaftaran dengan batas waktu dan jumlah pendaftaran tertentu.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="expiryHours" className="col-span-4">
+                Berlaku selama (jam)
+              </Label>
+              <Input
+                id="expiryHours"
+                type="number"
+                min="1"
+                max="720"
+                value={expiryHours}
+                onChange={(e) => setExpiryHours(parseInt(e.target.value))}
+                className="col-span-4"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dailyLimit" className="col-span-4">
+                Batas pendaftaran per hari
+              </Label>
+              <Input
+                id="dailyLimit"
+                type="number"
+                min="1"
+                max="100"
+                value={dailyLimit}
+                onChange={(e) => setDailyLimit(parseInt(e.target.value))}
+                className="col-span-4"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="col-span-4 flex items-center space-x-2">
+                <Checkbox 
+                  id="specificDate"
+                  checked={useSpecificDate}
+                  onCheckedChange={(checked) => {
+                    setUseSpecificDate(!!checked);
+                    if (!checked) {
+                      setSpecificDate(null);
+                    }
+                  }}
+                />
+                <label
+                  htmlFor="specificDate"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Gunakan tanggal tertentu
+                </label>
+              </div>
+            </div>
+            {useSpecificDate && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="specificDatePicker" className="col-span-4">
+                  Pilih Tanggal
+                </Label>
+                <div className="col-span-4">
+                  <Calendar
+                    mode="single"
+                    selected={specificDate || undefined}
+                    onSelect={(date) => date && setSpecificDate(date)}
+                    className="border rounded-md"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={async () => {
+                try {
+                  const specificDateStr = specificDate 
+                    ? fixTimezone(specificDate) 
+                    : undefined;
+                  
+                  const response = await fetch("/api/registration-links", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      expiryHours,
+                      dailyLimit,
+                      specificDate: specificDateStr,
+                    }),
+                  });
+
+                  if (response.ok) {
+                    const link = await response.json();
+                    setIsCreateDialogOpen(false);
+                    
+                    // Invalidate the query to refresh the list
+                    queryClient.invalidateQueries({ queryKey: ["/api/registration-links"] });
+                    
+                    toast({
+                      title: "Link Pendaftaran Dibuat",
+                      description: `Link dengan kode ${link.code} berhasil dibuat`,
+                    });
+                  } else {
+                    const error = await response.json();
+                    throw new Error(error.message || "Failed to create registration link");
+                  }
+                } catch (error) {
+                  const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan";
+                  toast({
+                    title: "Gagal Membuat Link",
+                    description: errorMessage,
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Buat Link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog untuk menonaktifkan link */}
+      <AlertDialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nonaktifkan Link Pendaftaran</AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda yakin ingin menonaktifkan link pendaftaran ini? Pasien tidak akan dapat menggunakan link ini lagi setelah dinonaktifkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                try {
+                  if (!linkToDeactivate) return;
+                  
+                  const response = await fetch(`/api/registration-links/${linkToDeactivate}/deactivate`, {
+                    method: "PUT",
+                  });
+
+                  if (response.ok) {
+                    // Invalidate the query to refresh the list
+                    queryClient.invalidateQueries({ queryKey: ["/api/registration-links"] });
+                    
+                    toast({
+                      title: "Link Dinonaktifkan",
+                      description: "Link pendaftaran berhasil dinonaktifkan",
+                    });
+                    
+                    setLinkToDeactivate(null);
+                  } else {
+                    const error = await response.json();
+                    throw new Error(error.message || "Failed to deactivate link");
+                  }
+                } catch (error) {
+                  const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan";
+                  toast({
+                    title: "Gagal Menonaktifkan Link",
+                    description: errorMessage,
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Nonaktifkan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Dialog untuk menghapus link */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Link Pendaftaran</AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda yakin ingin menghapus link pendaftaran ini? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600"
+              onClick={async () => {
+                try {
+                  if (!linkToDelete) return;
+                  
+                  const response = await fetch(`/api/registration-links/${linkToDelete}`, {
+                    method: "DELETE",
+                  });
+
+                  if (response.ok) {
+                    // Invalidate the query to refresh the list
+                    queryClient.invalidateQueries({ queryKey: ["/api/registration-links"] });
+                    
+                    toast({
+                      title: "Link Dihapus",
+                      description: "Link pendaftaran berhasil dihapus",
+                    });
+                    
+                    setLinkToDelete(null);
+                  } else {
+                    const error = await response.json();
+                    throw new Error(error.message || "Failed to delete link");
+                  }
+                } catch (error) {
+                  const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan";
+                  toast({
+                    title: "Gagal Menghapus Link",
+                    description: errorMessage,
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
