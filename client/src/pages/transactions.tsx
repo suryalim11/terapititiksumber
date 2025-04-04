@@ -313,7 +313,17 @@ export default function Transactions() {
             case 'total':
               const aTotal = parseFloat(a.totalAmount.toString());
               const bTotal = parseFloat(b.totalAmount.toString());
-              return direction * (aTotal - bTotal);
+              
+              // Menghitung total yang sudah dikurangi kredit/utang
+              const aActualTotal = a.creditAmount && parseFloat(a.creditAmount.toString()) > 0
+                ? aTotal - parseFloat(a.creditAmount.toString())
+                : aTotal;
+              
+              const bActualTotal = b.creditAmount && parseFloat(b.creditAmount.toString()) > 0
+                ? bTotal - parseFloat(b.creditAmount.toString())
+                : bTotal;
+                
+              return direction * (aActualTotal - bActualTotal);
             case 'credit':
               const aCredit = parseFloat(a.creditAmount?.toString() || "0");
               const bCredit = parseFloat(b.creditAmount?.toString() || "0");
@@ -689,7 +699,13 @@ export default function Transactions() {
                           ? formatPrice(transaction.discount.toString())
                           : '-'}
                       </TableCell>
-                      <TableCell>{formatPrice(transaction.totalAmount.toString())}</TableCell>
+                      <TableCell>
+                        {formatPrice(
+                          transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
+                            ? (parseFloat(transaction.totalAmount.toString()) - parseFloat(transaction.creditAmount.toString())).toString()
+                            : transaction.totalAmount.toString()
+                        )}
+                      </TableCell>
                       <TableCell>
                         {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
                           <span className="text-red-600 font-medium">{formatPrice(transaction.creditAmount.toString())}</span>

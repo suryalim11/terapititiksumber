@@ -241,7 +241,29 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Gunakan totalAmount dari transaksi sebagai total akhir 
         // (lebih konsisten dan mencegah hasil perhitungan yang berbeda)
         doc.text(formatPrice(data.transaction.totalAmount.toString()), 195, y + 10, { align: 'right' });
-        y += 12;
+        y += 10;
+        
+        // Jika ada kredit, tambahkan ke PDF
+        if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0) {
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(255, 0, 0); // Red for kredit
+          doc.text("Kredit:", 140, y + 10, { align: 'right' });
+          doc.text(formatPrice(data.transaction.creditAmount.toString()), 195, y + 10, { align: 'right' });
+          y += 8;
+          
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(0, 128, 0); // Green for amount paid
+          doc.text("Dibayar:", 140, y + 10, { align: 'right' });
+          doc.text(
+            formatPrice((parseFloat(data.transaction.totalAmount.toString()) - parseFloat(data.transaction.creditAmount.toString())).toString()), 
+            195, y + 10, 
+            { align: 'right' }
+          );
+          y += 12;
+          doc.setTextColor(0, 0, 0); // Reset text color to black
+        } else {
+          y += 2; // Add just a little spacing if no kredit info
+        }
         
         // Tambahkan informasi kredit jika ini adalah transaksi kredit
         // Gunakan nilai isPaid yang sudah didefinisikan sebelumnya
@@ -378,7 +400,11 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Buat informasi kredit jika transaksi menggunakan kredit
         let creditInfo = '';
         if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0) {
-          creditInfo = `*Informasi Kredit:*\nTotal Belanja: ${formatPrice(totalAmount)}\nJumlah Dibayar: ${formatPrice(data.transaction.paidAmount || '0')}\nSisa Kredit: ${formatPrice(data.transaction.creditAmount.toString())}`;
+          const creditAmount = parseFloat(data.transaction.creditAmount.toString());
+          const totalAmountValue = parseFloat(totalAmount);
+          const paidAmount = totalAmountValue - creditAmount;
+          
+          creditInfo = `*Informasi Kredit:*\nTotal Belanja: ${formatPrice(totalAmount)}\nJumlah Dibayar: ${formatPrice(paidAmount.toString())}\nSisa Kredit: ${formatPrice(creditAmount.toString())}`;
         }
         
         // Gunakan template kustom dan ganti variabel dengan nilai sebenarnya
@@ -416,10 +442,14 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         
         // Tambahkan informasi kredit jika ada
         if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0) {
+          const creditAmount = parseFloat(data.transaction.creditAmount.toString());
+          const totalAmountValue = parseFloat(data.transaction.totalAmount.toString());
+          const paidAmount = totalAmountValue - creditAmount;
+          
           message += `\n\n*Informasi Kredit:*`;
           message += `\nTotal Belanja: ${formatPrice(data.transaction.totalAmount.toString())}`;
-          message += `\nJumlah Dibayar: ${formatPrice(data.transaction.paidAmount || '0')}`;
-          message += `\nSisa Kredit: ${formatPrice(data.transaction.creditAmount.toString())}`;
+          message += `\nJumlah Dibayar: ${formatPrice(paidAmount.toString())}`;
+          message += `\nSisa Kredit: ${formatPrice(creditAmount.toString())}`;
         }
         
         // Tambahkan info bank jika ada
@@ -594,6 +624,24 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                     {formatPrice(data.transaction.totalAmount.toString())}
                   </td>
                 </tr>
+                {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
+                <tr>
+                  <td colSpan={2}></td>
+                  <td className="px-4 py-2 text-right font-semibold text-red-500">Kredit:</td>
+                  <td className="px-4 py-2 text-right font-semibold text-red-500">
+                    {formatPrice(data.transaction.creditAmount.toString())}
+                  </td>
+                </tr>
+                )}
+                {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
+                <tr>
+                  <td colSpan={2}></td>
+                  <td className="px-4 py-2 text-right font-semibold text-gray-700">Dibayar:</td>
+                  <td className="px-4 py-2 text-right font-semibold text-primary">
+                    {formatPrice((parseFloat(data.transaction.totalAmount.toString()) - parseFloat(data.transaction.creditAmount.toString())).toString())}
+                  </td>
+                </tr>
+                )}
               </tfoot>
             </table>
 
@@ -620,6 +668,22 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                 <span>Total</span>
                 <span>{formatPrice(data.transaction.totalAmount.toString())}</span>
               </div>
+              
+              {/* Kredit (jika ada) */}
+              {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
+                <div className="flex justify-between text-sm mt-2 font-medium text-red-500">
+                  <span>Kredit</span>
+                  <span>{formatPrice(data.transaction.creditAmount.toString())}</span>
+                </div>
+              )}
+              
+              {/* Total yang dibayarkan (jika ada kredit) */}
+              {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
+                <div className="flex justify-between text-base font-bold mt-2 pt-2 border-t border-gray-200 text-green-600">
+                  <span>Dibayar</span>
+                  <span>{formatPrice((parseFloat(data.transaction.totalAmount.toString()) - parseFloat(data.transaction.creditAmount.toString())).toString())}</span>
+                </div>
+              )}
               
               {/* Informasi kredit jika transaksi belum lunas */}
               {(data.isPaid === false || data.transaction.isPaid === false) && 
