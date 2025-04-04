@@ -83,8 +83,9 @@ export default function Reports() {
       const transactionDate = format(new Date(transaction.createdAt), "yyyy-MM-dd");
       const dataPoint = dailyData.find(d => d.date === transactionDate);
       if (dataPoint) {
-        const total = parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
-                     parseFloat(transaction.discount?.toString() || "0");
+        // Hanya gunakan totalAmount yang sebenarnya, jangan kurangi dengan discount karena
+        // discount sudah termasuk dalam totalAmount
+        const total = parseFloat(transaction.totalAmount.toString());
         dataPoint.amount += total;
       }
     });
@@ -110,8 +111,9 @@ export default function Reports() {
     transactions.forEach((transaction: any) => {
       const transactionDate = new Date(transaction.createdAt);
       const monthIndex = transactionDate.getMonth();
-      const total = parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
-                    parseFloat(transaction.discount?.toString() || "0");
+      // Hanya gunakan totalAmount yang sebenarnya, jangan kurangi dengan discount 
+      // karena discount sudah termasuk dalam totalAmount
+      const total = parseFloat(transaction.totalAmount.toString());
       monthlyData[monthIndex].amount += total;
     });
 
@@ -167,8 +169,7 @@ export default function Reports() {
           transaction.transactionId,
           "Pasien ID: " + transaction.patientId, // In real app, get patient name
           transaction.paymentMethod,
-          (parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
-          parseFloat(transaction.discount?.toString() || "0")).toString(),
+          parseFloat(transaction.totalAmount.toString()).toString(),
         ].join(",");
         csvContent += row + "\n";
       });
@@ -422,10 +423,7 @@ export default function Reports() {
                                transaction.paymentMethod === "qris" ? "QRIS" : "Tunai"}
                             </td>
                             <td className="px-4 py-2 text-right">
-                              Rp{(
-                                parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
-                                parseFloat(transaction.discount?.toString() || "0")
-                              ).toLocaleString('id-ID')}
+                              Rp{parseFloat(transaction.totalAmount.toString()).toLocaleString('id-ID')}
                             </td>
                           </tr>
                         ))}
