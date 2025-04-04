@@ -1945,10 +1945,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Menerima permintaan POST /api/therapy-slots dengan data:", req.body);
       
-      // Parsify date string to Date object if it's a string
+      // Perbaikan penanganan tanggal: pastikan tanggal disimpan dengan benar untuk zona waktu WIB
+      let slotDate;
+      if (req.body.date) {
+        // Gunakan getWIBDate untuk memastikan tanggal diatur dengan benar untuk zona waktu WIB
+        const dateObj = new Date(req.body.date);
+        // Tetapkan waktu ke tengah malam untuk konsistensi
+        dateObj.setHours(0, 0, 0, 0);
+        console.log("Tanggal asli:", dateObj);
+        slotDate = dateObj;
+      } else {
+        slotDate = new Date();
+        slotDate.setHours(0, 0, 0, 0);
+      }
+      
+      console.log("Tanggal slot yang akan disimpan:", slotDate);
+      
       const data = {
         ...req.body,
-        date: req.body.date ? new Date(req.body.date) : new Date(),
+        date: slotDate,
         maxQuota: req.body.maxQuota || 6,
         currentCount: req.body.currentCount || 0,
         isActive: req.body.isActive !== undefined ? req.body.isActive : true
@@ -1975,10 +1990,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       console.log(`Menerima permintaan PUT /api/therapy-slots/${id} dengan data:`, req.body);
       
-      // Parsify date string to Date object if it's a string
+      // Perbaikan penanganan tanggal: pastikan tanggal disimpan dengan benar untuk zona waktu WIB
+      let slotDate = undefined;
+      if (req.body.date) {
+        // Gunakan pendekatan yang sama seperti pada POST endpoint
+        const dateObj = new Date(req.body.date);
+        // Tetapkan waktu ke tengah malam untuk konsistensi
+        dateObj.setHours(0, 0, 0, 0);
+        console.log("Tanggal asli untuk update:", dateObj);
+        slotDate = dateObj;
+      }
+      
       const data = {
         ...req.body,
-        date: req.body.date ? new Date(req.body.date) : undefined
+        date: slotDate
       };
       
       const slot = await storage.getTherapySlot(id);
@@ -2255,15 +2280,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
       
       const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset ke tengah malam hari ini
       let slotsCreated = 0;
       
       // Buat slot untuk 14 hari ke depan (2 minggu)
       for (let i = 0; i < 14; i++) {
         const slotDate = new Date(today);
         slotDate.setDate(slotDate.getDate() + i);
+        // Pastikan waktu di-reset ke tengah malam
+        slotDate.setHours(0, 0, 0, 0);
         
         // Skip Sundays (0 = Sunday, 1 = Monday, etc.)
         if (slotDate.getDay() === 0) continue;
+        
+        // Log slot date yang akan dibuat
+        console.log(`Membuat slot untuk tanggal ${slotDate.toISOString()}`);
         
         // Create all time slots for this day
         for (const slot of timeSlots) {
