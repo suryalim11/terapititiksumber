@@ -275,12 +275,18 @@ export default function PatientDetail() {
   
   const openEditMedicalHistoryDialog = (medicalHistory: MedicalHistory) => {
     setEditMedicalHistoryId(medicalHistory.id);
+    
+    // Gunakan tanggal terapi jika ada, jika tidak gunakan createdAt
+    const effectiveDate = medicalHistory.treatmentDate
+      ? new Date(medicalHistory.treatmentDate)
+      : new Date(medicalHistory.createdAt);
+    
     setMedicalHistoryForm({
       complaint: medicalHistory.complaint,
       beforeBloodPressure: medicalHistory.beforeBloodPressure || "",
       afterBloodPressure: medicalHistory.afterBloodPressure || "",
       notes: medicalHistory.notes || "",
-      treatmentDate: format(new Date(medicalHistory.treatmentDate), "yyyy-MM-dd")
+      treatmentDate: format(effectiveDate, "yyyy-MM-dd")
     });
     setMedicalHistoryDialogOpen(true);
   };
@@ -301,6 +307,17 @@ export default function PatientDetail() {
         return;
       }
       
+      // Periksa validitas tanggal
+      const treatmentDate = new Date(medicalHistoryForm.treatmentDate);
+      if (isNaN(treatmentDate.getTime())) {
+        toast({
+          title: "Tanggal tidak valid",
+          description: "Format tanggal terapi tidak valid",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Skema di server sudah disiapkan dengan preprocessor untuk handle konversi string ke Date
       const payload = {
         patientId,
@@ -308,7 +325,7 @@ export default function PatientDetail() {
         beforeBloodPressure: medicalHistoryForm.beforeBloodPressure || null,
         afterBloodPressure: medicalHistoryForm.afterBloodPressure || null,
         notes: medicalHistoryForm.notes || null,
-        treatmentDate: medicalHistoryForm.treatmentDate // Kirim string tanggal langsung, preprocessor di server akan menangani
+        treatmentDate: medicalHistoryForm.treatmentDate // Kirim string tanggal langsung
       };
       
       let url = `/api/medical-histories`;
@@ -329,14 +346,23 @@ export default function PatientDetail() {
       });
       
       if (response.ok) {
+        // Log respons sukses untuk debug
+        console.log(`Medical history ${editMedicalHistoryId ? 'updated' : 'created'} successfully`);
+        
         toast({
           title: editMedicalHistoryId ? "Riwayat medis diperbarui" : "Riwayat medis ditambahkan",
           description: editMedicalHistoryId 
             ? "Data riwayat medis berhasil diperbarui" 
             : "Data riwayat medis baru berhasil ditambahkan",
         });
+        
+        // Tutup dialog dan refresh data
         setMedicalHistoryDialogOpen(false);
-        refetchMedicalHistories();
+        
+        // Gunakan timeout kecil untuk memastikan server telah memproses perubahan
+        setTimeout(() => {
+          refetchMedicalHistories();
+        }, 300);
       } else {
         // Tangani respons error dengan lebih baik
         let errorMessage = "Gagal menyimpan riwayat medis";
@@ -829,7 +855,9 @@ export default function PatientDetail() {
                         <div key={history.id} className="border rounded-lg p-4">
                           <div className="flex justify-between items-start mb-2">
                             <h3 className="font-bold">
-                              Terapi: {formatBirthDate(new Date(history.treatmentDate))}
+                              Terapi: {history.treatmentDate 
+                                ? formatBirthDate(new Date(history.treatmentDate))
+                                : formatBirthDate(new Date(history.createdAt))}
                             </h3>
                             <div className="flex space-x-2">
                               <Button 
