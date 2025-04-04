@@ -564,23 +564,40 @@ export class DatabaseStorage implements IStorage {
 
   // Transaction methods
   async getTransaction(id: number): Promise<Transaction | undefined> {
-    const result = await db.query.transactions.findFirst({
-      where: eq(schema.transactions.id, id)
-    });
-    return result;
+    try {
+      const result = await db.query.transactions.findFirst({
+        where: eq(schema.transactions.id, id)
+      });
+      return result;
+    } catch (error) {
+      console.error(`Error getting transaction ${id}:`, error);
+      return undefined;
+    }
   }
 
   async getAllTransactions(): Promise<Transaction[]> {
-    return db.query.transactions.findMany({
-      orderBy: [desc(schema.transactions.createdAt)]
-    });
+    try {
+      return db.query.transactions.findMany({
+        orderBy: [desc(schema.transactions.createdAt)]
+      });
+    } catch (error) {
+      console.error("Error getting all transactions:", error);
+      // Return empty array if error occurs instead of failing the entire operation
+      return [];
+    }
   }
 
   async getTransactionsByPatient(patientId: number): Promise<Transaction[]> {
-    return db.query.transactions.findMany({
-      where: eq(schema.transactions.patientId, patientId),
-      orderBy: [desc(schema.transactions.createdAt)]
-    });
+    try {
+      return db.query.transactions.findMany({
+        where: eq(schema.transactions.patientId, patientId),
+        orderBy: [desc(schema.transactions.createdAt)]
+      });
+    } catch (error) {
+      console.error(`Error getting transactions for patient ${patientId}:`, error);
+      // Return empty array if error occurs instead of failing the entire operation
+      return [];
+    }
   }
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
