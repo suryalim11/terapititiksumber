@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, RefreshCcw, User, Package, Calendar, Receipt, AlertTriangle, Activity, Plus, Edit, Trash } from "lucide-react";
+import { ArrowLeft, CheckCircle, ChevronDown, Loader2, RefreshCcw, User, Package, Calendar, Receipt, AlertTriangle, Activity, Plus, Edit, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +18,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 // Add formats for Indonesia locale
 // Menggunakan formatBirthDate dari utils untuk tanggal lahir
@@ -97,6 +103,87 @@ interface Patient {
   complaints: string;
   createdAt: string;
   therapySlotId: number | null;
+}
+
+// Komponen untuk mengubah status appointment
+function AppointmentStatusChanger({ 
+  appointmentId, 
+  currentStatus, 
+  onUpdate 
+}: { 
+  appointmentId: number; 
+  currentStatus: string; 
+  onUpdate: () => void; 
+}) {
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { toast } = useToast();
+  
+  const statusOptions = ["Scheduled", "Active", "Completed", "Cancelled"];
+  
+  const updateStatus = async (newStatus: string) => {
+    if (newStatus === currentStatus) return;
+    
+    setIsUpdating(true);
+    try {
+      const response = await apiRequest(`/api/appointments/${appointmentId}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Status diperbarui",
+          description: `Status janji temu berhasil diubah menjadi "${newStatus}"`,
+        });
+        onUpdate();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Gagal mengubah status");
+      }
+    } catch (error) {
+      console.error("Error updating appointment status:", error);
+      toast({
+        title: "Gagal mengubah status",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+  
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 px-2">
+          {isUpdating ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <>
+              <span className="sr-only">Ubah status</span>
+              <ChevronDown className="h-4 w-4" />
+            </>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {statusOptions.map((status) => (
+          <DropdownMenuItem
+            key={status}
+            onClick={() => updateStatus(status)}
+            disabled={isUpdating || status === currentStatus}
+            className={status === currentStatus ? "font-bold" : ""}
+          >
+            {status === currentStatus && <CheckCircle className="h-4 w-4 mr-2" />}
+            {status}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export default function PatientDetail() {
@@ -519,7 +606,7 @@ export default function PatientDetail() {
                   ) : (
                     <div className="space-y-4">
                       {appointments.map((appointment: Appointment) => (
-                        <div key={appointment.id} className="flex items-center justify-between border-b pb-2">
+                        <div key={appointment.id} className="flex items-center justify-between border-b pb-4 pt-2">
                           <div>
                             <p className="font-medium">
                               {formatDate(appointment.date)}
@@ -530,9 +617,16 @@ export default function PatientDetail() {
                               {appointment.notes && ` · ${appointment.notes}`}
                             </p>
                           </div>
-                          <Badge className={getStatusColor(appointment.status)}>
-                            {appointment.status}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge className={getStatusColor(appointment.status)}>
+                              {appointment.status}
+                            </Badge>
+                            <AppointmentStatusChanger 
+                              appointmentId={appointment.id} 
+                              currentStatus={appointment.status} 
+                              onUpdate={() => refetchAppointments()}
+                            />
+                          </div>
                         </div>
                       ))}
                     </div>
