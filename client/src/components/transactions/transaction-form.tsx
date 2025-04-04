@@ -307,7 +307,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
 
       // Prepare invoice data
       const patient = patients.find((p: Patient) => p.id === parseInt(form.getValues().patientId));
-      const discountAmount = parseInt(form.getValues().discount || "0");
+      const discountAmount = parseFloat(form.getValues().discount || "0");
       const subtotal = cartItems.reduce(
         (sum, item) => sum + parseFloat(item.price) * item.quantity,
         0
@@ -653,8 +653,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       0
     );
     
-    // Apply discount
-    const discountAmount = parseInt(form.watch("discount") || "0");
+    // Apply discount - use parseFloat for consistency with other parts of the code
+    const discountAmount = parseFloat(form.watch("discount") || "0");
     const discountedTotal = Math.max(0, subtotal - discountAmount);
     
     return discountedTotal;
@@ -1358,7 +1358,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                   </div>
                   
                   {/* Discount */}
-                  {parseInt(form.watch("discount") || "0") > 0 && (
+                  {parseFloat(form.watch("discount") || "0") > 0 && (
                     <div className="flex justify-between text-red-500">
                       <span>Diskon</span>
                       <span>-{formatPrice(form.watch("discount") || "0")}</span>

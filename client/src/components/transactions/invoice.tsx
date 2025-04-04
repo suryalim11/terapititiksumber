@@ -530,7 +530,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               )}
               
               {/* Diskon jika ada dan lebih dari 0 */}
-              {data.discount && parseInt(data.discount.toString()) > 0 && (
+              {data.discount && parseFloat(data.discount.toString()) > 0 && (
                 <div className="flex justify-between text-sm mb-2 text-red-500">
                   <span className="font-medium">Diskon</span>
                   <span>- {formatPrice(data.discount.toString())}</span>
