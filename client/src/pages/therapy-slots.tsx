@@ -331,23 +331,29 @@ export default function TherapySlots() {
   // Handler untuk submit form
   const onSubmit = (data: TherapySlotFormValues) => {
     // Debugging: Periksa tanggal input yang diterima dari form
+    console.log("------------ DEBUGGING FORM SUBMISSION ------------");
     console.log("Tanggal dari form (raw):", data.date);
+    console.log("Tipe data tanggal:", typeof data.date);
+    
     if (data.date instanceof Date) {
       console.log("Date object toString():", data.date.toString());
       console.log("Date object toISOString():", data.date.toISOString());
       console.log("Tahun:", data.date.getFullYear());
       console.log("Bulan:", data.date.getMonth() + 1); // +1 karena getMonth() dimulai dari 0
       console.log("Tanggal:", data.date.getDate());
+      console.log("Local timezone offset (menit):", data.date.getTimezoneOffset());
     }
     
     // Gabungkan startTime dan endTime menjadi timeSlot
     const timeSlot = `${data.startTime}-${data.endTime}`;
+    console.log("Time slot:", timeSlot);
     
     // PERBAIKAN: Gunakan Date.UTC untuk mengatasi masalah timezone
     let yearMonthDay;
     
     if (typeof data.date === 'string') {
-      yearMonthDay = data.date;
+      // String format sudah benar, gunakan langsung
+      yearMonthDay = data.date; 
       console.log("Menggunakan string date langsung:", yearMonthDay);
     } else if (data.date instanceof Date) {
       // Ekstrak tahun, bulan, tanggal tanpa timezone offset
@@ -364,6 +370,7 @@ export default function TherapySlots() {
     }
     
     console.log("Submitting date as string format:", yearMonthDay);
+    console.log("------------ END DEBUGGING FORM SUBMISSION ------------");
     
     // Menggunakan fetch API langsung karena mutation tidak mendukung properti timeSlot
     fetch("/api/therapy-slots", {
@@ -429,16 +436,47 @@ export default function TherapySlots() {
   const onSubmitEdit = (data: TherapySlotFormValues) => {
     if (!selectedSlot) return;
     
+    // Debugging: Periksa tanggal input yang diterima dari form
+    console.log("------------ DEBUGGING EDIT FORM SUBMISSION ------------");
+    console.log("Tanggal dari form edit (raw):", data.date);
+    console.log("Tipe data tanggal edit:", typeof data.date);
+    
+    if (data.date instanceof Date) {
+      console.log("Edit - Date object toString():", data.date.toString());
+      console.log("Edit - Date object toISOString():", data.date.toISOString());
+      console.log("Edit - Tahun:", data.date.getFullYear());
+      console.log("Edit - Bulan:", data.date.getMonth() + 1); // +1 karena getMonth() dimulai dari 0
+      console.log("Edit - Tanggal:", data.date.getDate());
+      console.log("Edit - Local timezone offset (menit):", data.date.getTimezoneOffset());
+    }
+    
     // Gabungkan startTime dan endTime menjadi timeSlot
     const timeSlot = `${data.startTime}-${data.endTime}`;
+    console.log("Edit - Time slot:", timeSlot);
     
-    // Jika data.date adalah string, gunakan string tersebut
-    // Jika data.date adalah Date object, format ke string 'yyyy-MM-dd'
-    const yearMonthDay = typeof data.date === 'string' 
-      ? data.date 
-      : format(data.date, 'yyyy-MM-dd');
+    // PERBAIKAN: Gunakan cara yang sama dengan onSubmit
+    let yearMonthDay;
     
-    console.log("Updating date as string format:", yearMonthDay);
+    if (typeof data.date === 'string') {
+      // String format sudah benar, gunakan langsung
+      yearMonthDay = data.date; 
+      console.log("Edit - Menggunakan string date langsung:", yearMonthDay);
+    } else if (data.date instanceof Date) {
+      // Ekstrak tahun, bulan, tanggal tanpa timezone offset
+      const year = data.date.getFullYear();
+      const month = data.date.getMonth() + 1; // +1 karena getMonth() dimulai dari 0
+      const day = data.date.getDate();
+      
+      // Format ke yyyy-MM-dd (pastikan bulan dan tanggal selalu 2 digit)
+      yearMonthDay = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      console.log("Edit - Dikonversi dari Date object:", yearMonthDay);
+    } else {
+      console.error("Edit - Tipe tanggal tidak dikenali:", typeof data.date);
+      yearMonthDay = format(new Date(), 'yyyy-MM-dd'); // Fallback ke hari ini
+    }
+    
+    console.log("Edit - Updating date as string format:", yearMonthDay);
+    console.log("------------ END DEBUGGING EDIT FORM SUBMISSION ------------");
     
     // Kirim request update
     fetch(`/api/therapy-slots/${selectedSlot.id}`, {
