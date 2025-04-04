@@ -577,10 +577,22 @@ export default function IntegratedManagement() {
     }
   };
 
-  // Format tanggal untuk ditampilkan
+  // Format tanggal untuk ditampilkan (perbaikan timezone WIB)
   const formatSlotDate = (dateStr: string) => {
+    // Konversi tanggal ke objek Date
     const date = new Date(dateStr);
-    return format(date, "dd MMMM yyyy");
+    
+    // Dapatkan bagian tanggal saja (yyyy-MM-dd) dari tanggal untuk penyeragaman tampilan
+    // Ini menghindari masalah ketika jam menyebabkan tanggal berbeda di timezone WIB
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth(); // 0-indexed
+    const day = date.getUTCDate();
+    
+    // Buat tanggal baru dengan waktu 00:00:00 UTC
+    const normalizedDate = new Date(Date.UTC(year, month, day, 0, 0, 0));
+    
+    // Format dengan date-fns
+    return format(normalizedDate, "dd MMMM yyyy");
   };
 
   // Format date for display
