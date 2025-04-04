@@ -53,6 +53,9 @@ type Transaction = {
   createdAt: string;
   discount?: string | number;
   subtotal?: string | number;
+  creditAmount?: string | number;
+  paidAmount?: string | number;
+  isPaid?: boolean;
   patient?: {
     name: string;
     patientId: string;
@@ -276,7 +279,10 @@ export default function Transactions() {
         items,
         paymentMethod: transaction.paymentMethod,
         subtotal: subtotal,
-        discount: discount
+        discount: discount,
+        isPaid: transaction.isPaid,
+        creditAmount: transaction.creditAmount,
+        paidAmount: transaction.paidAmount
       });
       
       // Buka dialog invoice
@@ -338,7 +344,10 @@ export default function Transactions() {
         items,
         paymentMethod: transaction.paymentMethod,
         subtotal: subtotal,
-        discount: discount
+        discount: discount,
+        isPaid: transaction.isPaid,
+        creditAmount: transaction.creditAmount,
+        paidAmount: transaction.paidAmount
       });
       
       // Buka dialog invoice dengan flag untuk langsung print
@@ -487,6 +496,7 @@ export default function Transactions() {
                     <TableHead>Subtotal</TableHead>
                     <TableHead>Diskon</TableHead>
                     <TableHead>Total</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -510,6 +520,30 @@ export default function Transactions() {
                           : '-'}
                       </TableCell>
                       <TableCell>{formatPrice(transaction.totalAmount.toString())}</TableCell>
+                      <TableCell>
+                        {transaction.isPaid ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Lunas
+                          </span>
+                        ) : transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Kredit
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Lunas
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Button 

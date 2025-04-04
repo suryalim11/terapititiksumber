@@ -22,6 +22,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Select,
@@ -35,7 +36,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Search, Info, AlertCircle, Package } from "lucide-react";
+import { Search, Info, AlertCircle, Package, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -121,6 +122,9 @@ const transactionFormSchema = z.object({
       price: z.string().optional(),
     })
   ).min(1, "Pilih minimal satu paket atau produk"),
+  isPaid: z.boolean().default(true),
+  creditAmount: z.string().optional().default("0"),
+  paidAmount: z.string().optional().default("0"),
 });
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
@@ -144,8 +148,14 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       paymentMethod: "cash",
       discount: "0",
       items: [],
+      isPaid: true,
+      creditAmount: "0",
+      paidAmount: "0",
     },
   });
+  
+  // State untuk menangani kredit/utang
+  const [useCredit, setUseCredit] = useState(false);
 
   // Fetch patients
   const { data: patients = [] } = useQuery<Patient[]>({
@@ -277,12 +287,23 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         // Use the validated discount value from above
         const discountAmount = discount;
         
+        // Siapkan kredit data jika menggunakan fitur kredit
+        // Jika menggunakan fitur kredit, nilai isPaid = false
+        // creditAmount adalah jumlah yang belum dibayar
+        // paidAmount adalah jumlah yang sudah dibayar
+        const isPaid = !useCredit;
+        const creditAmount = useCredit ? values.creditAmount || "0" : "0";
+        const paidAmount = useCredit ? values.paidAmount || "0" : totalAmount.toString();
+        
         console.log("Mengirim request ke API dengan data:", {
           patientId: parseInt(values.patientId),
           totalAmount: totalAmount.toString(),
           paymentMethod: values.paymentMethod,
           discount: discountAmount.toString(),
           subtotal: subtotal.toString(),
+          isPaid: isPaid,
+          creditAmount: creditAmount,
+          paidAmount: paidAmount,
           items: cartItems.map(item => ({
             id: item.id,
             type: item.type,
@@ -302,6 +323,9 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
             paymentMethod: values.paymentMethod,
             discount: discountAmount.toString(),
             subtotal: subtotal.toString(),
+            isPaid: isPaid,
+            creditAmount: creditAmount,
+            paidAmount: paidAmount,
             items: cartItems.map(item => ({
               id: item.id,
               type: item.type,
@@ -903,6 +927,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       // Hitung total setelah diskon
       const totalAmount = Math.max(0, subtotal - discount);
 
+      // Siapkan data kredit jika menggunakan fitur kredit
+      const isPaid = !useCredit;
+      const creditAmount = useCredit ? formValues.creditAmount || "0" : "0";
+      const paidAmount = useCredit ? formValues.paidAmount || "0" : totalAmount.toString();
+      
       const submissionData: TransactionFormValues = {
         patientId: formValues.patientId || "",
         paymentMethod: formValues.paymentMethod,
@@ -915,6 +944,9 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         discount: discount.toString(),
         subtotal: subtotal.toString(),
         totalAmount: totalAmount.toString(),
+        isPaid: isPaid,
+        creditAmount: creditAmount,
+        paidAmount: paidAmount,
       };
       
       // Eksekusi onSubmit
@@ -1370,6 +1402,95 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                 </FormItem>
               )}
             />
+            
+            {/* Credit Option Toggle */}
+            <div className="flex flex-col space-y-3 p-3 border rounded-md border-muted bg-muted/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-primary" /> 
+                  <span className="text-sm font-medium">Opsi Kredit/Hutang</span>
+                </div>
+                <Switch
+                  checked={useCredit}
+                  onCheckedChange={setUseCredit}
+                />
+              </div>
+              
+              <FormDescription className="text-xs mb-2">
+                Aktifkan untuk transaksi dengan pembayaran sebagian atau ditunda. 
+                Pembayaran kredit akan tercatat sebagai hutang yang dapat dilunasi kemudian.
+              </FormDescription>
+              
+              {useCredit && (
+                <div className="grid gap-3 pt-2 border-t border-muted">
+                  <FormField
+                    control={form.control}
+                    name="paidAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Jumlah Dibayar Dimuka (Rp)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1000"
+                            placeholder="0"
+                            {...field}
+                            onChange={(e) => {
+                              // Ensure value is not negative
+                              const value = Math.max(0, parseFloat(e.target.value) || 0);
+                              
+                              // Calculate subtotal and discount
+                              const subtotal = cartItems.reduce(
+                                (sum, item) => sum + parseFloat(item.price) * item.quantity, 0
+                              );
+                              const discount = parseFloat(form.getValues().discount || "0");
+                              const totalAmount = Math.max(0, subtotal - discount);
+                              
+                              // Ensure paid amount doesn't exceed total
+                              const validValue = Math.min(value, totalAmount);
+                              
+                              // Update paid amount
+                              field.onChange(validValue.toString());
+                              
+                              // Update credit amount automatically
+                              const creditAmount = Math.max(0, totalAmount - validValue);
+                              form.setValue("creditAmount", creditAmount.toString());
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Jumlah yang dibayarkan saat ini.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="creditAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sisa Hutang (Rp)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            readOnly
+                            className="bg-muted"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Jumlah hutang yang harus dilunasi. Dihitung otomatis.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Transaction Summary */}
             {cartItems.length > 0 && (
@@ -1415,6 +1536,32 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                       {formatPrice(calculateTotal().toString())}
                     </span>
                   </div>
+                  
+                  {/* Credit status */}
+                  {useCredit && (
+                    <div className="mt-3 rounded-md bg-muted/50 p-2 text-xs">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-muted-foreground">Status</span>
+                        <span className="font-medium text-yellow-600 dark:text-yellow-500 flex items-center gap-1">
+                          <CreditCard className="h-3 w-3" /> Kredit
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between mb-1">
+                        <span className="text-muted-foreground">Dibayar Dimuka</span>
+                        <span className="font-medium">
+                          {formatPrice(form.watch("paidAmount") || "0")}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Sisa Hutang</span>
+                        <span className="font-medium text-red-600 dark:text-red-500">
+                          {formatPrice(form.watch("creditAmount") || "0")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

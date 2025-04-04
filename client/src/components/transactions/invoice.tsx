@@ -23,6 +23,9 @@ type InvoiceProps = {
     paymentMethod: string;
     discount?: number;
     subtotal?: number;
+    isPaid?: boolean;
+    creditAmount?: number | string; 
+    paidAmount?: number | string;
   };
 };
 
@@ -167,7 +170,20 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         doc.text(`ID Pasien: ${data.patient?.patientId || '-'}`, 14, 58);
         
         doc.text(`Metode: ${getPaymentMethodName(data.paymentMethod)}`, 120, 52);
-        doc.text("Status: Lunas", 120, 58);
+        
+        // Tampilkan status pembayaran sesuai apakah transaksi kredit atau lunas
+        const isPaid = data.transaction.isPaid === undefined ? true : data.transaction.isPaid;
+        const statusText = isPaid ? "Status: Lunas" : "Status: Kredit (Belum Lunas)";
+        
+        if (!isPaid) {
+          doc.setTextColor(220, 53, 69); // Warna merah untuk kredit
+          doc.text(statusText, 120, 58);
+          doc.setTextColor(0, 0, 0); // Reset warna teks
+        } else {
+          doc.setTextColor(25, 135, 84); // Warna hijau untuk lunas
+          doc.text(statusText, 120, 58);
+          doc.setTextColor(0, 0, 0); // Reset warna teks
+        }
         
         // Header tabel item
         doc.setFontSize(10);
@@ -225,9 +241,36 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Gunakan totalAmount dari transaksi sebagai total akhir 
         // (lebih konsisten dan mencegah hasil perhitungan yang berbeda)
         doc.text(formatPrice(data.transaction.totalAmount.toString()), 195, y + 10, { align: 'right' });
+        y += 12;
+        
+        // Tambahkan informasi kredit jika ini adalah transaksi kredit
+        // Gunakan nilai isPaid yang sudah didefinisikan sebelumnya
+        if (!isPaid && data.transaction.creditAmount && data.transaction.paidAmount) {
+          // Buat kotak untuk info kredit
+          doc.setFillColor(248, 249, 250); // Light gray background
+          doc.setDrawColor(222, 226, 230); // Border color
+          doc.roundedRect(120, y + 2, 75, 25, 2, 2, 'FD');
+          
+          doc.setTextColor(0, 0, 0);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.text("Informasi Kredit:", 125, y + 8);
+          
+          doc.setFont("helvetica", "normal");
+          doc.text("Dibayar Dimuka:", 125, y + 15);
+          doc.text(formatPrice(data.transaction.paidAmount.toString()), 190, y + 15, { align: 'right' });
+          
+          doc.setTextColor(220, 53, 69); // Red for debt
+          doc.text("Sisa Hutang:", 125, y + 22);
+          doc.text(formatPrice(data.transaction.creditAmount.toString()), 190, y + 22, { align: 'right' });
+          
+          // Reset text color
+          doc.setTextColor(0, 0, 0);
+          y += 27;
+        }
         
         // Mulai posisi untuk catatan dan info bank
-        let nextY = y + 25;
+        let nextY = y + 5;
         
         // Tentukan apakah perlu menampilkan info bank
         const showBankInfo = (data.paymentMethod === 'bank_transfer' || data.paymentMethod === 'qris') && 
@@ -479,7 +522,10 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   <strong>Metode:</strong> {getPaymentMethodName(data.paymentMethod)}
                 </p>
                 <p className="text-gray-600">
-                  <strong>Status:</strong> <span className="text-green-600">Lunas</span>
+                  <strong>Status:</strong> {" "}
+                  {data.transaction.isPaid === undefined || data.transaction.isPaid 
+                    ? <span className="text-green-600">Lunas</span> 
+                    : <span className="text-red-600">Kredit (Belum Lunas)</span>}
                 </p>
               </div>
             </div>
