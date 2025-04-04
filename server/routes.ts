@@ -2620,17 +2620,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          // Jika discount kosong atau null, atur ke 0
-          if (!transaction.discount) {
+          // Jika discount kosong, null, atau "0" atau "0.00", atur ke "0.00"
+          if (!transaction.discount || transaction.discount === "0" || transaction.discount === "0.00") {
             const updatedTransaction = await db
               .update(schema.transactions)
-              .set({ discount: "0" })
+              .set({ discount: "0.00" })
               .where(eq(schema.transactions.id, transaction.id))
               .returning();
               
             if (updatedTransaction.length > 0) {
               fixed++;
-              console.log(`Transaksi #${transaction.id} diperbarui: discount diatur ke 0`);
+              console.log(`Transaksi #${transaction.id} diperbarui: discount diatur ke 0.00`);
             }
           }
         } catch (err) {
