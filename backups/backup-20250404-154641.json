@@ -329,6 +329,32 @@
       "complaints": "1. kaki nyeri perih,kebas dari pantat,paha,betis k telapak kaki\n2.buang air kecil & buang air besar belum bisa respon setelah pasca oprasi d bagian tulang bokong pada tgl 28 februari 2025.\n",
       "createdAt": "2025-04-04T12:23:51.995Z",
       "therapySlotId": 177
+    },
+    {
+      "id": 63,
+      "patientId": "P-2025-063",
+      "name": "Sudirman",
+      "phoneNumber": "0895352501882",
+      "email": null,
+      "birthDate": "1966-02-10",
+      "gender": "Laki-laki",
+      "address": "genta1 blok bf 20 \nBuliang Batu Aji\n",
+      "complaints": "belom ada\n",
+      "createdAt": "2025-04-04T13:38:35.107Z",
+      "therapySlotId": 177
+    },
+    {
+      "id": 64,
+      "patientId": "P-2025-064",
+      "name": "Dapler Bakara",
+      "phoneNumber": "081266840602",
+      "email": null,
+      "birthDate": "1975-12-12",
+      "gender": "Laki-laki",
+      "address": "Kav Bukit Berbunga Blk A No 08. Kel Duriangkang. Kec. Sungai Beduk\n",
+      "complaints": "Gula sama tensi gak normal, badan pegal. \n",
+      "createdAt": "2025-04-04T14:45:04.664Z",
+      "therapySlotId": 316
     }
   ],
   "products": [
@@ -373,12 +399,12 @@
       "createdAt": "2025-04-03T08:11:04.707Z"
     },
     {
-      "id": 18,
-      "name": "Kasur Panas (kepala)",
-      "price": "1800000.00",
-      "stock": 99,
-      "description": "Perawatan untuk pemulihan lebih cepat",
-      "createdAt": "2025-04-03T04:03:33.626Z"
+      "id": 15,
+      "name": "Jahe Tua Bubuk",
+      "price": "100000.00",
+      "stock": 88,
+      "description": "berat 100 Gram",
+      "createdAt": "2025-04-02T10:19:51.183Z"
     },
     {
       "id": 14,
@@ -389,12 +415,12 @@
       "createdAt": "2025-04-02T10:19:51.115Z"
     },
     {
-      "id": 15,
-      "name": "Jahe Tua Bubuk",
-      "price": "100000.00",
-      "stock": 88,
-      "description": "berat 100 Gram",
-      "createdAt": "2025-04-02T10:19:51.183Z"
+      "id": 18,
+      "name": "Kasur Panas (kepala)",
+      "price": "1800000.00",
+      "stock": 99,
+      "description": "Perawatan untuk pemulihan lebih cepat",
+      "createdAt": "2025-04-03T04:03:33.626Z"
     },
     {
       "id": 22,
@@ -576,45 +602,6 @@
       "isPaid": true,
       "paidAmount": "0.00",
       "createdAt": "2025-04-04T17:36:42.204Z"
-    },
-    {
-      "id": 103,
-      "transactionId": "T-20250404-024",
-      "patientId": 53,
-      "totalAmount": "2270000.00",
-      "discount": "0.00",
-      "subtotal": "2270000.00",
-      "paymentMethod": "cash",
-      "items": [
-        {
-          "id": 15,
-          "type": "product",
-          "quantity": 1,
-          "price": "100000.00"
-        },
-        {
-          "id": 14,
-          "type": "product",
-          "quantity": 1,
-          "price": "220000.00"
-        },
-        {
-          "id": 7,
-          "type": "package",
-          "quantity": 1,
-          "price": "150000.00"
-        },
-        {
-          "id": 18,
-          "type": "product",
-          "quantity": 1,
-          "price": "1800000.00"
-        }
-      ],
-      "creditAmount": "1300000.00",
-      "isPaid": false,
-      "paidAmount": "970000.00",
-      "createdAt": "2025-04-04T18:22:07.788Z"
     },
     {
       "id": 83,
@@ -942,6 +929,45 @@
       "isPaid": true,
       "paidAmount": "0.00",
       "createdAt": "2025-04-03T14:49:47.755Z"
+    },
+    {
+      "id": 109,
+      "transactionId": "T-20250404-765",
+      "patientId": 53,
+      "totalAmount": "2270000.00",
+      "discount": "0.00",
+      "subtotal": "2270000.00",
+      "paymentMethod": "cash",
+      "items": [
+        {
+          "id": 14,
+          "type": "product",
+          "quantity": 1,
+          "price": "220000.00"
+        },
+        {
+          "id": 18,
+          "type": "product",
+          "quantity": 1,
+          "price": "1800000.00"
+        },
+        {
+          "id": 15,
+          "type": "product",
+          "quantity": 1,
+          "price": "100000.00"
+        },
+        {
+          "id": 7,
+          "type": "package",
+          "quantity": 1,
+          "price": "150000.00"
+        }
+      ],
+      "creditAmount": "1300000.00",
+      "isPaid": false,
+      "paidAmount": "2270000.00",
+      "createdAt": "2025-04-04T21:39:26.645Z"
     }
   ],
   "sessions": [
@@ -1122,14 +1148,14 @@
       "lastSessionDate": null
     },
     {
-      "id": 94,
+      "id": 97,
       "patientId": 53,
-      "transactionId": 103,
+      "transactionId": 109,
       "packageId": 7,
       "totalSessions": 1,
       "sessionsUsed": 0,
       "status": "active",
-      "startDate": "2025-04-04T18:22:08.372Z",
+      "startDate": "2025-04-04T21:39:27.348Z",
       "lastSessionDate": null
     }
   ],
@@ -1178,15 +1204,6 @@
       "currentCount": 0,
       "isActive": true,
       "createdAt": "2025-04-03T23:45:16.392Z"
-    },
-    {
-      "id": 323,
-      "date": "2025-04-05T00:00:00.000Z",
-      "timeSlot": "10:00-11:00",
-      "maxQuota": 5,
-      "currentCount": 0,
-      "isActive": true,
-      "createdAt": "2025-04-04T04:06:38.091Z"
     },
     {
       "id": 327,
@@ -1279,15 +1296,6 @@
       "createdAt": "2025-04-03T23:44:41.081Z"
     },
     {
-      "id": 177,
-      "date": "2025-04-05T03:07:41.562Z",
-      "timeSlot": "15:00-17:00",
-      "maxQuota": 3,
-      "currentCount": 2,
-      "isActive": true,
-      "createdAt": "2025-04-03T03:07:42.178Z"
-    },
-    {
       "id": 214,
       "date": "2025-04-03T23:44:29.532Z",
       "timeSlot": "14:00-15:30",
@@ -1322,6 +1330,15 @@
       "currentCount": 0,
       "isActive": true,
       "createdAt": "2025-04-03T23:44:41.125Z"
+    },
+    {
+      "id": 177,
+      "date": "2025-04-05T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "maxQuota": 3,
+      "currentCount": 1,
+      "isActive": true,
+      "createdAt": "2025-04-03T03:07:42.178Z"
     },
     {
       "id": 220,
@@ -1405,24 +1422,6 @@
       "createdAt": "2025-04-03T03:07:42.515Z"
     },
     {
-      "id": 206,
-      "date": "2025-04-05T17:00:00.000Z",
-      "timeSlot": "15:00-19:00",
-      "maxQuota": 6,
-      "currentCount": 0,
-      "isActive": true,
-      "createdAt": "2025-04-03T10:31:07.779Z"
-    },
-    {
-      "id": 316,
-      "date": "2025-04-07T00:00:00.000Z",
-      "timeSlot": "10:00-12:00",
-      "maxQuota": 4,
-      "currentCount": 0,
-      "isActive": true,
-      "createdAt": "2025-04-04T03:19:56.405Z"
-    },
-    {
       "id": 170,
       "date": "2025-04-03T03:07:41.562Z",
       "timeSlot": "13:00-15:00",
@@ -1466,6 +1465,15 @@
       "currentCount": 0,
       "isActive": true,
       "createdAt": "2025-04-03T03:07:41.948Z"
+    },
+    {
+      "id": 316,
+      "date": "2025-04-07T00:00:00.000Z",
+      "timeSlot": "10:00-12:00",
+      "maxQuota": 4,
+      "currentCount": 2,
+      "isActive": true,
+      "createdAt": "2025-04-04T03:19:56.405Z"
     },
     {
       "id": 233,
@@ -1588,17 +1596,6 @@
       "notes": "Nyeri tulang ekor sama tumit kaki kiri"
     },
     {
-      "id": 51,
-      "patientId": 62,
-      "sessionId": null,
-      "therapySlotId": 177,
-      "date": "2025-04-05T03:07:41.562Z",
-      "timeSlot": "15:00-17:00",
-      "registrationNumber": "R-20250404-425",
-      "status": "Scheduled",
-      "notes": "1. kaki nyeri perih,kebas dari pantat,paha,betis k telapak kaki\n2.buang air kecil & buang air besar belum bisa respon setelah pasca oprasi d bagian tulang bokong pada tgl 28 februari 2025.\n"
-    },
-    {
       "id": 44,
       "patientId": 29,
       "sessionId": null,
@@ -1663,6 +1660,39 @@
       "registrationNumber": "R-20250403-717",
       "status": "Scheduled",
       "notes": "----------"
+    },
+    {
+      "id": 52,
+      "patientId": 63,
+      "sessionId": null,
+      "therapySlotId": 177,
+      "date": "2025-04-05T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "registrationNumber": "R-20250404-242",
+      "status": "Scheduled",
+      "notes": "belom ada"
+    },
+    {
+      "id": 53,
+      "patientId": 64,
+      "sessionId": null,
+      "therapySlotId": 316,
+      "date": "2025-04-07T00:00:00.000Z",
+      "timeSlot": "10:00-12:00",
+      "registrationNumber": "R-20250404-233",
+      "status": "Scheduled",
+      "notes": "Gula sama tensi gak normal, badan pegal. \n"
+    },
+    {
+      "id": 51,
+      "patientId": 62,
+      "sessionId": null,
+      "therapySlotId": 177,
+      "date": "2025-04-05T03:07:41.562Z",
+      "timeSlot": "15:00-17:00",
+      "registrationNumber": "R-20250404-425",
+      "status": "Scheduled",
+      "notes": "1. kaki nyeri perih,kebas dari pantat,paha,betis k telapak kaki\n2.buang air kecil & buang air besar belum bisa respon setelah pasca oprasi d bagian tulang bokong pada tgl 28 februari 2025.\n"
     }
   ],
   "registrationLinks": [
@@ -1671,7 +1701,7 @@
       "code": "TTS-4M4X6M",
       "expiryTime": "2025-04-09T15:50:16.572Z",
       "dailyLimit": 100,
-      "currentRegistrations": 28,
+      "currentRegistrations": 31,
       "createdAt": "2025-04-02T15:50:16.654Z",
       "isActive": true,
       "createdBy": 1,

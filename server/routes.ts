@@ -18,6 +18,7 @@ import {
 } from "@shared/schema";
 import { handleDateTest } from "./test-route";
 import * as schema from "../shared/schema";
+import { handleTherapySlotsBatch } from "./routes/therapy-slots-batch";
 import fixTransactionsTable from "./fix-transactions-schema";
 import crypto from "crypto";
 import { setupAuth } from "./auth";
@@ -2382,6 +2383,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Internal server error" });
     }
   });
+  
+  // Endpoint untuk membuat banyak therapy slot sekaligus (batch processing)
+  app.post("/api/therapy-slots/batch", handleTherapySlotsBatch);
   
   app.post("/api/therapy-slots/:id/increment", async (req: Request, res: Response) => {
     try {
