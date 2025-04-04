@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, addHours } from "date-fns";
 import { id } from "date-fns/locale";
 import { 
   Card, 
@@ -80,7 +80,9 @@ export default function Reports() {
 
     // Fill in actual data
     transactions.forEach((transaction: any) => {
-      const transactionDate = format(new Date(transaction.createdAt), "yyyy-MM-dd");
+      // Menggunakan addHours(-7) untuk menyesuaikan ke zona waktu WIB (UTC+7)
+      const adjustedDate = addHours(new Date(transaction.createdAt), -7);
+      const transactionDate = format(adjustedDate, "yyyy-MM-dd");
       const dataPoint = dailyData.find(d => d.date === transactionDate);
       if (dataPoint) {
         // Hanya gunakan totalAmount yang sebenarnya, jangan kurangi dengan discount karena
@@ -109,8 +111,9 @@ export default function Reports() {
 
     // Fill in actual data
     transactions.forEach((transaction: any) => {
-      const transactionDate = new Date(transaction.createdAt);
-      const monthIndex = transactionDate.getMonth();
+      // Menggunakan addHours(-7) untuk menyesuaikan ke zona waktu WIB (UTC+7)
+      const adjustedDate = addHours(new Date(transaction.createdAt), -7);
+      const monthIndex = adjustedDate.getMonth();
       // Hanya gunakan totalAmount yang sebenarnya, jangan kurangi dengan discount 
       // karena discount sudah termasuk dalam totalAmount
       const total = parseFloat(transaction.totalAmount.toString());
@@ -165,7 +168,7 @@ export default function Reports() {
       // Data rows
       transactions.forEach((transaction: any) => {
         const row = [
-          format(new Date(transaction.createdAt), "yyyy-MM-dd"),
+          format(addHours(new Date(transaction.createdAt), -7), "yyyy-MM-dd"),
           transaction.transactionId,
           "Pasien ID: " + transaction.patientId, // In real app, get patient name
           transaction.paymentMethod,
@@ -416,7 +419,7 @@ export default function Reports() {
                           <tr key={transaction.id} className="border-b">
                             <td className="px-4 py-2">{transaction.transactionId}</td>
                             <td className="px-4 py-2">
-                              {format(new Date(transaction.createdAt), "d MMM yyyy", { locale: id })}
+                              {format(addHours(new Date(transaction.createdAt), -7), "d MMM yyyy", { locale: id })}
                             </td>
                             <td className="px-4 py-2">
                               {transaction.paymentMethod === "bank_transfer" ? "Transfer Bank" : 
