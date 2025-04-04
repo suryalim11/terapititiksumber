@@ -828,7 +828,9 @@ export default function PatientDetail() {
                       {medicalHistories.map((history: MedicalHistory) => (
                         <div key={history.id} className="border rounded-lg p-4">
                           <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-bold">Terapi: {formatDate(history.treatmentDate)}</h3>
+                            <h3 className="font-bold">
+                              Terapi: {formatBirthDate(new Date(history.treatmentDate))}
+                            </h3>
                             <div className="flex space-x-2">
                               <Button 
                                 variant="ghost" 
