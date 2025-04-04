@@ -12,13 +12,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Format a date string to dd/MM/yyyy format without timezone
+ * Format a date string to dd/MM/yyyy format with day name
  * (for appointment dates - timezone should only be used with times)
  */
 export function formatDateDDMMYYYY(dateString: string | Date): string {
   try {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-    return dateFnsFormat(date, "dd/MM/yyyy", { locale: id });
+    // Format dengan nama hari (eeee = nama hari lengkap) diikuti tanggal
+    return dateFnsFormat(date, "eeee, dd/MM/yyyy", { locale: id });
   } catch (e) {
     return "";
   }
