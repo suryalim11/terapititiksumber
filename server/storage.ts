@@ -96,6 +96,7 @@ export interface IStorage {
   decrementTherapySlotUsage(id: number): Promise<TherapySlot | undefined>;
   deactivateTherapySlot(id: number): Promise<boolean>;
   deleteTherapySlot(id: number): Promise<boolean>;
+  syncTherapySlotQuota(): Promise<{ updatedSlots: number, results: any[] }>;
   
   // Appointments
   getAppointment(id: number): Promise<Appointment | undefined>;
@@ -132,6 +133,9 @@ export interface IStorage {
   
   // Session store for authentication
   sessionStore: session.Store;
+  
+  // Fungsi sinkronisasi kuota therapy slot
+  syncTherapySlotQuota(): Promise<{ updatedSlots: number, results: any[] }>;
 }
 
 // Import Database Storage
@@ -1262,7 +1266,10 @@ export class MemStorage implements IStorage {
       address: "Jl. Pahlawan No. 123, Jakarta",
       patientId: "P-2025-001",
       createdAt: new Date(),
-      therapySlotId: null
+      therapySlotId: null,
+      birthDate: "1990-01-01",
+      gender: "Laki-laki",
+      complaints: "Sakit punggung"
     };
     
     const patient2: Patient = {
@@ -1273,7 +1280,10 @@ export class MemStorage implements IStorage {
       address: "Jl. Merdeka No. 45, Bandung",
       patientId: "P-2025-002",
       createdAt: new Date(),
-      therapySlotId: null
+      therapySlotId: null,
+      birthDate: "1992-03-15",
+      gender: "Perempuan",
+      complaints: "Nyeri pinggang"
     };
     
     const patient3: Patient = {
@@ -1284,7 +1294,10 @@ export class MemStorage implements IStorage {
       address: "Jl. Sudirman No. 67, Surabaya",
       patientId: "P-2025-003",
       createdAt: new Date(),
-      therapySlotId: null
+      therapySlotId: null,
+      birthDate: "1985-07-22",
+      gender: "Laki-laki",
+      complaints: "Nyeri kepala"
     };
     
     this.patients.set(patient1.id, patient1);
@@ -1393,6 +1406,51 @@ export class MemStorage implements IStorage {
     this.registrationLinks.set(id, registrationLink);
     console.log("Link pendaftaran default dibuat:", registrationLink);
     return registrationLink;
+  }
+  
+  // Implementasi syncTherapySlotQuota untuk MemStorage
+  async syncTherapySlotQuota(): Promise<{ updatedSlots: number, results: any[] }> {
+    // Dapatkan semua slot terapi
+    const slots = Array.from(this.therapySlots.values());
+    const results = [];
+    let updatedCount = 0;
+    
+    // Untuk setiap slot, hitung ulang kuota berdasarkan jumlah appointment aktif
+    for (const slot of slots) {
+      // Dapatkan semua appointment untuk slot terapi ini yang tidak dibatalkan
+      const appointments = Array.from(this.appointments.values())
+        .filter(apt => 
+          apt.therapySlotId === slot.id && 
+          apt.status !== 'Cancelled' // Hanya hitung yang tidak dibatalkan
+        );
+      
+      // Jumlah appointment yang tidak dibatalkan
+      const activeCount = appointments.length;
+      
+      // Jika nilai currentCount di slot tidak sesuai dengan jumlah appointment aktif, update
+      if (slot.currentCount !== activeCount) {
+        const oldCount = slot.currentCount;
+        slot.currentCount = activeCount;
+        this.therapySlots.set(slot.id, slot);
+        
+        // Format tanggal untuk laporan
+        const formattedDate = slot.date instanceof Date
+          ? format(slot.date, 'dd MMMM yyyy')
+          : format(new Date(slot.date), 'dd MMMM yyyy');
+        
+        results.push({
+          slotId: slot.id,
+          date: formattedDate,
+          timeSlot: slot.timeSlot,
+          oldCount,
+          newCount: activeCount
+        });
+        
+        updatedCount++;
+      }
+    }
+    
+    return { updatedSlots: updatedCount, results };
   }
 }
 

@@ -917,9 +917,64 @@ export class DatabaseStorage implements IStorage {
       
       // Update currentCount langsung di objek slot yang dikembalikan
       slot.currentCount = activeCount;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Slot ${slot.id}: ${activeCount} active appointments`);
+      }
     }
     
     return slots;
+  }
+  
+  /**
+   * Fungsi untuk menyinkronkan kuota slot terapi di database dengan jumlah appointment aktual
+   */
+  async syncTherapySlotQuota(): Promise<{ updatedSlots: number, results: any[] }> {
+    try {
+      // Dapatkan semua slot terapi
+      const allSlots = await db.query.therapySlots.findMany({
+        orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
+      });
+      
+      const results = [];
+      let updatedCount = 0;
+      
+      // Untuk setiap slot, hitung ulang kuota berdasarkan jumlah appointment aktif
+      for (const slot of allSlots) {
+        // Dapatkan semua appointment aktif untuk slot ini
+        const appointments = await this.getAppointmentsByTherapySlot(slot.id);
+        const activeCount = appointments.length; // getAppointmentsByTherapySlot sudah filter yang aktif saja
+        
+        // Jika nilai di database berbeda, update
+        if (slot.currentCount !== activeCount) {
+          console.log(`Menyinkronkan slot ${slot.id}: mengubah currentCount dari ${slot.currentCount} menjadi ${activeCount}`);
+          
+          const updatedSlot = await db
+            .update(schema.therapySlots)
+            .set({ currentCount: activeCount })
+            .where(eq(schema.therapySlots.id, slot.id))
+            .returning();
+          
+          if (updatedSlot.length > 0) {
+            const formattedDate = format(new Date(slot.date), 'dd MMMM yyyy');
+            
+            results.push({
+              slotId: slot.id,
+              date: formattedDate,
+              timeSlot: slot.timeSlot,
+              oldCount: slot.currentCount,
+              newCount: activeCount
+            });
+            updatedCount++;
+          }
+        }
+      }
+      
+      return { updatedSlots: updatedCount, results };
+    } catch (error) {
+      console.error("Error in syncTherapySlotQuota:", error);
+      throw error;
+    }
   }
 
   async createTherapySlot(slot: InsertTherapySlot): Promise<TherapySlot> {
@@ -941,10 +996,14 @@ export class DatabaseStorage implements IStorage {
     const currentSlot = await this.getTherapySlot(id);
     if (!currentSlot) return undefined;
     
+    // Dapatkan jumlah appointment dari hasil getTherapySlot yang sudah diperbarui
+    // yang termasuk perhitungan aktual berdasarkan appointment aktif
+    const actualCount = currentSlot.currentCount;
+    
     const result = await db
       .update(schema.therapySlots)
       .set({ 
-        currentCount: currentSlot.currentCount + 1
+        currentCount: actualCount + 1
       })
       .where(eq(schema.therapySlots.id, id))
       .returning();
@@ -956,10 +1015,17 @@ export class DatabaseStorage implements IStorage {
     const currentSlot = await this.getTherapySlot(id);
     if (!currentSlot || currentSlot.currentCount <= 0) return undefined;
     
+    // Dapatkan jumlah appointment dari hasil getTherapySlot yang sudah diperbarui
+    // yang termasuk perhitungan aktual berdasarkan appointment aktif
+    const actualCount = currentSlot.currentCount;
+    
+    // Hanya kurangi jika nilai lebih dari 0
+    const newCount = Math.max(0, actualCount - 1);
+    
     const result = await db
       .update(schema.therapySlots)
       .set({ 
-        currentCount: currentSlot.currentCount - 1
+        currentCount: newCount
       })
       .where(eq(schema.therapySlots.id, id))
       .returning();

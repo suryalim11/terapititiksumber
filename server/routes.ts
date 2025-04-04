@@ -1501,36 +1501,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint untuk sinkronisasi kuota slot terapi
   app.post("/api/therapy-slots/sync-quota", async (req: Request, res: Response) => {
     try {
-      // Dapatkan semua slot terapi aktif
-      const slots = await storage.getActiveTherapySlots();
+      if (!req.isAuthenticated() || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
       
-      // Perbarui jumlah pendaftaran untuk setiap slot berdasarkan janji temu aktif
-      const updatePromises = slots.map(async (slot) => {
-        const appointments = await storage.getAppointmentsByTherapySlot(slot.id);
-        const appointmentCount = appointments.length;
-        
-        // Jika jumlah berbeda dari currentCount saat ini, update slot
-        if (appointmentCount !== slot.currentCount) {
-          // Update jumlah ke nilai yang benar
-          await storage.updateTherapySlot(slot.id, { 
-            currentCount: appointmentCount 
-          });
-          console.log(`Updated slot ${slot.id} count from ${slot.currentCount} to ${appointmentCount}`);
-        }
-      });
+      console.log("Memulai sinkronisasi kuota slot terapi di database...");
       
-      await Promise.all(updatePromises);
+      // Gunakan fungsi syncTherapySlotQuota dari storage
+      const syncResult = await storage.syncTherapySlotQuota();
       
-      return res.status(200).json({ 
-        success: true, 
-        message: "Therapy slot quotas synchronized successfully" 
+      return res.status(200).json({
+        message: `Sinkronisasi kuota selesai. ${syncResult.updatedSlots} slot diperbarui.`,
+        updatedSlots: syncResult.results
       });
     } catch (error) {
-      console.error(`Error synchronizing therapy slot quotas: ${error}`);
-      return res.status(500).json({ 
-        success: false, 
-        message: "Failed to synchronize therapy slot quotas" 
-      });
+      console.error("Error saat sinkronisasi kuota slot terapi:", error);
+      return res.status(500).json({ message: "Internal server error" });
     }
   });
 
@@ -2269,46 +2255,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
-      console.log("Memulai sinkronisasi kuota slot terapi...");
+      console.log("Memulai sinkronisasi kuota slot terapi di database...");
       
-      // Dapatkan semua slot terapi
-      const allSlots = await storage.getAllTherapySlots();
-      const results = [];
-      
-      // Untuk setiap slot, hitung ulang kuota berdasarkan jumlah janji temu yang aktif
-      for (const slot of allSlots) {
-        // Dapatkan semua janji temu untuk slot ini
-        const appointments = await storage.getAppointmentsByTherapySlot(slot.id);
-        
-        // Hitung jumlah janji temu yang tidak dibatalkan
-        const activeCount = appointments.filter(a => a.status !== "Cancelled").length;
-        
-        // Jika kuota tidak sesuai, lakukan update
-        if (activeCount !== slot.currentCount) {
-          console.log(`Memperbaiki kuota slot ${slot.id}: dari ${slot.currentCount} menjadi ${activeCount}`);
-          
-          // Gunakan storage method untuk update
-          const updatedSlot = await storage.updateTherapySlot(slot.id, { currentCount: activeCount });
-          
-          if (updatedSlot) {
-            const formattedDate = typeof slot.date === 'string' 
-              ? format(new Date(slot.date), 'dd MMMM yyyy')
-              : format(slot.date, 'dd MMMM yyyy');
-            
-            results.push({
-              slotId: slot.id,
-              date: formattedDate,
-              timeSlot: slot.timeSlot,
-              oldCount: slot.currentCount,
-              newCount: activeCount
-            });
-          }
-        }
-      }
+      // Gunakan fungsi syncTherapySlotQuota dari storage
+      const syncResult = await storage.syncTherapySlotQuota();
       
       return res.status(200).json({
-        message: `Sinkronisasi kuota selesai. ${results.length} slot diperbarui.`,
-        updatedSlots: results
+        message: `Sinkronisasi kuota selesai. ${syncResult.updatedSlots} slot diperbarui.`,
+        updatedSlots: syncResult.results
       });
     } catch (error) {
       console.error("Error saat sinkronisasi kuota slot terapi:", error);
