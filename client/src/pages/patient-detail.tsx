@@ -24,6 +24,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { AppointmentDetailDialog } from "@/components/appointments/appointment-detail-dialog";
 
 // Add formats for Indonesia locale
 // Menggunakan formatBirthDate dari utils untuk tanggal lahir
@@ -105,7 +106,9 @@ interface Patient {
   therapySlotId: number | null;
 }
 
-// Komponen untuk mengubah status appointment
+// Component was moved to appointment-detail-dialog.tsx
+
+// Placeholder function to maintain compatibility until full dialog implementation
 function AppointmentStatusChanger({ 
   appointmentId, 
   currentStatus, 
@@ -115,74 +118,15 @@ function AppointmentStatusChanger({
   currentStatus: string; 
   onUpdate: () => void; 
 }) {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const { toast } = useToast();
-  
-  const statusOptions = ["Scheduled", "Active", "Completed", "Cancelled"];
-  
-  const updateStatus = async (newStatus: string) => {
-    if (newStatus === currentStatus) return;
-    
-    setIsUpdating(true);
-    try {
-      const response = await apiRequest(`/api/appointments/${appointmentId}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      
-      if (response.ok) {
-        toast({
-          title: "Status diperbarui",
-          description: `Status janji temu berhasil diubah menjadi "${newStatus}"`,
-        });
-        onUpdate();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal mengubah status");
-      }
-    } catch (error) {
-      console.error("Error updating appointment status:", error);
-      toast({
-        title: "Gagal mengubah status",
-        description: error instanceof Error ? error.message : "Terjadi kesalahan",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-  
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 px-2">
-          {isUpdating ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              <span className="sr-only">Ubah status</span>
-              <ChevronDown className="h-4 w-4" />
-            </>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {statusOptions.map((status) => (
-          <DropdownMenuItem
-            key={status}
-            onClick={() => updateStatus(status)}
-            disabled={isUpdating || status === currentStatus}
-            className={status === currentStatus ? "font-bold" : ""}
-          >
-            {status === currentStatus && <CheckCircle className="h-4 w-4 mr-2" />}
-            {status}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button 
+      variant="outline" 
+      size="sm" 
+      className="h-8 px-2"
+      onClick={onUpdate}
+    >
+      <ChevronDown className="h-4 w-4" />
+    </Button>
   );
 }
 
@@ -195,6 +139,8 @@ export default function PatientDetail() {
   const [editMedicalHistoryId, setEditMedicalHistoryId] = useState<number | null>(null);
   const [deleteMedicalHistoryId, setDeleteMedicalHistoryId] = useState<number | null>(null);
   const [deleteMedicalHistoryDialogOpen, setDeleteMedicalHistoryDialogOpen] = useState(false);
+  const [isAppointmentDetailOpen, setIsAppointmentDetailOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [medicalHistoryForm, setMedicalHistoryForm] = useState({
     complaint: "",
     beforeBloodPressure: "",
@@ -259,6 +205,11 @@ export default function PatientDetail() {
       title: "Data diperbarui",
       description: "Semua data telah diperbarui",
     });
+  };
+  
+  const openAppointmentDetail = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setIsAppointmentDetailOpen(true);
   };
   
   const openCreateMedicalHistoryDialog = () => {
@@ -696,6 +647,14 @@ export default function PatientDetail() {
                             <Badge className={getStatusColor(appointment.status)}>
                               {appointment.status}
                             </Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2"
+                              onClick={() => openAppointmentDetail(appointment)}
+                            >
+                              Detail
+                            </Button>
                             <AppointmentStatusChanger 
                               appointmentId={appointment.id} 
                               currentStatus={appointment.status} 
@@ -928,6 +887,19 @@ export default function PatientDetail() {
           </Tabs>
         </div>
       </div>
+      
+      {/* Detail Janji Temu Dialog */}
+      {selectedAppointment && (
+        <AppointmentDetailDialog
+          appointment={selectedAppointment}
+          isOpen={isAppointmentDetailOpen}
+          onClose={() => {
+            setIsAppointmentDetailOpen(false);
+            setSelectedAppointment(null);
+            refetchAppointments();
+          }}
+        />
+      )}
       
       {/* Dialog untuk tambah/edit catatan medis */}
       <Dialog open={medicalHistoryDialogOpen} onOpenChange={setMedicalHistoryDialogOpen}>
