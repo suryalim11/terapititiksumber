@@ -780,8 +780,23 @@ export default function RegisterPage() {
                                     // Ini cara yang lebih aman untuk mendapatkan waktu lokal Indonesia
                                     const localTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
                                     
+                                    // De-duplikasi slot berdasarkan kombinasi timeSlot dan date
+                                    // Gunakan Map dengan kunci gabungan (date + timeSlot) untuk menghilangkan duplikasi
+                                    const uniqueSlots = new Map();
+                                    
+                                    // Simpan slot yang unik ke Map
+                                    slots.forEach((slot: any) => {
+                                      const slotKey = `${dateKey}-${slot.timeSlot}`;
+                                      if (!uniqueSlots.has(slotKey)) {
+                                        uniqueSlots.set(slotKey, slot);
+                                      }
+                                    });
+                                    
+                                    // Konversi Map kembali ke array
+                                    const deduplicatedSlots = Array.from(uniqueSlots.values());
+                                    
                                     // Filter slot yang belum lewat waktunya
-                                    const validSlots = slots.filter((slot: any) => {
+                                    const validSlots = deduplicatedSlots.filter((slot: any) => {
                                       try {
                                         // Format dari timeSlot adalah "10:00-11:30", ambil jam awal saja
                                         const startTime = slot.timeSlot.split('-')[0].trim();
