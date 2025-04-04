@@ -18,6 +18,7 @@ import {
 } from "@shared/schema";
 import { handleDateTest } from "./test-route";
 import * as schema from "../shared/schema";
+import fixTransactionsTable from "./fix-transactions-schema";
 import crypto from "crypto";
 import { setupAuth } from "./auth";
 import multer from "multer";
@@ -50,6 +51,15 @@ interface CreateRegistrationLinkBody {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication middleware
   setupAuth(app);
+  
+  // Fix database schema for missing columns
+  try {
+    console.log("Running database schema fix for transactions table...");
+    await fixTransactionsTable();
+    console.log("Database schema fix completed successfully");
+  } catch (error) {
+    console.error("Error fixing database schema:", error);
+  }
   
   // API routes
   const apiRouter = app.route("/api");
@@ -933,13 +943,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const patientId = req.query.patientId;
       
       if (patientId) {
-        const patientTransactions = await storage.getTransactionsByPatient(parseInt(patientId as string));
-        return res.status(200).json(patientTransactions);
+        try {
+          const patientTransactions = await storage.getTransactionsByPatient(parseInt(patientId as string));
+          return res.status(200).json(patientTransactions);
+        } catch (patientError) {
+          console.error("Error getting patient transactions:", patientError);
+          return res.status(500).json({ message: "Error retrieving patient transactions" });
+        }
       }
       
-      const transactions = await storage.getAllTransactions();
-      return res.status(200).json(transactions);
+      try {
+        console.log("Fetching all transactions");
+        const transactions = await storage.getAllTransactions();
+        console.log(`Retrieved ${transactions.length} transactions`);
+        return res.status(200).json(transactions);
+      } catch (allTransactionsError) {
+        console.error("Error getting all transactions:", allTransactionsError);
+        return res.status(500).json({ message: "Error retrieving all transactions" });
+      }
     } catch (error) {
+      console.error("Error in transactions endpoint:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });

@@ -51,8 +51,10 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    console.error("Global error handler caught:", err);
     res.status(status).json({ message });
-    throw err;
+    // Don't throw the error again - this causes the server to crash
+    // throw err;
   });
 
   // importantly only setup vite in development and after
