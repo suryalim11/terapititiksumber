@@ -799,6 +799,45 @@ export class DatabaseStorage implements IStorage {
       // (contohnya transaksi dengan harga 0 yang merupakan penggunaan sesi paket terapi)
       const items = transaction.items as any[];
       if (items && Array.isArray(items)) {
+        // Cek apakah ada item dengan jenis "debt-payment"
+        const isDebtPayment = items.some(
+          item => item.type === "debt-payment" && item.description && 
+          typeof item.description === 'string' && item.description.includes("Pembayaran utang untuk transaksi")
+        );
+        
+        if (isDebtPayment) {
+          // Jika transaksi ini adalah pembayaran utang, ekstrak ID transaksi asli dari deskripsi
+          for (const item of items) {
+            if (item.type === "debt-payment" && item.description) {
+              const description = item.description as string;
+              const originalTransactionIdMatch = description.match(/Pembayaran utang untuk transaksi (T-[0-9]+-[0-9]+)/);
+              
+              if (originalTransactionIdMatch && originalTransactionIdMatch[1]) {
+                const originalTransactionId = originalTransactionIdMatch[1];
+                
+                // Cari transaksi asli berdasarkan transactionId (bukan ID)
+                const originalTransaction = await db.query.transactions.findFirst({
+                  where: eq(schema.transactions.transactionId, originalTransactionId)
+                });
+                
+                if (originalTransaction) {
+                  console.log(`Mengembalikan status transaksi asli ${originalTransactionId} ke belum lunas.`);
+                  
+                  // Kembalikan status transaksi asli ke belum lunas
+                  await db.update(schema.transactions)
+                    .set({ 
+                      isPaid: false 
+                    })
+                    .where(eq(schema.transactions.id, originalTransaction.id));
+                    
+                  // Hapus juga data pembayaran utang dari tabel debt_payments
+                  await db.delete(schema.debtPayments)
+                    .where(eq(schema.debtPayments.transactionId, originalTransaction.id));
+                }
+              }
+            }
+          }
+        }
         // Cek apakah ada item dengan jenis "package" dan descripsi berisi "menggunakan sisa paket"
         const isUsingExistingPackage = items.some(
           item => item.type === "package" && 
@@ -842,7 +881,7 @@ export class DatabaseStorage implements IStorage {
             await db.delete(schema.sessions)
               .where(eq(schema.sessions.id, session.id));
           }
-        } else {
+        } else if (!isDebtPayment) {
           // Kasus normal: Transaksi pembelian paket baru
           console.log("Menghapus transaksi pembelian paket");
           
