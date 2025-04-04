@@ -1258,10 +1258,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Received status update for appointment ${id}, status value: "${status}", type: ${typeof status}`);
       
       // Validasi status
-      const validStatuses = ['Active', 'Completed', 'Cancelled'];
+      const validStatuses = ['Active', 'Completed', 'Cancelled', 'Scheduled'];
       if (!status || !validStatuses.includes(status)) {
         return res.status(400).json({ 
-          message: "Invalid status. Status must be one of: Active, Completed, Cancelled",
+          message: "Invalid status. Status must be one of: Active, Scheduled, Completed, Cancelled",
           receivedStatus: status
         });
       }

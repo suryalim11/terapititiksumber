@@ -333,7 +333,7 @@ export class DatabaseStorage implements IStorage {
       
       // Untuk setiap janji temu yang aktif, kurangi kuota slot terapi
       for (const appointment of patientAppointments) {
-        if (appointment.status !== "cancelled" && appointment.therapySlotId) {
+        if (appointment.status !== "Cancelled" && appointment.therapySlotId) {
           // Dapatkan slot terapi
           const therapySlot = await this.getTherapySlot(appointment.therapySlotId);
           
@@ -1130,12 +1130,12 @@ export class DatabaseStorage implements IStorage {
     // Proses perubahan kuota slot terapi
     if (existingAppointment.therapySlotId) {
       // Jika status berubah dari aktif ke dibatalkan, kurangi kuota
-      if (existingAppointment.status !== "cancelled" && status === "cancelled") {
+      if (existingAppointment.status !== "Cancelled" && status === "Cancelled") {
         await this.decrementTherapySlotUsage(existingAppointment.therapySlotId);
         console.log(`Mengurangi kuota untuk slot terapi ID ${existingAppointment.therapySlotId} karena janji temu dibatalkan`);
       } 
       // Jika status berubah dari dibatalkan ke aktif, tambahkan kuota
-      else if (existingAppointment.status === "cancelled" && status !== "cancelled") {
+      else if (existingAppointment.status === "Cancelled" && status !== "Cancelled") {
         await this.incrementTherapySlotUsage(existingAppointment.therapySlotId);
         console.log(`Menambah kuota untuk slot terapi ID ${existingAppointment.therapySlotId} karena janji temu diaktifkan`);
       }
