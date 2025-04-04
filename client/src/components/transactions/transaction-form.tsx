@@ -245,8 +245,10 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       0
     );
     
-    // Get discount amount
-    const discount = parseFloat(form.watch("discount") || "0");
+    // Get discount amount from form - make sure it's non-null
+    // Gunakan parseFloat dengan validasi lebih baik untuk mencegah masalah tipe data
+    const discountVal = form.watch("discount");
+    const discount = discountVal ? parseFloat(discountVal) : 0;
     
     // Return total amount (subtotal - discount)
     return Math.max(0, subtotal - discount);
@@ -261,15 +263,16 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         0
       );
       
-      // Get discount amount
-      const discount = parseFloat(values.discount || "0");
+      // Get discount amount - dengan validasi lebih baik
+      const discountVal = values.discount;
+      const discount = discountVal ? parseFloat(discountVal) : 0;
       
       // Calculate total amount (subtotal - discount)
       const totalAmount = Math.max(0, subtotal - discount);
 
       try {
-        // Use already calculated values
-        const discountAmount = parseFloat(values.discount || "0");
+        // Use the validated discount value from above
+        const discountAmount = discount;
         
         console.log("Mengirim request ke API dengan data:", {
           patientId: parseInt(values.patientId),
@@ -322,7 +325,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
 
       // Prepare invoice data
       const patient = patients.find((p: Patient) => p.id === parseInt(form.getValues().patientId));
-      const discountAmount = parseFloat(form.getValues().discount || "0");
+      const discountVal = form.getValues().discount;
+      const discountAmount = discountVal ? parseFloat(discountVal) : 0;
       const subtotal = cartItems.reduce(
         (sum, item) => sum + parseFloat(item.price) * item.quantity,
         0
