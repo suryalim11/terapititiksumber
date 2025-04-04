@@ -37,7 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import TransactionForm from "@/components/transactions/transaction-form";
 import Invoice from "@/components/transactions/invoice";
 import { useToast } from "@/hooks/use-toast";
@@ -73,6 +73,7 @@ export default function Transactions() {
   const [invoiceData, setInvoiceData] = useState<any>(null);
   const [location, navigate] = useLocation();
   const { toast } = useToast();
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
   
   // Parse URL untuk mendapatkan patientId dari parameter URL
   const urlSearchParams = new URLSearchParams(window.location.search);
@@ -208,6 +209,29 @@ export default function Transactions() {
   const patientFromUrl = patientIdFromUrl ? 
     patients?.find((p: any) => p.id === parseInt(patientIdFromUrl)) : null;
 
+  // Fungsi untuk mengelola sorting
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    
+    // Jika sudah ada sorting pada kolom yang sama, toggle arah sorting
+    if (sortConfig && sortConfig.key === key) {
+      direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    }
+    
+    setSortConfig({ key, direction });
+  };
+  
+  // Fungsi untuk mendapatkan icon sorting yang sesuai
+  const getSortIcon = (key: string) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return <ArrowUpDown className="h-4 w-4" />;
+    }
+    
+    return sortConfig.direction === 'asc' 
+      ? <ArrowUp className="h-4 w-4" /> 
+      : <ArrowDown className="h-4 w-4" />;
+  };
+
   const filteredTransactions = transactions
     ? transactions
         .filter((transaction: Transaction) => {
@@ -227,8 +251,46 @@ export default function Transactions() {
           );
         })
         .sort((a: Transaction, b: Transaction) => {
-          // Sort by date (newest first)
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          if (!sortConfig) {
+            // Default sort by date (newest first)
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          }
+          
+          const direction = sortConfig.direction === 'asc' ? 1 : -1;
+          
+          switch (sortConfig.key) {
+            case 'transactionId':
+              return direction * a.transactionId.localeCompare(b.transactionId);
+            case 'patient':
+              return direction * getPatientName(a.patientId).localeCompare(getPatientName(b.patientId));
+            case 'date':
+              return direction * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            case 'paymentMethod':
+              return direction * a.paymentMethod.localeCompare(b.paymentMethod);
+            case 'subtotal':
+              const aSubtotal = parseFloat(a.subtotal?.toString() || "0");
+              const bSubtotal = parseFloat(b.subtotal?.toString() || "0");
+              return direction * (aSubtotal - bSubtotal);
+            case 'discount':
+              const aDiscount = parseFloat(a.discount?.toString() || "0");
+              const bDiscount = parseFloat(b.discount?.toString() || "0");
+              return direction * (aDiscount - bDiscount);
+            case 'total':
+              const aTotal = parseFloat(a.totalAmount.toString());
+              const bTotal = parseFloat(b.totalAmount.toString());
+              return direction * (aTotal - bTotal);
+            case 'credit':
+              const aCredit = parseFloat(a.creditAmount?.toString() || "0");
+              const bCredit = parseFloat(b.creditAmount?.toString() || "0");
+              return direction * (aCredit - bCredit);
+            case 'status':
+              // Sort by isPaid status
+              const aStatus = a.isPaid ? "1" : (a.creditAmount && parseFloat(a.creditAmount.toString()) > 0 ? "2" : "1");
+              const bStatus = b.isPaid ? "1" : (b.creditAmount && parseFloat(b.creditAmount.toString()) > 0 ? "2" : "1");
+              return direction * aStatus.localeCompare(bStatus);
+            default:
+              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          }
         })
     : [];
 
@@ -489,15 +551,87 @@ export default function Transactions() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID Transaksi</TableHead>
-                    <TableHead>Pasien</TableHead>
-                    <TableHead>Tanggal</TableHead>
-                    <TableHead>Metode Pembayaran</TableHead>
-                    <TableHead>Subtotal</TableHead>
-                    <TableHead>Diskon</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Kredit</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => requestSort('transactionId')}
+                    >
+                      <div className="flex items-center">
+                        ID Transaksi
+                        {getSortIcon('transactionId')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => requestSort('patient')}
+                    >
+                      <div className="flex items-center">
+                        Pasien
+                        {getSortIcon('patient')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => requestSort('date')}
+                    >
+                      <div className="flex items-center">
+                        Tanggal
+                        {getSortIcon('date')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => requestSort('paymentMethod')}
+                    >
+                      <div className="flex items-center">
+                        Metode Pembayaran
+                        {getSortIcon('paymentMethod')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => requestSort('subtotal')}
+                    >
+                      <div className="flex items-center">
+                        Subtotal
+                        {getSortIcon('subtotal')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => requestSort('discount')}
+                    >
+                      <div className="flex items-center">
+                        Diskon
+                        {getSortIcon('discount')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => requestSort('total')}
+                    >
+                      <div className="flex items-center">
+                        Total
+                        {getSortIcon('total')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => requestSort('credit')}
+                    >
+                      <div className="flex items-center">
+                        Kredit
+                        {getSortIcon('credit')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => requestSort('status')}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        {getSortIcon('status')}
+                      </div>
+                    </TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
