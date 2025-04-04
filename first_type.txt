@@ -1,0 +1,7 @@
+        items: JSON.stringify([{
+          id: 0,
+          type: "debt-payment",
+          quantity: 1,
+          price: amount,
+          description: `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+        }]),

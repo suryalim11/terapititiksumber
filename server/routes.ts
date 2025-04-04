@@ -1074,6 +1074,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid payment amount" });
       }
       
+      // Buat transaksi baru untuk mencatat pembayaran utang ini
+      const paymentTransactionId = `DP-${format(new Date(), 'yyyyMMdd')}-${String(transaction.id).padStart(3, '0')}`;
+      
+      // Buat transaksi baru sebagai catatan pembayaran
+      const newTransaction = await storage.createTransaction({
+        patientId: transaction.patientId,
+        transactionId: paymentTransactionId,
+        totalAmount: amount,
+        discount: "0.00",
+        subtotal: amount,
+        paymentMethod: paymentMethod,
+        items: JSON.stringify([{
+          id: 0,
+          type: "debt-payment",
+          quantity: 1,
+          price: amount,
+          description: `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+        }]),
+        isPaid: true,
+        creditAmount: "0.00",
+        paidAmount: amount
+      });
+      
       // Create debt payment record
       const payment = await storage.createDebtPayment({
         transactionId,

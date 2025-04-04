@@ -1,0 +1,27 @@
+      // Buat transaksi baru untuk mencatat pembayaran utang ini
+      const paymentTransactionId = `DP-${format(new Date(), 'yyyyMMdd')}-${String(transaction.id).padStart(3, '0')}`;
+      
+      // Buat transaksi baru sebagai catatan pembayaran
+      const newTransaction = await storage.createTransaction({
+        patientId: transaction.patientId,
+        transactionId: paymentTransactionId,
+        totalAmount: amount,
+        discount: "0.00",
+        subtotal: amount,
+        paymentMethod: paymentMethod,
+        items: JSON.stringify([{
+          id: 0,
+          type: "debt-payment",
+          quantity: 1,
+          price: amount,
+          description: `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+        }]),
+        isPaid: true,
+        creditAmount: "0.00",
+        paidAmount: amount
+      });
+      
+      // Buat catatan pembayaran utang
+      const payment = await storage.createDebtPayment({
+        transactionId: parseInt(transactionId),
+        amount: amount,
