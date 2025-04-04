@@ -2605,8 +2605,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Perbaiki setiap transaksi yang tidak memiliki subtotal atau discount
       for (const transaction of transactions) {
         try {
-          // Jika subtotal kosong atau null, gunakan totalAmount
-          if (!transaction.subtotal) {
+          // Jika subtotal kosong, null, atau 0, gunakan totalAmount
+          if (!transaction.subtotal || transaction.subtotal === "0" || transaction.subtotal === "0.00") {
             // Update transaksi di database
             const updatedTransaction = await db
               .update(schema.transactions)
