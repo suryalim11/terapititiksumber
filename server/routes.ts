@@ -1891,11 +1891,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Step 1: Get initial slots based on date parameter
       if (dateParam) {
-        const date = new Date(dateParam);
-        if (isNaN(date.getTime())) {
+        // Perbaikan: parse tanggal dengan format yang benar untuk mencegah masalah timezone
+        // Pastikan kita membuat tanggal jam 00:00:00 pada zona waktu WIB/UTC+7
+        
+        try {
+          // 1. Parse tanggal dari format yyyy-MM-dd
+          const [year, month, day] = dateParam.split('-').map(Number);
+          
+          // 2. Buat Date object dengan jam 00:00:00
+          const date = new Date(year, month - 1, day, 0, 0, 0, 0); // month adalah zero-based (0-11)
+          
+          console.log(`Tanggal yang diminta dari client: ${dateParam}, dikonversi ke: ${date.toISOString()}`);
+          
+          if (isNaN(date.getTime())) {
+            return res.status(400).json({ message: "Invalid date format" });
+          }
+          
+          slots = await storage.getTherapySlotsByDate(date);
+          
+        } catch (error) {
+          console.error(`Error parsing date ${dateParam}:`, error);
           return res.status(400).json({ message: "Invalid date format" });
         }
-        slots = await storage.getTherapySlotsByDate(date);
       } else if (activeOnly) {
         slots = await storage.getActiveTherapySlots();
       } else {
@@ -1948,13 +1965,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Perbaikan penanganan tanggal: pastikan tanggal disimpan dengan benar untuk zona waktu WIB
       let slotDate;
       if (req.body.date) {
-        // Gunakan getWIBDate untuk memastikan tanggal diatur dengan benar untuk zona waktu WIB
-        const dateObj = new Date(req.body.date);
-        // Tetapkan waktu ke tengah malam untuk konsistensi
-        dateObj.setHours(0, 0, 0, 0);
-        console.log("Tanggal asli:", dateObj);
-        slotDate = dateObj;
+        // Parse tanggal dengan cara yang konsisten
+        try {
+          // Jika body.date adalah string ISO format (dari Date.toISOString())
+          if (typeof req.body.date === 'string' && req.body.date.includes('T')) {
+            // Gunakan string parsing untuk mengekstrak tahun, bulan, dan hari
+            const dateMatch = req.body.date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (dateMatch) {
+              // Index 1,2,3 adalah group captures dari regex matching
+              const [_, year, month, day] = dateMatch.map(Number);
+              slotDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+              console.log(`Tanggal ISO string diparsing: ${req.body.date} -> ${slotDate.toISOString()}`);
+            } else {
+              throw new Error(`Cannot parse date: ${req.body.date}`);
+            }
+          } 
+          // Jika date adalah Date object (yang dikonversi ke JSON menjadi string ISO)
+          else if (req.body.date instanceof Date) {
+            slotDate = new Date(req.body.date);
+            slotDate.setHours(0, 0, 0, 0);
+            console.log(`Date object: ${slotDate.toISOString()}`);
+          }
+          // Jika date adalah format sederhana (YYYY-MM-DD)
+          else {
+            // Split tanggal dengan format YYYY-MM-DD
+            const parts = req.body.date.split('-');
+            if (parts.length === 3) {
+              const [year, month, day] = parts.map(Number);
+              slotDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+              console.log(`Simple date format: ${req.body.date} -> ${slotDate.toISOString()}`);
+            } else {
+              throw new Error(`Invalid date format: ${req.body.date}`);
+            }
+          }
+        } catch (error) {
+          console.error(`Error parsing date in POST: ${error}`);
+          // Fallback ke tanggal hari ini jika gagal
+          slotDate = new Date();
+          slotDate.setHours(0, 0, 0, 0);
+        }
       } else {
+        // Default ke hari ini jika tidak ada tanggal
         slotDate = new Date();
         slotDate.setHours(0, 0, 0, 0);
       }
@@ -1992,13 +2043,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Perbaikan penanganan tanggal: pastikan tanggal disimpan dengan benar untuk zona waktu WIB
       let slotDate = undefined;
+      
       if (req.body.date) {
-        // Gunakan pendekatan yang sama seperti pada POST endpoint
-        const dateObj = new Date(req.body.date);
-        // Tetapkan waktu ke tengah malam untuk konsistensi
-        dateObj.setHours(0, 0, 0, 0);
-        console.log("Tanggal asli untuk update:", dateObj);
-        slotDate = dateObj;
+        // Parse tanggal dengan cara yang konsisten seperti pada POST endpoint
+        try {
+          // Jika body.date adalah string ISO format
+          if (typeof req.body.date === 'string' && req.body.date.includes('T')) {
+            const dateMatch = req.body.date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (dateMatch) {
+              const [_, year, month, day] = dateMatch.map(Number);
+              slotDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+              console.log(`UPDATE: Tanggal ISO diparsing: ${req.body.date} -> ${slotDate.toISOString()}`);
+            } else {
+              throw new Error(`Cannot parse date: ${req.body.date}`);
+            }
+          } 
+          // Jika date adalah Date object
+          else if (req.body.date instanceof Date) {
+            slotDate = new Date(req.body.date);
+            slotDate.setHours(0, 0, 0, 0);
+            console.log(`UPDATE: Date object: ${slotDate.toISOString()}`);
+          }
+          // Jika date adalah format sederhana (YYYY-MM-DD)
+          else {
+            const parts = req.body.date.split('-');
+            if (parts.length === 3) {
+              const [year, month, day] = parts.map(Number);
+              slotDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+              console.log(`UPDATE: Simple date format: ${req.body.date} -> ${slotDate.toISOString()}`);
+            } else {
+              throw new Error(`Invalid date format: ${req.body.date}`);
+            }
+          }
+        } catch (error) {
+          console.error(`Error parsing date in PUT: ${error}`);
+          return res.status(400).json({ message: "Format tanggal tidak valid" });
+        }
       }
       
       const data = {
