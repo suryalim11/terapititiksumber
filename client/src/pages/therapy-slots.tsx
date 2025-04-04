@@ -330,14 +330,38 @@ export default function TherapySlots() {
 
   // Handler untuk submit form
   const onSubmit = (data: TherapySlotFormValues) => {
+    // Debugging: Periksa tanggal input yang diterima dari form
+    console.log("Tanggal dari form (raw):", data.date);
+    if (data.date instanceof Date) {
+      console.log("Date object toString():", data.date.toString());
+      console.log("Date object toISOString():", data.date.toISOString());
+      console.log("Tahun:", data.date.getFullYear());
+      console.log("Bulan:", data.date.getMonth() + 1); // +1 karena getMonth() dimulai dari 0
+      console.log("Tanggal:", data.date.getDate());
+    }
+    
     // Gabungkan startTime dan endTime menjadi timeSlot
     const timeSlot = `${data.startTime}-${data.endTime}`;
     
-    // Jika data.date adalah string, gunakan string tersebut
-    // Jika data.date adalah Date object, format ke string 'yyyy-MM-dd'
-    const yearMonthDay = typeof data.date === 'string' 
-      ? data.date 
-      : format(data.date, 'yyyy-MM-dd');
+    // PERBAIKAN: Gunakan Date.UTC untuk mengatasi masalah timezone
+    let yearMonthDay;
+    
+    if (typeof data.date === 'string') {
+      yearMonthDay = data.date;
+      console.log("Menggunakan string date langsung:", yearMonthDay);
+    } else if (data.date instanceof Date) {
+      // Ekstrak tahun, bulan, tanggal tanpa timezone offset
+      const year = data.date.getFullYear();
+      const month = data.date.getMonth() + 1; // +1 karena getMonth() dimulai dari 0
+      const day = data.date.getDate();
+      
+      // Format ke yyyy-MM-dd (pastikan bulan dan tanggal selalu 2 digit)
+      yearMonthDay = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      console.log("Dikonversi dari Date object:", yearMonthDay);
+    } else {
+      console.error("Tipe tanggal tidak dikenali:", typeof data.date);
+      yearMonthDay = format(new Date(), 'yyyy-MM-dd'); // Fallback ke hari ini
+    }
     
     console.log("Submitting date as string format:", yearMonthDay);
     
