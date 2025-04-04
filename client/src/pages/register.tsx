@@ -153,13 +153,32 @@ export default function RegisterPage() {
     queryKey: ['/api/therapy-slots', 'available-active'],
     queryFn: async () => {
       console.log("Mengambil slot terapi untuk form pendaftaran");
+      // Pastikan hanya menampilkan slot yang:
+      // 1. Aktif (active=true)
+      // 2. Masih tersedia (available=true)
+      // 3. Slot yang tanggalnya hari ini atau kemudian
       const response = await fetch('/api/therapy-slots?available=true&active=true');
       if (!response.ok) {
         throw new Error('Gagal mengambil data slot terapi');
       }
+      
       const data = await response.json();
       console.log("Slot terapi yang diterima di form pendaftaran:", data.length, "slot");
-      return data;
+      
+      // Filter lagi di client-side untuk memastikan tidak ada slot dengan kuota penuh
+      const filteredSlots = data.filter(slot => slot.currentCount < slot.maxQuota);
+      console.log("Slot terapi setelah filter kuota:", filteredSlots.length, "slot");
+      
+      // Urutkan berdasarkan tanggal dan waktu
+      return filteredSlots.sort((a, b) => {
+        // Bandingkan tanggal terlebih dahulu
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        
+        // Jika tanggal sama, bandingkan jam mulai
+        return a.timeSlot.localeCompare(b.timeSlot);
+      });
     },
     enabled: registrationStatus === "idle" && !!registrationCode,
     refetchInterval: 60000, // Refetch setiap 1 menit untuk memperbarui status slot yang tersedia
@@ -790,6 +809,10 @@ export default function RegisterPage() {
                                         </div>
                                         <div className="p-3 space-y-2">
                                           {validSlots.map((slot: any) => {
+                                            // Pastikan lagi bahwa slot ini masih memiliki kuota tersedia
+                                            // dan menggunakan hasil perhitungan terbaru
+                                            if (slot.currentCount >= slot.maxQuota) return null;
+                                            
                                             const availableSeats = slot.maxQuota - slot.currentCount;
                                             const isAlmostFull = availableSeats <= 2;
                                             

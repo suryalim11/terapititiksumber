@@ -819,7 +819,21 @@ export class DatabaseStorage implements IStorage {
     const result = await db.query.therapySlots.findFirst({
       where: eq(schema.therapySlots.id, id)
     });
-    return result;
+    
+    if (!result) return undefined;
+    
+    // Untuk memastikan kuota appointment yang akurat,
+    // ambil jumlah appointment aktif yang terkait dengan slot
+    const appointments = await this.getAppointmentsByTherapySlot(id);
+    
+    // Hitung appointment yang tidak dibatalkan saja
+    const activeCount = appointments.filter(app => app.status !== 'Cancelled').length;
+    
+    // Return hasil dengan currentCount diperbarui berdasarkan jumlah appointment aktif
+    return {
+      ...result,
+      currentCount: activeCount
+    };
   }
 
   async getTherapySlotsByDate(date: Date): Promise<TherapySlot[]> {
@@ -838,7 +852,7 @@ export class DatabaseStorage implements IStorage {
     console.log("Range filter: ", startDate.toISOString(), "sampai", endDate.toISOString());
     
     // Gunakan fungsi query di Drizzle ORM untuk memfilter berdasarkan tanggal
-    return db.query.therapySlots.findMany({
+    const slots = await db.query.therapySlots.findMany({
       where: and(
         // Gunakan gte dan lte untuk mendapatkan semua record pada tanggal yang sama
         gte(schema.therapySlots.date, startDate),
@@ -846,12 +860,35 @@ export class DatabaseStorage implements IStorage {
       ),
       orderBy: [asc(schema.therapySlots.timeSlot)]
     });
+    
+    // Untuk setiap slot, perbarui currentCount berdasarkan jumlah appointment aktif
+    for (const slot of slots) {
+      const appointments = await this.getAppointmentsByTherapySlot(slot.id);
+      const activeCount = appointments.filter(app => app.status !== 'Cancelled').length;
+      slot.currentCount = activeCount;
+    }
+    
+    return slots;
   }
 
   async getAllTherapySlots(): Promise<TherapySlot[]> {
-    return db.query.therapySlots.findMany({
+    const slots = await db.query.therapySlots.findMany({
       orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
     });
+    
+    // Untuk setiap slot, ambil jumlah appointment aktif yang terkait
+    // dan gunakan itu sebagai currentCount yang akurat
+    for (const slot of slots) {
+      const appointments = await this.getAppointmentsByTherapySlot(slot.id);
+      
+      // Hitung appointment yang tidak dibatalkan saja
+      const activeCount = appointments.filter(app => app.status !== 'Cancelled').length;
+      
+      // Update currentCount langsung di objek slot yang dikembalikan
+      slot.currentCount = activeCount;
+    }
+    
+    return slots;
   }
 
   async getActiveTherapySlots(): Promise<TherapySlot[]> {
@@ -861,14 +898,28 @@ export class DatabaseStorage implements IStorage {
     
     console.log("Mencari slot terapi aktif mulai dari:", today, "ISO:", today.toISOString());
     
-    // Gunakan query builder yang standar untuk konsistensi
-    return db.query.therapySlots.findMany({
+    // Pertama, ambil slot terapi yang memenuhi kriteria dasar
+    const slots = await db.query.therapySlots.findMany({
       where: and(
         eq(schema.therapySlots.isActive, true),
         gte(schema.therapySlots.date, today)
       ),
       orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
     });
+    
+    // Untuk setiap slot, ambil jumlah appointment aktif yang terkait
+    // dan gunakan itu sebagai currentCount yang akurat
+    for (const slot of slots) {
+      const appointments = await this.getAppointmentsByTherapySlot(slot.id);
+      
+      // Hitung appointment yang tidak dibatalkan saja
+      const activeCount = appointments.filter(app => app.status !== 'Cancelled').length;
+      
+      // Update currentCount langsung di objek slot yang dikembalikan
+      slot.currentCount = activeCount;
+    }
+    
+    return slots;
   }
 
   async createTherapySlot(slot: InsertTherapySlot): Promise<TherapySlot> {

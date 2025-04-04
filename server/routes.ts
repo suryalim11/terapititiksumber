@@ -1945,9 +1945,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Apply available filter (slots that aren't full)
       if (availableOnly) {
         console.log("Filtering for available slots (currentCount < maxQuota)");
-        filteredSlots = filteredSlots.filter(slot => 
-          slot.currentCount < slot.maxQuota
-        );
+        
+        // Filter multi-tahap:
+        // 1. Dapatkan semua ID slot yang akan difilter
+        const slotIds = filteredSlots.map(slot => slot.id);
+        
+        // 2. Untuk setiap slot, dapatkan appointment aktif terkait
+        const appointmentPromises = slotIds.map(async (slotId) => {
+          const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+          // Filter hanya appointment yang aktif (tidak dibatalkan)
+          const activeAppointments = appointments.filter(app => app.status !== 'Cancelled');
+          console.log(`Slot ${slotId}: ${activeAppointments.length} active appointments`);
+          return { slotId, appointmentCount: activeAppointments.length };
+        });
+        
+        // 3. Tunggu semua promise selesai
+        const appointmentCounts = await Promise.all(appointmentPromises);
+        
+        // 4. Buat map dari ID slot ke jumlah appointment aktif
+        const slotAppointmentMap = new Map();
+        appointmentCounts.forEach(({ slotId, appointmentCount }) => {
+          slotAppointmentMap.set(slotId, appointmentCount);
+        });
+        
+        // 5. Filter slot berdasarkan jumlah appointment aktif
+        filteredSlots = filteredSlots.filter(slot => {
+          const actualCount = slotAppointmentMap.get(slot.id) || 0;
+          // Gunakan jumlah appointment aktual dari database untuk filter
+          return actualCount < slot.maxQuota;
+        });
+        
+        // 6. Update nilai currentCount di masing-masing slot (hanya di respons)
+        filteredSlots = filteredSlots.map(slot => ({
+          ...slot,
+          currentCount: slotAppointmentMap.get(slot.id) || slot.currentCount
+        }));
       }
       
       // Sort by date (nearest first) and then by time slot
