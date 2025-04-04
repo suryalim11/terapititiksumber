@@ -301,33 +301,14 @@ export default function PatientDetail() {
         return;
       }
       
-      // Konversi string tanggal ke format Date
-      let treatmentDate: Date | null = null;
-      try {
-        // Buat Date dari string tanggal (format yyyy-MM-dd)
-        treatmentDate = new Date(medicalHistoryForm.treatmentDate);
-        
-        // Pastikan tanggal valid
-        if (isNaN(treatmentDate.getTime())) {
-          throw new Error("Tanggal tidak valid");
-        }
-      } catch (error) {
-        console.error("Error parsing date:", error);
-        toast({
-          title: "Format tanggal tidak valid",
-          description: "Silakan periksa format tanggal terapi",
-          variant: "destructive",
-        });
-        return;
-      }
-      
+      // Skema di server sudah disiapkan dengan preprocessor untuk handle konversi string ke Date
       const payload = {
         patientId,
         complaint: medicalHistoryForm.complaint,
         beforeBloodPressure: medicalHistoryForm.beforeBloodPressure || null,
         afterBloodPressure: medicalHistoryForm.afterBloodPressure || null,
         notes: medicalHistoryForm.notes || null,
-        treatmentDate: treatmentDate
+        treatmentDate: medicalHistoryForm.treatmentDate // Kirim string tanggal langsung, preprocessor di server akan menangani
       };
       
       let url = `/api/medical-histories`;

@@ -247,15 +247,37 @@ export const medicalHistories = pgTable("medical_histories", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertMedicalHistorySchema = createInsertSchema(medicalHistories).pick({
-  patientId: true,
-  appointmentId: true,
-  complaint: true,
-  beforeBloodPressure: true,
-  afterBloodPressure: true,
-  notes: true,
-  treatmentDate: true,
-});
+export const insertMedicalHistorySchema = createInsertSchema(medicalHistories)
+  .pick({
+    patientId: true,
+    appointmentId: true,
+    complaint: true,
+    beforeBloodPressure: true,
+    afterBloodPressure: true,
+    notes: true,
+    treatmentDate: true,
+  })
+  .extend({
+    // Preprocessor untuk mengkonversi string tanggal menjadi objek Date yang valid
+    treatmentDate: z.preprocess(
+      (val) => {
+        // Jika sudah berupa date object, kembalikan langsung
+        if (val instanceof Date) return val;
+        
+        // Jika string, coba parse menjadi Date
+        if (typeof val === 'string') {
+          const date = new Date(val);
+          // Validasi tanggal valid
+          if (!isNaN(date.getTime())) {
+            return date;
+          }
+        }
+        // Jika tidak valid, gunakan tanggal sekarang
+        return new Date();
+      },
+      z.date()
+    ),
+  });
 
 export type ConfirmationToken = typeof confirmationTokens.$inferSelect;
 export type InsertConfirmationToken = z.infer<typeof insertConfirmationTokenSchema>;

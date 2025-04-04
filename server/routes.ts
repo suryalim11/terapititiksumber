@@ -2406,10 +2406,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Riwayat medis tidak ditemukan" });
       }
       
-      // Validasi data
-      const updateData = req.body;
+      // Validasi data menggunakan skema yang sudah dilengkapi preprocessor
+      const validatedData = insertMedicalHistorySchema.parse(req.body);
       
-      const updatedHistory = await storage.updateMedicalHistory(id, updateData);
+      const updatedHistory = await storage.updateMedicalHistory(id, validatedData);
       return res.json(updatedHistory);
     } catch (error) {
       console.error("Error updating medical history:", error);
