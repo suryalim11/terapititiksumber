@@ -1,11 +1,12 @@
 import { 
   users, patients, products, packages, transactions, sessions, appointments, therapySlots,
-  registrationLinks, confirmationTokens, medicalHistories,
+  registrationLinks, confirmationTokens, medicalHistories, debtPayments,
   type User, type InsertUser, type Patient, type InsertPatient,
   type Product, type InsertProduct, type Package, type InsertPackage, type Transaction,
   type InsertTransaction, type Session, type InsertSession,
   type Appointment, type InsertAppointment, type TherapySlot, type InsertTherapySlot,
-  type ConfirmationToken, type InsertConfirmationToken, type MedicalHistory, type InsertMedicalHistory
+  type ConfirmationToken, type InsertConfirmationToken, type MedicalHistory, type InsertMedicalHistory,
+  type DebtPayment, type InsertDebtPayment
 } from "@shared/schema";
 import { format } from "date-fns";
 
@@ -75,7 +76,13 @@ export interface IStorage {
   getAllTransactions(): Promise<Transaction[]>;
   getTransactionsByPatient(patientId: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  updateTransaction(id: number, transactionData: Partial<Transaction>): Promise<Transaction | undefined>;
   deleteTransaction(id: number): Promise<boolean>;
+  
+  // Debt Payments
+  createDebtPayment(debtPayment: InsertDebtPayment): Promise<DebtPayment>;
+  getDebtPaymentsByTransaction(transactionId: number): Promise<DebtPayment[]>;
+  updateTransactionPaidStatus(transactionId: number): Promise<Transaction | undefined>;
   
   // Sessions
   getSession(id: number): Promise<Session | undefined>;
@@ -154,6 +161,7 @@ export class MemStorage implements IStorage {
   private registrationLinks: Map<number, RegistrationLink>;
   private confirmationTokens: Map<string, ConfirmationToken>;
   private medicalHistories: Map<number, MedicalHistory>;
+  private debtPayments: Map<number, DebtPayment>;
   
   private userCurrentId: number;
   private patientCurrentId: number;
@@ -166,6 +174,7 @@ export class MemStorage implements IStorage {
   private registrationLinkCurrentId: number;
   private confirmationTokenCurrentId: number;
   private medicalHistoryCurrentId: number;
+  private debtPaymentCurrentId: number;
 
   // Session store for authentication
   sessionStore: session.Store;
@@ -182,6 +191,7 @@ export class MemStorage implements IStorage {
     this.registrationLinks = new Map();
     this.confirmationTokens = new Map();
     this.medicalHistories = new Map();
+    this.debtPayments = new Map();
     
     this.userCurrentId = 1;
     this.patientCurrentId = 1;
@@ -194,6 +204,7 @@ export class MemStorage implements IStorage {
     this.registrationLinkCurrentId = 1;
     this.confirmationTokenCurrentId = 1;
     this.medicalHistoryCurrentId = 1;
+    this.debtPaymentCurrentId = 1;
     
     // Initialize session store
     this.sessionStore = new MemoryStore({
@@ -645,6 +656,66 @@ export class MemStorage implements IStorage {
     const transaction: Transaction = { ...insertTransaction, id, transactionId, createdAt };
     this.transactions.set(id, transaction);
     return transaction;
+  }
+  
+  async updateTransaction(id: number, transactionData: Partial<Transaction>): Promise<Transaction | undefined> {
+    const existingTransaction = this.transactions.get(id);
+    if (!existingTransaction) return undefined;
+    
+    const updatedTransaction: Transaction = {
+      ...existingTransaction,
+      ...transactionData,
+    };
+    
+    this.transactions.set(id, updatedTransaction);
+    return updatedTransaction;
+  }
+  
+  async createDebtPayment(debtPayment: InsertDebtPayment): Promise<DebtPayment> {
+    const id = this.debtPaymentCurrentId++;
+    const createdAt = new Date();
+    const paymentDate = debtPayment.paymentDate || new Date();
+    
+    const newDebtPayment: DebtPayment = {
+      ...debtPayment,
+      id,
+      createdAt,
+      paymentDate
+    };
+    
+    this.debtPayments.set(id, newDebtPayment);
+    
+    // Update status pembayaran transaksi
+    await this.updateTransactionPaidStatus(debtPayment.transactionId);
+    
+    return newDebtPayment;
+  }
+  
+  async getDebtPaymentsByTransaction(transactionId: number): Promise<DebtPayment[]> {
+    return Array.from(this.debtPayments.values())
+      .filter(payment => payment.transactionId === transactionId)
+      .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
+  }
+  
+  async updateTransactionPaidStatus(transactionId: number): Promise<Transaction | undefined> {
+    const transaction = await this.getTransaction(transactionId);
+    if (!transaction) return undefined;
+    
+    const payments = await this.getDebtPaymentsByTransaction(transactionId);
+    const totalPaid = payments.reduce(
+      (sum: number, payment: DebtPayment) => sum + parseFloat(payment.amount.toString()), 
+      parseFloat(transaction.paidAmount?.toString() || '0')
+    );
+    
+    // Periksa apakah total pembayaran sudah mencapai atau melebihi total transaksi
+    const totalAmount = parseFloat(transaction.totalAmount.toString());
+    const isPaid = totalPaid >= totalAmount;
+    
+    // Update status pembayaran
+    return this.updateTransaction(transactionId, {
+      isPaid,
+      paidAmount: totalPaid.toString()
+    });
   }
   
   async deleteTransaction(id: number): Promise<boolean> {

@@ -108,6 +108,9 @@ export const transactions = pgTable("transactions", {
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).default("0"),
   paymentMethod: text("payment_method").notNull(),
   items: json("items").notNull(), // array of purchased items (packages and products)
+  creditAmount: decimal("credit_amount", { precision: 10, scale: 2 }).default("0").notNull(),
+  isPaid: boolean("is_paid").default(true).notNull(), // true=lunas, false=utang
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).default("0").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -118,6 +121,9 @@ export const insertTransactionSchema = createInsertSchema(transactions).pick({
   subtotal: true,
   paymentMethod: true,
   items: true,
+  creditAmount: true,
+  isPaid: true,
+  paidAmount: true,
 });
 
 // Session Schema (For tracking therapy sessions)
@@ -210,6 +216,24 @@ export const insertConfirmationTokenSchema = createInsertSchema(confirmationToke
   expiryTime: true,
 });
 
+// Tabel pelunasan utang
+export const debtPayments = pgTable("debt_payments", {
+  id: serial("id").primaryKey(),
+  transactionId: integer("transaction_id").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentMethod: text("payment_method").notNull(),
+  paymentDate: timestamp("payment_date").defaultNow().notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDebtPaymentSchema = createInsertSchema(debtPayments).pick({
+  transactionId: true,
+  amount: true,
+  paymentMethod: true,
+  notes: true
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -237,6 +261,9 @@ export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 
 export type RegistrationLink = typeof registrationLinks.$inferSelect;
 export type InsertRegistrationLink = z.infer<typeof insertRegistrationLinkSchema>;
+
+export type DebtPayment = typeof debtPayments.$inferSelect;
+export type InsertDebtPayment = z.infer<typeof insertDebtPaymentSchema>;
 
 // Medical History Schema
 export const medicalHistories = pgTable("medical_histories", {

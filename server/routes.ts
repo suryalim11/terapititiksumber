@@ -962,7 +962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/transactions", async (req: Request, res: Response) => {
     try {
       // Parse schema with additional fields
-      const { subtotal, discount, createSession = true, ...restData } = req.body;
+      const { subtotal, discount, createSession = true, isPaid = true, creditAmount = "0", paidAmount, ...restData } = req.body;
       
       console.log("Transaction request received:", req.body);
       
@@ -972,7 +972,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...restData,
         totalAmount: restData.totalAmount, // Use the amount passed from client
         discount: discount || "0",
-        subtotal: subtotal || restData.totalAmount || "0"
+        subtotal: subtotal || restData.totalAmount || "0",
+        isPaid, // Include payment status
+        creditAmount: isPaid ? "0" : (creditAmount || restData.totalAmount || "0"),
+        // Jika bayar penuh (isPaid=true), paidAmount=totalAmount. Jika kredit (isPaid=false), paidAmount=0 atau nilai yang diberikan
+        paidAmount: isPaid ? (paidAmount || restData.totalAmount) : (paidAmount || "0")
       });
       
       console.log("Validated transaction data:", validatedData);
@@ -1014,6 +1018,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Add the debt payment API endpoint
+  app.post("/api/transactions/:id/debt-payment", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized, please login first" });
+      }
+      
+      const transactionId = parseInt(req.params.id);
+      const { amount, paymentMethod, notes } = req.body;
+      
+      // Validate that transaction exists and has debt
+      const transaction = await storage.getTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      // Calculate remaining debt
+      const remainingDebt = parseFloat(transaction.creditAmount) - parseFloat(transaction.paidAmount);
+      if (remainingDebt <= 0) {
+        return res.status(400).json({ message: "Transaction has no remaining debt" });
+      }
+      
+      // Validate payment amount
+      const paymentAmount = parseFloat(amount);
+      if (isNaN(paymentAmount) || paymentAmount <= 0) {
+        return res.status(400).json({ message: "Invalid payment amount" });
+      }
+      
+      // Create debt payment record
+      const payment = await storage.createDebtPayment({
+        transactionId,
+        amount,
+        paymentMethod,
+        notes
+      });
+      
+      // Update transaction's paid amount
+      let newPaidAmount = parseFloat(transaction.paidAmount) + paymentAmount;
+      
+      // If new paid amount exceeds or equals credit amount, mark as fully paid
+      let isPaid = newPaidAmount >= parseFloat(transaction.creditAmount);
+      
+      // Update the transaction
+      const updatedTransaction = await storage.updateTransaction(transactionId, {
+        paidAmount: newPaidAmount.toString(),
+        isPaid
+      });
+      
+      return res.status(201).json({
+        success: true,
+        payment,
+        transaction: updatedTransaction,
+        remainingDebt: parseFloat(transaction.creditAmount) - newPaidAmount
+      });
+    } catch (error) {
+      console.error("Error processing debt payment:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Get debt payments for a transaction
+  app.get("/api/transactions/:id/debt-payments", async (req: Request, res: Response) => {
+    try {
+      const transactionId = parseInt(req.params.id);
+      
+      // Validate transaction exists
+      const transaction = await storage.getTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      // Get all debt payments for this transaction
+      const payments = await storage.getDebtPaymentsByTransaction(transactionId);
+      
+      // Calculate remaining debt
+      const totalPaid = payments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+      const creditAmount = parseFloat(transaction.creditAmount);
+      const remainingDebt = creditAmount - totalPaid;
+      
+      return res.status(200).json({
+        success: true,
+        payments,
+        transaction,
+        totalPaid,
+        creditAmount,
+        remainingDebt
+      });
+    } catch (error) {
+      console.error("Error fetching debt payments:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.delete("/api/transactions/:id", async (req: Request, res: Response) => {
     try {
       if (!req.isAuthenticated() || !req.user || req.user.role !== 'admin') {

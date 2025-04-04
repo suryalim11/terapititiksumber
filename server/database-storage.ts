@@ -587,16 +587,21 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log("Database Storage: Creating transaction with data:", transaction);
       
-      // Pastikan discount dan subtotal ada, jika tidak set default
+      // Pastikan semua field memiliki nilai default yang tepat
       const transactionData = {
         ...transaction,
         discount: transaction.discount || "0",
-        subtotal: transaction.subtotal || transaction.totalAmount || "0"
+        subtotal: transaction.subtotal || transaction.totalAmount || "0",
+        creditAmount: transaction.creditAmount || "0",
+        isPaid: transaction.isPaid !== undefined ? transaction.isPaid : true,
+        paidAmount: transaction.paidAmount || (transaction.isPaid ? transaction.totalAmount : "0")
       };
       
       // Generate transaction ID dengan menggunakan waktu WIB
       const wibDate = getWIBDate(new Date());
       const transactionId = `T-${format(wibDate, 'yyyyMMdd')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+      
+      console.log("Database Storage: Processing transaction with data:", transactionData);
       
       // Semua transaksi baru akan disimpan dengan createdAt yang sudah disesuaikan ke WIB
       const result = await db.insert(schema.transactions)
@@ -607,15 +612,160 @@ export class DatabaseStorage implements IStorage {
         })
         .returning();
     
-    // Pastikan data yang dikembalikan juga dalam format waktu WIB
-    const transactionResult = { 
-      ...result[0],
-      createdAt: getWIBDate(result[0].createdAt)
-    };
-    
-    return transactionResult;
+      // Pastikan data yang dikembalikan juga dalam format waktu WIB
+      const transactionResult = { 
+        ...result[0],
+        createdAt: getWIBDate(result[0].createdAt)
+      };
+      
+      return transactionResult;
     } catch (error) {
       console.error("Error creating transaction:", error);
+      throw error;
+    }
+  }
+  
+  // Fungsi untuk mendapatkan daftar utang semua pasien
+  async getUnpaidTransactions(): Promise<Transaction[]> {
+    try {
+      const unpaidTransactions = await db
+        .select()
+        .from(schema.transactions)
+        .where(eq(schema.transactions.isPaid, false))
+        .orderBy(desc(schema.transactions.createdAt));
+        
+      return unpaidTransactions.map(trans => ({
+        ...trans,
+        createdAt: getWIBDate(trans.createdAt)
+      }));
+    } catch (error) {
+      console.error('Error getting unpaid transactions:', error);
+      throw error;
+    }
+  }
+  
+  // Fungsi untuk mendapatkan daftar utang pasien tertentu
+  async getUnpaidTransactionsByPatient(patientId: number): Promise<Transaction[]> {
+    try {
+      const unpaidTransactions = await db
+        .select()
+        .from(schema.transactions)
+        .where(
+          and(
+            eq(schema.transactions.patientId, patientId),
+            eq(schema.transactions.isPaid, false)
+          )
+        )
+        .orderBy(desc(schema.transactions.createdAt));
+        
+      return unpaidTransactions.map(trans => ({
+        ...trans,
+        createdAt: getWIBDate(trans.createdAt)
+      }));
+    } catch (error) {
+      console.error(`Error getting unpaid transactions for patient ${patientId}:`, error);
+      throw error;
+    }
+  }
+  
+  // Fungsi untuk membuat pembayaran utang
+  async createDebtPayment(debtPayment: schema.InsertDebtPayment): Promise<schema.DebtPayment> {
+    try {
+      // Pastikan paymentDate selalu menggunakan waktu WIB
+      const wibDate = getWIBDate(new Date());
+      
+      const [newPayment] = await db
+        .insert(schema.debtPayments)
+        .values({
+          ...debtPayment,
+          paymentDate: wibDate,
+          createdAt: wibDate
+        })
+        .returning();
+      
+      // Update transaction paid status jika perlu
+      await this.updateTransactionPaidStatus(debtPayment.transactionId);
+      
+      return {
+        ...newPayment,
+        paymentDate: getWIBDate(newPayment.paymentDate),
+        createdAt: getWIBDate(newPayment.createdAt)
+      };
+    } catch (error) {
+      console.error('Error creating debt payment:', error);
+      throw error;
+    }
+  }
+  
+  // Fungsi untuk mendapatkan semua pembayaran utang untuk transaksi tertentu
+  async getDebtPaymentsByTransaction(transactionId: number): Promise<schema.DebtPayment[]> {
+    try {
+      const payments = await db
+        .select()
+        .from(schema.debtPayments)
+        .where(eq(schema.debtPayments.transactionId, transactionId))
+        .orderBy(desc(schema.debtPayments.paymentDate));
+        
+      return payments.map(payment => ({
+        ...payment,
+        paymentDate: getWIBDate(payment.paymentDate),
+        createdAt: getWIBDate(payment.createdAt)
+      }));
+    } catch (error) {
+      console.error(`Error getting debt payments for transaction ${transactionId}:`, error);
+      throw error;
+    }
+  }
+  
+  // Fungsi untuk mengupdate data transaksi secara umum
+  async updateTransaction(id: number, transactionData: Partial<schema.Transaction>): Promise<schema.Transaction | undefined> {
+    try {
+      const [updatedTransaction] = await db
+        .update(schema.transactions)
+        .set(transactionData)
+        .where(eq(schema.transactions.id, id))
+        .returning();
+      
+      if (!updatedTransaction) {
+        return undefined;
+      }
+      
+      return {
+        ...updatedTransaction,
+        createdAt: getWIBDate(updatedTransaction.createdAt)
+      };
+    } catch (error) {
+      console.error(`Error updating transaction ${id}:`, error);
+      return undefined;
+    }
+  }
+
+  // Fungsi untuk mengupdate status pembayaran transaksi
+  async updateTransactionPaidStatus(transactionId: number): Promise<Transaction | undefined> {
+    try {
+      // Dapatkan transaksi dan total pembayaran
+      const transaction = await this.getTransaction(transactionId);
+      if (!transaction) {
+        throw new Error(`Transaction ${transactionId} not found`);
+      }
+      
+      const payments = await this.getDebtPaymentsByTransaction(transactionId);
+      const totalPaid = payments.reduce(
+        (sum, payment) => sum + parseFloat(payment.amount.toString()), 
+        parseFloat(transaction.paidAmount.toString())
+      );
+      
+      // Periksa apakah total pembayaran sudah mencapai atau melebihi total transaksi
+      const totalAmount = parseFloat(transaction.totalAmount.toString());
+      const isPaid = totalPaid >= totalAmount;
+      
+      // Update status pembayaran
+      return this.updateTransaction(transactionId, {
+        isPaid,
+        paidAmount: totalPaid.toString()
+      });
+    } catch (error) {
+      console.error(`Error updating paid status for transaction ${transactionId}:`, error);
       throw error;
     }
   }
