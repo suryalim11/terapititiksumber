@@ -620,9 +620,26 @@ export default function TherapySlots() {
                           selected={typeof field.value === 'string' ? parseISO(field.value) : field.value}
                           onSelect={(date) => {
                             if (date) {
+                              console.log("============= CALENDAR EDIT DEBUG =============");
+                              console.log("Raw date yang dipilih dari calendar (edit):", date);
+                              console.log("toString():", date.toString());
+                              console.log("toISOString():", date.toISOString());
+                              console.log("Timezone offset (menit):", date.getTimezoneOffset());
+                              console.log("getFullYear():", date.getFullYear());
+                              console.log("getMonth() (0-based):", date.getMonth());
+                              console.log("getDate():", date.getDate());
+                              
                               // Konversi Date ke string format YYYY-MM-DD sebelum update field
-                              const dateString = format(date, 'yyyy-MM-dd');
+                              const year = date.getFullYear();
+                              const month = date.getMonth() + 1; // +1 karena getMonth() dimulai dari 0
+                              const day = date.getDate();
+                              
+                              // Format ke yyyy-MM-dd (pastikan bulan dan tanggal selalu 2 digit)
+                              const dateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                              
                               console.log("Calendar (edit): selected date converted to string format:", dateString);
+                              console.log("============= END CALENDAR EDIT DEBUG =============");
+                              
                               field.onChange(dateString); // Simpan string, bukan Date object
                             }
                           }}
@@ -775,9 +792,26 @@ export default function TherapySlots() {
                                 selected={typeof field.value === 'string' ? parseISO(field.value) : field.value}
                                 onSelect={(date) => {
                                   if (date) {
+                                    console.log("============= CALENDAR DEBUG =============");
+                                    console.log("Raw date yang dipilih dari calendar:", date);
+                                    console.log("toString():", date.toString());
+                                    console.log("toISOString():", date.toISOString());
+                                    console.log("Timezone offset (menit):", date.getTimezoneOffset());
+                                    console.log("getFullYear():", date.getFullYear());
+                                    console.log("getMonth() (0-based):", date.getMonth());
+                                    console.log("getDate():", date.getDate());
+                                    
                                     // Konversi Date ke string format YYYY-MM-DD sebelum update field
-                                    const dateString = format(date, 'yyyy-MM-dd');
+                                    const year = date.getFullYear();
+                                    const month = date.getMonth() + 1; // +1 karena getMonth() dimulai dari 0
+                                    const day = date.getDate();
+                                    
+                                    // Format ke yyyy-MM-dd (pastikan bulan dan tanggal selalu 2 digit)
+                                    const dateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                                    
                                     console.log("Calendar: selected date converted to string format:", dateString);
+                                    console.log("============= END CALENDAR DEBUG =============");
+                                    
                                     field.onChange(dateString); // Simpan string, bukan Date object
                                   }
                                 }}
@@ -888,9 +922,26 @@ export default function TherapySlots() {
                     selected={typeof date === 'string' ? parseISO(date) : date}
                     onSelect={(selectedDate) => {
                       if (selectedDate) {
-                        // Konversi Date ke string format YYYY-MM-DD
-                        const dateString = format(selectedDate, 'yyyy-MM-dd');
-                        console.log("Calendar (main): selected date converted to string:", dateString);
+                        console.log("============= CALENDAR MAIN DEBUG =============");
+                        console.log("Raw date yang dipilih dari calendar main:", selectedDate);
+                        console.log("toString():", selectedDate.toString());
+                        console.log("toISOString():", selectedDate.toISOString());
+                        console.log("Timezone offset (menit):", selectedDate.getTimezoneOffset());
+                        console.log("getFullYear():", selectedDate.getFullYear());
+                        console.log("getMonth() (0-based):", selectedDate.getMonth());
+                        console.log("getDate():", selectedDate.getDate());
+                        
+                        // Konversi Date ke string format YYYY-MM-DD sebelum update field
+                        const year = selectedDate.getFullYear();
+                        const month = selectedDate.getMonth() + 1; // +1 karena getMonth() dimulai dari 0
+                        const day = selectedDate.getDate();
+                        
+                        // Format ke yyyy-MM-dd (pastikan bulan dan tanggal selalu 2 digit)
+                        const dateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                        
+                        console.log("Calendar (main): selected date converted to string format:", dateString);
+                        console.log("============= END CALENDAR MAIN DEBUG =============");
+                        
                         setDate(dateString); // Simpan string, bukan Date object
                       }
                     }}
