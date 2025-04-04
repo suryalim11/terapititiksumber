@@ -26,6 +26,7 @@ const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Patients", href: "/patients", icon: UserRound },
   { name: "Pendaftaran", href: "/pendaftaran", icon: CalendarRange },
+  { name: "Therapy Slots", href: "/therapy-slots", icon: ClipboardList },
   { name: "Products", href: "/products", icon: PackageIcon },
   { name: "Transactions", href: "/transactions", icon: ShoppingCart },
   { name: "Reports", href: "/reports", icon: BarChart3 },

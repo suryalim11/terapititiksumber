@@ -16,6 +16,7 @@ import IntegratedManagement from "@/pages/integrated-management";
 import Login from "@/pages/login";
 import BackupRestore from "@/pages/backup-restore";
 import DateTest from "@/pages/date-test";
+import TherapySlots from "@/pages/therapy-slots";
 import Layout from "@/components/layout/layout";
 import { AuthProvider } from "@/lib/auth";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -29,7 +30,7 @@ function Router() {
       <ProtectedRoute path="/patients/:id" component={PatientDetail} />
       <ProtectedRoute path="/transactions" component={Transactions} />
       <ProtectedRoute path="/transactions/new" component={Transactions} />
-
+      <ProtectedRoute path="/therapy-slots" component={TherapySlots} />
       <ProtectedRoute path="/products" component={Products} />
       <ProtectedRoute path="/reports" component={Reports} />
       <ProtectedRoute path="/settings" component={Settings} />
