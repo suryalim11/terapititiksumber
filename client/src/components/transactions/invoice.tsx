@@ -46,7 +46,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
   }, []);
 
   const formatPrice = (price: string) => {
-    return `Rp${parseInt(price).toLocaleString('id-ID')}`;
+    return `Rp${parseFloat(price).toLocaleString('id-ID')}`;
   };
 
   const getPaymentMethodName = (method: string) => {

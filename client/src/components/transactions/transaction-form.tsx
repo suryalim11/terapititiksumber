@@ -662,7 +662,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
 
   // Format price
   const formatPrice = (price: string) => {
-    return `Rp${parseInt(price).toLocaleString('id-ID')}`;
+    return `Rp${parseFloat(price).toLocaleString('id-ID')}`;
   };
 
   // Handle form submission
@@ -1318,7 +1318,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                       {...field}
                       onChange={(e) => {
                         // Ensure value is not negative
-                        const value = Math.max(0, parseInt(e.target.value) || 0);
+                        const value = Math.max(0, parseFloat(e.target.value) || 0);
                         field.onChange(value.toString());
                       }}
                     />
