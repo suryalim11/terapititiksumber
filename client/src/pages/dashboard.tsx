@@ -216,7 +216,7 @@ export default function Dashboard() {
             </div>
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
-                {format(new Date(), "EEEE, dd/MM/yyyy", { locale: localeId })} WIB
+                {format(new Date(), "EEEE, dd/MM/yyyy", { locale: localeId })}
               </p>
             </div>
           </CardHeader>
