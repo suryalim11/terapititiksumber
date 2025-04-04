@@ -111,11 +111,14 @@ const transactionFormSchema = z.object({
     required_error: "Pilih metode pembayaran",
   }),
   discount: z.string().optional().transform(val => val === '' ? '0' : val),
+  subtotal: z.string().optional(),
+  totalAmount: z.string().optional(),
   items: z.array(
     z.object({
       id: z.number(),
       type: z.enum(["package", "product"]),
       quantity: z.number().min(1),
+      price: z.string().optional(),
     })
   ).min(1, "Pilih minimal satu paket atau produk"),
 });
@@ -708,13 +711,31 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       return;
     }
     
-    // Prepare items data
+    // Hitung subtotal
+    const subtotal = cartItems.reduce(
+      (sum, item) => sum + parseFloat(item.price) * item.quantity,
+      0
+    );
+
+    // Dapatkan nilai diskon dengan validasi
+    const discountVal = form.watch("discount");
+    const discount = discountVal ? parseFloat(discountVal) : 0;
+
+    // Hitung total setelah diskon
+    const totalAmount = Math.max(0, subtotal - discount);
+
+    // Tambahkan informasi lengkap ke values
     values.items = cartItems.map(item => ({
       id: item.id,
       type: item.type,
       quantity: item.quantity,
+      price: item.price
     }));
     
+    values.subtotal = subtotal.toString();
+    values.discount = discount.toString();
+    values.totalAmount = totalAmount.toString();
+
     console.log("Mengirim data transaksi:", values);
     mutation.mutate(values);
   };
@@ -870,6 +891,18 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       
       // Jika kita sampai di sini, berarti kita tidak menggunakan paket yang ada
       // Proceed with normal transaction
+      const subtotal = cartItems.reduce(
+        (sum, item) => sum + parseFloat(item.price) * item.quantity,
+        0
+      );
+
+      // Dapatkan nilai diskon dengan validasi (dari form)
+      const discountVal = formValues.discount;
+      const discount = discountVal ? parseFloat(discountVal) : 0;
+
+      // Hitung total setelah diskon
+      const totalAmount = Math.max(0, subtotal - discount);
+
       const submissionData: TransactionFormValues = {
         patientId: formValues.patientId || "",
         paymentMethod: formValues.paymentMethod,
@@ -877,7 +910,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
           id: item.id,
           type: item.type,
           quantity: item.quantity,
+          price: item.price,
         })),
+        discount: discount.toString(),
+        subtotal: subtotal.toString(),
+        totalAmount: totalAmount.toString(),
       };
       
       // Eksekusi onSubmit
