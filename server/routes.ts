@@ -1161,6 +1161,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Internal server error" });
     }
   });
+  
+  // Dapatkan semua transaksi yang belum lunas (dengan kredit)
+  app.get("/api/transactions/unpaid", async (req: Request, res: Response) => {
+    try {
+      const unpaidTransactions = await storage.getUnpaidTransactions();
+      return res.status(200).json(unpaidTransactions);
+    } catch (error) {
+      console.error("Error fetching unpaid transactions:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Dapatkan transaksi yang belum lunas per pasien
+  app.get("/api/transactions/unpaid-by-patient/:patientId", async (req: Request, res: Response) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      if (isNaN(patientId)) {
+        return res.status(400).json({ message: "Invalid patient ID" });
+      }
+      
+      const unpaidTransactions = await storage.getUnpaidTransactionsByPatient(patientId);
+      return res.status(200).json(unpaidTransactions);
+    } catch (error) {
+      console.error("Error fetching unpaid transactions by patient:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
 
   // Session routes
   app.get("/api/sessions", async (req: Request, res: Response) => {
