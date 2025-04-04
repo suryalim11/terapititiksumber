@@ -51,6 +51,8 @@ type Transaction = {
   paymentMethod: string;
   items: any[];
   createdAt: string;
+  discount?: string | number;
+  subtotal?: string | number;
   patient?: {
     name: string;
     patientId: string;
@@ -447,6 +449,7 @@ export default function Transactions() {
                     <TableHead>Pasien</TableHead>
                     <TableHead>Tanggal</TableHead>
                     <TableHead>Metode Pembayaran</TableHead>
+                    <TableHead>Diskon</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
@@ -458,6 +461,11 @@ export default function Transactions() {
                       <TableCell>{getPatientName(transaction.patientId)}</TableCell>
                       <TableCell>{formatDate(transaction.createdAt)}</TableCell>
                       <TableCell>{formatPaymentMethod(transaction.paymentMethod)}</TableCell>
+                      <TableCell className="text-red-500">
+                        {transaction.discount && parseInt(transaction.discount.toString()) > 0 
+                          ? `- ${formatPrice(transaction.discount.toString())}` 
+                          : '-'}
+                      </TableCell>
                       <TableCell>{formatPrice(transaction.totalAmount)}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
