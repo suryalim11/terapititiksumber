@@ -139,6 +139,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const [useExistingPackage, setUseExistingPackage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // State untuk mengontrol pemrosesan ganda
   const [formKey, setFormKey] = useState(Date.now()); // Kunci unik untuk me-reset form
+  const [debtOnlyPayment, setDebtOnlyPayment] = useState(false); // State untuk mode bayar utang saja
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -329,15 +330,17 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
 
     try {
       const paymentData = {
-        transactionId: selectedDebtTransaction.id,
         amount: paymentAmount,
         paymentMethod: form.getValues().paymentMethod,
-        notes: `Pembayaran utang melalui transaksi baru`
+        notes: debtOnlyPayment 
+          ? "Pembayaran utang" 
+          : "Pembayaran utang bersamaan dengan transaksi baru"
       };
 
       console.log("Sending debt payment data:", paymentData);
 
-      const response = await apiRequest("/api/transactions/payment", {
+      // Gunakan endpoint yang benar untuk API debt payment
+      const response = await apiRequest(`/api/transactions/${selectedDebtTransaction.id}/debt-payment`, {
         method: "POST",
         headers: {
           'Content-Type': 'application/json'
@@ -349,6 +352,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       
       // Refresh unpaid transactions data
       await queryClient.invalidateQueries({ queryKey: ["/api/transactions/unpaid"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       
       return response;
     } catch (error) {
@@ -960,8 +964,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         return; // Prevent multiple submissions
       }
       
-      // Jika hanya membayar utang dan tidak ada item baru di keranjang, proses khusus pembayaran utang
-      if (payDebt && selectedDebtTransaction && cartItems.length === 0) {
+      // Jika hanya membayar utang dan tidak ada item baru di keranjang, atau mode bayar utang saja aktif
+      if (payDebt && selectedDebtTransaction && (cartItems.length === 0 || debtOnlyPayment)) {
         setIsSubmitting(true);
         
         try {
@@ -1634,9 +1638,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                     checked={payDebt}
                     onCheckedChange={(checked) => {
                       setPayDebt(checked);
+                      setDebtOnlyPayment(checked && true);
                       if (!checked) {
                         setSelectedDebtTransaction(null);
                         setPaymentAmount("0");
+                        setDebtOnlyPayment(false);
                       }
                     }}
                   />
@@ -1645,6 +1651,20 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                 <FormDescription className="text-xs mb-2">
                   Aktifkan untuk membayar utang sebelumnya sambil melakukan transaksi baru.
                 </FormDescription>
+                
+                {payDebt && (
+                  <div className="flex items-center justify-between mt-1 mb-1 pl-6">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Bayar Utang Saja (Tanpa Item Baru)</span>
+                    </div>
+                    <Switch
+                      checked={debtOnlyPayment}
+                      onCheckedChange={(checked) => {
+                        setDebtOnlyPayment(checked);
+                      }}
+                    />
+                  </div>
+                )}
                 
                 {payDebt && (
                   <div className="grid gap-3 pt-2 border-t border-amber-200 dark:border-amber-800">
@@ -1906,7 +1926,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
               <Button
                 type="button"
                 onClick={handleSubmitForm}
-                disabled={mutation.isPending || (!useExistingPackage && cartItems.length === 0 && !payDebt)}
+                disabled={mutation.isPending || (!useExistingPackage && cartItems.length === 0 && !(payDebt && selectedDebtTransaction))}
               >
                 {mutation.isPending ? "Memproses..." : "Proses Pembayaran"}
               </Button>
