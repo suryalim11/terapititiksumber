@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, CalendarIcon, ShoppingCart, X, Ban } from "lucide-react";
+import { Loader2, CalendarIcon, ShoppingCart, X, Ban, CheckCircle, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -9,6 +9,12 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 interface SlotPatientsDialogProps {
   slotId: number | null;
@@ -54,6 +60,59 @@ function filterActiveAppointments(appointments?: any[]): any[] {
   if (!Array.isArray(appointments)) return [];
   return appointments.filter(appointment => 
     appointment && appointment.status && isActiveStatus(appointment.status)
+  );
+}
+
+// Komponen StatusChanger untuk mengubah status appointment
+interface AppointmentStatusChangerProps {
+  appointment: any;
+  updateStatus: (status: string) => void;
+  isUpdating: boolean;
+}
+
+function AppointmentStatusChanger({ 
+  appointment, 
+  updateStatus, 
+  isUpdating 
+}: AppointmentStatusChangerProps) {
+  const statusOptions = ["Scheduled", "Active", "Completed", "Cancelled"];
+  const currentStatus = appointment?.status || "Unknown";
+  
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-6 px-2 text-xs"
+          disabled={isUpdating}
+        >
+          {isUpdating ? (
+            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+          ) : (
+            <>
+              <span>Status</span>
+              <ChevronDown className="h-3 w-3 ml-1" />
+            </>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-32">
+        {statusOptions.map((status) => (
+          <DropdownMenuItem
+            key={status}
+            onClick={() => updateStatus(status)}
+            disabled={isUpdating || status === currentStatus}
+            className={status === currentStatus ? "bg-muted font-medium" : ""}
+          >
+            {status === currentStatus && (
+              <CheckCircle className="h-3 w-3 mr-1 text-primary" />
+            )}
+            {status}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -121,6 +180,45 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     onError: (error: Error) => {
       toast({
         title: "Gagal",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Status update mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const response = await fetch(`/api/appointments/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Gagal mengubah status ke ${status}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      toast({
+        title: "Status diperbarui",
+        description: `Status janji temu berhasil diubah menjadi "${variables.status}"`
+      });
+      
+      // Refresh data setelah update status
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Gagal mengubah status",
         description: error.message,
         variant: "destructive"
       });
@@ -310,20 +408,11 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                         <div className="flex justify-between text-muted-foreground text-xs mt-1">
                           <span>{appointment.patient?.phoneNumber || '-'}</span>
                           <div className="flex items-center gap-2">
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="h-6 px-2 text-xs"
-                              onClick={(e) => handleCancelAppointment(appointment, e)}
-                              disabled={cancelAppointmentMutation.isPending && selectedAppointment?.id === appointment.id}
-                            >
-                              {cancelAppointmentMutation.isPending && selectedAppointment?.id === appointment.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                              ) : (
-                                <Ban className="h-3 w-3 mr-1" />
-                              )}
-                              Batalkan
-                            </Button>
+                            <AppointmentStatusChanger
+                              appointment={appointment}
+                              updateStatus={(status) => updateStatusMutation.mutate({ id: appointment.id, status })}
+                              isUpdating={updateStatusMutation.isPending}
+                            />
                             <Button
                               variant="ghost"
                               size="sm"
