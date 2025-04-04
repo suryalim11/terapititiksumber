@@ -1042,6 +1042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Add the debt payment API endpoint
+  // Endpoint untuk pembayaran utang transaksi (original)
   app.post("/api/transactions/:id/debt-payment", async (req: Request, res: Response) => {
     try {
       if (!req.isAuthenticated()) {
@@ -1098,6 +1099,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error processing debt payment:", error);
       return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Endpoint untuk pembayaran utang dari form transaksi
+  app.post("/api/transactions/payment", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized, please login first" });
+      }
+      
+      const { transactionId, amount, paymentMethod, notes } = req.body;
+      
+      // Validate transaction ID
+      if (!transactionId || isNaN(parseInt(transactionId))) {
+        return res.status(400).json({ message: "Invalid transaction ID" });
+      }
+      
+      // Validate that transaction exists and has debt
+      const transaction = await storage.getTransaction(parseInt(transactionId));
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      // Calculate proper remaining debt (totalAmount - paidAmount)
+      const totalAmount = parseFloat(transaction.totalAmount);
+      const currentPaid = parseFloat(transaction.paidAmount);
+      const remainingDebt = totalAmount - currentPaid;
+      
+      if (remainingDebt <= 0) {
+        return res.status(400).json({ message: "Transaction has no remaining debt" });
+      }
+      
+      // Validate payment amount
+      const paymentAmount = parseFloat(amount);
+      if (isNaN(paymentAmount) || paymentAmount <= 0) {
+        return res.status(400).json({ message: "Invalid payment amount" });
+      }
+      
+      if (paymentAmount > remainingDebt) {
+        return res.status(400).json({ 
+          message: `Payment amount exceeds remaining debt (${remainingDebt})` 
+        });
+      }
+      
+      // Buat transaksi baru untuk mencatat pembayaran utang ini
+      const paymentTransactionId = `DP-${format(new Date(), 'yyyyMMdd')}-${String(transaction.id).padStart(3, '0')}`;
+      
+      // Buat transaksi baru sebagai catatan pembayaran
+      const newTransaction = await storage.createTransaction({
+        patientId: transaction.patientId,
+        transactionId: paymentTransactionId,
+        totalAmount: amount,
+        discount: "0.00",
+        subtotal: amount,
+        paymentMethod: paymentMethod,
+        items: JSON.stringify([{
+          id: 0,
+          type: "debt-payment",
+          quantity: 1,
+          price: amount,
+          description: `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+        }]),
+        isPaid: true,
+        creditAmount: "0.00",
+        paidAmount: amount
+      });
+      
+      // Buat catatan pembayaran utang
+      const payment = await storage.createDebtPayment({
+        transactionId: parseInt(transactionId),
+        amount: amount,
+        paymentMethod: paymentMethod,
+        notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+      });
+      
+      // Update jumlah yang sudah dibayar di transaksi asli
+      const newPaidAmount = currentPaid + paymentAmount;
+      
+      // Jika pembayaran sudah lunas, update status isPaid
+      const isPaid = newPaidAmount >= totalAmount;
+      
+      // Update transaksi asli
+      const updatedTransaction = await storage.updateTransaction(parseInt(transactionId), {
+        paidAmount: newPaidAmount.toString(),
+        isPaid
+      });
+      
+      return res.status(201).json({
+        success: true,
+        payment,
+        paymentTransaction: newTransaction,
+        originalTransaction: updatedTransaction,
+        remainingDebt: totalAmount - newPaidAmount
+      });
+    } catch (error) {
+      console.error("Error processing debt payment:", error);
+      return res.status(500).json({ message: "Internal server error", error: String(error) });
     }
   });
   

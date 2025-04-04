@@ -84,6 +84,10 @@ export interface IStorage {
   getDebtPaymentsByTransaction(transactionId: number): Promise<DebtPayment[]>;
   updateTransactionPaidStatus(transactionId: number): Promise<Transaction | undefined>;
   
+  // Unpaid Transactions
+  getUnpaidTransactions(): Promise<Transaction[]>;
+  getUnpaidTransactionsByPatient(patientId: number): Promise<Transaction[]>;
+  
   // Sessions
   getSession(id: number): Promise<Session | undefined>;
   getSessionsByPatient(patientId: number): Promise<Session[]>;
@@ -706,7 +710,7 @@ export class MemStorage implements IStorage {
       (sum: number, payment: DebtPayment) => sum + parseFloat(payment.amount.toString()), 
       parseFloat(transaction.paidAmount?.toString() || '0')
     );
-    
+        
     // Periksa apakah total pembayaran sudah mencapai atau melebihi total transaksi
     const totalAmount = parseFloat(transaction.totalAmount.toString());
     const isPaid = totalPaid >= totalAmount;
@@ -716,6 +720,20 @@ export class MemStorage implements IStorage {
       isPaid,
       paidAmount: totalPaid.toString()
     });
+  }
+  
+  // Implementasi fungsi getUnpaidTransactions
+  async getUnpaidTransactions(): Promise<Transaction[]> {
+    return Array.from(this.transactions.values())
+      .filter(transaction => !transaction.isPaid)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  
+  // Implementasi fungsi getUnpaidTransactionsByPatient
+  async getUnpaidTransactionsByPatient(patientId: number): Promise<Transaction[]> {
+    return Array.from(this.transactions.values())
+      .filter(transaction => transaction.patientId === patientId && !transaction.isPaid)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
   
   async deleteTransaction(id: number): Promise<boolean> {
