@@ -75,9 +75,14 @@ const createBatchSchema = z.object({
 type SlotTimeValues = z.infer<typeof slotTimeSchema>;
 type CreateBatchFormValues = z.infer<typeof createBatchSchema>;
 
+// Props untuk komponen
+type CreateBatchDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
 // Komponen utama
-export function CreateBatchDialog() {
-  const [open, setOpen] = useState(false);
+export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -142,7 +147,7 @@ export function CreateBatchDialog() {
         title: "Berhasil!",
         description: `${data.createdCount || 'Beberapa'} slot terapi telah dibuat.`,
       });
-      setOpen(false);
+      onOpenChange(false);
       form.reset();
     },
     onError: (error: Error) => {
@@ -195,13 +200,7 @@ export function CreateBatchDialog() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Buat Slot Terapi Batch
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Buat Slot Terapi Baru</DialogTitle>
@@ -412,7 +411,7 @@ export function CreateBatchDialog() {
             />
 
             <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+              <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
                 Batal
               </Button>
               <Button type="submit" disabled={createBatchMutation.isPending}>

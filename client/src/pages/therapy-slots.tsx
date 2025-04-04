@@ -97,6 +97,7 @@ export default function TherapySlots() {
   const [date, setDate] = useState<string | Date>(format(new Date(), 'yyyy-MM-dd')); // Ubah tipe menjadi string | Date
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<TherapySlot | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -997,6 +998,13 @@ export default function TherapySlots() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="mb-6">
+                  <Button variant="default" onClick={() => setBatchDialogOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Buat Slot Terapi Batch
+                  </Button>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {quickActions.map((action, idx) => (
                     <Card key={idx}>
@@ -1296,6 +1304,12 @@ export default function TherapySlots() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Dialog untuk membuat batch slot terapi */}
+      <CreateBatchDialog 
+        open={batchDialogOpen} 
+        onOpenChange={setBatchDialogOpen} 
+      />
     </>
   );
 }
