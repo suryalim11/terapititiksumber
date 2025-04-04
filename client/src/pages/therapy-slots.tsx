@@ -326,20 +326,18 @@ export default function TherapySlots() {
     // Gabungkan startTime dan endTime menjadi timeSlot
     const timeSlot = `${data.startTime}-${data.endTime}`;
     
-    // Perbaikan: Pastikan tanggal diatur dengan benar dengan zona waktu WIB (UTC+7)
-    // Kita perlu menyetel waktu ke tengah malam di timezone lokal (WIB)
-    const date = new Date(data.date);
-    date.setHours(0, 0, 0, 0);
+    // Perbaikan: Kirim tanggal dalam format YYYY-MM-DD tanpa informasi waktu
+    // untuk menghindari masalah timezone
+    const yearMonthDay = format(data.date, 'yyyy-MM-dd');
     
-    console.log("Submitting date (raw):", date);
-    console.log("Submitting date (ISO):", date.toISOString());
+    console.log("Submitting date as string format:", yearMonthDay);
     
     // Menggunakan fetch API langsung karena mutation tidak mendukung properti timeSlot
     fetch("/api/therapy-slots", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        date: date,
+        date: yearMonthDay, // Kirim format string sederhana
         timeSlot: timeSlot,
         maxQuota: data.maxQuota,
         isActive: data.isActive
@@ -401,19 +399,18 @@ export default function TherapySlots() {
     // Gabungkan startTime dan endTime menjadi timeSlot
     const timeSlot = `${data.startTime}-${data.endTime}`;
     
-    // Perbaikan: Pastikan tanggal diatur dengan benar di zona waktu WIB (UTC+7)
-    const date = new Date(data.date);
-    date.setHours(0, 0, 0, 0);
+    // Perbaikan: Kirim tanggal dalam format YYYY-MM-DD tanpa informasi waktu
+    // untuk menghindari masalah timezone
+    const yearMonthDay = format(data.date, 'yyyy-MM-dd');
     
-    console.log("Updating date (raw):", date);
-    console.log("Updating date (ISO):", date.toISOString());
+    console.log("Updating date as string format:", yearMonthDay);
     
     // Kirim request update
     fetch(`/api/therapy-slots/${selectedSlot.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        date: date,
+        date: yearMonthDay, // Kirim format string sederhana
         timeSlot: timeSlot,
         maxQuota: data.maxQuota,
         isActive: data.isActive
