@@ -207,27 +207,34 @@ export default function Transactions() {
     try {
       console.log("Formatting date string:", dateString);
       
-      // Cek format tanggal, jika berisi 'T' dan 'Z' berarti format ISO, jika tidak, format SQL
+      // Waktu Indonesia Barat (GMT+7)
+      // Tambahkan +7 jam secara manual untuk konversi WIB
       let date;
-      if (dateString.includes('T') && dateString.includes('Z')) {
+      if (dateString.includes('T')) {
         // Format ISO (2025-04-03T12:56:44.699Z)
+        // Parse tanggal dan tambahkan 7 jam
         date = new Date(dateString);
+        // Tambahkan 7 jam untuk WIB
+        date = new Date(date.getTime() + (7 * 60 * 60 * 1000));
       } else {
         // Format SQL (2025-04-03 12:56:44.699)
-        // Tambahkan 7 jam untuk WIB
+        // Konversi ke format ISO
         const parts = dateString.split(' ');
         if (parts.length === 2) {
           const [datePart, timePart] = parts;
-          // Konstruksi string ISO
+          // Tambahkan timezone info untuk WIB
           const isoString = `${datePart}T${timePart}+07:00`;
           date = new Date(isoString);
         } else {
-          // Fallback jika format tidak sesuai
+          // Fallback untuk format lain
           date = new Date(dateString);
+          // Tambahkan 7 jam untuk WIB
+          date = new Date(date.getTime() + (7 * 60 * 60 * 1000));
         }
       }
       
-      console.log("Formatted date object:", date);
+      console.log("Original:", dateString, "-> WIB date:", date.toISOString());
+      
       // Format dengan locale Indonesia
       return format(date, "dd/MM/yyyy HH:mm", { locale: id });
     } catch (error) {
