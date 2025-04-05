@@ -1108,11 +1108,23 @@ export class DatabaseStorage implements IStorage {
       orderBy: [asc(schema.therapySlots.timeSlot)]
     });
     
-    // Untuk setiap slot, perbarui currentCount berdasarkan jumlah appointment aktif
+    // Untuk setiap slot, perbarui currentCount berdasarkan jumlah appointment yang benar-benar aktif
     for (const slot of slots) {
-      const appointments = await this.getAppointmentsByTherapySlot(slot.id);
-      const activeCount = appointments.filter(app => app.status !== 'Cancelled').length;
-      slot.currentCount = activeCount;
+      // Ambil semua appointment untuk slot ini
+      const allAppointments = await db.query.appointments.findMany({
+        where: eq(schema.appointments.therapySlotId, slot.id)
+      });
+      
+      console.log(`Slot ${slot.id} (${slot.timeSlot}): ditemukan ${allAppointments.length} appointment total`);
+      
+      // Filter hanya appointment dengan status aktif yang spesifik
+      const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+      const activeAppointments = allAppointments.filter(app => activeStatuses.includes(app.status));
+      
+      console.log(`Slot ${slot.id}: ${activeAppointments.length} appointment aktif dari ${allAppointments.length} total`);
+      
+      // Perbarui currentCount dengan jumlah appointment aktif
+      slot.currentCount = activeAppointments.length;
     }
     
     return slots;
@@ -1126,13 +1138,17 @@ export class DatabaseStorage implements IStorage {
     // Untuk setiap slot, ambil jumlah appointment aktif yang terkait
     // dan gunakan itu sebagai currentCount yang akurat
     for (const slot of slots) {
-      const appointments = await this.getAppointmentsByTherapySlot(slot.id);
+      // Ambil semua appointment untuk slot ini
+      const allAppointments = await db.query.appointments.findMany({
+        where: eq(schema.appointments.therapySlotId, slot.id)
+      });
       
-      // Hitung appointment yang tidak dibatalkan saja
-      const activeCount = appointments.filter(app => app.status !== 'Cancelled').length;
+      // Filter hanya appointment dengan status aktif
+      const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+      const activeAppointments = allAppointments.filter(app => activeStatuses.includes(app.status));
       
       // Update currentCount langsung di objek slot yang dikembalikan
-      slot.currentCount = activeCount;
+      slot.currentCount = activeAppointments.length;
     }
     
     return slots;
@@ -1165,16 +1181,20 @@ export class DatabaseStorage implements IStorage {
     // Untuk setiap slot, ambil jumlah appointment aktif yang terkait
     // dan gunakan itu sebagai currentCount yang akurat
     for (const slot of filteredSlots) {
-      const appointments = await this.getAppointmentsByTherapySlot(slot.id);
+      // Ambil semua appointment untuk slot ini
+      const allAppointments = await db.query.appointments.findMany({
+        where: eq(schema.appointments.therapySlotId, slot.id)
+      });
       
-      // Hitung appointment yang tidak dibatalkan saja
-      const activeCount = appointments.filter(app => app.status !== 'Cancelled').length;
+      // Filter hanya appointment dengan status aktif
+      const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+      const activeAppointments = allAppointments.filter(app => activeStatuses.includes(app.status));
       
       // Update currentCount langsung di objek slot yang dikembalikan
-      slot.currentCount = activeCount;
+      slot.currentCount = activeAppointments.length;
       
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Slot ${slot.id}: ${activeCount} active appointments`);
+        console.log(`Slot ${slot.id}: ${activeAppointments.length} active appointments dari ${allAppointments.length} total`);
       }
     }
     
