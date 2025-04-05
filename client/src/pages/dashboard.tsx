@@ -84,17 +84,21 @@ export default function Dashboard() {
     queryKey: ['/api/slots-by-period', selectedPeriod],
     queryFn: async () => {
       try {
-        console.log(`Fetching slots for period: ${selectedPeriod}`);
-        const response = await fetch(`/api/slots-by-period?period=${selectedPeriod}`);
+        // Selalu gunakan period=week untuk mendapatkan data lengkap dari server
+        // Kemudian kita akan melakukan filter di client side sesuai selectedPeriod
+        console.log(`Fetching slots with fixed period=week to ensure consistency`);
+        const response = await fetch(`/api/slots-by-period?period=week`);
         if (!response.ok) {
           throw new Error('Failed to fetch slots by period');
         }
-        const data = await response.json();
-        console.log(`Received ${data.length} slots from API`);
         
-        // Langkah 1: Filter duplikasi slot yang memiliki ID sama (untuk mengatasi bug slot duplikat)
+        // Ambil semua data dari server dengan period=week
+        const rawData = await response.json();
+        console.log(`Received ${rawData.length} slots from API`);
+        
+        // Langkah 1: Deduplikasi berdasarkan ID
         const idSet = new Set();
-        const filteredSlots = data.filter((slot: any) => {
+        const filteredSlots = rawData.filter((slot: any) => {
           if (idSet.has(slot.id)) {
             console.log(`Removing duplicate slot with ID: ${slot.id}`);
             return false;
@@ -102,11 +106,9 @@ export default function Dashboard() {
           idSet.add(slot.id);
           return true;
         });
+        console.log(`After ID deduplication: ${filteredSlots.length} slots remaining`);
         
-        console.log(`After deduplication: ${filteredSlots.length} slots remaining`);
-        
-        // Langkah 2: Juga hapus duplikasi berdasarkan kombinasi tanggal+timeSlot 
-        // (untuk kasus dimana ID berbeda tapi tanggal dan jam sama)
+        // Langkah 2: Deduplikasi berdasarkan tanggal+waktu
         const dateTimeSet = new Set();
         const uniqueSlots = filteredSlots.filter((slot: any) => {
           const dateTimeKey = `${slot.date}-${slot.timeSlot}`;
@@ -117,11 +119,45 @@ export default function Dashboard() {
           dateTimeSet.add(dateTimeKey);
           return true;
         });
-        
         console.log(`After date+time deduplication: ${uniqueSlots.length} slots remaining`);
         
-        // Langkah 3: Urutkan berdasarkan tanggal dan waktu
-        return uniqueSlots.sort((a: any, b: any) => {
+        // Langkah 3: Filter berdasarkan periode yang dipilih pengguna
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        
+        let filteredByPeriod = [...uniqueSlots];
+        
+        if (selectedPeriod === 'day') {
+          // Filter hanya untuk hari ini
+          const today = now.toISOString().split('T')[0];
+          filteredByPeriod = uniqueSlots.filter((slot: any) => {
+            const slotDate = typeof slot.date === 'string' ? slot.date.split(' ')[0] : new Date(slot.date).toISOString().split('T')[0];
+            return slotDate === today;
+          });
+        } else if (selectedPeriod === 'past-week') {
+          // Filter untuk 7 hari terakhir
+          const oneWeekAgo = new Date(now);
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+          
+          filteredByPeriod = uniqueSlots.filter((slot: any) => {
+            const slotDate = new Date(typeof slot.date === 'string' ? slot.date.split(' ')[0] : slot.date);
+            return slotDate >= oneWeekAgo && slotDate <= now;
+          });
+        } else if (selectedPeriod === 'month') {
+          // Filter untuk bulan ini
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          
+          filteredByPeriod = uniqueSlots.filter((slot: any) => {
+            const slotDate = new Date(typeof slot.date === 'string' ? slot.date.split(' ')[0] : slot.date);
+            return slotDate >= startOfMonth && slotDate <= endOfMonth;
+          });
+        }
+        
+        console.log(`After period (${selectedPeriod}) filtering: ${filteredByPeriod.length} slots`);
+        
+        // Langkah 4: Urutkan berdasarkan tanggal dan waktu
+        return filteredByPeriod.sort((a: any, b: any) => {
           // Konversi string tanggal ke objek Date
           const dateA = new Date(a.date);
           const dateB = new Date(b.date);
