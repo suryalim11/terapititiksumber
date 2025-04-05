@@ -1175,7 +1175,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveTherapySlots(): Promise<TherapySlot[]> {
-    // Perbaikan: mendapatkan semua slot terapi aktif, termasuk hari ini
+    // Perbaikan: mendapatkan semua slot terapi aktif, termasuk hari ini dan yang akan datang
     const today = new Date();
     
     // Konversi date ke string format YYYY-MM-DD
@@ -1186,39 +1186,48 @@ export class DatabaseStorage implements IStorage {
     
     console.log("Mencari slot terapi aktif mulai dari:", todayStr);
     
-    // Pertama, ambil slot terapi yang memenuhi kriteria dasar
-    // Karena field date sekarang text, kita perlu mencocokkan secara leksikal
+    // Ambil semua slot terapi yang aktif
     const slots = await db.query.therapySlots.findMany({
       where: eq(schema.therapySlots.isActive, true),
       orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
     });
     
-    // Filter secara manual untuk memastikan hanya tanggal hari ini dan ke depan yang diambil
-    const filteredSlots = slots.filter(slot => {
-      return slot.date >= todayStr;
-    });
-    
-    // Untuk setiap slot, ambil jumlah appointment aktif yang terkait
-    // dan gunakan itu sebagai currentCount yang akurat
-    for (const slot of filteredSlots) {
-      // Ambil semua appointment untuk slot ini
-      const allAppointments = await db.query.appointments.findMany({
-        where: eq(schema.appointments.therapySlotId, slot.id)
-      });
-      
-      // Filter hanya appointment dengan status aktif
-      const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
-      const activeAppointments = allAppointments.filter(app => activeStatuses.includes(app.status));
-      
-      // Update currentCount langsung di objek slot yang dikembalikan
-      slot.currentCount = activeAppointments.length;
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`Slot ${slot.id}: ${activeAppointments.length} active appointments dari ${allAppointments.length} total`);
+    // Untuk setiap slot, perbarui currentCount dengan jumlah appointment aktif
+    for (const slot of slots) {
+      try {
+        // Dapatkan semua appointment untuk slot ini
+        const allAppointments = await db.query.appointments.findMany({
+          where: eq(schema.appointments.therapySlotId, slot.id)
+        });
+        
+        // Definisikan status apa saja yang dianggap aktif (sama seperti di getTherapySlotsByDate)
+        const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+        
+        // Buat fungsi helper untuk check status aktif
+        const isActiveStatus = (s: string) => activeStatuses.includes(s);
+        
+        // Filter hanya appointment dengan status aktif
+        const activeAppointments = allAppointments.filter(app => isActiveStatus(app.status));
+        
+        // Log detail untuk membantu debugging
+        if (activeAppointments.length > 0) {
+          console.log(`Detail appointment aktif untuk slot ${slot.id}:`, 
+            activeAppointments.map(app => ({id: app.id, status: app.status}))
+          );
+        }
+        
+        // Update currentCount langsung di objek slot yang dikembalikan
+        slot.currentCount = activeAppointments.length;
+        
+        // Log jumlah appointment untuk slot ini
+        console.log(`Slot ${slot.id} (${slot.timeSlot} ${slot.date}): ${activeAppointments.length} active appointments dari ${allAppointments.length} total`);
+      } catch (error) {
+        console.error(`Error saat memproses slot ${slot.id}:`, error);
+        // Jika terjadi error, biarkan currentCount seperti apa adanya
       }
     }
     
-    return filteredSlots;
+    return slots; // Kembalikan semua slot yang aktif tanpa filter tanggal
   }
   
   /**
@@ -1541,7 +1550,7 @@ export class DatabaseStorage implements IStorage {
         
         // Verifikasi apakah slot memiliki kapasitas
         const currentUsage = therapySlot.currentCount || 0;
-        const maxCapacity = therapySlot.maxPatients || 6;
+        const maxCapacity = therapySlot.maxQuota || 6;
         if (currentUsage >= maxCapacity) {
           console.warn(`[WARNING] Therapy slot ${therapySlot.id} already at maximum capacity (${currentUsage}/${maxCapacity})`);
           // Tetap lanjutkan, tetapi berikan peringatan

@@ -1736,21 +1736,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Fetching slots from ${startDate.toISOString()} to ${endDate.toISOString()}`);
       
-      // Get all therapy slots
-      const allSlots = await storage.getAllTherapySlots();
+      // Get all active therapy slots
+      const allSlots = await storage.getActiveTherapySlots();
       
-      // Filter slots by date range
+      // Filter slots by date range - use string comparison for date field that's stored as text
+      const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+      const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+      
+      // Filter based on string comparisons since date is stored as text
       const slots = allSlots.filter(slot => {
-        const slotDate = new Date(slot.date);
-        return slotDate >= startDate && slotDate < endDate;
+        // Extract just the date part YYYY-MM-DD from the date string
+        const slotDateStr = typeof slot.date === 'string' ? slot.date.split(' ')[0] : slot.date;
+        return slotDateStr >= startDateStr && slotDateStr < endDateStr;
       });
       
-      // Update currentCount based on active appointments
+      // For each slot, get all active appointments to accurately update currentCount
       for (const slot of slots) {
-        // Get active appointments for this slot
-        const activeAppointments = await storage.getAppointmentsByTherapySlot(slot.id);
-        // Update currentCount to show actual registered patients (not cancelled)
-        slot.currentCount = activeAppointments.length;
+        try {
+          // Get all non-cancelled appointments for this slot
+          const allAppointments = await storage.getAppointmentsByTherapySlot(slot.id);
+          
+          // Filter to active statuses only
+          const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+          const activeAppointments = allAppointments.filter(app => activeStatuses.includes(app.status));
+          
+          // Update currentCount to show actual registered patients (not cancelled)
+          slot.currentCount = activeAppointments.length;
+        } catch (error) {
+          console.error(`Error processing slot ${slot.id}:`, error);
+          // Keep the existing currentCount if there's an error
+        }
       }
       
       // Add percentage
@@ -1759,8 +1774,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         percentage: (slot.currentCount * 100 / slot.maxQuota)
       }));
       
-      // Sort by date 
-      slotsWithPercentage.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      // First sort by date, then by timeSlot
+      slotsWithPercentage.sort((a, b) => {
+        // First compare by date
+        const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (dateComparison !== 0) return dateComparison;
+        
+        // If same date, compare by time slot
+        return a.timeSlot.localeCompare(b.timeSlot);
+      });
       
       return res.status(200).json(slotsWithPercentage);
     } catch (error) {
