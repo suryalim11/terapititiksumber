@@ -131,11 +131,33 @@ export function MedicalHistoryForm({
         }
       }
       
+      // Pastikan tanggal terapi valid
+      console.log("Tanggal terapi original:", data.treatmentDate);
+      
+      // Jika tanggal terapi adalah objek Date valid, gunakan; jika tidak, gunakan tanggal saat ini
+      if (!(data.treatmentDate instanceof Date) || isNaN(data.treatmentDate.getTime())) {
+        console.warn("Tanggal terapi tidak valid, menggunakan tanggal saat ini");
+        data.treatmentDate = new Date();
+      }
+      
+      // Untuk memastikan data tanggal yang dikirim valid
+      console.log("Tanggal terapi setelah validasi:", data.treatmentDate);
+      console.log("ISO String:", data.treatmentDate.toISOString());
+      
       // Persiapkan URL dan method berdasarkan mode (edit atau tambah)
       const url = isEditMode 
         ? `/api/medical-histories/${editData!.id}` 
         : "/api/medical-histories";
       const method = isEditMode ? "PUT" : "POST";
+      
+      // Siapkan payload untuk dikirim
+      const payload = {
+        ...data,
+        // Pastikan treatmentDate dikirm dalam format ISO String yang benar
+        treatmentDate: data.treatmentDate.toISOString()
+      };
+      
+      console.log("Payload yang dikirim ke server:", payload);
       
       // Kirim data ke API
       const response = await fetch(url, {
@@ -143,7 +165,7 @@ export function MedicalHistoryForm({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       
       if (!response.ok) {

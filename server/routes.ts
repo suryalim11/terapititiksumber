@@ -2763,7 +2763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/medical-histories", async (req: Request, res: Response) => {
     try {
-      console.log("Received medical history data:", req.body);
+      console.log("Received medical history data:", JSON.stringify(req.body, null, 2));
       
       // Struktur data yang dikirim dari form bisa berbeda, kita perlu menggunakan pendekatan adaptif
       // Sesuaikan dengan struktur formulir JSON yang dikirim client
@@ -2774,28 +2774,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (formData.treatmentDate) {
         // Jika tanggal terapi yang diberikan
+        console.log("Tanggal terapi ditemukan dalam request:", formData.treatmentDate);
+        console.log("Tipe data:", typeof formData.treatmentDate);
+        
         const parsedDate = new Date(formData.treatmentDate);
+        console.log("Setelah parsing:", parsedDate);
+        console.log("Tanggal valid?", !isNaN(parsedDate.getTime()));
         
         if (isNaN(parsedDate.getTime()) || parsedDate.getFullYear() <= 1970) {
           // Jika tanggal tidak valid, gunakan hari ini
           console.log("Tanggal terapi tidak valid:", formData.treatmentDate);
           treatmentDate = new Date();
+          console.log("Menggunakan tanggal default:", treatmentDate.toISOString());
         } else {
           treatmentDate = parsedDate;
+          console.log("Menggunakan tanggal dari request:", treatmentDate.toISOString());
         }
       } else if (formData.tanggal_terapi) {
         // Format alternatif
+        console.log("Tanggal terapi alternatif ditemukan:", formData.tanggal_terapi);
+        
         const parsedDate = new Date(formData.tanggal_terapi);
         
         if (isNaN(parsedDate.getTime()) || parsedDate.getFullYear() <= 1970) {
           console.log("Tanggal terapi (alternatif) tidak valid:", formData.tanggal_terapi);
           treatmentDate = new Date();
+          console.log("Menggunakan tanggal default:", treatmentDate.toISOString());
         } else {
           treatmentDate = parsedDate;
+          console.log("Menggunakan tanggal alternatif:", treatmentDate.toISOString());
         }
       } else {
         // Jika tidak ada tanggal yang diberikan, gunakan hari ini
+        console.log("Tidak ada tanggal terapi dalam request, menggunakan tanggal saat ini");
         treatmentDate = new Date();
+        console.log("Tanggal default:", treatmentDate.toISOString());
       }
       
       console.log("Tanggal terapi yang digunakan:", treatmentDate.toISOString());
@@ -2880,10 +2893,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Existing history:", {
         id: existingHistory.id,
-        treatmentDate: existingHistory.treatmentDate
+        treatmentDate: existingHistory.treatmentDate ? 
+          new Date(existingHistory.treatmentDate).toISOString() : 'null'
       });
       
-      console.log("Received medical history update data:", req.body);
+      console.log("Received medical history update data:", JSON.stringify(req.body, null, 2));
       
       // Proses data yang dikirim dari form
       const formData = req.body;
@@ -2893,28 +2907,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (formData.treatmentDate) {
         // Jika tanggal terapi yang diberikan dari frontend
+        console.log("Tanggal terapi dalam request update:", formData.treatmentDate);
+        console.log("Tipe data:", typeof formData.treatmentDate);
+        
         const parsedDate = new Date(formData.treatmentDate);
+        console.log("Tanggal setelah parsing:", parsedDate);
+        console.log("Tanggal valid?", !isNaN(parsedDate.getTime()));
         
         if (isNaN(parsedDate.getTime()) || parsedDate.getFullYear() <= 1970) {
           // Jika tanggal tidak valid, gunakan tanggal dari data existing
           console.log("Tanggal terapi tidak valid dalam request:", formData.treatmentDate);
           treatmentDate = existingHistory.treatmentDate || new Date();
+          console.log("Menggunakan tanggal existing:", treatmentDate.toISOString());
         } else {
           treatmentDate = parsedDate;
+          console.log("Menggunakan tanggal dari request:", treatmentDate.toISOString());
         }
       } else if (formData.tanggal_terapi) {
         // Format alternatif
+        console.log("Format alternatif tanggal terapi ditemukan:", formData.tanggal_terapi);
+        
         const parsedDate = new Date(formData.tanggal_terapi);
         
         if (isNaN(parsedDate.getTime()) || parsedDate.getFullYear() <= 1970) {
           console.log("Tanggal terapi (alternatif) tidak valid:", formData.tanggal_terapi);
           treatmentDate = existingHistory.treatmentDate || new Date();
+          console.log("Menggunakan tanggal existing:", treatmentDate.toISOString());
         } else {
           treatmentDate = parsedDate;
+          console.log("Menggunakan tanggal alternatif:", treatmentDate.toISOString());
         }
       } else {
         // Jika tidak ada tanggal yang diberikan, pertahankan tanggal yang sudah ada
+        console.log("Tidak ada tanggal terapi dalam request, menggunakan data existing");
         treatmentDate = existingHistory.treatmentDate || new Date();
+        console.log("Tanggal yang digunakan:", treatmentDate.toISOString());
       }
       
       console.log("Tanggal terapi yang akan digunakan:", treatmentDate);
@@ -3129,16 +3156,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Memulai perbaikan tanggal riwayat medis...");
       
-      // Ambil semua riwayat medis dengan tanggal terapi yang tidak valid
-      const invalidHistories = await db
+      // Ambil semua riwayat medis
+      console.log("Mencari riwayat medis dengan tanggal tidak valid...");
+      const allHistories = await db
         .select()
-        .from(schema.medicalHistories)
-        .where(
-          or(
-            isNull(schema.medicalHistories.treatmentDate),
-            lte(sql`EXTRACT(YEAR FROM ${schema.medicalHistories.treatmentDate})`, 1970)
-          )
-        );
+        .from(schema.medicalHistories);
+        
+      console.log(`Total riwayat medis: ${allHistories.length}`);
+      
+      // Filter data dengan tanggal tidak valid menggunakan JavaScript
+      const invalidHistories = allHistories.filter(history => {
+        const noDate = !history.treatmentDate;
+        const badYear = history.treatmentDate && new Date(history.treatmentDate).getFullYear() <= 1970;
+        
+        if (noDate || badYear) {
+          console.log(`Riwayat medis #${history.id} memiliki tanggal tidak valid:`, 
+            history.treatmentDate ? new Date(history.treatmentDate).toISOString() : 'null');
+          return true;
+        }
+        return false;
+      });
         
       console.log(`Ditemukan ${invalidHistories.length} riwayat medis dengan tanggal tidak valid`);
       
