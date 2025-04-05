@@ -37,11 +37,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, PlusCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import TransactionForm from "@/components/transactions/transaction-form";
 import Invoice from "@/components/transactions/invoice";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type Transaction = {
   id: number;
@@ -63,57 +63,74 @@ type Transaction = {
 };
 
 export default function Transactions() {
-  const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false);
-  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [invoiceData, setInvoiceData] = useState<any>(null);
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
   const { toast } = useToast();
-  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
   
-  // Parse URL untuk mendapatkan patientId dari parameter URL
-  const urlSearchParams = new URLSearchParams(window.location.search);
-  const patientIdFromUrl = urlSearchParams.get('patientId');
-
-  // Event listener untuk membuka form transaksi dari komponen lain
+  // Extract patient ID from URL if present
+  const urlParams = new URLSearchParams(location.split("?")[1]);
+  const patientIdFromUrl = urlParams.get("patientId");
+  
+  // States
+  const [searchTerm, setSearchTerm] = useState("");
+  const [periodFilter, setPeriodFilter] = useState("all");
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  
+  const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false);
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(patientIdFromUrl ? parseInt(patientIdFromUrl) : null);
+  
+  // State untuk dialog konfirmasi hapus
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null);
+  
+  // State untuk invoice
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const [invoiceData, setInvoiceData] = useState<any>(null);
+  
+  // Effect untuk auto-show form jika ada patientId di URL
   useEffect(() => {
-    // Fungsi untuk menangani event dari slot-patients-dialog
+    if (patientIdFromUrl) {
+      setIsTransactionFormOpen(true);
+    }
+  }, [patientIdFromUrl]);
+  
+  // Custom Event Listener untuk menerima notifikasi dari sidebar
+  useEffect(() => {
     const handleOpenTransactionForm = (event: CustomEvent) => {
-      const { patientId } = event.detail;
-      console.log("Received custom event to open transaction form with patient ID:", patientId);
+      const patientId = event.detail?.patientId;
       
       if (patientId) {
-        const patientIdNum = typeof patientId === 'string' ? parseInt(patientId) : patientId;
-        console.log("Setting selected patient ID:", patientIdNum);
-        
-        setSelectedPatientId(patientIdNum);
-        setIsTransactionFormOpen(true);
-        
-        // Debug notification
-        toast({
-          title: "Membuka form transaksi",
-          description: `ID Pasien: ${patientIdNum}`,
-        });
+        setSelectedPatientId(patientId);
+      } else {
+        setSelectedPatientId(null);
       }
+      
+      setIsTransactionFormOpen(true);
     };
     
-    // Tambahkan event listener
-    window.addEventListener('open-transaction-form', handleOpenTransactionForm as EventListener);
+    window.addEventListener('openTransactionForm' as any, handleOpenTransactionForm);
     
-    // Cleanup event listener ketika komponen unmount
     return () => {
-      window.removeEventListener('open-transaction-form', handleOpenTransactionForm as EventListener);
+      window.removeEventListener('openTransactionForm' as any, handleOpenTransactionForm);
     };
-  }, [toast]);
-
-  const { data: transactions, isLoading } = useQuery({
+  }, []);
+  
+  // Fetch data transactions
+  const { 
+    data: transactions, 
+    isLoading, 
+    refetch: refetchTransactions
+  } = useQuery({
     queryKey: ["/api/transactions"],
+    queryFn: async () => {
+      console.log("Fetching all transactions");
+      const response = await apiRequest("/api/transactions");
+      const data = await response.json();
+      console.log("Retrieved", data.length, "transactions");
+      return data;
+    }
   });
-
+  
+  // Fetch patients
   const { data: patients } = useQuery({
     queryKey: ["/api/patients"],
   });
@@ -159,47 +176,31 @@ export default function Transactions() {
     }
   });
   
-  // Fungsi untuk menghapus transaksi
-  const handleDeleteTransaction = (transaction: Transaction) => {
-    setSelectedTransaction(transaction);
-    setIsDeleteDialogOpen(true);
-  };
-  
   const confirmDeleteTransaction = () => {
-    if (selectedTransaction) {
-      deleteTransactionMutation.mutate(selectedTransaction.id);
+    if (transactionToDelete) {
+      deleteTransactionMutation.mutate(transactionToDelete);
     }
   };
-
+  
+  const setSelectedTransaction = (id: number | null) => {
+    setTransactionToDelete(id);
+  };
+  
   const getPatientName = (patientId: number) => {
     const patient = patients?.find((p: any) => p.id === patientId);
-    return patient ? patient.name : "Pasien";
+    return patient ? patient.name : "-";
   };
-
+  
   const formatDate = (dateString: string) => {
     try {
-      // Mengurangi 7 jam untuk menyesuaikan dengan timezone WIB (UTC+7)
       const date = new Date(dateString);
-      const wibDate = addHours(date, -7);
-      
-      // Check if there's a time component
-      const hasTimeComponent = 
-        wibDate.getHours() !== 0 || 
-        wibDate.getMinutes() !== 0 || 
-        wibDate.getSeconds() !== 0;
-      
-      // Only add WIB for timestamps with time component
-      if (hasTimeComponent) {
-        return format(wibDate, "dd/MM/yyyy, HH:mm", { locale: id }) + " WIB";
-      } else {
-        return format(wibDate, "dd/MM/yyyy", { locale: id });
-      }
-    } catch (e) {
-      console.error("Error formatting date:", e);
+      return format(date, "dd/MM/yyyy HH:mm", { locale: id });
+    } catch (error) {
+      console.error("Error formatting date:", error);
       return dateString;
     }
   };
-
+  
   const formatPaymentMethod = (method: string) => {
     switch (method) {
       case "bank_transfer":
@@ -212,15 +213,15 @@ export default function Transactions() {
         return method;
     }
   };
-
+  
   const formatPrice = (price: string) => {
     return `Rp${parseInt(price).toLocaleString("id-ID")}`;
   };
-
+  
   // Get patient dari URL jika ada
   const patientFromUrl = patientIdFromUrl ? 
     patients?.find((p: any) => p.id === parseInt(patientIdFromUrl)) : null;
-
+  
   // Fungsi untuk mengelola sorting
   const requestSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -243,60 +244,53 @@ export default function Transactions() {
       ? <ArrowUp className="h-4 w-4" /> 
       : <ArrowDown className="h-4 w-4" />;
   };
-
+  
   // Fungsi untuk memfilter berdasarkan periode
   const getFilteredByPeriod = (transaction: Transaction) => {
     try {
       const now = new Date();
-      const createdAt = new Date(transaction.createdAt);
+      const txDate = new Date(transaction.createdAt);
       
-      // Fix timezone: mengurangi 7 jam untuk WIB
-      const createdAtWIB = addHours(createdAt, -7);
-      
-      switch (filterStatus) {
-        case 'today':
+      switch (periodFilter) {
+        case "today": {
           const todayStart = startOfDay(now);
           const todayEnd = endOfDay(now);
-          return isWithinInterval(createdAtWIB, { start: todayStart, end: todayEnd });
-          
-        case 'week':
-          const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // 1 = Senin
+          return isWithinInterval(txDate, { start: todayStart, end: todayEnd });
+        }
+        case "week": {
+          const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Start on Monday
           const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
-          return isWithinInterval(createdAtWIB, { start: weekStart, end: weekEnd });
-          
-        case 'month':
+          return isWithinInterval(txDate, { start: weekStart, end: weekEnd });
+        }
+        case "month": {
           const monthStart = startOfMonth(now);
           const monthEnd = endOfMonth(now);
-          return isWithinInterval(createdAtWIB, { start: monthStart, end: monthEnd });
-          
+          return isWithinInterval(txDate, { start: monthStart, end: monthEnd });
+        }
         default:
-          return true; // 'all' atau nilai lainnya
+          return true;
       }
-    } catch (e) {
-      console.error("Error filtering by period:", e);
-      return true; // Default to showing all if error
+    } catch (error) {
+      console.error("Error filtering transaction by period:", error);
+      return true;
     }
   };
-
-  const filteredTransactions = transactions
+  
+  // Filter dan sort transaksi berdasarkan pencarian, periode, dan urutan
+  const filteredTransactions = transactions 
     ? transactions
         .filter((transaction: Transaction) => {
-          // Filter berdasarkan patientId dari URL jika ada
-          if (patientIdFromUrl) {
-            return transaction.patientId === parseInt(patientIdFromUrl);
+          // Filter by search term
+          if (searchTerm) {
+            const patientName = getPatientName(transaction.patientId).toLowerCase();
+            const txId = transaction.transactionId.toLowerCase();
+            
+            return patientName.includes(searchTerm.toLowerCase()) || 
+                  txId.includes(searchTerm.toLowerCase());
           }
-          
-          // Search filter
-          const transactionId = transaction.transactionId.toLowerCase();
-          const patientName = getPatientName(transaction.patientId).toLowerCase();
-          const searchLower = searchTerm.toLowerCase();
-          
-          const matchesSearch = transactionId.includes(searchLower) ||
-                               patientName.includes(searchLower);
-          
-          // Combine search filter with period filter
-          return matchesSearch && getFilteredByPeriod(transaction);
+          return true;
         })
+        .filter(getFilteredByPeriod)
         .sort((a: Transaction, b: Transaction) => {
           if (!sortConfig) {
             // Default sort by date (newest first)
@@ -378,18 +372,9 @@ export default function Transactions() {
       }));
       
       // Dapatkan subtotal dan diskon dari transaksi
-      // Jika subtotal adalah 0 atau null, gunakan totalAmount sebagai subtotal
       const subtotalValue = parseFloat(transaction.subtotal?.toString() || "0");
       const subtotal = subtotalValue > 0 ? subtotalValue : parseFloat(transaction.totalAmount.toString());
       const discount = parseFloat(transaction.discount?.toString() || "0");
-      
-      console.log("Invoice data preparation:", {
-        subtotalValue,
-        subtotal,
-        discount,
-        totalInTransaction: transaction.totalAmount,
-        subtotalInTransaction: transaction.subtotal
-      });
       
       // Set data untuk invoice
       setInvoiceData({
@@ -409,14 +394,18 @@ export default function Transactions() {
     } catch (error) {
       console.error("Error viewing transaction:", error);
       toast({
-        title: "Gagal menampilkan invoice",
-        description: "Terjadi kesalahan saat memuat data transaksi",
+        title: "Gagal melihat invoice",
+        description: "Terjadi kesalahan saat menyiapkan data invoice",
         variant: "destructive"
       });
     }
   };
   
-  // Fungsi untuk mencetak/mengunduh invoice langsung
+  const handleDeleteTransaction = (transaction: Transaction) => {
+    setTransactionToDelete(transaction.id);
+    setIsDeleteDialogOpen(true);
+  };
+
   const handlePrintTransaction = (transaction: any) => {
     try {
       // Cari data pasien untuk transaksi ini
@@ -478,109 +467,48 @@ export default function Transactions() {
       console.error("Error printing transaction:", error);
       toast({
         title: "Gagal mencetak invoice",
-        description: "Terjadi kesalahan saat memuat data transaksi",
+        description: "Terjadi kesalahan saat menyiapkan data invoice",
         variant: "destructive"
       });
     }
   };
-
+  
   return (
-    <div className="space-y-6">
-      {patientFromUrl ? (
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8 w-8 p-0"
-              onClick={() => navigate('/transactions')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold font-heading text-gray-900 dark:text-white">
-                Riwayat Transaksi Pasien
-              </h1>
-              <p className="text-gray-500 dark:text-gray-400">
-                {patientFromUrl?.name} ({patientFromUrl?.patientId})
-              </p>
-            </div>
-          </div>
-          <Button
-            onClick={() => {
-              setSelectedPatientId(parseInt(patientIdFromUrl!));
-              setIsTransactionFormOpen(true);
-            }}
-            className="flex items-center gap-1"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-            Buat Transaksi Baru
-          </Button>
-        </div>
-      ) : (
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold font-heading text-gray-900 dark:text-white">
-              Transaksi
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Kelola transaksi paket terapi dan produk
-            </p>
-          </div>
-          <Button
-            onClick={() => setIsTransactionFormOpen(true)}
-            className="flex items-center gap-1"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-            Buat Transaksi
-          </Button>
-        </div>
-      )}
-
+    <div className="space-y-4 p-4 pt-0">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center pb-4">
           <div>
-            <CardTitle className="text-xl font-heading">Riwayat Transaksi</CardTitle>
+            <CardTitle>Transaksi</CardTitle>
             <CardDescription>
-              Semua transaksi yang telah diproses
+              {patientFromUrl 
+                ? `Transaksi untuk pasien: ${patientFromUrl.name}`
+                : "Daftar transaksi pasien, pembayaran, dan piutang"}
             </CardDescription>
           </div>
-          <div className="flex space-x-2">
-            <Input
-              placeholder="Cari transaksi..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-[250px]"
-            />
+          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
+            <div className="relative w-full sm:w-60">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari transaksi..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button 
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setSelectedPatientId(null);
+                setIsTransactionFormOpen(true);
+              }}
+            >
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Transaksi Baru
+            </Button>
+            
             <Select
-              value={filterStatus}
-              onValueChange={setFilterStatus}
+              value={periodFilter}
+              onValueChange={(value) => setPeriodFilter(value)}
             >
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Filter" />
@@ -604,194 +532,294 @@ export default function Transactions() {
               {searchTerm ? "Tidak ada transaksi yang sesuai dengan pencarian." : "Belum ada transaksi."}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => requestSort('transactionId')}
-                    >
-                      <div className="flex items-center">
-                        ID Transaksi
-                        {getSortIcon('transactionId')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => requestSort('patient')}
-                    >
-                      <div className="flex items-center">
-                        Pasien
-                        {getSortIcon('patient')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => requestSort('date')}
-                    >
-                      <div className="flex items-center">
-                        Tanggal
-                        {getSortIcon('date')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => requestSort('paymentMethod')}
-                    >
-                      <div className="flex items-center">
-                        Metode Pembayaran
-                        {getSortIcon('paymentMethod')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => requestSort('subtotal')}
-                    >
-                      <div className="flex items-center">
-                        Subtotal
-                        {getSortIcon('subtotal')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => requestSort('discount')}
-                    >
-                      <div className="flex items-center">
-                        Diskon
-                        {getSortIcon('discount')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => requestSort('total')}
-                    >
-                      <div className="flex items-center">
-                        Total
-                        {getSortIcon('total')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => requestSort('credit')}
-                    >
-                      <div className="flex items-center">
-                        Kredit
-                        {getSortIcon('credit')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => requestSort('status')}
-                    >
-                      <div className="flex items-center">
-                        Status
-                        {getSortIcon('status')}
-                      </div>
-                    </TableHead>
-                    <TableHead>Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTransactions.map((transaction: Transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell className="font-medium">{transaction.transactionId}</TableCell>
-                      <TableCell>{getPatientName(transaction.patientId)}</TableCell>
-                      <TableCell>{formatDate(transaction.createdAt)}</TableCell>
-                      <TableCell>{formatPaymentMethod(transaction.paymentMethod)}</TableCell>
-                      <TableCell>
-                        {formatPrice(
-                          parseFloat(transaction.subtotal?.toString() || "0") > 0 
-                            ? transaction.subtotal?.toString() || "0" 
-                            : transaction.totalAmount.toString()
-                        )}
-                      </TableCell>
-                      <TableCell className="text-red-500">
-                        {transaction.discount && parseFloat(transaction.discount.toString()) > 0 
-                          ? formatPrice(transaction.discount.toString())
-                          : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {formatPrice(
-                          transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
-                            ? (parseFloat(transaction.totalAmount.toString()) - parseFloat(transaction.creditAmount.toString())).toString()
-                            : transaction.totalAmount.toString()
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
-                          <span className="text-red-600 font-medium">{formatPrice(transaction.creditAmount.toString())}</span>
-                        ) : (
-                          <span>-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {transaction.isPaid ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            Lunas
-                          </span>
-                        ) : transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Kredit
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            Lunas
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-8 w-8 p-0"
-                            onClick={() => handleViewTransaction(transaction)}
-                            title="Lihat Invoice"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-8 w-8 p-0"
-                            onClick={() => handlePrintTransaction(transaction)}
-                            title="Cetak Invoice"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-100"
-                            onClick={() => handleDeleteTransaction(transaction)}
-                            title="Hapus Transaksi"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </Button>
+            <>
+              {/* Desktop view with table (hidden on mobile) */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => requestSort('transactionId')}
+                      >
+                        <div className="flex items-center">
+                          ID Transaksi
+                          {getSortIcon('transactionId')}
                         </div>
-                      </TableCell>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => requestSort('patient')}
+                      >
+                        <div className="flex items-center">
+                          Pasien
+                          {getSortIcon('patient')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => requestSort('date')}
+                      >
+                        <div className="flex items-center">
+                          Tanggal
+                          {getSortIcon('date')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => requestSort('paymentMethod')}
+                      >
+                        <div className="flex items-center">
+                          Metode Pembayaran
+                          {getSortIcon('paymentMethod')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => requestSort('subtotal')}
+                      >
+                        <div className="flex items-center">
+                          Subtotal
+                          {getSortIcon('subtotal')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => requestSort('discount')}
+                      >
+                        <div className="flex items-center">
+                          Diskon
+                          {getSortIcon('discount')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => requestSort('total')}
+                      >
+                        <div className="flex items-center">
+                          Total
+                          {getSortIcon('total')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => requestSort('credit')}
+                      >
+                        <div className="flex items-center">
+                          Kredit
+                          {getSortIcon('credit')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => requestSort('status')}
+                      >
+                        <div className="flex items-center">
+                          Status
+                          {getSortIcon('status')}
+                        </div>
+                      </TableHead>
+                      <TableHead>Aksi</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTransactions.map((transaction: Transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell className="font-medium">{transaction.transactionId}</TableCell>
+                        <TableCell>{getPatientName(transaction.patientId)}</TableCell>
+                        <TableCell>{formatDate(transaction.createdAt)}</TableCell>
+                        <TableCell>{formatPaymentMethod(transaction.paymentMethod)}</TableCell>
+                        <TableCell>
+                          {formatPrice(
+                            parseFloat(transaction.subtotal?.toString() || "0") > 0 
+                              ? transaction.subtotal?.toString() || "0" 
+                              : transaction.totalAmount.toString()
+                          )}
+                        </TableCell>
+                        <TableCell className="text-red-500">
+                          {transaction.discount && parseFloat(transaction.discount.toString()) > 0 
+                            ? formatPrice(transaction.discount.toString())
+                            : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {formatPrice(
+                            transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
+                              ? (parseFloat(transaction.totalAmount.toString()) - parseFloat(transaction.creditAmount.toString())).toString()
+                              : transaction.totalAmount.toString()
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
+                            <span className="text-red-600 font-medium">{formatPrice(transaction.creditAmount.toString())}</span>
+                          ) : (
+                            <span>-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {transaction.isPaid ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Lunas
+                            </span>
+                          ) : transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Kredit
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Lunas
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleViewTransaction(transaction)}
+                              title="Lihat Invoice"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-8 w-8 p-0"
+                              onClick={() => handlePrintTransaction(transaction)}
+                              title="Cetak Invoice"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                              </svg>
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-100"
+                              onClick={() => handleDeleteTransaction(transaction)}
+                              title="Hapus Transaksi"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile view with cards */}
+              <div className="md:hidden space-y-4 mt-4">
+                {filteredTransactions.map((transaction: Transaction) => (
+                  <div key={transaction.id} className="bg-card rounded-lg border shadow-sm p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="font-medium text-sm">{transaction.transactionId}</div>
+                        <div className="text-base font-semibold">{getPatientName(transaction.patientId)}</div>
+                        <div className="text-sm text-muted-foreground">{formatDate(transaction.createdAt)}</div>
+                      </div>
+                      <div className={`text-xs inline-flex items-center font-semibold px-2.5 py-1 rounded-full ${
+                        transaction.isPaid 
+                          ? 'bg-green-100 text-green-800' 
+                          : transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                      }`}>
+                        {transaction.isPaid 
+                          ? 'Lunas' 
+                          : transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
+                            ? 'Kredit'
+                            : 'Belum Lunas'}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                      <div>
+                        <div className="text-muted-foreground">Metode</div>
+                        <div>{formatPaymentMethod(transaction.paymentMethod)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Total</div>
+                        <div className="font-medium">{formatPrice(transaction.totalAmount.toString())}</div>
+                      </div>
+                      
+                      {(transaction.subtotal && parseFloat(transaction.subtotal.toString()) > 0) && (
+                        <div>
+                          <div className="text-muted-foreground">Subtotal</div>
+                          <div>{formatPrice(transaction.subtotal.toString())}</div>
+                        </div>
+                      )}
+                      
+                      {(transaction.discount && parseFloat(transaction.discount.toString()) > 0) && (
+                        <div>
+                          <div className="text-muted-foreground">Diskon</div>
+                          <div className="text-red-500">{formatPrice(transaction.discount.toString())}</div>
+                        </div>
+                      )}
+                      
+                      {(transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0) && (
+                        <div>
+                          <div className="text-muted-foreground">Kredit</div>
+                          <div className="text-red-600 font-medium">{formatPrice(transaction.creditAmount.toString())}</div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleViewTransaction(transaction)}
+                        className="h-10 px-3"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        Lihat
+                      </Button>
+                      <Button
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handlePrintTransaction(transaction)}
+                        className="h-10 px-3"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Cetak
+                      </Button>
+                      <Button
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleDeleteTransaction(transaction)}
+                        className="h-10 px-3 text-red-500 border-red-200 hover:text-red-600 hover:bg-red-50"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Hapus
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
