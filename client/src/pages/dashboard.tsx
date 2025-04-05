@@ -80,12 +80,9 @@ export default function Dashboard() {
   });
   
   // Fetch today's therapy slots (for backward compatibility)
-  const { data: todaySlots = [], isLoading: isTodaySlotsLoading } = useQuery<any[]>({
-    queryKey: ['/api/today-slots'],
-    refetchInterval: 10000,
-  });
+  // Hapus penggunaan todaySlots untuk menghindari duplikasi data
   
-  // Fetch therapy slots by period
+  // Fetch therapy slots by period - gunakan ini sebagai satu-satunya sumber data slot
   const { data: slotsByPeriod = [], isLoading: isSlotsLoading, refetch: refetchSlotsByPeriod } = useQuery<any[]>({
     queryKey: ['/api/slots-by-period', selectedPeriod],
     queryFn: async () => {
@@ -93,7 +90,19 @@ export default function Dashboard() {
       if (!response.ok) {
         throw new Error('Failed to fetch slots by period');
       }
-      return response.json();
+      const data = await response.json();
+      
+      // Filter dan deduplikasi slot berdasarkan ID untuk menghindari duplikasi
+      const uniqueSlots = Array.from(
+        new Map(data.map((slot: any) => [slot.id, slot])).values()
+      );
+      
+      // Urutkan berdasarkan tanggal dan waktu
+      return uniqueSlots.sort((a: any, b: any) => {
+        const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (dateComparison !== 0) return dateComparison;
+        return a.timeSlot.localeCompare(b.timeSlot);
+      });
     },
     refetchInterval: 10000,
   });
