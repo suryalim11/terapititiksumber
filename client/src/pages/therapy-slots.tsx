@@ -1298,31 +1298,45 @@ export default function TherapySlots() {
                         variant="outline" 
                         className="h-12 sm:h-10"
                         onClick={() => {
+                          console.log("Memulai sinkronisasi kuota slot...");
+                          // Gunakan credentials: 'include' untuk menyertakan cookie sesi
                           fetch('/api/therapy-slots/sync-quota', {
                             method: 'POST',
+                            credentials: 'include', // Penting untuk autentikasi
                             headers: {
                               'Cache-Control': 'no-cache, no-store, must-revalidate',
-                              'Pragma': 'no-cache'
+                              'Pragma': 'no-cache',
+                              'Content-Type': 'application/json'
                             }
                           })
                           .then(async res => {
                             if (res.ok) {
+                              console.log("Sinkronisasi berhasil, respons OK");
+                              const result = await res.json();
+                              console.log("Hasil sinkronisasi:", result);
+                              
                               // Invalidate all therapy slots queries to force refresh
                               queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
                               
                               // Also refresh available slots that might be used in registration form
                               queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots', 'available-active'] });
                               
+                              // Refresh data di dashboard dan today slots untuk memastikan kuota terupdate
+                              queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+                              queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
+                              
                               toast({
                                 title: "Sinkronisasi Berhasil",
-                                description: "Kuota slot terapi telah disinkronisasi dengan janji temu"
+                                description: result.message || "Kuota slot terapi telah disinkronisasi dengan janji temu"
                               });
                             } else {
-                              const error = await res.json();
+                              console.error("Sinkronisasi gagal, respons error:", res.status);
+                              const error = await res.json().catch(() => ({ message: "Gagal mendapatkan pesan error" }));
                               throw new Error(error.message || "Gagal melakukan sinkronisasi kuota");
                             }
                           })
                           .catch(err => {
+                            console.error("Error saat sinkronisasi:", err);
                             toast({
                               title: "Gagal Sinkronisasi",
                               description: err.message,
