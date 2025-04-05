@@ -63,6 +63,18 @@ interface MedicalHistoryFormProps {
   patientId: number;
   appointmentId?: number;
   onSubmitSuccess?: () => void;
+  // Data untuk mode edit
+  editData?: {
+    id: number;
+    complaint: string;
+    beforeBloodPressure?: string | null;
+    afterBloodPressure?: string | null;
+    heartRate?: string | null;
+    pulseRate?: string | null;
+    weight?: string | null;
+    notes?: string | null;
+    treatmentDate: string;
+  };
 }
 
 export function MedicalHistoryForm({
@@ -71,22 +83,26 @@ export function MedicalHistoryForm({
   patientId,
   appointmentId,
   onSubmitSuccess,
+  editData,
 }: MedicalHistoryFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditMode = !!editData;
   
   // Default values untuk form
   const defaultValues: Partial<MedicalHistoryFormValues> = {
     patientId,
     appointmentId,
-    treatmentDate: new Date(),
-    complaint: "",
-    beforeBloodPressure: "",
-    afterBloodPressure: "",
-    heartRate: "",
-    pulseRate: "",
-    weight: "",
-    notes: "",
+    treatmentDate: editData 
+      ? new Date(editData.treatmentDate) 
+      : new Date(),
+    complaint: editData?.complaint || "",
+    beforeBloodPressure: editData?.beforeBloodPressure || "",
+    afterBloodPressure: editData?.afterBloodPressure || "",
+    heartRate: editData?.heartRate || "",
+    pulseRate: editData?.pulseRate || "",
+    weight: editData?.weight || "",
+    notes: editData?.notes || "",
   };
   
   // Setup form dengan react-hook-form dan validasi zod
@@ -115,9 +131,15 @@ export function MedicalHistoryForm({
         }
       }
       
+      // Persiapkan URL dan method berdasarkan mode (edit atau tambah)
+      const url = isEditMode 
+        ? `/api/medical-histories/${editData!.id}` 
+        : "/api/medical-histories";
+      const method = isEditMode ? "PUT" : "POST";
+      
       // Kirim data ke API
-      const response = await fetch("/api/medical-histories", {
-        method: "POST",
+      const response = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -130,8 +152,10 @@ export function MedicalHistoryForm({
       }
       
       toast({
-        title: "Catatan medis berhasil disimpan",
-        description: "Data catatan medis pasien telah ditambahkan",
+        title: isEditMode ? "Catatan medis berhasil diperbarui" : "Catatan medis berhasil disimpan",
+        description: isEditMode 
+          ? "Data catatan medis pasien telah diperbarui" 
+          : "Data catatan medis pasien telah ditambahkan",
       });
       
       form.reset(defaultValues);
@@ -144,7 +168,7 @@ export function MedicalHistoryForm({
     } catch (error) {
       console.error("Error submitting medical history:", error);
       toast({
-        title: "Gagal menyimpan catatan medis",
+        title: isEditMode ? "Gagal memperbarui catatan medis" : "Gagal menyimpan catatan medis",
         description: error instanceof Error ? error.message : "Terjadi kesalahan, silakan coba lagi",
         variant: "destructive",
       });
@@ -157,9 +181,12 @@ export function MedicalHistoryForm({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Tambah Catatan Medis</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Catatan Medis" : "Tambah Catatan Medis"}</DialogTitle>
           <DialogDescription>
-            Tambahkan catatan medis baru untuk pasien
+            {isEditMode 
+              ? "Perbarui data catatan medis pasien" 
+              : "Tambahkan catatan medis baru untuk pasien"
+            }
           </DialogDescription>
         </DialogHeader>
         
@@ -345,7 +372,7 @@ export function MedicalHistoryForm({
                 Batal
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Menyimpan..." : "Tambah Catatan"}
+                {isSubmitting ? "Menyimpan..." : isEditMode ? "Perbarui Catatan" : "Tambah Catatan"}
               </Button>
             </DialogFooter>
           </form>

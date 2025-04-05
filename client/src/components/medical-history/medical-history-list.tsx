@@ -267,6 +267,7 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
           patientId={editingHistory.patientId}
           appointmentId={editingHistory.appointmentId || undefined}
           onSubmitSuccess={handleEditSuccess}
+          editData={editingHistory}
         />
       )}
     </Card>
