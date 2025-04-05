@@ -2113,8 +2113,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Deteksi apakah ini adalah link permanen (tanggal jauh ke depan atau kuota sangat tinggi)
+      // Pastikan expiryTime adalah objek Date
+      const expiryTime = link.expiryTime instanceof Date ? link.expiryTime : new Date(link.expiryTime);
+      console.log("Verifikasi link pendaftaran:", {
+        code: link.code,
+        dailyLimit: link.dailyLimit,
+        expiryTime: expiryTime,
+        currentYear: new Date().getFullYear(),
+        expiryYear: expiryTime.getFullYear()
+      });
+      
       const isPermanentLink = link.dailyLimit >= 1000 || 
-                            (link.expiryTime.getFullYear() > new Date().getFullYear() + 5);
+                            (expiryTime.getFullYear() > new Date().getFullYear() + 5);
       
       // Cek apakah ada slot yang tersedia
       if (upcomingSlots.length === 0) {
@@ -2129,6 +2139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 dailyLimit: "Tidak terbatas",
                 currentRegistrations: link.currentRegistrations,
                 displayExpiryTime: "Permanen",
+                expiryTime: link.expiryTime,
                 isPermanent: true
               }
             : {
@@ -2151,7 +2162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? {
               dailyLimit: "Tidak terbatas",
               currentRegistrations: link.currentRegistrations,
-              displayExpiryTime: "Permanen", 
+              displayExpiryTime: "Permanen",
+              expiryTime: link.expiryTime, 
               isPermanent: true
             }
           : {

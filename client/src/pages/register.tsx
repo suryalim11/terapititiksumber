@@ -206,9 +206,15 @@ export default function RegisterPage() {
 
   // Parse the URL for registration code - untuk link permanen
   useEffect(() => {
+    // Perhatikan: Pada halaman pertama load, window.location.search mungkin belum tersedia
+    console.log("Full URL saat akses halaman register:", window.location.href);
+    console.log("URL search params:", window.location.search);
+    
     const params = new URLSearchParams(window.location.search);
     // Mendukung parameter "code" dan "kode" untuk backward compatibility
     const code = params.get("code") || params.get("kode");
+    
+    console.log("Kode yang ditemukan di URL:", code);
     
     // Jika tidak ada kode di URL, coba dapatkan secara otomatis link pendaftaran permanen
     if (code) {
@@ -218,6 +224,9 @@ export default function RegisterPage() {
       verifyRegistrationCode(code);
     } else {
       console.log("Tidak ada kode pendaftaran di URL, mencoba mendapatkan link permanen...");
+      
+      // Coba buat link permanen untuk menangani kasus akses langsung ke halaman pendaftaran
+      // tanpa parameter kode
       getActivePermanentLink();
     }
   }, []);
@@ -225,16 +234,20 @@ export default function RegisterPage() {
   // Fungsi untuk mendapatkan link pendaftaran permanen yang aktif
   const getActivePermanentLink = async () => {
     try {
+      console.log("Mencoba mendapatkan link pendaftaran permanen...");
       // Coba dapatkan (atau buat jika belum ada) link pendaftaran permanen
       const response = await fetch('/api/registration-links', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Pastikan cookies dikirim
         // Tidak perlu body karena endpoint menggunakan nilai default untuk link permanen
       });
       
+      console.log("Respons link permanen:", response.status, response.statusText);
       const data = await response.json();
+      console.log("Detail data link permanen:", data);
       
       if (response.ok && data.code) {
         console.log("Mendapatkan link pendaftaran permanen:", data.code);
@@ -264,15 +277,19 @@ export default function RegisterPage() {
   // Function to verify the registration code
   const verifyRegistrationCode = async (code: string) => {
     try {
+      console.log("Memverifikasi kode pendaftaran:", code);
       const response = await fetch('/api/verify-registration-link', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ code }),
+        credentials: 'include', // Penting: pastikan cookies dikirim
       });
       
+      console.log("Respons verifikasi kode pendaftaran:", response.status, response.statusText);
       const data = await response.json();
+      console.log("Detail respons verifikasi:", data);
       
       if (response.ok && data.valid) {
         console.log("Kode pendaftaran valid:", data);
