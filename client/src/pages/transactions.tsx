@@ -118,16 +118,24 @@ export default function Transactions() {
   const { 
     data: transactions, 
     isLoading, 
-    refetch: refetchTransactions
+    refetch: refetchTransactions,
+    error: transactionsError
   } = useQuery({
     queryKey: ["/api/transactions"],
     staleTime: 0, // Tidak menggunakan cache untuk memastikan data selalu terbaru
     queryFn: async () => {
       console.log("Fetching all transactions");
-      const response = await apiRequest("/api/transactions");
-      const data = await response.json();
-      console.log("Retrieved", data ? data.length : 0, "transactions");
-      return data || [];
+      try {
+        const data = await apiRequest<Transaction[]>("/api/transactions");
+        console.log(`Retrieved ${data.length} transactions from API`);
+        if (data.length > 0) {
+          console.log("First transaction:", data[0].transactionId);
+        }
+        return data;
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
+        throw error;
+      }
     }
   });
   

@@ -71,6 +71,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Login function
   const login = async (username: string, password: string, rememberMe: boolean = false) => {
     setIsLoading(true);
+    console.log(`Mencoba login dengan username: ${username}, rememberMe: ${rememberMe}`);
     
     try {
       const response = await apiRequest<AuthResponse>("/api/login", {
@@ -81,9 +82,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         },
       });
       
+      console.log("Login response:", response);
+      
       if (response.success && response.user) {
+        console.log("Login berhasil, user:", response.user);
         setUser(response.user);
+        
+        // Verifikasi status autentikasi setelah login
+        const authStatus = await apiRequest<AuthResponse>("/api/auth/status", { 
+          method: "GET" 
+        });
+        console.log("Status autentikasi setelah login:", authStatus);
+        
+        if (!authStatus.authenticated) {
+          console.error("Auth status masih false meskipun login berhasil!");
+        }
       } else {
+        console.error("Login sukses tetapi tidak ada data user:", response);
         throw new Error(response.message || "Login failed");
       }
     } catch (error) {

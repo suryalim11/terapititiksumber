@@ -23,10 +23,19 @@ export async function apiRequest<T = Record<string, unknown>>(
   url: string,
   options?: RequestInit
 ): Promise<T> {
+  console.log(`API Request to ${url} with credentials included`);
+  
+  // Paksakan selalu menggunakan credentials include
   const res = await fetch(url, {
     ...options,
     credentials: "include",
+    headers: {
+      ...(options?.headers || {}),
+      "Accept": "application/json"
+    }
   });
+
+  console.log(`API Response from ${url}: status=${res.status}`);
 
   // Clone response sebelum memeriksanya
   const clonedRes = res.clone();
@@ -34,7 +43,11 @@ export async function apiRequest<T = Record<string, unknown>>(
   
   try {
     // Gunakan response asli untuk parse JSON
-    return await res.json() as T;
+    const data = await res.json() as T;
+    console.log(`API data from ${url}:`, 
+      Array.isArray(data) ? `Array with ${data.length} items` : 
+      (data === null ? 'null' : typeof data));
+    return data;
   } catch (error) {
     console.warn("Failed to parse response as JSON:", error);
     // Jika tidak bisa di-parse sebagai JSON (misalnya empty body),
@@ -53,6 +66,9 @@ export const getQueryFn = <T,>({ on401: unauthorizedBehavior }: {
     
     const res = await fetch(url, {
       credentials: "include",
+      headers: {
+        "Accept": "application/json"
+      }
     });
     
     console.log(`Response for ${url}: status=${res.status}`);
@@ -72,9 +88,19 @@ export const getQueryFn = <T,>({ on401: unauthorizedBehavior }: {
       console.log(`Successfully parsed data from ${url}:`, 
         Array.isArray(data) ? `Array with ${data.length} items` : 
         (data === null ? 'null' : typeof data));
+      
+      // Khusus untuk transaksi, tambahan log detail
+      if (url === '/api/transactions' && Array.isArray(data)) {
+        console.log(`Transactions data: ${data.length} items successfully loaded`);
+        if (data.length > 0) {
+          console.log(`First transaction ID: ${data[0].transactionId}, createdAt: ${data[0].createdAt}`);
+        }
+      }
+      
       return data;
     } catch (error) {
-      console.warn(`Failed to parse query response from ${url} as JSON:`, error);
+      console.error(`Failed to parse query response from ${url} as JSON:`, error);
+      console.error(`Response status: ${res.status}, statusText: ${res.statusText}`);
       return {} as unknown as T;
     }
   };
