@@ -1056,28 +1056,40 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getTherapySlotsByDate(date: Date): Promise<TherapySlot[]> {
-    // Simplifikasi: Terima tanggal apa adanya dan gunakan untuk filter
-    // Cetak debugging info
-    console.log("Input date untuk getTherapySlotsByDate:", date, "ISO:", date.toISOString());
+  async getTherapySlotsByDate(date: Date | string): Promise<TherapySlot[]> {
+    // Konversi ke string format YYYY-MM-DD untuk dicocokkan dengan field date yang berupa text
+    let dateString: string;
     
-    // Buat tanggal awal dan akhir hari untuk filter range (tetap diperlukan untuk query)
-    const startDate = new Date(date);
-    startDate.setHours(0, 0, 0, 0); // Awal hari
+    if (date instanceof Date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      dateString = `${year}-${month}-${day}`;
+      console.log("Input date untuk getTherapySlotsByDate: Date object -", date.toISOString());
+    } else {
+      // Jika sudah string, pastikan format YYYY-MM-DD
+      dateString = date;
+      if (!/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+        // Coba parse jika bukan format YYYY-MM-DD
+        try {
+          const parsedDate = new Date(dateString);
+          const year = parsedDate.getFullYear();
+          const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+          const day = String(parsedDate.getDate()).padStart(2, '0');
+          dateString = `${year}-${month}-${day}`;
+        } catch (e) {
+          console.error("Invalid date string:", date);
+        }
+      }
+      console.log("Input date untuk getTherapySlotsByDate: String -", dateString);
+    }
     
-    const endDate = new Date(date);
-    endDate.setHours(23, 59, 59, 999); // Akhir hari
+    console.log("Mencari slot terapi dengan date text:", dateString);
     
-    console.log("Mencari slot terapi untuk tanggal yang sama dengan:", date.toISOString());
-    console.log("Range filter: ", startDate.toISOString(), "sampai", endDate.toISOString());
-    
-    // Gunakan fungsi query di Drizzle ORM untuk memfilter berdasarkan tanggal
+    // Gunakan fungsi query di Drizzle ORM untuk filter berdasarkan string date 
+    // karena kita mengubah kolom date dari timestamp menjadi text
     const slots = await db.query.therapySlots.findMany({
-      where: and(
-        // Gunakan gte dan lte untuk mendapatkan semua record pada tanggal yang sama
-        gte(schema.therapySlots.date, startDate),
-        lte(schema.therapySlots.date, endDate)
-      ),
+      where: eq(schema.therapySlots.date, dateString),
       orderBy: [asc(schema.therapySlots.timeSlot)]
     });
     
@@ -1114,22 +1126,30 @@ export class DatabaseStorage implements IStorage {
   async getActiveTherapySlots(): Promise<TherapySlot[]> {
     // Perbaikan: mendapatkan semua slot terapi aktif, termasuk hari ini
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
     
-    console.log("Mencari slot terapi aktif mulai dari:", today, "ISO:", today.toISOString());
+    // Konversi date ke string format YYYY-MM-DD
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    
+    console.log("Mencari slot terapi aktif mulai dari:", todayStr);
     
     // Pertama, ambil slot terapi yang memenuhi kriteria dasar
+    // Karena field date sekarang text, kita perlu mencocokkan secara leksikal
     const slots = await db.query.therapySlots.findMany({
-      where: and(
-        eq(schema.therapySlots.isActive, true),
-        gte(schema.therapySlots.date, today)
-      ),
+      where: eq(schema.therapySlots.isActive, true),
       orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
+    });
+    
+    // Filter secara manual untuk memastikan hanya tanggal hari ini dan ke depan yang diambil
+    const filteredSlots = slots.filter(slot => {
+      return slot.date >= todayStr;
     });
     
     // Untuk setiap slot, ambil jumlah appointment aktif yang terkait
     // dan gunakan itu sebagai currentCount yang akurat
-    for (const slot of slots) {
+    for (const slot of filteredSlots) {
       const appointments = await this.getAppointmentsByTherapySlot(slot.id);
       
       // Hitung appointment yang tidak dibatalkan saja
@@ -1143,7 +1163,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    return slots;
+    return filteredSlots;
   }
   
   /**

@@ -149,7 +149,7 @@ export const insertSessionSchema = createInsertSchema(sessions).pick({
 // Therapy Schedule Schema (Slot Terapi)
 export const therapySlots = pgTable("therapy_slots", {
   id: serial("id").primaryKey(),
-  date: timestamp("date").notNull(), // Tanggal sesi
+  date: text("date").notNull(), // Tanggal sesi - menggunakan TEXT untuk menghindari masalah konversi
   timeSlot: text("time_slot").notNull(), // Contoh: "10:00-11:00"
   maxQuota: integer("max_quota").notNull().default(6), // Jumlah maksimal pasien per sesi
   currentCount: integer("current_count").notNull().default(0), // Jumlah pasien yang sudah mendaftar

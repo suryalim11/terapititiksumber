@@ -39,15 +39,15 @@ export async function handleTherapySlotsBatch(req: Request, res: Response) {
         console.log(`Memproses slot: date=${slotData.date} (${typeof slotData.date}), timeSlot=${slotData.timeSlot}, maxQuota=${slotData.maxQuota}`);
         
         // Cek apakah kombinasi tanggal dan waktu sudah ada
-        const existingSlots = await storage.getTherapySlotsByDate(new Date(slotData.date));
+        // Tanggal sudah berupa string, langsung gunakan
+        const existingSlots = await storage.getTherapySlotsByDate(slotData.date);
         console.log(`Ditemukan ${existingSlots.length} slot yang sudah ada pada tanggal ${slotData.date}`);
         
         const slotExists = existingSlots.some(slot => {
-          const existingDate = new Date(slot.date).toDateString();
-          const newDate = new Date(slotData.date).toDateString();
+          // Untuk perbandingan, gunakan string langsung karena kolom date sudah berupa string
           const isSameTimeSlot = slot.timeSlot === slotData.timeSlot;
-          const isSameDate = existingDate === newDate;
-          console.log(`Perbandingan: existingDate=${existingDate}, newDate=${newDate}, isSameTimeSlot=${isSameTimeSlot}, isSameDate=${isSameDate}`);
+          const isSameDate = slot.date === slotData.date;
+          console.log(`Perbandingan: existingDate=${slot.date}, newDate=${slotData.date}, isSameTimeSlot=${isSameTimeSlot}, isSameDate=${isSameDate}`);
           return isSameTimeSlot && isSameDate;
         });
         
@@ -63,46 +63,11 @@ export async function handleTherapySlotsBatch(req: Request, res: Response) {
         // Log tanggal sebelum pemrosesan
         console.log(`Processing date: ${slotData.date}, type: ${typeof slotData.date}`);
         
-        // Pastikan date dalam format string YYYY-MM-DD
-        let formattedDate = slotData.date;
-        if (typeof formattedDate === 'object' && formattedDate instanceof Date) {
-          const year = formattedDate.getFullYear();
-          const month = (formattedDate.getMonth() + 1).toString().padStart(2, '0');
-          const day = formattedDate.getDate().toString().padStart(2, '0');
-          formattedDate = `${year}-${month}-${day}`;
-        }
+        // Karena kita sekarang menggunakan string untuk date di schema, pastikan tanggal dalam format YYYY-MM-DD
+        // Client sudah mengirim dalam format string YYYY-MM-DD, jadi tidak perlu konversi lagi
+        const dateStr = slotData.date;
         
-        console.log(`Using formatted date: ${formattedDate}`);
-        
-        // Buat slot terapi baru dengan format tanggal yang benar
-        // Pastikan nilai date selalu berbentuk string format YYYY-MM-DD
-        let dateStr = formattedDate;
-        
-        // Jika masih berupa object, serialize ke string
-        if (typeof dateStr === 'object' && dateStr !== null) {
-          try {
-            if (dateStr instanceof Date) {
-              const year = dateStr.getFullYear();
-              const month = (dateStr.getMonth() + 1).toString().padStart(2, '0');
-              const day = dateStr.getDate().toString().padStart(2, '0');
-              dateStr = `${year}-${month}-${day}`;
-            } else {
-              // Fallback untuk object lain
-              dateStr = JSON.stringify(dateStr);
-            }
-          } catch (err) {
-            console.error("Error serializing date object:", err);
-            // Fallback ke tanggal hari ini jika gagal
-            const today = new Date();
-            dateStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-          }
-        } else if (typeof dateStr !== 'string') {
-          // Jika bukan string atau object, fallback ke tanggal hari ini
-          const today = new Date();
-          dateStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-        }
-        
-        console.log(`Membuat slot terapi dengan tanggal final: ${dateStr} (${typeof dateStr})`);
+        console.log(`Membuat slot terapi dengan tanggal: ${dateStr} (${typeof dateStr})`);
         
         const newSlot = await storage.createTherapySlot({
           date: dateStr, // Pastikan selalu string format YYYY-MM-DD
