@@ -1104,28 +1104,48 @@ export class DatabaseStorage implements IStorage {
     // Gunakan fungsi query di Drizzle ORM untuk filter berdasarkan string date 
     // karena kita mengubah kolom date dari timestamp menjadi text
     const slots = await db.query.therapySlots.findMany({
-      where: eq(schema.therapySlots.date, dateString),
+      where: and(
+        eq(schema.therapySlots.date, dateString),
+        eq(schema.therapySlots.isActive, true)
+      ),
       orderBy: [asc(schema.therapySlots.timeSlot)]
     });
     
     // Untuk setiap slot, perbarui currentCount berdasarkan jumlah appointment yang benar-benar aktif
     for (const slot of slots) {
-      // Ambil semua appointment untuk slot ini
-      const allAppointments = await db.query.appointments.findMany({
-        where: eq(schema.appointments.therapySlotId, slot.id)
-      });
-      
-      console.log(`Slot ${slot.id} (${slot.timeSlot}): ditemukan ${allAppointments.length} appointment total`);
-      
-      // Filter hanya appointment dengan status aktif yang spesifik
-      const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
-      const activeAppointments = allAppointments.filter(app => activeStatuses.includes(app.status));
-      
-      console.log(`Slot ${slot.id}: ${activeAppointments.length} appointment aktif dari ${allAppointments.length} total`);
-      
-      // Perbarui currentCount dengan jumlah appointment aktif
-      slot.currentCount = activeAppointments.length;
+      try {
+        // Ambil semua appointment untuk slot ini
+        const allAppointments = await db.query.appointments.findMany({
+          where: eq(schema.appointments.therapySlotId, slot.id)
+        });
+        
+        console.log(`Slot ${slot.id} (${slot.timeSlot}): ditemukan ${allAppointments.length} appointment total`);
+        
+        // Definisikan status yang dihitung sebagai "aktif" untuk keperluan perhitungan kuota
+        const isActiveStatus = (s: string) => 
+          s === 'Active' || s === 'Booked' || s === 'Confirmed' || s === 'Scheduled';
+        
+        // Filter hanya appointment dengan status aktif
+        const activeAppointments = allAppointments.filter(app => isActiveStatus(app.status));
+        
+        // Buat log detail untuk mempermudah debugging
+        if (activeAppointments.length > 0) {
+          console.log(`Detail appointment aktif untuk slot ${slot.id}:`, 
+            activeAppointments.map(app => ({id: app.id, status: app.status}))
+          );
+        }
+        
+        console.log(`Slot ${slot.id}: ${activeAppointments.length} appointment aktif dari ${allAppointments.length} total`);
+        
+        // Perbarui currentCount dengan jumlah appointment aktif
+        slot.currentCount = activeAppointments.length;
+      } catch (error) {
+        console.error(`Error saat memproses slot ${slot.id}:`, error);
+        // Tetap gunakan nilai currentCount yang ada di database jika terjadi error
+      }
     }
+    
+    console.log(`Ditemukan ${slots.length} slot terapi untuk hari ini`);
     
     return slots;
   }
@@ -1509,14 +1529,23 @@ export class DatabaseStorage implements IStorage {
     // PENTING: Gunakan tanggal appointment yang disediakan, atau fallback ke waktu saat ini
     // Ini mencegah inconsistensi data antara slot terapi dan appointment
     let appointmentDate = appointment.date;
+    let therapySlot: TherapySlot | undefined = undefined;
     
     // Jika therapySlotId disediakan, gunakan tanggal dari therapy slot untuk konsistensi
     if (appointment.therapySlotId) {
-      const therapySlot = await this.getTherapySlot(appointment.therapySlotId);
+      therapySlot = await this.getTherapySlot(appointment.therapySlotId);
       if (therapySlot) {
         // Sudah dipastikan therapySlot.date adalah string
         appointmentDate = therapySlot.date;
         console.log(`[APPOINTMENT] Using therapy slot date: ${appointmentDate} for new appointment`);
+        
+        // Verifikasi apakah slot memiliki kapasitas
+        const currentUsage = therapySlot.currentCount || 0;
+        const maxCapacity = therapySlot.maxPatients || 6;
+        if (currentUsage >= maxCapacity) {
+          console.warn(`[WARNING] Therapy slot ${therapySlot.id} already at maximum capacity (${currentUsage}/${maxCapacity})`);
+          // Tetap lanjutkan, tetapi berikan peringatan
+        }
       }
     }
     
@@ -1530,6 +1559,9 @@ export class DatabaseStorage implements IStorage {
     // Log untuk debugging
     console.log(`[APPOINTMENT] Creating appointment with date: ${dateStr} (${typeof dateStr})`);
     
+    // Status default harus "Active" jika tidak disediakan
+    const status = appointment.status || 'Active';
+    
     // Pastikan date menggunakan zona waktu WIB untuk konsistensi
     const result = await db.insert(schema.appointments)
       .values({
@@ -1539,13 +1571,22 @@ export class DatabaseStorage implements IStorage {
         date: dateStr, // Gunakan string untuk format tanggal
         timeSlot: appointment.timeSlot,
         notes: appointment.notes,
-        status: appointment.status,
+        status: status, // Gunakan status yang sudah diatur
         registrationNumber: regNum
       })
       .returning();
     
+    const newAppointment = result[0];
+    
+    // Increment therapy slot usage jika status adalah active dan therapySlotId disediakan
+    if (newAppointment.therapySlotId && 
+        (status === 'Active' || status === 'Booked' || status === 'Confirmed' || status === 'Scheduled')) {
+      console.log(`[APPOINTMENT] Incrementing usage for therapy slot ${newAppointment.therapySlotId}`);
+      await this.incrementTherapySlotUsage(newAppointment.therapySlotId);
+    }
+    
     // Tidak perlu lagi konversi date karena sudah disimpan sebagai string
-    return result[0];
+    return newAppointment;
   }
   
   /**
@@ -1620,17 +1661,31 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
     
+    // Definisikan status yang dihitung sebagai "aktif" untuk keperluan perhitungan kuota
+    const isActiveStatus = (s: string) => 
+      s === 'Active' || s === 'Booked' || s === 'Confirmed' || s === 'Scheduled';
+    
+    // Cek status sebelum dan sesudah perubahan
+    const wasActive = isActiveStatus(existingAppointment.status);
+    const willBeActive = isActiveStatus(status);
+    
+    console.log(`[STATUS UPDATE] Appointment ${id}: ${existingAppointment.status} -> ${status}, wasActive=${wasActive}, willBeActive=${willBeActive}`);
+    
     // Proses perubahan kuota slot terapi
     if (existingAppointment.therapySlotId) {
-      // Jika status berubah dari aktif ke dibatalkan, kurangi kuota
-      if (existingAppointment.status !== "Cancelled" && status === "Cancelled") {
+      // Jika status berubah dari aktif ke tidak aktif, kurangi kuota
+      if (wasActive && !willBeActive) {
         await this.decrementTherapySlotUsage(existingAppointment.therapySlotId);
-        console.log(`Mengurangi kuota untuk slot terapi ID ${existingAppointment.therapySlotId} karena janji temu dibatalkan`);
+        console.log(`[STATUS UPDATE] Mengurangi kuota untuk slot terapi ID ${existingAppointment.therapySlotId} karena janji temu dibatalkan/selesai`);
       } 
-      // Jika status berubah dari dibatalkan ke aktif, tambahkan kuota
-      else if (existingAppointment.status === "Cancelled" && status !== "Cancelled") {
+      // Jika status berubah dari tidak aktif ke aktif, tambahkan kuota
+      else if (!wasActive && willBeActive) {
         await this.incrementTherapySlotUsage(existingAppointment.therapySlotId);
-        console.log(`Menambah kuota untuk slot terapi ID ${existingAppointment.therapySlotId} karena janji temu diaktifkan`);
+        console.log(`[STATUS UPDATE] Menambah kuota untuk slot terapi ID ${existingAppointment.therapySlotId} karena janji temu diaktifkan`);
+      }
+      // Jika tidak ada perubahan jenis status (aktif->aktif atau tidak aktif->tidak aktif), tidak ada perubahan kuota
+      else {
+        console.log(`[STATUS UPDATE] Tidak ada perubahan kuota untuk slot terapi ID ${existingAppointment.therapySlotId} (${wasActive ? 'tetap aktif' : 'tetap tidak aktif'})`);
       }
     }
     
