@@ -108,10 +108,18 @@ export default function Dashboard() {
         });
         console.log(`After ID deduplication: ${filteredSlots.length} slots remaining`);
         
-        // Langkah 2: Deduplikasi berdasarkan tanggal+waktu
+        // Langkah 2: Deduplikasi berdasarkan tanggal+waktu (dengan normalisasi tanggal)
         const dateTimeSet = new Set();
         const uniqueSlots = filteredSlots.filter((slot: any) => {
-          const dateTimeKey = `${slot.date}-${slot.timeSlot}`;
+          // Ekstrak tanggal dari string date (YYYY-MM-DD)
+          const datePart = typeof slot.date === 'string' ? slot.date.split(' ')[0] : 
+            new Date(slot.date).toISOString().split('T')[0];
+            
+          // Ambil hanya bagian tanggal (YYYY-MM-DD), buang timestamp
+          // Format: YYYY-MM-DD-HH:MM-HH:MM
+          const normalizedDate = datePart.split('T')[0];
+          const dateTimeKey = `${normalizedDate}-${slot.timeSlot}`;
+          
           if (dateTimeSet.has(dateTimeKey)) {
             console.log(`Removing duplicate slot with date+time: ${dateTimeKey}`);
             return false;
@@ -127,29 +135,47 @@ export default function Dashboard() {
         
         let filteredByPeriod = [...uniqueSlots];
         
+        // Fungsi untuk mendapatkan tanggal dari slot (YYYY-MM-DD) dari format apapun
+        const getSlotDateStr = (slot: any): string => {
+          if (typeof slot.date === 'string') {
+            // Format: "2025-04-07 00:00:00" atau "2025-04-07 03:07:41.562" -> ambil "2025-04-07"
+            return slot.date.split(' ')[0];
+          } else {
+            // Format: Date object -> convert ke string "2025-04-07"
+            return new Date(slot.date).toISOString().split('T')[0];
+          }
+        };
+        
         if (selectedPeriod === 'day') {
           // Filter hanya untuk hari ini
           const today = now.toISOString().split('T')[0];
+          console.log(`Filter untuk hari ini: ${today}`);
+          
           filteredByPeriod = uniqueSlots.filter((slot: any) => {
-            const slotDate = typeof slot.date === 'string' ? slot.date.split(' ')[0] : new Date(slot.date).toISOString().split('T')[0];
-            return slotDate === today;
+            const slotDateStr = getSlotDateStr(slot);
+            const result = slotDateStr === today;
+            return result;
           });
+          
+          console.log(`Hasil filter hari ini: ${filteredByPeriod.length} slot ditemukan`);
+          
         } else if (selectedPeriod === 'past-week') {
           // Filter untuk 7 hari terakhir
           const oneWeekAgo = new Date(now);
           oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
           
           filteredByPeriod = uniqueSlots.filter((slot: any) => {
-            const slotDate = new Date(typeof slot.date === 'string' ? slot.date.split(' ')[0] : slot.date);
+            const slotDate = new Date(getSlotDateStr(slot));
             return slotDate >= oneWeekAgo && slotDate <= now;
           });
+          
         } else if (selectedPeriod === 'month') {
           // Filter untuk bulan ini
           const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
           const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
           
           filteredByPeriod = uniqueSlots.filter((slot: any) => {
-            const slotDate = new Date(typeof slot.date === 'string' ? slot.date.split(' ')[0] : slot.date);
+            const slotDate = new Date(getSlotDateStr(slot));
             return slotDate >= startOfMonth && slotDate <= endOfMonth;
           });
         }
