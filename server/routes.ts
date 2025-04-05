@@ -1709,7 +1709,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/slots-by-period", async (req: Request, res: Response) => {
     try {
-      let startDate = new Date();
+      // Import getWIBDate dari database-storage
+      // Menggunakan ES module import untuk menghindari require() yang tidak konsisten
+      const { getWIBDate } = await import('./database-storage');
+      
+      // Menggunakan zona waktu WIB (UTC+7) untuk tanggal
+      let startDate = getWIBDate(new Date());
       const period = req.query.period as string || 'day';
       
       startDate.setHours(0, 0, 0, 0);
@@ -1734,19 +1739,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate.setDate(endDate.getDate() + 1);
       }
       
-      console.log(`Fetching slots from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      console.log(`Mencari slot terapi aktif mulai dari: ${startDate.toISOString().split('T')[0]}`);
       
       // Get all active therapy slots
       const allSlots = await storage.getActiveTherapySlots();
       
-      // Filter slots by date range - use string comparison for date field that's stored as text
+      // Filter slots by date range with improved logging to understand timezone issues
       const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
       const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
       
-      // Filter based on string comparisons since date is stored as text
+      console.log(`Mencari slot terapi dari ${startDateStr} sampai ${endDateStr} (zona waktu WIB)`);
+      
+      // Filter slots dengan log detail untuk memudahkan debug
       const slots = allSlots.filter(slot => {
         // Extract just the date part YYYY-MM-DD from the date string
         const slotDateStr = typeof slot.date === 'string' ? slot.date.split(' ')[0] : slot.date;
+        
+        // Log detail slot untuk debug
+        if (slotDateStr === startDateStr) {
+          console.log(`Slot ditemukan untuk tanggal ${startDateStr}: ${slot.timeSlot}, ID=${slot.id}`);
+        }
+        
+        // Perbaiki perbandingan tanggal untuk zona waktu WIB
         return slotDateStr >= startDateStr && slotDateStr < endDateStr;
       });
       

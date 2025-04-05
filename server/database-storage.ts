@@ -28,19 +28,20 @@ function formatRupiah(amount: number): string {
 
 // Utility function untuk mendapatkan waktu dengan zona waktu Indonesia (GMT+7/WIB)
 // Konsisten untuk digunakan di seluruh aplikasi saat menyimpan atau mengambil data dari database
-function getWIBDate(date: Date): Date {
-  // Gunakan metode yang sudah berfungsi baik di client-side
-  // Kurangi 14 jam dan tambahkan 7 jam untuk mendapatkan waktu WIB
+export function getWIBDate(date: Date): Date {
+  // Gunakan metode yang konsisten dengan client-side
+  // Timezone offset dalam milidetik
   const originalDate = new Date(date);
   
-  // Pertama kurangi 14 jam (koreksi terhadap data dari PostgreSQL)
-  const correctedDate = new Date(originalDate.getTime() - (14 * 60 * 60 * 1000));
+  // Dapatkan waktu UTC dengan menambahkan timezone offset
+  const utcTime = originalDate.getTime() + (originalDate.getTimezoneOffset() * 60000);
   
-  // Kemudian tambahkan 7 jam untuk WIB
-  const wibDate = new Date(correctedDate.getTime() + (7 * 60 * 60 * 1000));
+  // Tambahkan 7 jam (WIB = UTC+7)
+  const WIB_OFFSET = 7; // dalam jam
+  const wibDate = new Date(utcTime + (WIB_OFFSET * 3600000));
   
   // Log untuk debugging
-  console.log(`Original date: ${originalDate.toISOString()}, Corrected date: ${correctedDate.toISOString()}, WIB date: ${wibDate.toISOString()}`);
+  console.log(`Original date: ${originalDate.toISOString()}, UTC time: ${new Date(utcTime).toISOString()}, WIB date: ${wibDate.toISOString()}`);
   
   return wibDate;
 }
