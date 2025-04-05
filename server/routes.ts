@@ -1879,34 +1879,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Registration Link endpoints
   app.post("/api/registration-links", async (req: Request, res: Response) => {
     try {
-      console.log("Session untuk registration-links:", req.session);
-      console.log("User authenticated:", req.isAuthenticated());
-      console.log("User:", req.user);
+      console.log("Permintaan pembuatan link pendaftaran tunggal permanen");
       
-      // Use admin ID 1 for all requests for demo purposes
+      // Use admin ID 1 for all requests
       const userId = 1;
 
-      const { expiryHours, dailyLimit, specificDate } = req.body as CreateRegistrationLinkBody;
+      // Parameter untuk link permanen
+      const dailyLimit = 100; // Limit tinggi untuk penggunaan harian
       
-      // Tetapkan masa kadaluwarsa link menjadi 1 minggu (7 hari = 168 jam)
-      const oneWeekInHours = 168;
+      // Set masa aktif link sangat panjang (10 tahun)
+      const tenYearsInHours = 87600; // 10 tahun dalam jam
       
-      if (!dailyLimit || typeof dailyLimit !== 'number') {
-        return res.status(400).json({ 
-          message: "Invalid request body, dailyLimit is required and must be a number" 
-        });
+      // Cek apakah sudah ada link pendaftaran aktif
+      const existingLinks = await storage.getAllRegistrationLinks();
+      const permanentLink = existingLinks.find(link => link.isActive);
+      
+      if (permanentLink) {
+        // Jika sudah ada link permanen, gunakan yang sudah ada
+        console.log("Menggunakan link permanen yang sudah ada:", permanentLink.code);
+        return res.status(200).json(permanentLink);
       }
       
+      // Jika belum ada, buat link permanen baru
       const registrationLink = await storage.createRegistrationLink(
-        userId, // Gunakan userId yang didefinisikan di atas
-        oneWeekInHours, // Selalu gunakan 1 minggu (168 jam)
+        userId,
+        tenYearsInHours, // Link valid untuk 10 tahun
         dailyLimit,
-        specificDate
+        undefined // Tanpa tanggal spesifik agar link bisa digunakan untuk semua slot
       );
       
+      console.log("Link pendaftaran permanen dibuat:", registrationLink.code);
       return res.status(201).json(registrationLink);
     } catch (error) {
-      console.error("Error creating registration link:", error);
+      console.error("Error creating permanent registration link:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -2001,46 +2006,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { code } = req.body as VerifyRegistrationLinkBody;
       
       if (!code) {
-        return res.status(400).json({ message: "Registration code is required" });
+        return res.status(400).json({ message: "Kode pendaftaran diperlukan" });
       }
       
       const link = await storage.getRegistrationLinkByCode(code);
       
       if (!link) {
-        return res.status(404).json({ message: "Invalid registration code" });
+        return res.status(404).json({ message: "Kode pendaftaran tidak valid" });
       }
       
       // Check if link is active
       if (!link.isActive) {
-        return res.status(400).json({ message: "Registration link is no longer active" });
+        return res.status(400).json({ message: "Link pendaftaran sudah tidak aktif" });
       }
       
       // Check if link is expired
       const now = new Date();
       if (now > link.expiryTime) {
-        return res.status(400).json({ message: "Registration link has expired" });
+        return res.status(400).json({ message: "Link pendaftaran sudah kedaluwarsa" });
       }
       
-      // Check if daily limit has been reached
-      if (link.currentRegistrations >= link.dailyLimit) {
-        return res.status(400).json({ 
-          message: "Registration limit has been reached for today",
-          currentRegistrations: link.currentRegistrations,
+      // Dapatkan semua slot terapi yang tersedia (aktif dan belum penuh)
+      const allSlots = await storage.getAllTherapySlots();
+      
+      // Filter slot yang aktif dan belum penuh
+      const activeSlots = allSlots.filter(slot => slot.isActive && slot.currentCount < slot.maxQuota);
+      
+      // Filter slot untuk tanggal saat ini dan ke depan
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset ke awal hari
+      
+      const upcomingSlots = activeSlots.filter(slot => {
+        const slotDate = new Date(slot.date);
+        slotDate.setHours(0, 0, 0, 0);
+        return slotDate.getTime() >= today.getTime();
+      });
+      
+      // Urutkan slot berdasarkan tanggal dan waktu
+      upcomingSlots.sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        
+        // Jika tanggal sama, urutkan berdasarkan slot waktu
+        return a.timeSlot.localeCompare(b.timeSlot);
+      });
+      
+      // Cek apakah ada slot yang tersedia
+      if (upcomingSlots.length === 0) {
+        return res.status(200).json({ 
+          valid: true,
+          message: "Link valid, tetapi tidak ada slot terapi yang tersedia",
+          availableSlots: [],
+          hasAvailableSlots: false,
           dailyLimit: link.dailyLimit,
-          status: "quota-reached"
+          currentRegistrations: link.currentRegistrations,
+          expiryTime: link.expiryTime
         });
       }
       
+      // Jika ada slot tersedia, kirimkan dalam respons
       return res.status(200).json({ 
         valid: true,
-        message: "Registration code is valid",
+        message: "Link pendaftaran valid",
+        availableSlots: upcomingSlots,
+        hasAvailableSlots: true,
         dailyLimit: link.dailyLimit,
         currentRegistrations: link.currentRegistrations,
         expiryTime: link.expiryTime
       });
+      
     } catch (error) {
       console.error("Error verifying registration link:", error);
-      return res.status(500).json({ message: "Internal server error" });
+      return res.status(500).json({ message: "Terjadi kesalahan server" });
     }
   });
   

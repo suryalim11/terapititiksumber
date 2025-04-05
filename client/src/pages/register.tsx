@@ -204,18 +204,62 @@ export default function RegisterPage() {
     staleTime: 10000 // Data dianggap stale setelah 10 detik
   });
 
-  // Parse the URL for registration code
+  // Parse the URL for registration code - untuk link permanen
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    // Check for both "code" and "kode" to maintain backward compatibility
+    // Mendukung parameter "code" dan "kode" untuk backward compatibility
     const code = params.get("code") || params.get("kode");
     
+    // Jika tidak ada kode di URL, coba dapatkan secara otomatis link pendaftaran permanen
     if (code) {
+      console.log("Menggunakan kode pendaftaran dari URL:", code);
       setRegistrationCode(code);
-      // Verify the registration code with the server
+      // Verifikasi kode pendaftaran dari server
       verifyRegistrationCode(code);
+    } else {
+      console.log("Tidak ada kode pendaftaran di URL, mencoba mendapatkan link permanen...");
+      getActivePermanentLink();
     }
   }, []);
+
+  // Fungsi untuk mendapatkan link pendaftaran permanen yang aktif
+  const getActivePermanentLink = async () => {
+    try {
+      // Coba dapatkan (atau buat jika belum ada) link pendaftaran permanen
+      const response = await fetch('/api/registration-links', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Tidak perlu body karena endpoint menggunakan nilai default untuk link permanen
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.code) {
+        console.log("Mendapatkan link pendaftaran permanen:", data.code);
+        setRegistrationCode(data.code);
+        // Verifikasi link permanen yang didapat
+        verifyRegistrationCode(data.code);
+      } else {
+        console.error("Gagal mendapatkan link pendaftaran permanen:", data);
+        setRegistrationStatus("error");
+        toast({
+          variant: "destructive",
+          title: "Tidak Dapat Mengakses Pendaftaran",
+          description: "Terjadi kesalahan saat mempersiapkan halaman pendaftaran. Silakan coba lagi nanti.",
+        });
+      }
+    } catch (error) {
+      console.error("Error mendapatkan link pendaftaran permanen:", error);
+      setRegistrationStatus("error");
+      toast({
+        variant: "destructive",
+        title: "Koneksi Gagal",
+        description: "Terjadi kesalahan saat menghubungi server. Silakan coba lagi nanti.",
+      });
+    }
+  };
 
   // Function to verify the registration code
   const verifyRegistrationCode = async (code: string) => {
@@ -231,8 +275,9 @@ export default function RegisterPage() {
       const data = await response.json();
       
       if (response.ok && data.valid) {
-        // Code is valid
-        setRegistrationStatus("idle"); // Ready for registration
+        console.log("Kode pendaftaran valid:", data);
+        // Code is valid and ready for registration
+        setRegistrationStatus("idle");
         
         // Store metadata if available
         if (data.dailyLimit) {
@@ -246,20 +291,39 @@ export default function RegisterPage() {
         if (data.expiryTime) {
           setExpiryTime(new Date(data.expiryTime));
         }
+        
+        // Cek apakah ada slot terapi tersedia dari respons verifikasi
+        if (data.availableSlots && data.availableSlots.length > 0) {
+          console.log("Menggunakan slot terapi dari respons verifikasi:", data.availableSlots.length, "slot");
+          // Gunakan data slot terapi langsung dari respons verifikasi
+          // Dan queryClient.setQueryData untuk mengisi cache
+          const { queryClient } = require("@/lib/queryClient");
+          if (queryClient && data.availableSlots) {
+            queryClient.setQueryData(['/api/therapy-slots', 'available-active'], data.availableSlots);
+          }
+        } else if (data.hasAvailableSlots === false) {
+          // Jika respons eksplisit menyatakan tidak ada slot tersedia
+          toast({
+            variant: "warning",
+            title: "Tidak Ada Sesi Tersedia",
+            description: "Saat ini tidak ada sesi terapi yang tersedia. Silakan coba lagi nanti atau hubungi admin.",
+          });
+        }
+        
+        // Tetap muat slot terapi dengan refetchTherapySlots jika diperlukan
+        refetchTherapySlots();
       } else {
-        // Check for explicit status
+        // Handle berbagai skenario error berdasarkan pesan
         if (data.status === "quota-reached") {
           setRegistrationStatus("quota-reached");
           if (data.dailyLimit) setRegistrationLimit(data.dailyLimit);
           if (data.currentRegistrations !== undefined) setCurrentRegistrations(data.currentRegistrations);
         }
-        // Handle various error scenarios based on the message
-        else if (data.message?.includes("expired")) {
+        else if (data.message?.includes("expired") || data.message?.includes("kedaluwarsa")) {
           setRegistrationStatus("expired");
-        } else if (data.message?.includes("limit") || data.message?.includes("reached")) {
+        } else if (data.message?.includes("limit") || data.message?.includes("reached") || data.message?.includes("penuh")) {
           setRegistrationStatus("quota-reached");
           
-          // Try to extract numbers from the message if available
           if (data.dailyLimit) {
             setRegistrationLimit(data.dailyLimit);
           }
@@ -268,12 +332,24 @@ export default function RegisterPage() {
             setCurrentRegistrations(data.currentRegistrations);
           }
         } else {
-          setRegistrationStatus("error");
+          setRegistrationStatus("error"); // General error
+          
+          toast({
+            variant: "destructive",
+            title: "Kode Pendaftaran Tidak Valid",
+            description: data.message || "Terjadi kesalahan saat memverifikasi kode pendaftaran.",
+          });
         }
       }
     } catch (error: any) {
       console.error("Error verifying registration code:", error);
       setRegistrationStatus("error");
+      
+      toast({
+        variant: "destructive",
+        title: "Verifikasi Gagal",
+        description: "Terjadi kesalahan saat menghubungi server. Silakan coba lagi nanti.",
+      });
     }
   };
 
@@ -938,26 +1014,17 @@ export default function RegisterPage() {
           </Card>
         )}
 
-        {/* Display message for direct access without code */}
+        {/* Display loading message while getting permanent link */}
         {!registrationCode && registrationStatus === "idle" && (
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle>Kode Pendaftaran Diperlukan</CardTitle>
+              <CardTitle>Mempersiapkan Pendaftaran</CardTitle>
               <CardDescription>
-                Untuk melakukan pendaftaran, Anda memerlukan kode khusus dari admin Terapi Titik Sumber.
+                Kami sedang mempersiapkan formulir pendaftaran untuk Anda...
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 mb-4">
-                Silakan hubungi admin kami untuk mendapatkan link pendaftaran dengan kode unik.
-              </p>
-              <Button 
-                variant="outline"
-                onClick={() => window.location.href = "https://wa.me/6281234567890?text=Saya%20ingin%20mendaftar%20Terapi%20Titik%20Sumber"}
-                className="w-full"
-              >
-                Hubungi Admin via WhatsApp
-              </Button>
+            <CardContent className="flex justify-center items-center py-12">
+              <div className="animate-spin h-12 w-12 border-4 border-teal-500 rounded-full border-t-transparent"></div>
             </CardContent>
           </Card>
         )}
