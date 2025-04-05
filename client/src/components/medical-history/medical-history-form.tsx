@@ -179,7 +179,7 @@ export function MedicalHistoryForm({
   
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md w-[95vw] md:w-auto">
+      <DialogContent className="max-w-md w-[95vw] md:w-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditMode ? "Edit Catatan Medis" : "Tambah Catatan Medis"}</DialogTitle>
           <DialogDescription>
