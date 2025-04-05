@@ -79,30 +79,64 @@ export default function Dashboard() {
     refetchInterval: 10000,
   });
   
-  // Fetch today's therapy slots (for backward compatibility)
-  // Hapus penggunaan todaySlots untuk menghindari duplikasi data
-  
-  // Fetch therapy slots by period - gunakan ini sebagai satu-satunya sumber data slot
+  // Gunakan API ini sebagai satu-satunya sumber data slot
   const { data: slotsByPeriod = [], isLoading: isSlotsLoading, refetch: refetchSlotsByPeriod } = useQuery<any[]>({
     queryKey: ['/api/slots-by-period', selectedPeriod],
     queryFn: async () => {
-      const response = await fetch(`/api/slots-by-period?period=${selectedPeriod}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch slots by period');
+      try {
+        console.log(`Fetching slots for period: ${selectedPeriod}`);
+        const response = await fetch(`/api/slots-by-period?period=${selectedPeriod}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch slots by period');
+        }
+        const data = await response.json();
+        console.log(`Received ${data.length} slots from API`);
+        
+        // Langkah 1: Filter duplikasi slot yang memiliki ID sama (untuk mengatasi bug slot duplikat)
+        const idSet = new Set();
+        const filteredSlots = data.filter((slot: any) => {
+          if (idSet.has(slot.id)) {
+            console.log(`Removing duplicate slot with ID: ${slot.id}`);
+            return false;
+          }
+          idSet.add(slot.id);
+          return true;
+        });
+        
+        console.log(`After deduplication: ${filteredSlots.length} slots remaining`);
+        
+        // Langkah 2: Juga hapus duplikasi berdasarkan kombinasi tanggal+timeSlot 
+        // (untuk kasus dimana ID berbeda tapi tanggal dan jam sama)
+        const dateTimeSet = new Set();
+        const uniqueSlots = filteredSlots.filter((slot: any) => {
+          const dateTimeKey = `${slot.date}-${slot.timeSlot}`;
+          if (dateTimeSet.has(dateTimeKey)) {
+            console.log(`Removing duplicate slot with date+time: ${dateTimeKey}`);
+            return false;
+          }
+          dateTimeSet.add(dateTimeKey);
+          return true;
+        });
+        
+        console.log(`After date+time deduplication: ${uniqueSlots.length} slots remaining`);
+        
+        // Langkah 3: Urutkan berdasarkan tanggal dan waktu
+        return uniqueSlots.sort((a: any, b: any) => {
+          // Konversi string tanggal ke objek Date
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          
+          // Perbandingan tanggal
+          const dateComparison = dateA.getTime() - dateB.getTime();
+          if (dateComparison !== 0) return dateComparison;
+          
+          // Jika tanggal sama, bandingkan berdasarkan waktu
+          return a.timeSlot.localeCompare(b.timeSlot);
+        });
+      } catch (error) {
+        console.error("Error fetching slots:", error);
+        throw error;
       }
-      const data = await response.json();
-      
-      // Filter dan deduplikasi slot berdasarkan ID untuk menghindari duplikasi
-      const uniqueSlots = Array.from(
-        new Map(data.map((slot: any) => [slot.id, slot])).values()
-      );
-      
-      // Urutkan berdasarkan tanggal dan waktu
-      return uniqueSlots.sort((a: any, b: any) => {
-        const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
-        if (dateComparison !== 0) return dateComparison;
-        return a.timeSlot.localeCompare(b.timeSlot);
-      });
     },
     refetchInterval: 10000,
   });

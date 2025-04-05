@@ -1774,8 +1774,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         percentage: (slot.currentCount * 100 / slot.maxQuota)
       }));
       
+      // Deduplikasi: hapus slot dengan ID yang sama
+      console.log(`Total slot sebelum deduplikasi: ${slotsWithPercentage.length}`);
+      const uniqueSlotIds = new Set();
+      const uniqueSlots = slotsWithPercentage.filter(slot => {
+        if (uniqueSlotIds.has(slot.id)) {
+          console.log(`Menghapus slot duplikat dengan ID: ${slot.id}`);
+          return false;
+        }
+        uniqueSlotIds.add(slot.id);
+        return true;
+      });
+      console.log(`Total slot setelah deduplikasi ID: ${uniqueSlots.length}`);
+      
+      // Deduplikasi lagi: hapus slot dengan kombinasi tanggal+waktu yang sama
+      const uniqueDateTimes = new Set();
+      const finalSlots = uniqueSlots.filter(slot => {
+        const dateTimeKey = `${slot.date}-${slot.timeSlot}`;
+        if (uniqueDateTimes.has(dateTimeKey)) {
+          console.log(`Menghapus slot duplikat dengan tanggal+waktu: ${dateTimeKey}`);
+          return false;
+        }
+        uniqueDateTimes.add(dateTimeKey);
+        return true;
+      });
+      console.log(`Total slot setelah deduplikasi tanggal+waktu: ${finalSlots.length}`);
+      
       // First sort by date, then by timeSlot
-      slotsWithPercentage.sort((a, b) => {
+      finalSlots.sort((a, b) => {
         // First compare by date
         const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
         if (dateComparison !== 0) return dateComparison;
@@ -1784,7 +1810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return a.timeSlot.localeCompare(b.timeSlot);
       });
       
-      return res.status(200).json(slotsWithPercentage);
+      return res.status(200).json(finalSlots);
     } catch (error) {
       console.error(`Error getting therapy slots by period: ${error}`);
       return res.status(500).json({ message: "Failed to get therapy slots" });
