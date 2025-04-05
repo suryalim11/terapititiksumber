@@ -179,7 +179,7 @@ export function MedicalHistoryForm({
   
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md w-[95vw] md:w-auto">
         <DialogHeader>
           <DialogTitle>{isEditMode ? "Edit Catatan Medis" : "Tambah Catatan Medis"}</DialogTitle>
           <DialogDescription>
@@ -253,101 +253,112 @@ export function MedicalHistoryForm({
               )}
             />
             
-            {/* Tekanan Darah (Sebelum) */}
-            <FormField
-              control={form.control}
-              name="beforeBloodPressure"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tekanan Darah (Sebelum)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Contoh: 120/80"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Format: Sistolik/Diastolik (contoh: 120/80)
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Grid untuk tekanan darah */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Tekanan Darah (Sebelum) */}
+              <FormField
+                control={form.control}
+                name="beforeBloodPressure"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tekanan Darah (Sebelum)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Contoh: 120/80"
+                        {...field}
+                        inputMode="numeric"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      Format: Sistolik/Diastolik
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Tekanan Darah (Sesudah) */}
+              <FormField
+                control={form.control}
+                name="afterBloodPressure"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tekanan Darah (Sesudah)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Contoh: 120/80"
+                        {...field}
+                        inputMode="numeric"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      Format: Sistolik/Diastolik
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             
-            {/* Tekanan Darah (Sesudah) */}
-            <FormField
-              control={form.control}
-              name="afterBloodPressure"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tekanan Darah (Sesudah)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Contoh: 120/80"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Format: Sistolik/Diastolik (contoh: 120/80)
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Detak Jantung */}
-            <FormField
-              control={form.control}
-              name="heartRate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Detak Jantung</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Masukkan detak jantung"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Tekanan Nadi */}
-            <FormField
-              control={form.control}
-              name="pulseRate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tekanan Nadi</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Masukkan tekanan nadi"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Berat Badan */}
-            <FormField
-              control={form.control}
-              name="weight"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Berat Badan</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Masukkan berat badan"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Grid untuk parameter vital */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Detak Jantung */}
+              <FormField
+                control={form.control}
+                name="heartRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Detak Jantung</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Masukkan detak"
+                        {...field}
+                        inputMode="numeric"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Tekanan Nadi */}
+              <FormField
+                control={form.control}
+                name="pulseRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tekanan Nadi</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Masukkan nadi"
+                        {...field}
+                        inputMode="numeric"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Berat Badan */}
+              <FormField
+                control={form.control}
+                name="weight"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Berat Badan</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Masukkan berat"
+                        {...field}
+                        inputMode="numeric"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             
             {/* Catatan */}
             <FormField
@@ -367,11 +378,20 @@ export function MedicalHistoryForm({
               )}
             />
             
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
+            <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={onClose}
+                className="sm:mr-2 w-full sm:w-auto"
+              >
                 Batal
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="w-full sm:w-auto"
+              >
                 {isSubmitting ? "Menyimpan..." : isEditMode ? "Perbarui Catatan" : "Tambah Catatan"}
               </Button>
             </DialogFooter>

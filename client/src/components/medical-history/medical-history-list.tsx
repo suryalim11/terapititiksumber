@@ -174,62 +174,140 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
       </CardHeader>
       <CardContent>
         {medicalHistories && medicalHistories.length > 0 ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Keluhan</TableHead>
-                  <TableHead>Tekanan Darah (Sebelum)</TableHead>
-                  <TableHead>Tekanan Darah (Sesudah)</TableHead>
-                  <TableHead>Detak Jantung</TableHead>
-                  <TableHead>Tekanan Nadi</TableHead>
-                  <TableHead>Berat Badan</TableHead>
-                  <TableHead>Catatan</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {medicalHistories.map((history) => (
-                  <TableRow key={history.id}>
-                    <TableCell>
-                      {format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
-                        locale: idLocale,
-                      })}
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {history.complaint}
-                    </TableCell>
-                    <TableCell>{history.beforeBloodPressure || "-"}</TableCell>
-                    <TableCell>{history.afterBloodPressure || "-"}</TableCell>
-                    <TableCell>{history.heartRate || "-"}</TableCell>
-                    <TableCell>{history.pulseRate || "-"}</TableCell>
-                    <TableCell>{history.weight || "-"}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {history.notes || "-"}
-                    </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditClick(history)}
-                      >
-                        <FilePenLine className="h-4 w-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteClick(history.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Hapus</span>
-                      </Button>
-                    </TableCell>
+          <div>
+            {/* Tampilan tabel untuk desktop */}
+            <div className="overflow-x-auto hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Keluhan</TableHead>
+                    <TableHead>Tekanan Darah (Sebelum)</TableHead>
+                    <TableHead>Tekanan Darah (Sesudah)</TableHead>
+                    <TableHead>Detak Jantung</TableHead>
+                    <TableHead>Tekanan Nadi</TableHead>
+                    <TableHead>Berat Badan</TableHead>
+                    <TableHead>Catatan</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {medicalHistories.map((history) => (
+                    <TableRow key={history.id}>
+                      <TableCell>
+                        {format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
+                          locale: idLocale,
+                        })}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {history.complaint}
+                      </TableCell>
+                      <TableCell>{history.beforeBloodPressure || "-"}</TableCell>
+                      <TableCell>{history.afterBloodPressure || "-"}</TableCell>
+                      <TableCell>{history.heartRate || "-"}</TableCell>
+                      <TableCell>{history.pulseRate || "-"}</TableCell>
+                      <TableCell>{history.weight || "-"}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {history.notes || "-"}
+                      </TableCell>
+                      <TableCell className="text-right space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditClick(history)}
+                        >
+                          <FilePenLine className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClick(history.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Hapus</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            
+            {/* Tampilan card untuk mobile */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+              {medicalHistories.map((history) => (
+                <Card key={history.id} className="overflow-hidden">
+                  <CardHeader className="p-4 pb-2 bg-muted/30">
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="text-base font-medium">
+                        {format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
+                          locale: idLocale,
+                        })}
+                      </CardTitle>
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleEditClick(history)}
+                        >
+                          <FilePenLine className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleDeleteClick(history.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Hapus</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-2">
+                    <div className="grid grid-cols-1 gap-1 text-sm">
+                      <div>
+                        <span className="font-medium">Keluhan:</span>{" "}
+                        {history.complaint}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="font-medium">Darah (Sebelum):</span>{" "}
+                          {history.beforeBloodPressure || "-"}
+                        </div>
+                        <div>
+                          <span className="font-medium">Darah (Sesudah):</span>{" "}
+                          {history.afterBloodPressure || "-"}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <span className="font-medium">Jantung:</span>{" "}
+                          {history.heartRate || "-"}
+                        </div>
+                        <div>
+                          <span className="font-medium">Nadi:</span>{" "}
+                          {history.pulseRate || "-"}
+                        </div>
+                        <div>
+                          <span className="font-medium">Berat:</span>{" "}
+                          {history.weight || "-"}
+                        </div>
+                      </div>
+                      {history.notes && (
+                        <div className="mt-2">
+                          <span className="font-medium">Catatan:</span>{" "}
+                          {history.notes}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
