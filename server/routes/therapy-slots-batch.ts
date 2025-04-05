@@ -47,9 +47,23 @@ export async function handleTherapySlotsBatch(req: Request, res: Response) {
           continue;
         }
         
+        // Log tanggal sebelum pemrosesan
+        console.log(`Processing date: ${slotData.date}, type: ${typeof slotData.date}`);
+        
+        // Pastikan date dalam format string YYYY-MM-DD
+        let formattedDate = slotData.date;
+        if (typeof formattedDate === 'object' && formattedDate instanceof Date) {
+          const year = formattedDate.getFullYear();
+          const month = (formattedDate.getMonth() + 1).toString().padStart(2, '0');
+          const day = formattedDate.getDate().toString().padStart(2, '0');
+          formattedDate = `${year}-${month}-${day}`;
+        }
+        
+        console.log(`Using formatted date: ${formattedDate}`);
+        
         // Buat slot terapi baru
         const newSlot = await storage.createTherapySlot({
-          date: slotData.date,
+          date: formattedDate, // Gunakan string format YYYY-MM-DD
           timeSlot: slotData.timeSlot,
           maxQuota: slotData.maxQuota,
           isActive: slotData.isActive !== undefined ? slotData.isActive : true

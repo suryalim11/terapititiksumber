@@ -114,12 +114,13 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
       
       for (const date of dates) {
         const formattedDate = fixTimezone(date);
+        console.log(`Batch dialog formattedDate: ${formattedDate}, type: ${typeof formattedDate}`);
         
         for (const slot of data.slots) {
           const timeSlot = `${slot.startTime}-${slot.endTime}`;
           
           requests.push({
-            date: formattedDate,
+            date: formattedDate, // Pastikan ini string YYYY-MM-DD
             timeSlot: timeSlot,
             maxQuota: slot.quota,
             isActive: data.isActive
