@@ -121,26 +121,30 @@ export default function Transactions() {
     refetch: refetchTransactions
   } = useQuery({
     queryKey: ["/api/transactions"],
+    staleTime: 0, // Tidak menggunakan cache untuk memastikan data selalu terbaru
     queryFn: async () => {
       console.log("Fetching all transactions");
       const response = await apiRequest("/api/transactions");
       const data = await response.json();
-      console.log("Retrieved", data.length, "transactions");
-      return data;
+      console.log("Retrieved", data ? data.length : 0, "transactions");
+      return data || [];
     }
   });
   
   // Fetch patients
   const { data: patients } = useQuery({
     queryKey: ["/api/patients"],
+    staleTime: 30000,
   });
   
   const { data: packages } = useQuery({
     queryKey: ["/api/packages"],
+    staleTime: 30000,
   });
   
   const { data: products } = useQuery({
     queryKey: ["/api/products"],
+    staleTime: 30000,
   });
   
   // Mutation untuk menghapus transaksi
