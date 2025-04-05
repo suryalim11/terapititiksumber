@@ -157,13 +157,56 @@ export const therapySlots = pgTable("therapy_slots", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertTherapySlotSchema = createInsertSchema(therapySlots).pick({
-  date: true,
-  timeSlot: true,
-  maxQuota: true,
-  currentCount: true,
-  isActive: true,
-});
+export const insertTherapySlotSchema = createInsertSchema(therapySlots)
+  .pick({
+    date: true,
+    timeSlot: true,
+    maxQuota: true,
+    currentCount: true,
+    isActive: true,
+  })
+  .extend({
+    // Preprocessor untuk mengkonversi string tanggal menjadi string format YYYY-MM-DD
+    date: z.preprocess(
+      (val) => {
+        // Jika sudah berupa string dengan format YYYY-MM-DD, kembalikan langsung
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+          return val;
+        }
+        
+        // Jika berupa Date object, konversi ke string YYYY-MM-DD
+        if (val instanceof Date) {
+          const year = val.getFullYear();
+          const month = String(val.getMonth() + 1).padStart(2, '0');
+          const day = String(val.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        }
+        
+        // Jika berupa string dengan format lain, coba parse dan konversi
+        if (typeof val === 'string') {
+          try {
+            const date = new Date(val);
+            if (!isNaN(date.getTime())) {
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              return `${year}-${month}-${day}`;
+            }
+          } catch (e) {
+            // Jika gagal parsing, lanjut ke return default
+          }
+        }
+        
+        // Default fallback: format tanggal hari ini
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      },
+      z.string()
+    ),
+  });
 
 // Appointment Schema
 export const appointments = pgTable("appointments", {

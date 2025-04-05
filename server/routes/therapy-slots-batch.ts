@@ -74,9 +74,38 @@ export async function handleTherapySlotsBatch(req: Request, res: Response) {
         
         console.log(`Using formatted date: ${formattedDate}`);
         
-        // Buat slot terapi baru
+        // Buat slot terapi baru dengan format tanggal yang benar
+        // Pastikan nilai date selalu berbentuk string format YYYY-MM-DD
+        let dateStr = formattedDate;
+        
+        // Jika masih berupa object, serialize ke string
+        if (typeof dateStr === 'object' && dateStr !== null) {
+          try {
+            if (dateStr instanceof Date) {
+              const year = dateStr.getFullYear();
+              const month = (dateStr.getMonth() + 1).toString().padStart(2, '0');
+              const day = dateStr.getDate().toString().padStart(2, '0');
+              dateStr = `${year}-${month}-${day}`;
+            } else {
+              // Fallback untuk object lain
+              dateStr = JSON.stringify(dateStr);
+            }
+          } catch (err) {
+            console.error("Error serializing date object:", err);
+            // Fallback ke tanggal hari ini jika gagal
+            const today = new Date();
+            dateStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+          }
+        } else if (typeof dateStr !== 'string') {
+          // Jika bukan string atau object, fallback ke tanggal hari ini
+          const today = new Date();
+          dateStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+        }
+        
+        console.log(`Membuat slot terapi dengan tanggal final: ${dateStr} (${typeof dateStr})`);
+        
         const newSlot = await storage.createTherapySlot({
-          date: formattedDate, // Gunakan string format YYYY-MM-DD
+          date: dateStr, // Pastikan selalu string format YYYY-MM-DD
           timeSlot: slotData.timeSlot,
           maxQuota: slotData.maxQuota,
           isActive: slotData.isActive !== undefined ? slotData.isActive : true

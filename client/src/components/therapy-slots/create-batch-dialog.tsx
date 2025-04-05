@@ -117,14 +117,20 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
       
       for (let i = 0; i < dates.length; i++) {
         const date = dates[i];
-        const formattedDate = fixTimezone(date);
-        console.log(`Slot date for day ${i}:`, formattedDate);
+        
+        // Ekstrasi dan format tanggal langsung dengan string (bukan menggunakan Date object)
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+        
+        console.log(`Slot date for day ${i}:`, formattedDate, typeof formattedDate);
         
         for (const slot of data.slots) {
           const timeSlot = `${slot.startTime}-${slot.endTime}`;
           
           requests.push({
-            date: formattedDate, // Pastikan ini string YYYY-MM-DD
+            date: formattedDate, // String dengan format YYYY-MM-DD
             timeSlot: timeSlot,
             maxQuota: slot.quota,
             isActive: data.isActive
