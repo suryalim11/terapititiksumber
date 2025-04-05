@@ -407,18 +407,20 @@ export default function TherapySlots() {
     const timeSlot = `${data.startTime}-${data.endTime}`;
     console.log("Time slot:", timeSlot);
     
-    // PERBAIKAN: Gunakan fungsi fixTimezone untuk mengatasi masalah timezone
-    // Memastikan kita memiliki Date object untuk diproses dengan fixTimezone
-    let dateValue = data.date;
-    if (typeof dateValue === 'string') {
-      // Parse string menjadi Date jika diperlukan
-      dateValue = new Date(dateValue);
+    // Ekstrak tahun, bulan, hari tanpa terpengaruh timezone (manual fix)
+    let dateObj = data.date;
+    if (typeof dateObj === 'string') {
+      dateObj = new Date(dateObj);
     }
     
-    const yearMonthDay = fixTimezone(dateValue);
-    console.log("Date setelah fixTimezone:", yearMonthDay);
+    // Membuat string YYYY-MM-DD secara manual dari komponen tanggal
+    const year = dateObj.getFullYear();
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
     
-    console.log("Submitting date as string format:", yearMonthDay);
+    console.log("Date setelah manual formatting:", dateString);
+    console.log("Submitting date as string format:", dateString);
     console.log("------------ END DEBUGGING FORM SUBMISSION ------------");
     
     // Menggunakan fetch API langsung karena mutation tidak mendukung properti timeSlot
@@ -426,7 +428,7 @@ export default function TherapySlots() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        date: yearMonthDay, // Kirim format string sederhana, bukan Date object
+        date: dateString, // Kirim format string sederhana YYYY-MM-DD, bukan Date object
         timeSlot: timeSlot,
         maxQuota: data.maxQuota,
         isActive: data.isActive
@@ -503,18 +505,20 @@ export default function TherapySlots() {
     const timeSlot = `${data.startTime}-${data.endTime}`;
     console.log("Edit - Time slot:", timeSlot);
     
-    // PERBAIKAN: Gunakan fungsi fixTimezone untuk mengatasi masalah timezone
-    // Memastikan kita memiliki Date object untuk diproses dengan fixTimezone
-    let dateValue = data.date;
-    if (typeof dateValue === 'string') {
-      // Parse string menjadi Date jika diperlukan
-      dateValue = new Date(dateValue);
+    // Ekstrak tahun, bulan, hari tanpa terpengaruh timezone (manual fix)
+    let dateObj = data.date;
+    if (typeof dateObj === 'string') {
+      dateObj = new Date(dateObj);
     }
     
-    const yearMonthDay = fixTimezone(dateValue);
-    console.log("Edit - Date setelah fixTimezone:", yearMonthDay);
+    // Membuat string YYYY-MM-DD secara manual dari komponen tanggal
+    const year = dateObj.getFullYear();
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
     
-    console.log("Edit - Updating date as string format:", yearMonthDay);
+    console.log("Edit - Date setelah manual formatting:", dateString);
+    console.log("Edit - Updating date as string format:", dateString);
     console.log("------------ END DEBUGGING EDIT FORM SUBMISSION ------------");
     
     // Kirim request update
@@ -522,7 +526,7 @@ export default function TherapySlots() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        date: yearMonthDay, // Kirim format string sederhana
+        date: dateString, // Kirim format string YYYY-MM-DD yang dihasilkan manual
         timeSlot: timeSlot,
         maxQuota: data.maxQuota,
         isActive: data.isActive
