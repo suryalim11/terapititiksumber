@@ -1182,11 +1182,20 @@ export default function TherapySlots() {
                         variant="outline" 
                         onClick={() => {
                           fetch('/api/therapy-slots/sync-quota', {
-                            method: 'POST'
+                            method: 'POST',
+                            headers: {
+                              'Cache-Control': 'no-cache, no-store, must-revalidate',
+                              'Pragma': 'no-cache'
+                            }
                           })
                           .then(async res => {
                             if (res.ok) {
+                              // Invalidate all therapy slots queries to force refresh
                               queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+                              
+                              // Also refresh available slots that might be used in registration form
+                              queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots', 'available-active'] });
+                              
                               toast({
                                 title: "Sinkronisasi Berhasil",
                                 description: "Kuota slot terapi telah disinkronisasi dengan janji temu"

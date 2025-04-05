@@ -149,7 +149,7 @@ export default function RegisterPage() {
   const [selectedSlot, setSelectedSlot] = useState<{id: number, date: string, timeSlot: string} | null>(null);
   
   // Mendapatkan data slot terapi yang tersedia
-  const { data: therapySlots, isLoading: isLoadingSlots } = useQuery({
+  const { data: therapySlots, isLoading: isLoadingSlots, refetch: refetchTherapySlots } = useQuery({
     queryKey: ['/api/therapy-slots', 'available-active'],
     queryFn: async () => {
       console.log("Mengambil slot terapi untuk form pendaftaran");
@@ -157,13 +157,31 @@ export default function RegisterPage() {
       // 1. Aktif (active=true)
       // 2. Masih tersedia (available=true)
       // 3. Slot yang tanggalnya hari ini atau kemudian
-      const response = await fetch('/api/therapy-slots?available=true&active=true');
+      
+      // Penting: Tambahkan parameter waktu untuk menghindari cache browser dan force refresh
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/therapy-slots?available=true&active=true&_t=${timestamp}`, {
+        credentials: 'include', // Tambahkan credentials untuk mendukung cookies
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      
       if (!response.ok) {
+        console.error(`Error fetching therapy slots: ${response.status} - ${response.statusText}`);
         throw new Error('Gagal mengambil data slot terapi');
       }
       
       const data = await response.json();
       console.log("Slot terapi yang diterima di form pendaftaran:", data.length, "slot");
+      console.log("Detail slot terapi:", data.map(s => ({ 
+        id: s.id, 
+        date: new Date(s.date).toLocaleDateString(),
+        time: s.timeSlot,
+        quota: `${s.currentCount}/${s.maxQuota}`,
+        isActive: s.isActive
+      })));
       
       // Filter lagi di client-side untuk memastikan tidak ada slot dengan kuota penuh
       const filteredSlots = data.filter(slot => slot.currentCount < slot.maxQuota);
@@ -181,7 +199,9 @@ export default function RegisterPage() {
       });
     },
     enabled: registrationStatus === "idle" && !!registrationCode,
-    refetchInterval: 60000, // Refetch setiap 1 menit untuk memperbarui status slot yang tersedia
+    refetchInterval: 30000, // Mempersingkat interval refresh menjadi 30 detik
+    refetchOnWindowFocus: true, // Refresh saat window kembali difokuskan
+    staleTime: 10000 // Data dianggap stale setelah 10 detik
   });
 
   // Parse the URL for registration code

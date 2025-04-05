@@ -2175,6 +2175,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Fetching therapy slots with params - date: ${dateParam}, activeOnly: ${activeOnly}, availableOnly: ${availableOnly}`);
       
+      // Set cache control headers untuk memastikan selalu mendapatkan data terbaru
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       let slots;
       
       // Step 1: Get initial slots based on date parameter
