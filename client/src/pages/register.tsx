@@ -277,16 +277,21 @@ export default function RegisterPage() {
   // Function to verify the registration code
   const verifyRegistrationCode = async (code: string) => {
     try {
-      console.log("Memverifikasi kode pendaftaran:", code);
-      console.log("Menggunakan fetch API dengan mode no-cache");
+      console.log("🔍 Memverifikasi kode pendaftaran:", code);
       
-      // Tambahkan timestamp untuk menghindari caching di browser
+      // Tambahkan random string dan timestamp untuk menghindari caching di browser
       const timestamp = new Date().getTime();
-      const response = await fetch(`/api/verify-registration-link?_t=${timestamp}`, {
+      const randomStr = Math.random().toString(36).substring(2, 15);
+      const cacheBuster = `_t=${timestamp}&_r=${randomStr}`;
+      
+      console.log(`🌐 Request URL: /api/verify-registration-link?${cacheBuster}`);
+      
+      // Buat objek Request untuk mendapatkan lebih banyak kontrol
+      const request = new Request(`/api/verify-registration-link?${cacheBuster}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, private',
           'Pragma': 'no-cache',
           'Expires': '0'
         },
@@ -294,19 +299,54 @@ export default function RegisterPage() {
         credentials: 'include', // Penting: pastikan cookies dikirim
       });
       
-      console.log("Respons verifikasi kode pendaftaran:", response.status, response.statusText);
-      const data = await response.json();
-      console.log("Detail respons verifikasi:", data);
+      // Tambahkan log detail request untuk debugging
+      console.log("📤 Request headers:", request.headers);
+      console.log("📤 Request body:", { code });
       
-      // Log struktur data untuk debugging lebih lanjut
-      console.log("Tipe data valid:", typeof data.valid);
-      console.log("Tipe data expiryTime:", data.expiryTime ? typeof data.expiryTime : "undefined");
-      console.log("isPermanent:", data.isPermanent);
-      console.log("Status response.ok:", response.ok);
+      // Lakukan fetch dengan mode no-store dan no-cache
+      const response = await fetch(request);
       
-      if (response.ok && data.valid) {
-        console.log("Kode pendaftaran valid:", data);
-        // Code is valid and ready for registration
+      console.log("📥 Response status:", response.status, response.statusText);
+      console.log("📥 Response headers:", response.headers);
+      
+      // Deep clone response sebelum parsing untuk mencegah race condition
+      const clonedResponse = response.clone();
+      
+      // Gunakan try-catch terpisah untuk parsing JSON 
+      let data;
+      try {
+        data = await response.json();
+        console.log("📄 Response data:", JSON.stringify(data, null, 2));
+      } catch (parseError) {
+        console.error("❌ Error parsing JSON response:", parseError);
+        // Coba baca respons sebagai teks untuk debugging
+        const textResponse = await clonedResponse.text();
+        console.log("📄 Response as text:", textResponse);
+        
+        // Gagal parsing JSON, anggap sebagai error
+        setRegistrationStatus("error");
+        toast({
+          variant: "destructive",
+          title: "Format Respons Tidak Valid",
+          description: "Server mengirimkan format data yang tidak dapat diproses. Silakan coba lagi nanti.",
+        });
+        return;
+      }
+      
+      // Validasi data yang diterima
+      console.log("🔍 Data validation:");
+      console.log("- valid property:", data.valid, typeof data.valid);
+      console.log("- response.ok:", response.ok);
+      console.log("- status code:", response.status);
+      console.log("- expiryTime:", data.expiryTime);
+      console.log("- isPermanent:", data.isPermanent);
+      console.log("- availableSlots:", data.availableSlots?.length || 0);
+      
+      // Perilaku baru: selalu percaya status 200 dari server sebagai valid
+      if (response.status === 200) {
+        console.log("✅ Respons status 200 diterima, menganggap kode valid");
+        
+        // Jika server mengirim respons 200, anggap kode valid, terlepas dari properti lain
         setRegistrationStatus("idle");
         
         // Store metadata if available
@@ -324,72 +364,74 @@ export default function RegisterPage() {
         
         // Cek apakah ada slot terapi tersedia dari respons verifikasi
         if (data.availableSlots && data.availableSlots.length > 0) {
-          console.log("Menggunakan slot terapi dari respons verifikasi:", data.availableSlots.length, "slot");
+          console.log("📋 Slot terapi ditemukan:", data.availableSlots.length, "slot");
           // Gunakan data slot terapi langsung dari respons verifikasi
-          // Dan queryClient.setQueryData untuk mengisi cache
           const { queryClient } = require("@/lib/queryClient");
           if (queryClient && data.availableSlots) {
             queryClient.setQueryData(['/api/therapy-slots', 'available-active'], data.availableSlots);
           }
         } else if (data.hasAvailableSlots === false) {
           // Jika respons eksplisit menyatakan tidak ada slot tersedia
+          console.log("⚠️ Tidak ada slot terapi tersedia");
           toast({
-            variant: "warning",
             title: "Tidak Ada Sesi Tersedia",
             description: "Saat ini tidak ada sesi terapi yang tersedia. Silakan coba lagi nanti atau hubungi admin.",
           });
         }
         
-        // Tetap muat slot terapi dengan refetchTherapySlots jika diperlukan
+        // Tetap muat slot terapi dengan refetchTherapySlots
         refetchTherapySlots();
       } else {
-        console.log("Verifikasi gagal dengan data:", data);
-        // Handle berbagai skenario error berdasarkan pesan dan status valid
-        if (data.valid === false) {
-          // Respons dengan valid=false dan status kode
-          setRegistrationStatus("error");
-          toast({
-            variant: "destructive",
-            title: "Verifikasi Gagal",
-            description: data.message || "Terjadi kesalahan saat memverifikasi kode pendaftaran.",
-          });
-        }
-        else if (data.status === "quota-reached") {
-          setRegistrationStatus("quota-reached");
-          if (data.dailyLimit) setRegistrationLimit(data.dailyLimit);
-          if (data.currentRegistrations !== undefined) setCurrentRegistrations(data.currentRegistrations);
-        }
-        else if (data.message?.includes("expired") || data.message?.includes("kedaluwarsa")) {
-          setRegistrationStatus("expired");
-        } else if (data.message?.includes("limit") || data.message?.includes("reached") || data.message?.includes("penuh")) {
-          setRegistrationStatus("quota-reached");
+        console.log("❌ Verifikasi gagal, status respons:", response.status);
+        
+        // Analisis respons error
+        setRegistrationStatus("error");
+        
+        if (data.message) {
+          console.log("📝 Pesan error:", data.message);
           
-          if (data.dailyLimit) {
-            setRegistrationLimit(data.dailyLimit);
+          // Klasifikasi error berdasarkan pesan
+          if (data.message.includes("expired") || data.message.includes("kedaluwarsa")) {
+            setRegistrationStatus("expired");
+          } else if (data.message.includes("limit") || data.message.includes("reached") || 
+                    data.message.includes("penuh") || data.status === "quota-reached") {
+            setRegistrationStatus("quota-reached");
+            
+            if (data.dailyLimit) {
+              setRegistrationLimit(data.dailyLimit);
+            }
+            
+            if (data.currentRegistrations !== undefined) {
+              setCurrentRegistrations(data.currentRegistrations);
+            }
           }
-          
-          if (data.currentRegistrations !== undefined) {
-            setCurrentRegistrations(data.currentRegistrations);
-          }
-        } else {
-          setRegistrationStatus("error"); // General error
-          
-          toast({
-            variant: "destructive",
-            title: "Kode Pendaftaran Tidak Valid",
-            description: data.message || "Terjadi kesalahan saat memverifikasi kode pendaftaran.",
-          });
         }
+        
+        // Tampilkan pesan error
+        toast({
+          variant: "destructive",
+          title: "Kode Pendaftaran Tidak Valid",
+          description: data.message || "Terjadi kesalahan saat memverifikasi kode pendaftaran.",
+        });
       }
     } catch (error: any) {
-      console.error("Error verifying registration code:", error);
+      console.error("❌ Error verifying registration code:", error);
+      
+      // Reset status untuk mencoba lagi
       setRegistrationStatus("error");
       
+      // Tampilkan toast error
       toast({
-        variant: "destructive",
+        variant: "destructive", 
         title: "Verifikasi Gagal",
         description: "Terjadi kesalahan saat menghubungi server. Silakan coba lagi nanti.",
       });
+      
+      // Tambahkan debugging lebih detail
+      console.log("💾 Status registrasi setelah error:", registrationStatus);
+      console.log("🚫 Error code:", error.code);
+      console.log("🚫 Error name:", error.name);
+      console.log("🚫 Error stack:", error.stack);
     }
   };
 
