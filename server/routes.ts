@@ -27,7 +27,7 @@ import path from "path";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { db } from "./db";
-import { eq, and, ne, isNotNull } from "drizzle-orm";
+import { eq, and, ne, isNotNull, desc, or, isNull, lte, sql } from "drizzle-orm";
 import {
   exportData,
   getBackupFiles,
@@ -2660,22 +2660,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID pasien harus berupa angka" });
       }
       
-      const histories = await storage.getMedicalHistoriesByPatient(patientId);
+      // Ambil data langsung dari database untuk memastikan penanggalan bekerja dengan benar
+      console.log(`Mengambil riwayat medis untuk pasien ID ${patientId}`);
       
-      // Pastikan semua riwayat medis memiliki tanggal yang valid
-      const validHistories = histories.map(history => {
-        // Jika tidak ada tanggal, gunakan tanggal saat ini
-        if (!history.treatmentDate) {
-          console.log(`Fixing null treatment date for medical history ID ${history.id}`);
-          return {
-            ...history,
-            treatmentDate: history.createdAt || new Date()
-          };
+      // Gunakan Drizzle ORM untuk query alih-alih raw SQL
+      const medicalHistoriesData = await db
+        .select()
+        .from(schema.medicalHistories)
+        .where(eq(schema.medicalHistories.patientId, patientId))
+        .orderBy(desc(schema.medicalHistories.treatmentDate));
+      
+      if (!medicalHistoriesData || medicalHistoriesData.length === 0) {
+        console.log("Tidak ada data riwayat medis ditemukan");
+        return res.json([]);
+      }
+      
+      console.log(`Ditemukan ${medicalHistoriesData.length} riwayat medis`);
+      
+      // Tampilkan data untuk debugging
+      console.log("Contoh data riwayat medis pertama:", JSON.stringify(medicalHistoriesData[0], null, 2));
+      
+      // Proses data untuk memperbaiki tanggal yang tidak valid 
+      const processedHistories = await Promise.all(medicalHistoriesData.map(async (history) => {
+        // Perbaiki tanggal treatmentDate yang null atau 1970
+        if (!history.treatmentDate || new Date(history.treatmentDate).getFullYear() <= 1970) {
+          console.log(`Memperbaiki tanggal terapi untuk riwayat medis ID ${history.id}`);
+          
+          // Gunakan tanggal pembuatan sebagai default
+          const fixedDate = history.createdAt || new Date();
+          
+          // Update di database menggunakan storage
+          try {
+            await storage.updateMedicalHistory(history.id, {
+              ...history,
+              treatmentDate: fixedDate
+            });
+            
+            // Kembalikan data yang sudah diperbaiki
+            return {
+              ...history,
+              treatmentDate: fixedDate
+            };
+          } catch (err) {
+            console.error(`Gagal memperbarui tanggal terapi untuk ID ${history.id}:`, err);
+            return history; // Kembalikan data original jika update gagal
+          }
         }
+        
         return history;
-      });
+      }));
       
-      return res.json(validHistories);
+      return res.json(processedHistories);
     } catch (error) {
       console.error("Error getting medical histories:", error);
       return res.status(500).json({ message: "Terjadi kesalahan saat mengambil riwayat medis" });
@@ -2690,10 +2725,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID harus berupa angka" });
       }
       
-      const history = await storage.getMedicalHistory(id);
+      // Gunakan query Drizzle langsung untuk mendapatkan riwayat medis
+      const [history] = await db
+        .select()
+        .from(schema.medicalHistories)
+        .where(eq(schema.medicalHistories.id, id));
       
       if (!history) {
         return res.status(404).json({ message: "Riwayat medis tidak ditemukan" });
+      }
+      
+      // Perbaiki tanggal treatmentDate yang null atau 1970
+      if (!history.treatmentDate || new Date(history.treatmentDate).getFullYear() <= 1970) {
+        console.log(`Memperbaiki tanggal terapi untuk riwayat medis ID ${history.id}`);
+        
+        // Gunakan tanggal pembuatan sebagai default
+        const fixedDate = history.createdAt || new Date();
+        
+        // Update di database
+        await db.update(schema.medicalHistories)
+          .set({ treatmentDate: fixedDate })
+          .where(eq(schema.medicalHistories.id, history.id));
+          
+        // Kembalikan dengan tanggal yang sudah diperbaiki
+        return res.json({
+          ...history,
+          treatmentDate: fixedDate
+        });
       }
       
       return res.json(history);
@@ -2710,6 +2768,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Struktur data yang dikirim dari form bisa berbeda, kita perlu menggunakan pendekatan adaptif
       // Sesuaikan dengan struktur formulir JSON yang dikirim client
       const formData = req.body;
+      
+      // Proses tanggal terlebih dahulu dengan pengelolaan khusus untuk memastikan format yang valid
+      let treatmentDate: Date;
+      
+      if (formData.treatmentDate) {
+        // Jika tanggal terapi yang diberikan
+        const parsedDate = new Date(formData.treatmentDate);
+        
+        if (isNaN(parsedDate.getTime()) || parsedDate.getFullYear() <= 1970) {
+          // Jika tanggal tidak valid, gunakan hari ini
+          console.log("Tanggal terapi tidak valid:", formData.treatmentDate);
+          treatmentDate = new Date();
+        } else {
+          treatmentDate = parsedDate;
+        }
+      } else if (formData.tanggal_terapi) {
+        // Format alternatif
+        const parsedDate = new Date(formData.tanggal_terapi);
+        
+        if (isNaN(parsedDate.getTime()) || parsedDate.getFullYear() <= 1970) {
+          console.log("Tanggal terapi (alternatif) tidak valid:", formData.tanggal_terapi);
+          treatmentDate = new Date();
+        } else {
+          treatmentDate = parsedDate;
+        }
+      } else {
+        // Jika tidak ada tanggal yang diberikan, gunakan hari ini
+        treatmentDate = new Date();
+      }
+      
+      console.log("Tanggal terapi yang digunakan:", treatmentDate.toISOString());
       
       // Persiapkan data untuk validasi skema
       const medicalHistoryData = {
@@ -2730,7 +2819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pulseRate: formData.pulseRate || formData.tekanan_nadi || "",
         weight: formData.weight || formData.berat_badan || "",
         notes: formData.notes || formData.catatan || "",
-        treatmentDate: formData.treatmentDate || formData.tanggal_terapi || new Date(),
+        treatmentDate: treatmentDate,
       };
       
       console.log("Processed medical history data:", medicalHistoryData);
@@ -2743,7 +2832,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Pasien tidak ditemukan" });
       }
       
-      const newHistory = await storage.createMedicalHistory(validatedData);
+      // Buat catatan medis langsung di database untuk memastikan penanganan tanggal yang benar
+      const [newHistory] = await db
+        .insert(schema.medicalHistories)
+        .values({
+          ...validatedData,
+          createdAt: new Date() // Pastikan createdAt selalu diisi
+        })
+        .returning();
+        
+      console.log("Riwayat medis baru berhasil dibuat:", {
+        id: newHistory.id,
+        treatmentDate: newHistory.treatmentDate
+      });
+      
       return res.status(201).json(newHistory);
     } catch (error) {
       console.error("Error creating medical history:", error);
@@ -2766,45 +2868,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID harus berupa angka" });
       }
       
-      // Pastikan riwayat medis ada
-      const existingHistory = await storage.getMedicalHistory(id);
+      // Pastikan riwayat medis ada - ambil langsung dari database
+      const [existingHistory] = await db
+        .select()
+        .from(schema.medicalHistories)
+        .where(eq(schema.medicalHistories.id, id));
+        
       if (!existingHistory) {
         return res.status(404).json({ message: "Riwayat medis tidak ditemukan" });
       }
+      
+      console.log("Existing history:", {
+        id: existingHistory.id,
+        treatmentDate: existingHistory.treatmentDate
+      });
       
       console.log("Received medical history update data:", req.body);
       
       // Proses data yang dikirim dari form
       const formData = req.body;
       
+      // Proses tanggal dengan validasi untuk memastikan data valid
+      let treatmentDate: Date;
+      
+      if (formData.treatmentDate) {
+        // Jika tanggal terapi yang diberikan dari frontend
+        const parsedDate = new Date(formData.treatmentDate);
+        
+        if (isNaN(parsedDate.getTime()) || parsedDate.getFullYear() <= 1970) {
+          // Jika tanggal tidak valid, gunakan tanggal dari data existing
+          console.log("Tanggal terapi tidak valid dalam request:", formData.treatmentDate);
+          treatmentDate = existingHistory.treatmentDate || new Date();
+        } else {
+          treatmentDate = parsedDate;
+        }
+      } else if (formData.tanggal_terapi) {
+        // Format alternatif
+        const parsedDate = new Date(formData.tanggal_terapi);
+        
+        if (isNaN(parsedDate.getTime()) || parsedDate.getFullYear() <= 1970) {
+          console.log("Tanggal terapi (alternatif) tidak valid:", formData.tanggal_terapi);
+          treatmentDate = existingHistory.treatmentDate || new Date();
+        } else {
+          treatmentDate = parsedDate;
+        }
+      } else {
+        // Jika tidak ada tanggal yang diberikan, pertahankan tanggal yang sudah ada
+        treatmentDate = existingHistory.treatmentDate || new Date();
+      }
+      
+      console.log("Tanggal terapi yang akan digunakan:", treatmentDate);
+      
       // Persiapkan data untuk validasi skema
       const medicalHistoryData = {
         patientId: parseInt(formData.patientId),
-        appointmentId: formData.appointmentId ? parseInt(formData.appointmentId) : undefined,
-        complaint: formData.complaint || formData.keluhan || "",
+        appointmentId: formData.appointmentId ? parseInt(formData.appointmentId) : existingHistory.appointmentId,
+        complaint: formData.complaint || formData.keluhan || existingHistory.complaint || "",
         beforeBloodPressure: formData.beforeBloodPressure || (
           formData.tekanan_darah_sebelum ? 
             `${formData.tekanan_darah_sebelum.sistolik || ""}/${formData.tekanan_darah_sebelum.diastolik || ""}` : 
-            ""
+            existingHistory.beforeBloodPressure || ""
         ),
         afterBloodPressure: formData.afterBloodPressure || (
           formData.tekanan_darah_sesudah ? 
             `${formData.tekanan_darah_sesudah.sistolik || ""}/${formData.tekanan_darah_sesudah.diastolik || ""}` : 
-            ""
+            existingHistory.afterBloodPressure || ""
         ),
-        heartRate: formData.heartRate || formData.detak_jantung || "",
-        pulseRate: formData.pulseRate || formData.tekanan_nadi || "",
-        weight: formData.weight || formData.berat_badan || "",
-        notes: formData.notes || formData.catatan || "",
-        treatmentDate: formData.treatmentDate || formData.tanggal_terapi || new Date(),
+        heartRate: formData.heartRate || formData.detak_jantung || existingHistory.heartRate || "",
+        pulseRate: formData.pulseRate || formData.tekanan_nadi || existingHistory.pulseRate || "",
+        weight: formData.weight || formData.berat_badan || existingHistory.weight || "",
+        notes: formData.notes || formData.catatan || existingHistory.notes || "",
+        treatmentDate: treatmentDate,
       };
       
-      console.log("Processed medical history update data:", medicalHistoryData);
+      console.log("Processed medical history update data:", {
+        ...medicalHistoryData,
+        treatmentDate: medicalHistoryData.treatmentDate.toISOString()
+      });
       
-      // Validasi data menggunakan skema yang sudah dilengkapi preprocessor
+      // Validasi data
       const validatedData = insertMedicalHistorySchema.parse(medicalHistoryData);
       
-      const updatedHistory = await storage.updateMedicalHistory(id, validatedData);
+      // Update langsung di database untuk memastikan penanganan tanggal yang benar
+      const [updatedHistory] = await db
+        .update(schema.medicalHistories)
+        .set({
+          ...validatedData,
+          // Jangan update createdAt
+        })
+        .where(eq(schema.medicalHistories.id, id))
+        .returning();
+        
+      console.log("Updated medical history:", {
+        id: updatedHistory.id,
+        treatmentDate: updatedHistory.treatmentDate
+      });
+        
       return res.json(updatedHistory);
     } catch (error) {
       console.error("Error updating medical history:", error);
@@ -2827,17 +2986,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID harus berupa angka" });
       }
       
-      // Pastikan riwayat medis ada
-      const existingHistory = await storage.getMedicalHistory(id);
+      // Pastikan riwayat medis ada - gunakan Drizzle ORM langsung
+      const [existingHistory] = await db
+        .select()
+        .from(schema.medicalHistories)
+        .where(eq(schema.medicalHistories.id, id));
+        
       if (!existingHistory) {
         return res.status(404).json({ message: "Riwayat medis tidak ditemukan" });
       }
       
-      const success = await storage.deleteMedicalHistory(id);
+      console.log(`Menghapus riwayat medis ID ${id}`);
       
-      if (success) {
-        return res.json({ message: "Riwayat medis berhasil dihapus" });
+      // Hapus riwayat medis melalui Drizzle ORM
+      const deleted = await db
+        .delete(schema.medicalHistories)
+        .where(eq(schema.medicalHistories.id, id))
+        .returning();
+        
+      if (deleted.length > 0) {
+        console.log(`Riwayat medis ID ${id} berhasil dihapus`);
+        return res.json({ 
+          message: "Riwayat medis berhasil dihapus",
+          id: id
+        });
       } else {
+        console.error(`Gagal menghapus riwayat medis ID ${id}`);
         return res.status(500).json({ message: "Gagal menghapus riwayat medis" });
       }
     } catch (error) {
@@ -2940,6 +3114,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error dalam menyinkronkan tanggal appointment:", error);
       return res.status(500).json({ 
         message: "Terjadi kesalahan dalam menyinkronkan data", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+  
+  // Endpoint khusus untuk memperbaiki tanggal semua riwayat medis yang tidak valid
+  app.post("/api/medical-histories/fix-dates", async (req: Request, res: Response) => {
+    try {
+      // Pastikan hanya admin yang bisa mengakses endpoint ini
+      if (!req.isAuthenticated() || req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Unauthorized, admin access required" });
+      }
+      
+      console.log("Memulai perbaikan tanggal riwayat medis...");
+      
+      // Ambil semua riwayat medis dengan tanggal terapi yang tidak valid
+      const invalidHistories = await db
+        .select()
+        .from(schema.medicalHistories)
+        .where(
+          or(
+            isNull(schema.medicalHistories.treatmentDate),
+            lte(sql`EXTRACT(YEAR FROM ${schema.medicalHistories.treatmentDate})`, 1970)
+          )
+        );
+        
+      console.log(`Ditemukan ${invalidHistories.length} riwayat medis dengan tanggal tidak valid`);
+      
+      let fixed = 0;
+      const errors = [];
+      
+      // Perbaiki satu per satu
+      for (const history of invalidHistories) {
+        try {
+          // Gunakan createdAt sebagai fallback untuk tanggal terapi
+          const fixedDate = history.createdAt || new Date();
+          
+          console.log(`Memperbaiki riwayat medis ID ${history.id}, tanggal terapi dari ${
+            history.treatmentDate ? history.treatmentDate.toISOString() : 'null'
+          } menjadi ${fixedDate.toISOString()}`);
+          
+          // Update di database
+          const [updated] = await db
+            .update(schema.medicalHistories)
+            .set({ treatmentDate: fixedDate })
+            .where(eq(schema.medicalHistories.id, history.id))
+            .returning();
+            
+          if (updated) {
+            fixed++;
+          }
+        } catch (err) {
+          console.error(`Gagal memperbaiki tanggal untuk riwayat medis ID ${history.id}:`, err);
+          errors.push({
+            historyId: history.id,
+            error: err instanceof Error ? err.message : String(err)
+          });
+        }
+      }
+      
+      console.log(`Perbaikan selesai: ${fixed} riwayat medis diperbaiki, ${errors.length} error`);
+      
+      return res.status(200).json({
+        message: `Perbaikan selesai: ${fixed} riwayat medis diperbaiki`,
+        fixed,
+        errors
+      });
+    } catch (error) {
+      console.error("Error dalam memperbaiki tanggal riwayat medis:", error);
+      return res.status(500).json({ 
+        message: "Terjadi kesalahan dalam memperbaiki data", 
         error: error instanceof Error ? error.message : String(error) 
       });
     }

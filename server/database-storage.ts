@@ -1812,7 +1812,19 @@ export class DatabaseStorage implements IStorage {
         .where(eq(medicalHistories.patientId, patientId))
         .orderBy(desc(medicalHistories.treatmentDate));
       
-      return records;
+      // Pastikan setiap record memiliki treatmentDate yang valid
+      const validRecords = records.map(record => {
+        // Jika treatmentDate null atau 1970, gunakan created_at sebagai fallback
+        if (!record.treatmentDate || new Date(record.treatmentDate).getFullYear() <= 1970) {
+          return {
+            ...record,
+            treatmentDate: record.createdAt
+          };
+        }
+        return record;
+      });
+      
+      return validRecords;
     } catch (error) {
       console.error('[DB] Error getting medical histories by patient:', error);
       return [];
@@ -1821,10 +1833,23 @@ export class DatabaseStorage implements IStorage {
 
   async createMedicalHistory(medicalHistory: InsertMedicalHistory): Promise<MedicalHistory> {
     try {
+      // Validasi tanggal pengobatan sebelum menyimpan ke database
+      let validTreatmentDate = medicalHistory.treatmentDate;
+      
+      // Pastikan tanggal pengobatan valid (bukan null atau 1970)
+      if (!validTreatmentDate || new Date(validTreatmentDate).getFullYear() <= 1970) {
+        console.log("Invalid treatment date provided in createMedicalHistory, using current date");
+        validTreatmentDate = new Date();
+      }
+      
+      const now = new Date();
+      
+      // Simpan ke database dengan tanggal yang valid
       const [record] = await db.insert(medicalHistories)
         .values({
           ...medicalHistory,
-          createdAt: new Date()
+          treatmentDate: validTreatmentDate,
+          createdAt: now
         })
         .returning();
       
@@ -1846,14 +1871,42 @@ export class DatabaseStorage implements IStorage {
         return undefined;
       }
       
-      // Pastikan treatmentDate tidak hilang jika tidak ada dalam update
+      // Tentukan tanggal pengobatan yang tepat dengan prioritas:
+      // 1. Tanggal pengobatan yang diberikan dalam update jika ada dan valid
+      // 2. Tanggal pengobatan yang sudah ada jika valid
+      // 3. Tanggal pembuatan record sebagai fallback
+      let validTreatmentDate: Date | undefined = undefined;
+      
+      // Periksa apakah ada tanggal pengobatan dalam update dan valid
+      if (medicalHistory.treatmentDate) {
+        const treatmentDate = new Date(medicalHistory.treatmentDate);
+        if (!isNaN(treatmentDate.getTime()) && treatmentDate.getFullYear() > 1970) {
+          validTreatmentDate = treatmentDate;
+        }
+      }
+      
+      // Jika tidak ada dalam update, gunakan yang sudah ada jika valid
+      if (!validTreatmentDate && existingHistory.treatmentDate) {
+        const existingDate = new Date(existingHistory.treatmentDate);
+        if (!isNaN(existingDate.getTime()) && existingDate.getFullYear() > 1970) {
+          validTreatmentDate = existingDate;
+        }
+      }
+      
+      // Jika masih belum ada yang valid, gunakan tanggal pembuatan
+      if (!validTreatmentDate) {
+        validTreatmentDate = new Date(existingHistory.createdAt);
+      }
+      
+      // Pastikan treatmentDate selalu valid dalam update
       const dataToUpdate = {
         ...medicalHistory,
-        treatmentDate: medicalHistory.treatmentDate || existingHistory.treatmentDate
+        treatmentDate: validTreatmentDate
       };
       
       console.log('Received medical history update data:', medicalHistory);
       console.log('Processed medical history update data:', dataToUpdate);
+      console.log(`Using treatment date: ${validTreatmentDate}`);
       
       const [updated] = await db.update(medicalHistories)
         .set(dataToUpdate)
