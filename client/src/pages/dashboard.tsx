@@ -230,21 +230,21 @@ export default function Dashboard() {
   // Dashboard stat cards data
   const statCards = [
     {
-      title: "Patients Today (WIB)",
+      title: "Patients Today",
       value: stats.patientsToday,
       icon: Users,
       color: "text-blue-500",
       bgColor: "bg-blue-100",
     },
     {
-      title: "Today's Income (WIB)",
+      title: "Today's Income",
       value: formatRupiah(stats.incomeToday),
       icon: DollarSign,
       color: "text-green-500",
       bgColor: "bg-green-100",
     },
     {
-      title: "Products Sold (WIB)",
+      title: "Products Sold",
       value: stats.productsSold,
       icon: PackageIcon,
       color: "text-amber-500",
@@ -330,7 +330,7 @@ export default function Dashboard() {
             </div>
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
-                {format(getTodayInWIB(), "EEEE, dd/MM/yyyy", { locale: localeId })} (WIB)
+                {format(getTodayInWIB(), "EEEE, dd/MM/yyyy", { locale: localeId })}
               </p>
             </div>
           </CardHeader>
@@ -506,7 +506,7 @@ export default function Dashboard() {
           </div>
           <div className="flex justify-between items-center">
             <p className="text-sm text-muted-foreground">
-              Progress paket terapi pasien yang masih aktif (WIB)
+              Progress paket terapi pasien yang masih aktif
             </p>
           </div>
         </CardHeader>
