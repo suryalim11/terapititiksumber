@@ -407,7 +407,14 @@ export default function TherapySlots() {
     console.log("Time slot:", timeSlot);
     
     // PERBAIKAN: Gunakan fungsi fixTimezone untuk mengatasi masalah timezone
-    const yearMonthDay = fixTimezone(data.date);
+    // Memastikan kita memiliki Date object untuk diproses dengan fixTimezone
+    let dateValue = data.date;
+    if (typeof dateValue === 'string') {
+      // Parse string menjadi Date jika diperlukan
+      dateValue = new Date(dateValue);
+    }
+    
+    const yearMonthDay = fixTimezone(dateValue);
     console.log("Date setelah fixTimezone:", yearMonthDay);
     
     console.log("Submitting date as string format:", yearMonthDay);
@@ -418,7 +425,7 @@ export default function TherapySlots() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        date: yearMonthDay, // Kirim format string sederhana
+        date: yearMonthDay, // Kirim format string sederhana, bukan Date object
         timeSlot: timeSlot,
         maxQuota: data.maxQuota,
         isActive: data.isActive
@@ -496,7 +503,14 @@ export default function TherapySlots() {
     console.log("Edit - Time slot:", timeSlot);
     
     // PERBAIKAN: Gunakan fungsi fixTimezone untuk mengatasi masalah timezone
-    const yearMonthDay = fixTimezone(data.date);
+    // Memastikan kita memiliki Date object untuk diproses dengan fixTimezone
+    let dateValue = data.date;
+    if (typeof dateValue === 'string') {
+      // Parse string menjadi Date jika diperlukan
+      dateValue = new Date(dateValue);
+    }
+    
+    const yearMonthDay = fixTimezone(dateValue);
     console.log("Edit - Date setelah fixTimezone:", yearMonthDay);
     
     console.log("Edit - Updating date as string format:", yearMonthDay);
