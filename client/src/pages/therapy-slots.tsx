@@ -596,26 +596,23 @@ export default function TherapySlots() {
 
   // Quick actions untuk membuat batch slot
   const quickActions = [
+    { days: 1, label: "Test (1 hari)", timeSlots: [
+      { time: "13:00-15:00", quota: 3 }
+    ]},
     { days: 7, label: "7 hari", timeSlots: [
       { time: "10:00-11:00", quota: 5 },
       { time: "11:00-12:00", quota: 5 },
       { time: "13:00-14:00", quota: 5 },
-      { time: "15:00-16:00", quota: 5 },
-      { time: "16:00-17:00", quota: 5 }
     ]},
     { days: 14, label: "14 hari", timeSlots: [
       { time: "10:00-11:00", quota: 5 },
       { time: "11:00-12:00", quota: 5 },
       { time: "13:00-14:00", quota: 5 },
-      { time: "15:00-16:00", quota: 5 },
-      { time: "16:00-17:00", quota: 5 }
     ]},
     { days: 30, label: "30 hari", timeSlots: [
       { time: "10:00-11:00", quota: 5 },
       { time: "11:00-12:00", quota: 5 },
       { time: "13:00-14:00", quota: 5 },
-      { time: "15:00-16:00", quota: 5 },
-      { time: "16:00-17:00", quota: 5 }
     ]},
   ];
 
