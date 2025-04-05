@@ -2691,7 +2691,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/medical-histories", async (req: Request, res: Response) => {
     try {
-      const validatedData = insertMedicalHistorySchema.parse(req.body);
+      console.log("Received medical history data:", req.body);
+      
+      // Struktur data yang dikirim dari form bisa berbeda, kita perlu menggunakan pendekatan adaptif
+      // Sesuaikan dengan struktur formulir JSON yang dikirim client
+      const formData = req.body;
+      
+      // Persiapkan data untuk validasi skema
+      const medicalHistoryData = {
+        patientId: parseInt(formData.patientId),
+        appointmentId: formData.appointmentId ? parseInt(formData.appointmentId) : undefined,
+        complaint: formData.complaint || formData.keluhan || "",
+        beforeBloodPressure: formData.beforeBloodPressure || (
+          formData.tekanan_darah_sebelum ? 
+            `${formData.tekanan_darah_sebelum.sistolik || ""}/${formData.tekanan_darah_sebelum.diastolik || ""}` : 
+            ""
+        ),
+        afterBloodPressure: formData.afterBloodPressure || (
+          formData.tekanan_darah_sesudah ? 
+            `${formData.tekanan_darah_sesudah.sistolik || ""}/${formData.tekanan_darah_sesudah.diastolik || ""}` : 
+            ""
+        ),
+        heartRate: formData.heartRate || formData.detak_jantung || "",
+        pulseRate: formData.pulseRate || formData.tekanan_nadi || "",
+        weight: formData.weight || formData.berat_badan || "",
+        notes: formData.notes || formData.catatan || "",
+        treatmentDate: formData.treatmentDate || formData.tanggal_terapi || new Date(),
+      };
+      
+      console.log("Processed medical history data:", medicalHistoryData);
+      
+      const validatedData = insertMedicalHistorySchema.parse(medicalHistoryData);
       
       // Verifikasi patientId valid
       const patient = await storage.getPatient(validatedData.patientId);
@@ -2704,6 +2734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating medical history:", error);
       if (error instanceof z.ZodError) {
+        console.error("Validation errors:", error.errors);
         return res.status(400).json({ 
           message: "Data tidak valid", 
           errors: error.errors 
@@ -2727,14 +2758,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Riwayat medis tidak ditemukan" });
       }
       
+      console.log("Received medical history update data:", req.body);
+      
+      // Proses data yang dikirim dari form
+      const formData = req.body;
+      
+      // Persiapkan data untuk validasi skema
+      const medicalHistoryData = {
+        patientId: parseInt(formData.patientId),
+        appointmentId: formData.appointmentId ? parseInt(formData.appointmentId) : undefined,
+        complaint: formData.complaint || formData.keluhan || "",
+        beforeBloodPressure: formData.beforeBloodPressure || (
+          formData.tekanan_darah_sebelum ? 
+            `${formData.tekanan_darah_sebelum.sistolik || ""}/${formData.tekanan_darah_sebelum.diastolik || ""}` : 
+            ""
+        ),
+        afterBloodPressure: formData.afterBloodPressure || (
+          formData.tekanan_darah_sesudah ? 
+            `${formData.tekanan_darah_sesudah.sistolik || ""}/${formData.tekanan_darah_sesudah.diastolik || ""}` : 
+            ""
+        ),
+        heartRate: formData.heartRate || formData.detak_jantung || "",
+        pulseRate: formData.pulseRate || formData.tekanan_nadi || "",
+        weight: formData.weight || formData.berat_badan || "",
+        notes: formData.notes || formData.catatan || "",
+        treatmentDate: formData.treatmentDate || formData.tanggal_terapi || new Date(),
+      };
+      
+      console.log("Processed medical history update data:", medicalHistoryData);
+      
       // Validasi data menggunakan skema yang sudah dilengkapi preprocessor
-      const validatedData = insertMedicalHistorySchema.parse(req.body);
+      const validatedData = insertMedicalHistorySchema.parse(medicalHistoryData);
       
       const updatedHistory = await storage.updateMedicalHistory(id, validatedData);
       return res.json(updatedHistory);
     } catch (error) {
       console.error("Error updating medical history:", error);
       if (error instanceof z.ZodError) {
+        console.error("Validation errors:", error.errors);
         return res.status(400).json({ 
           message: "Data tidak valid", 
           errors: error.errors 

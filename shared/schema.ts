@@ -273,6 +273,9 @@ export const medicalHistories = pgTable("medical_histories", {
   complaint: text("complaint").notNull(),
   beforeBloodPressure: text("before_blood_pressure"),
   afterBloodPressure: text("after_blood_pressure"),
+  heartRate: text("heart_rate"), // Detak jantung
+  pulseRate: text("pulse_rate"), // Tekanan nadi
+  weight: text("weight"), // Berat badan
   notes: text("notes"),
   treatmentDate: timestamp("treatment_date").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -285,6 +288,9 @@ export const insertMedicalHistorySchema = createInsertSchema(medicalHistories)
     complaint: true,
     beforeBloodPressure: true,
     afterBloodPressure: true,
+    heartRate: true,
+    pulseRate: true,
+    weight: true,
     notes: true,
     treatmentDate: true,
   })

@@ -1,0 +1,356 @@
+import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
+import { CalendarIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+// Schema untuk form catatan medis
+const medicalHistoryFormSchema = z.object({
+  patientId: z.number({
+    required_error: "ID Pasien diperlukan",
+  }),
+  appointmentId: z.number().optional(),
+  complaint: z.string().min(2, {
+    message: "Keluhan pasien harus diisi minimal 2 karakter",
+  }),
+  beforeBloodPressure: z.string().optional(),
+  afterBloodPressure: z.string().optional(),
+  heartRate: z.string().optional(),
+  pulseRate: z.string().optional(),
+  weight: z.string().optional(),
+  notes: z.string().optional(),
+  treatmentDate: z.date({
+    required_error: "Tanggal terapi diperlukan",
+  }),
+});
+
+// Tipe untuk form data
+type MedicalHistoryFormValues = z.infer<typeof medicalHistoryFormSchema>;
+
+interface MedicalHistoryFormProps {
+  isOpen: boolean;
+  onClose: () => void;
+  patientId: number;
+  appointmentId?: number;
+  onSubmitSuccess?: () => void;
+}
+
+export function MedicalHistoryForm({
+  isOpen,
+  onClose,
+  patientId,
+  appointmentId,
+  onSubmitSuccess,
+}: MedicalHistoryFormProps) {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Default values untuk form
+  const defaultValues: Partial<MedicalHistoryFormValues> = {
+    patientId,
+    appointmentId,
+    treatmentDate: new Date(),
+    complaint: "",
+    beforeBloodPressure: "",
+    afterBloodPressure: "",
+    heartRate: "",
+    pulseRate: "",
+    weight: "",
+    notes: "",
+  };
+  
+  // Setup form dengan react-hook-form dan validasi zod
+  const form = useForm<MedicalHistoryFormValues>({
+    resolver: zodResolver(medicalHistoryFormSchema),
+    defaultValues,
+  });
+  
+  // Fungsi submit form
+  const onSubmit = async (data: MedicalHistoryFormValues) => {
+    try {
+      setIsSubmitting(true);
+      
+      // Parser untuk tekanan darah untuk membuat format yang konsisten
+      if (data.beforeBloodPressure) {
+        const [systolic, diastolic] = data.beforeBloodPressure.split("/").map(val => val.trim());
+        if (systolic && diastolic) {
+          data.beforeBloodPressure = `${systolic}/${diastolic}`;
+        }
+      }
+      
+      if (data.afterBloodPressure) {
+        const [systolic, diastolic] = data.afterBloodPressure.split("/").map(val => val.trim());
+        if (systolic && diastolic) {
+          data.afterBloodPressure = `${systolic}/${diastolic}`;
+        }
+      }
+      
+      // Kirim data ke API
+      const response = await fetch("/api/medical-histories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Gagal menyimpan catatan medis");
+      }
+      
+      toast({
+        title: "Catatan medis berhasil disimpan",
+        description: "Data catatan medis pasien telah ditambahkan",
+      });
+      
+      form.reset(defaultValues);
+      
+      if (onSubmitSuccess) {
+        onSubmitSuccess();
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error("Error submitting medical history:", error);
+      toast({
+        title: "Gagal menyimpan catatan medis",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan, silakan coba lagi",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Tambah Catatan Medis</DialogTitle>
+          <DialogDescription>
+            Tambahkan catatan medis baru untuk pasien
+          </DialogDescription>
+        </DialogHeader>
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Tanggal Terapi */}
+            <FormField
+              control={form.control}
+              name="treatmentDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Tanggal Terapi</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "dd/MM/yyyy", { locale: idLocale })
+                          ) : (
+                            <span>Pilih tanggal</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Keluhan */}
+            <FormField
+              control={form.control}
+              name="complaint"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Keluhan</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Masukkan keluhan pasien"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Tekanan Darah (Sebelum) */}
+            <FormField
+              control={form.control}
+              name="beforeBloodPressure"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tekanan Darah (Sebelum)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Contoh: 120/80"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Format: Sistolik/Diastolik (contoh: 120/80)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Tekanan Darah (Sesudah) */}
+            <FormField
+              control={form.control}
+              name="afterBloodPressure"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tekanan Darah (Sesudah)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Contoh: 120/80"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Format: Sistolik/Diastolik (contoh: 120/80)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Detak Jantung */}
+            <FormField
+              control={form.control}
+              name="heartRate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Detak Jantung</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Masukkan detak jantung"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Tekanan Nadi */}
+            <FormField
+              control={form.control}
+              name="pulseRate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tekanan Nadi</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Masukkan tekanan nadi"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Berat Badan */}
+            <FormField
+              control={form.control}
+              name="weight"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Berat Badan</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Masukkan berat badan"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Catatan */}
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Catatan</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Catatan tambahan tentang terapi"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Menyimpan..." : "Tambah Catatan"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
