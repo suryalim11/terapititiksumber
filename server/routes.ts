@@ -2062,28 +2062,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/verify-registration-link", async (req: Request, res: Response) => {
     try {
+      // Set headers untuk mencegah caching
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    
       console.log("Verify registration link request body:", req.body);
       const { code } = req.body as VerifyRegistrationLinkBody;
       
       if (!code) {
-        return res.status(400).json({ message: "Kode pendaftaran diperlukan" });
+        return res.status(400).json({ valid: false, message: "Kode pendaftaran diperlukan" });
       }
       
       const link = await storage.getRegistrationLinkByCode(code);
       
       if (!link) {
-        return res.status(404).json({ message: "Kode pendaftaran tidak valid" });
+        return res.status(404).json({ valid: false, message: "Kode pendaftaran tidak valid" });
       }
       
       // Check if link is active
       if (!link.isActive) {
-        return res.status(400).json({ message: "Link pendaftaran sudah tidak aktif" });
+        return res.status(400).json({ valid: false, message: "Link pendaftaran sudah tidak aktif" });
       }
       
       // Check if link is expired
       const now = new Date();
       if (now > link.expiryTime) {
-        return res.status(400).json({ message: "Link pendaftaran sudah kedaluwarsa" });
+        return res.status(400).json({ valid: false, message: "Link pendaftaran sudah kedaluwarsa" });
       }
       
       // Dapatkan semua slot terapi yang tersedia (aktif dan belum penuh)
@@ -2176,7 +2181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error) {
       console.error("Error verifying registration link:", error);
-      return res.status(500).json({ message: "Terjadi kesalahan server" });
+      return res.status(500).json({ valid: false, message: "Terjadi kesalahan server" });
     }
   });
   

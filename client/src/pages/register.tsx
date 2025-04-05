@@ -278,10 +278,17 @@ export default function RegisterPage() {
   const verifyRegistrationCode = async (code: string) => {
     try {
       console.log("Memverifikasi kode pendaftaran:", code);
-      const response = await fetch('/api/verify-registration-link', {
+      console.log("Menggunakan fetch API dengan mode no-cache");
+      
+      // Tambahkan timestamp untuk menghindari caching
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/verify-registration-link?_t=${timestamp}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
         body: JSON.stringify({ code }),
         credentials: 'include', // Penting: pastikan cookies dikirim
@@ -290,6 +297,12 @@ export default function RegisterPage() {
       console.log("Respons verifikasi kode pendaftaran:", response.status, response.statusText);
       const data = await response.json();
       console.log("Detail respons verifikasi:", data);
+      
+      // Log struktur data untuk debugging lebih lanjut
+      console.log("Tipe data valid:", typeof data.valid);
+      console.log("Tipe data expiryTime:", data.expiryTime ? typeof data.expiryTime : "undefined");
+      console.log("isPermanent:", data.isPermanent);
+      console.log("Status response.ok:", response.ok);
       
       if (response.ok && data.valid) {
         console.log("Kode pendaftaran valid:", data);
