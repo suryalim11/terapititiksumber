@@ -1775,14 +1775,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
+      console.log("Mendapatkan slot terapi untuk hari ini:", today.toISOString());
+      
       // Mendapatkan semua slot terapi untuk hari ini
       const slots = await storage.getTherapySlotsByDate(today);
       
+      console.log(`Ditemukan ${slots.length} slot terapi untuk hari ini`);
+      
       // Untuk setiap slot, dapatkan jumlah appointment aktif (bukan yang dibatalkan)
       for (const slot of slots) {
-        // Mendapatkan appointment aktif untuk slot ini
-        const activeAppointments = await storage.getAppointmentsByTherapySlot(slot.id);
-        // Update currentCount untuk menampilkan jumlah pasien yang benar-benar terdaftar (tidak dibatalkan)
+        // Mendapatkan appointment aktif untuk slot ini (semua appointment)
+        const allAppointments = await storage.getAppointmentsByTherapySlot(slot.id);
+        
+        console.log(`Slot ${slot.id} (${slot.timeSlot}): Total ${allAppointments.length} appointment`);
+        
+        // Status yang dianggap aktif (tidak selesai atau dibatalkan)
+        const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+        
+        // Filter untuk mendapatkan hanya appointment yang aktif
+        const activeAppointments = allAppointments.filter(app => {
+          // Cek status appointment
+          const isActiveStatus = activeStatuses.includes(app.status);
+          console.log(`Appointment ${app.id} (${app.status}): isActiveStatus=${isActiveStatus}`);
+          return isActiveStatus;
+        });
+        
+        console.log(`Slot ${slot.id}: ${activeAppointments.length} appointment aktif dari ${allAppointments.length} total`);
+        
+        // Update currentCount untuk menampilkan jumlah pasien yang benar-benar aktif
         slot.currentCount = activeAppointments.length;
       }
       
