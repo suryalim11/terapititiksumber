@@ -195,9 +195,12 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                   {medicalHistories.map((history) => (
                     <TableRow key={history.id}>
                       <TableCell>
-                        {format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
-                          locale: idLocale,
-                        })}
+                        {history.treatmentDate 
+                          ? format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
+                              locale: idLocale,
+                            })
+                          : "Tanggal tidak tersedia"
+                        }
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate">
                         {history.complaint}
@@ -241,9 +244,12 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                   <CardHeader className="p-4 pb-2 bg-muted/30">
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-base font-medium">
-                        {format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
-                          locale: idLocale,
-                        })}
+                        {history.treatmentDate 
+                          ? format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
+                              locale: idLocale,
+                            })
+                          : "Tanggal tidak tersedia"
+                        }
                       </CardTitle>
                       <div className="flex space-x-1">
                         <Button

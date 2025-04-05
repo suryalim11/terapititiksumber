@@ -2661,7 +2661,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const histories = await storage.getMedicalHistoriesByPatient(patientId);
-      return res.json(histories);
+      
+      // Pastikan semua riwayat medis memiliki tanggal yang valid
+      const validHistories = histories.map(history => {
+        // Jika tidak ada tanggal, gunakan tanggal saat ini
+        if (!history.treatmentDate) {
+          console.log(`Fixing null treatment date for medical history ID ${history.id}`);
+          return {
+            ...history,
+            treatmentDate: history.createdAt || new Date()
+          };
+        }
+        return history;
+      });
+      
+      return res.json(validHistories);
     } catch (error) {
       console.error("Error getting medical histories:", error);
       return res.status(500).json({ message: "Terjadi kesalahan saat mengambil riwayat medis" });

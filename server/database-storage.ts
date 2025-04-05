@@ -1837,8 +1837,26 @@ export class DatabaseStorage implements IStorage {
 
   async updateMedicalHistory(id: number, medicalHistory: Partial<InsertMedicalHistory>): Promise<MedicalHistory | undefined> {
     try {
+      // Dapatkan data yang sudah ada untuk memastikan kita tidak kehilangan treatmentDate
+      const [existingHistory] = await db.select()
+        .from(medicalHistories)
+        .where(eq(medicalHistories.id, id));
+      
+      if (!existingHistory) {
+        return undefined;
+      }
+      
+      // Pastikan treatmentDate tidak hilang jika tidak ada dalam update
+      const dataToUpdate = {
+        ...medicalHistory,
+        treatmentDate: medicalHistory.treatmentDate || existingHistory.treatmentDate
+      };
+      
+      console.log('Received medical history update data:', medicalHistory);
+      console.log('Processed medical history update data:', dataToUpdate);
+      
       const [updated] = await db.update(medicalHistories)
-        .set(medicalHistory)
+        .set(dataToUpdate)
         .where(eq(medicalHistories.id, id))
         .returning();
       
