@@ -13,7 +13,15 @@ import {
   RefreshCw,
   Loader2
 } from "lucide-react";
-import { cn, formatRupiah, formatDateDDMMYYYY } from "@/lib/utils";
+import { 
+  cn, 
+  formatRupiah, 
+  formatDateDDMMYYYY, 
+  getTodayInWIB,
+  dateToWIBDateString,
+  isSameDayInWIB,
+  getStartOfDayWIB
+} from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
@@ -60,9 +68,10 @@ export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>("day");
   const queryClient = useQueryClient();
   
-  // Format today's date to YYYY-MM-DD for API query
-  const today = new Date();
-  const formattedToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  // Format today's date to YYYY-MM-DD for API query with WIB timezone
+  const todayWIB = getTodayInWIB(); // Dapatkan hari ini dalam timezone WIB
+  const formattedToday = dateToWIBDateString(todayWIB); // Format ke YYYY-MM-DD
+  console.log(`Today in WIB timezone: ${formattedToday}`);
   
   // Fetch dashboard stats with auto-refresh (every 10 seconds)
   const { data: stats = { patientsToday: 0, incomeToday: 0, productsSold: 0, activePackages: 0 }, refetch: refetchStats } = 
@@ -130,8 +139,8 @@ export default function Dashboard() {
         console.log(`After date+time deduplication: ${uniqueSlots.length} slots remaining`);
         
         // Langkah 3: Filter berdasarkan periode yang dipilih pengguna
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
+        // Gunakan zona waktu WIB untuk semua filter tanggal
+        const nowWIB = getStartOfDayWIB(new Date()); // Tanggal hari ini dalam WIB, jam 00:00:00
         
         let filteredByPeriod = [...uniqueSlots];
         
@@ -147,32 +156,32 @@ export default function Dashboard() {
         };
         
         if (selectedPeriod === 'day') {
-          // Filter hanya untuk hari ini
-          const today = now.toISOString().split('T')[0];
-          console.log(`Filter untuk hari ini: ${today}`);
+          // Filter hanya untuk hari ini (dalam zona waktu WIB)
+          const todayWIBStr = dateToWIBDateString(nowWIB);
+          console.log(`Filter untuk hari ini (WIB): ${todayWIBStr}`);
           
           filteredByPeriod = uniqueSlots.filter((slot: any) => {
-            const slotDateStr = getSlotDateStr(slot);
-            const result = slotDateStr === today;
-            return result;
+            const slotDate = typeof slot.date === 'string' ? new Date(slot.date) : new Date(slot.date);
+            // Gunakan fungsi perbandingan yang memperhatikan zona waktu
+            return isSameDayInWIB(slotDate, nowWIB);
           });
           
-          console.log(`Hasil filter hari ini: ${filteredByPeriod.length} slot ditemukan`);
+          console.log(`Hasil filter hari ini (WIB): ${filteredByPeriod.length} slot ditemukan`);
           
         } else if (selectedPeriod === 'past-week') {
-          // Filter untuk 7 hari terakhir
-          const oneWeekAgo = new Date(now);
-          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+          // Filter untuk 7 hari terakhir (dalam zona waktu WIB)
+          const oneWeekAgoWIB = new Date(nowWIB);
+          oneWeekAgoWIB.setDate(oneWeekAgoWIB.getDate() - 7);
           
           filteredByPeriod = uniqueSlots.filter((slot: any) => {
             const slotDate = new Date(getSlotDateStr(slot));
-            return slotDate >= oneWeekAgo && slotDate <= now;
+            return slotDate >= oneWeekAgoWIB && slotDate <= nowWIB;
           });
           
         } else if (selectedPeriod === 'month') {
-          // Filter untuk bulan ini
-          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-          const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          // Filter untuk bulan ini (dalam zona waktu WIB)
+          const startOfMonth = new Date(nowWIB.getFullYear(), nowWIB.getMonth(), 1);
+          const endOfMonth = new Date(nowWIB.getFullYear(), nowWIB.getMonth() + 1, 0);
           
           filteredByPeriod = uniqueSlots.filter((slot: any) => {
             const slotDate = new Date(getSlotDateStr(slot));
@@ -321,7 +330,7 @@ export default function Dashboard() {
             </div>
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
-                {format(new Date(), "EEEE, dd/MM/yyyy", { locale: localeId })}
+                {format(getTodayInWIB(), "EEEE, dd/MM/yyyy", { locale: localeId })} (WIB)
               </p>
             </div>
           </CardHeader>

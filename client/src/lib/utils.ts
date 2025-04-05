@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format as dateFnsFormat, parseISO, addHours, parse } from "date-fns";
+import { format as dateFnsFormat, parseISO, addHours, parse, isValid, startOfDay } from "date-fns";
 import { id } from "date-fns/locale";
 
 /**
@@ -10,6 +10,11 @@ import { id } from "date-fns/locale";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+/**
+ * Konstanta untuk zona waktu WIB (UTC+7)
+ */
+export const WIB_OFFSET = 7; // WIB adalah UTC+7
 
 /**
  * Format a date string to dd/MM/yyyy format with day name
@@ -235,15 +240,91 @@ export function generateTimeSlots(startHour: number = 8, endHour: number = 17, i
  * @param dateValue - Date object yang akan diperbaiki atau string tanggal
  * @returns string format 'YYYY-MM-DD' yang konsisten
  */
+/**
+ * Mendapatkan tanggal hari ini dalam zona waktu WIB (GMT+7)
+ * @returns Date object dengan waktu yang disesuaikan ke zona waktu WIB
+ */
+export function getTodayInWIB(): Date {
+  const now = new Date();
+  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+  return new Date(utcTime + (WIB_OFFSET * 3600000));
+}
+
+/**
+ * Mengkonversi Date ke string YYYY-MM-DD dengan mempertimbangkan zona waktu WIB
+ * @param date - Date object yang akan dikonversi
+ * @returns string tanggal dalam format YYYY-MM-DD dengan penyesuaian zona waktu WIB
+ */
+export function dateToWIBDateString(date: Date): string {
+  // Sesuaikan ke zona waktu WIB (GMT+7)
+  const wibDate = new Date(date.getTime() + (WIB_OFFSET * 3600000));
+  const year = wibDate.getUTCFullYear();
+  const month = (wibDate.getUTCMonth() + 1).toString().padStart(2, '0');
+  const day = wibDate.getUTCDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Membandingkan apakah dua tanggal berada pada hari yang sama dalam zona waktu WIB
+ * Berguna untuk filter "Hari Ini" yang akurat dengan zona waktu Indonesia
+ * 
+ * @param date1 - Tanggal pertama untuk dibandingkan
+ * @param date2 - Tanggal kedua untuk dibandingkan (default: hari ini)
+ * @returns boolean - true jika kedua tanggal pada hari yang sama dalam WIB
+ */
+export function isSameDayInWIB(date1: Date | string, date2: Date | string = new Date()): boolean {
+  try {
+    const d1 = typeof date1 === 'string' ? new Date(date1) : date1;
+    const d2 = typeof date2 === 'string' ? new Date(date2) : date2;
+    
+    if (!isValid(d1) || !isValid(d2)) return false;
+    
+    // Konversi kedua tanggal ke string YYYY-MM-DD dalam zona waktu WIB
+    const date1Str = dateToWIBDateString(d1);
+    const date2Str = dateToWIBDateString(d2);
+    
+    // Bandingkan string tanggal
+    return date1Str === date2Str;
+  } catch (error) {
+    console.error("Error in isSameDayInWIB:", error);
+    return false;
+  }
+}
+
+/**
+ * Mengonversi Date ke startOfDay dalam zona waktu WIB
+ * untuk menghindari masalah pergeseran tanggal akibat perbedaan timezone
+ * 
+ * @param dateValue - Tanggal yang akan dikonversi
+ * @returns Date - Objek Date yang menunjukkan awal hari (00:00:00) dalam WIB
+ */
+export function getStartOfDayWIB(dateValue: Date | string): Date {
+  try {
+    // Konversi input ke Date jika berupa string
+    const inputDate = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+    
+    if (!isValid(inputDate)) {
+      throw new Error("Invalid date input");
+    }
+    
+    // Dapatkan string YYYY-MM-DD dalam WIB
+    const dateStr = dateToWIBDateString(inputDate);
+    
+    // Buat Date baru dari string tersebut (akan menjadi 00:00:00 di zona waktu lokal)
+    // dan sesuaikan ke WIB
+    return new Date(`${dateStr}T00:00:00+07:00`);
+  } catch (error) {
+    console.error("Error in getStartOfDayWIB:", error);
+    return getTodayInWIB(); // Fallback ke hari ini jika ada error
+  }
+}
+
 export function fixTimezone(dateValue: Date | string): string {
-  console.log("fixTimezone Input:", dateValue, typeof dateValue);
-  
   try {
     // Jika input adalah string dalam format YYYY-MM-DD, kembalikan langsung
     if (typeof dateValue === 'string') {
       // Jika sudah dalam format YYYY-MM-DD, kembalikan langsung
       if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
-        console.log("fixTimezone: Already in YYYY-MM-DD format:", dateValue);
         return dateValue;
       }
       
@@ -262,9 +343,7 @@ export function fixTimezone(dateValue: Date | string): string {
     const day = dateValue.getDate().toString().padStart(2, '0');
     
     // Format ke YYYY-MM-DD
-    const result = `${year}-${month}-${day}`;
-    console.log("fixTimezone Result:", result);
-    return result;
+    return `${year}-${month}-${day}`;
   } catch (error) {
     console.error("Error in fixTimezone:", error);
     // Fallback ke hari ini jika ada error
