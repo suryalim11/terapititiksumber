@@ -205,10 +205,33 @@ export default function Transactions() {
   
   const formatDate = (dateString: string) => {
     try {
-      const date = new Date(dateString);
+      console.log("Formatting date string:", dateString);
+      
+      // Cek format tanggal, jika berisi 'T' dan 'Z' berarti format ISO, jika tidak, format SQL
+      let date;
+      if (dateString.includes('T') && dateString.includes('Z')) {
+        // Format ISO (2025-04-03T12:56:44.699Z)
+        date = new Date(dateString);
+      } else {
+        // Format SQL (2025-04-03 12:56:44.699)
+        // Tambahkan 7 jam untuk WIB
+        const parts = dateString.split(' ');
+        if (parts.length === 2) {
+          const [datePart, timePart] = parts;
+          // Konstruksi string ISO
+          const isoString = `${datePart}T${timePart}+07:00`;
+          date = new Date(isoString);
+        } else {
+          // Fallback jika format tidak sesuai
+          date = new Date(dateString);
+        }
+      }
+      
+      console.log("Formatted date object:", date);
+      // Format dengan locale Indonesia
       return format(date, "dd/MM/yyyy HH:mm", { locale: id });
     } catch (error) {
-      console.error("Error formatting date:", error);
+      console.error("Error formatting date:", error, dateString);
       return dateString;
     }
   };
