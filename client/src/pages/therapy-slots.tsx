@@ -770,19 +770,23 @@ export default function TherapySlots() {
         </DialogContent>
       </Dialog>
       
-      <div className="container mx-auto py-6">
-        <div className="flex justify-between items-center mb-6">
+      <div className="container mx-auto py-6 px-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h3 className="text-lg font-medium">Manajemen Slot Terapi</h3>
-          <div className="flex gap-2">
-            <Button variant="default" onClick={() => setBatchDialogOpen(true)}>
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <Button 
+              variant="default" 
+              onClick={() => setBatchDialogOpen(true)}
+              className="flex-1 sm:flex-none h-12 sm:h-10"
+            >
               <PlusCircle className="mr-2 h-4 w-4" />
-              Buat Slot Batch
+              <span className="whitespace-nowrap">Buat Slot Batch</span>
             </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button className="flex-1 sm:flex-none h-12 sm:h-10">
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Buat Slot Terapi
+                  <span className="whitespace-nowrap">Buat Slot Terapi</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -984,38 +988,97 @@ export default function TherapySlots() {
                       <RefreshCw className="h-6 w-6 animate-spin" />
                     </div>
                   ) : therapySlots.length > 0 ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Waktu</TableHead>
-                          <TableHead>Kuota</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Aksi</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                    <div className="overflow-auto">
+                      {/* Desktop view - gunakan tabel */}
+                      <div className="hidden md:block">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Waktu</TableHead>
+                              <TableHead>Kuota</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Aksi</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {therapySlots.map((slot) => (
+                              <TableRow key={slot.id}>
+                                <TableCell>{slot.timeSlot}</TableCell>
+                                <TableCell>
+                                  {slot.currentCount} / {slot.maxQuota}
+                                </TableCell>
+                                <TableCell>
+                                  {slot.isActive ? (
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                      Aktif
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                                      Non-aktif
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex space-x-2">
+                                    <Button
+                                      variant={slot.isActive ? "destructive" : "outline"}
+                                      size="sm"
+                                      onClick={() => handleToggleStatus(slot)}
+                                      disabled={toggleStatusMutation.isPending}
+                                    >
+                                      {slot.isActive ? "Nonaktifkan" : "Aktifkan"}
+                                    </Button>
+                                    <Button 
+                                      variant="outline"
+                                      size="sm"
+                                      className="border-amber-200 text-amber-600 hover:bg-amber-50"
+                                      onClick={() => openEditDialog(slot)}
+                                    >
+                                      <PencilIcon className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-red-600 border-red-200 hover:bg-red-50"
+                                      onClick={() => setDeletingSlotId(slot.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      
+                      {/* Mobile view - gunakan card */}
+                      <div className="grid grid-cols-1 gap-4 md:hidden">
                         {therapySlots.map((slot) => (
-                          <TableRow key={slot.id}>
-                            <TableCell>{slot.timeSlot}</TableCell>
-                            <TableCell>
-                              {slot.currentCount} / {slot.maxQuota}
-                            </TableCell>
-                            <TableCell>
-                              {slot.isActive ? (
-                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                  Aktif
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                                  Non-aktif
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex space-x-2">
+                          <Card key={slot.id} className="overflow-hidden">
+                            <CardContent className="p-0">
+                              <div className="p-4 border-b">
+                                <div className="flex justify-between items-center">
+                                  <div className="font-medium">Sesi {slot.timeSlot}</div>
+                                  {slot.isActive ? (
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                      Aktif
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                                      Non-aktif
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="mt-2 text-sm text-gray-500">
+                                  Kuota: {slot.currentCount} / {slot.maxQuota}
+                                </div>
+                              </div>
+                              <div className="p-4 bg-gray-50 flex flex-wrap gap-2">
                                 <Button
                                   variant={slot.isActive ? "destructive" : "outline"}
                                   size="sm"
+                                  className="h-12 flex-1"
                                   onClick={() => handleToggleStatus(slot)}
                                   disabled={toggleStatusMutation.isPending}
                                 >
@@ -1024,25 +1087,27 @@ export default function TherapySlots() {
                                 <Button 
                                   variant="outline"
                                   size="sm"
-                                  className="border-amber-200 text-amber-600 hover:bg-amber-50"
+                                  className="h-12 flex-1 border-amber-200 text-amber-600 hover:bg-amber-50"
                                   onClick={() => openEditDialog(slot)}
                                 >
-                                  <PencilIcon className="h-4 w-4" />
+                                  <PencilIcon className="h-4 w-4 mr-2" />
+                                  Edit
                                 </Button>
                                 <Button 
                                   variant="outline"
                                   size="sm"
-                                  className="text-red-600 border-red-200 hover:bg-red-50"
+                                  className="h-12 flex-1 text-red-600 border-red-200 hover:bg-red-50"
                                   onClick={() => setDeletingSlotId(slot.id)}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Hapus
                                 </Button>
                               </div>
-                            </TableCell>
-                          </TableRow>
+                            </CardContent>
+                          </Card>
                         ))}
-                      </TableBody>
-                    </Table>
+                      </div>
+                    </div>
                   ) : (
                     <div className="text-center py-6">
                       <p className="text-muted-foreground">
@@ -1176,7 +1241,7 @@ export default function TherapySlots() {
                         
                         <Button 
                           onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] })}
-                          className="mt-4"
+                          className="mt-4 h-12 sm:h-10"
                         >
                           <RefreshCw className="mr-2 h-4 w-4" />
                           Refresh Data
@@ -1194,6 +1259,7 @@ export default function TherapySlots() {
                     <div className="flex flex-wrap gap-4">
                       <Button 
                         variant="outline" 
+                        className="h-12 sm:h-10"
                         onClick={() => {
                           fetch('/api/therapy-slots/sync-quota', {
                             method: 'POST',
@@ -1233,6 +1299,7 @@ export default function TherapySlots() {
                       
                       <Button 
                         variant="outline" 
+                        className="h-12 sm:h-10"
                         onClick={async () => {
                           try {
                             // Gunakan endpoint yang benar
@@ -1389,7 +1456,10 @@ export default function TherapySlots() {
             <div className="flex justify-end">
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
+                  <Button 
+                    onClick={() => setIsCreateDialogOpen(true)}
+                    className="h-12 sm:h-10"
+                  >
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Buat Link Baru
                   </Button>
@@ -1515,7 +1585,7 @@ export default function TherapySlots() {
                     </p>
                     <Button 
                       onClick={() => setIsCreateDialogOpen(true)}
-                      className="mx-auto"
+                      className="mx-auto h-12 sm:h-10"
                     >
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Buat Link Baru
@@ -1610,6 +1680,7 @@ export default function TherapySlots() {
           </div>
           <DialogFooter>
             <Button
+              className="h-12 sm:h-10"
               onClick={async () => {
                 try {
                   const specificDateStr = specificDate 

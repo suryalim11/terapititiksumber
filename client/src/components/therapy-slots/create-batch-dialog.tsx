@@ -201,7 +201,7 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Buat Slot Terapi Baru</DialogTitle>
           <DialogDescription>
@@ -225,7 +225,7 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
                           <Button
                             variant="outline"
                             className={cn(
-                              "pl-3 text-left font-normal",
+                              "pl-3 text-left font-normal h-12 sm:h-10",
                               !field.value && "text-muted-foreground"
                             )}
                           >
@@ -266,7 +266,7 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
                           <Button
                             variant="outline"
                             className={cn(
-                              "pl-3 text-left font-normal",
+                              "pl-3 text-left font-normal h-12 sm:h-10",
                               !field.value && "text-muted-foreground"
                             )}
                           >
@@ -336,6 +336,7 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
                               <FormControl>
                                 <Input
                                   type="time"
+                                  className="h-12 sm:h-10"
                                   {...field}
                                 />
                               </FormControl>
@@ -354,6 +355,7 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
                               <FormControl>
                                 <Input
                                   type="time"
+                                  className="h-12 sm:h-10"
                                   {...field}
                                 />
                               </FormControl>
@@ -373,6 +375,7 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
                                 <Input
                                   type="number"
                                   min={1}
+                                  className="h-12 sm:h-10"
                                   {...field}
                                 />
                               </FormControl>
@@ -410,11 +413,20 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
               )}
             />
 
-            <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button 
+                variant="outline" 
+                type="button" 
+                onClick={() => onOpenChange(false)}
+                className="w-full sm:w-auto h-12 sm:h-10"
+              >
                 Batal
               </Button>
-              <Button type="submit" disabled={createBatchMutation.isPending}>
+              <Button 
+                type="submit" 
+                disabled={createBatchMutation.isPending}
+                className="w-full sm:w-auto h-12 sm:h-10"
+              >
                 {createBatchMutation.isPending && (
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                 )}
