@@ -29,24 +29,39 @@ function formatRupiah(amount: number): string {
 // Utility function untuk mendapatkan waktu dengan zona waktu Indonesia (GMT+7/WIB)
 // Konsisten untuk digunakan di seluruh aplikasi saat menyimpan atau mengambil data dari database
 function getWIBDate(date: Date): Date {
-  // Simpan tanggal asli
+  // Gunakan metode yang sudah berfungsi baik di client-side
+  // Kurangi 14 jam dan tambahkan 7 jam untuk mendapatkan waktu WIB
   const originalDate = new Date(date);
   
-  // Buat tanggal baru dengan format ISO string tapi potong timezone info
-  const dateString = originalDate.toISOString().slice(0, -1);
+  // Pertama kurangi 14 jam (koreksi terhadap data dari PostgreSQL)
+  const correctedDate = new Date(originalDate.getTime() - (14 * 60 * 60 * 1000));
   
-  // Buat tanggal baru dengan offset WIB (+7)
-  const wibDate = new Date(dateString + '+07:00');
+  // Kemudian tambahkan 7 jam untuk WIB
+  const wibDate = new Date(correctedDate.getTime() + (7 * 60 * 60 * 1000));
   
   // Log untuk debugging
-  console.log(`Original date: ${originalDate}, WIB date: ${wibDate}`);
+  console.log(`Original date: ${originalDate.toISOString()}, Corrected date: ${correctedDate.toISOString()}, WIB date: ${wibDate.toISOString()}`);
   
   return wibDate;
 }
 
 function formatDateString(dateStr: string | Date): string {
-  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
-  return format(date, 'dd MMMM yyyy');
+  try {
+    const originalDate = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+    
+    // Gunakan koreksi zona waktu yang sama (kurangi 14 jam, tambah 7 jam)
+    // Pertama kurangi 14 jam (koreksi terhadap data dari PostgreSQL)
+    const correctedDate = new Date(originalDate.getTime() - (14 * 60 * 60 * 1000));
+    
+    // Kemudian tambahkan 7 jam untuk WIB
+    const wibDate = new Date(correctedDate.getTime() + (7 * 60 * 60 * 1000));
+    
+    return format(wibDate, 'dd MMMM yyyy');
+  } catch (error) {
+    console.error("Error formatting date string:", error, dateStr);
+    // Fallback untuk jaga-jaga jika terjadi error
+    return typeof dateStr === 'string' ? dateStr : dateStr.toISOString().split('T')[0];
+  }
 }
 
 // Menggunakan MemoryStore yang lebih sederhana dan handal
