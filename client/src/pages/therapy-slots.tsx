@@ -97,9 +97,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // Form Schema
 const therapySlotSchema = z.object({
-  date: z.date({
-    required_error: "Tanggal diperlukan",
-  }),
+  date: z.union([
+    z.date({
+      required_error: "Tanggal diperlukan",
+    }),
+    z.string().refine(value => /^\d{4}-\d{2}-\d{2}$/.test(value), {
+      message: "Format tanggal harus YYYY-MM-DD",
+    })
+  ]),
   startTime: z.string({
     required_error: "Waktu mulai sesi diperlukan",
   }),
@@ -161,7 +166,18 @@ export default function TherapySlots() {
 
   // Form untuk membuat slot terapi baru
   const form = useForm<TherapySlotFormValues>({
-    resolver: zodResolver(therapySlotSchema),
+    resolver: zodResolver(
+      therapySlotSchema.refine(
+        data => {
+          // Validasi tambahan jika diperlukan
+          return true;
+        },
+        {
+          message: "Validasi tambahan",
+          path: ["date"],
+        }
+      )
+    ),
     defaultValues: {
       date: new Date(),
       startTime: "10:00",
@@ -169,11 +185,23 @@ export default function TherapySlots() {
       maxQuota: 6,
       isActive: true,
     },
+    mode: "onChange"
   });
   
   // Form untuk mengedit slot terapi
   const editForm = useForm<TherapySlotFormValues>({
-    resolver: zodResolver(therapySlotSchema),
+    resolver: zodResolver(
+      therapySlotSchema.refine(
+        data => {
+          // Validasi tambahan jika diperlukan
+          return true;
+        },
+        {
+          message: "Validasi tambahan",
+          path: ["date"],
+        }
+      )
+    ),
     defaultValues: {
       date: new Date(),
       startTime: "10:00",
@@ -181,6 +209,7 @@ export default function TherapySlots() {
       maxQuota: 6,
       isActive: true,
     },
+    mode: "onChange"
   });
 
   // State untuk filter
