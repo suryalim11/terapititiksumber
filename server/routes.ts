@@ -2845,18 +2845,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Pasien tidak ditemukan" });
       }
       
+      // Persiapkan nilai tanggal dengan benar untuk insersi database
+      console.log("Akan memasukkan data dengan treatmentDate:", validatedData.treatmentDate.toISOString());
+      
       // Buat catatan medis langsung di database untuk memastikan penanganan tanggal yang benar
       const [newHistory] = await db
         .insert(schema.medicalHistories)
         .values({
-          ...validatedData,
+          patientId: validatedData.patientId,
+          appointmentId: validatedData.appointmentId,
+          complaint: validatedData.complaint,
+          beforeBloodPressure: validatedData.beforeBloodPressure,
+          afterBloodPressure: validatedData.afterBloodPressure,
+          heartRate: validatedData.heartRate,
+          pulseRate: validatedData.pulseRate,
+          weight: validatedData.weight,
+          notes: validatedData.notes,
+          treatmentDate: validatedData.treatmentDate,
           createdAt: new Date() // Pastikan createdAt selalu diisi
         })
         .returning();
         
       console.log("Riwayat medis baru berhasil dibuat:", {
         id: newHistory.id,
-        treatmentDate: newHistory.treatmentDate
+        treatmentDate: newHistory.treatmentDate ? 
+          new Date(newHistory.treatmentDate).toISOString() : 'null'
       });
       
       return res.status(201).json(newHistory);

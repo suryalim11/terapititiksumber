@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, decimal, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -277,7 +277,8 @@ export const medicalHistories = pgTable("medical_histories", {
   pulseRate: text("pulse_rate"), // Tekanan nadi
   weight: text("weight"), // Berat badan
   notes: text("notes"),
-  treatmentDate: timestamp("treatment_date").defaultNow().notNull(),
+  // Kolom ini memiliki tipe DATE di database, jadi kita harus mendefinisikannya dengan benar
+  treatmentDate: date("treatment_date").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
