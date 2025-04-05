@@ -1877,6 +1877,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Registration Link endpoints
+  // Endpoint khusus untuk membuat link pendaftaran permanen
+  app.post("/api/registration-links/permanent", async (req: Request, res: Response) => {
+    try {
+      console.log("Permintaan pembuatan link pendaftaran permanen");
+      
+      // Use admin ID 1 for all requests
+      const userId = 1;
+      
+      // Konstanta untuk link permanen
+      const MAX_DAILY_LIMIT = 9999; // Praktis tidak terbatas
+      
+      const registrationLink = await storage.createRegistrationLink(
+        userId,
+        999999, // Waktu kedaluwarsa sangat panjang (dalam jam)
+        MAX_DAILY_LIMIT, // Limit sangat tinggi yang efektif tidak terbatas
+        undefined // Tanpa tanggal spesifik agar link bisa digunakan untuk semua slot
+      );
+      
+      // Tambahkan properti tambahan untuk UI
+      const enhancedRegistrationLink = {
+        ...registrationLink,
+        isPermanent: true,
+        displayExpiryTime: "Permanen",
+        displayDailyLimit: "Tidak terbatas"
+      };
+      
+      console.log("Link pendaftaran permanen dibuat:", registrationLink.code);
+      return res.status(201).json(enhancedRegistrationLink);
+    } catch (error) {
+      console.error("Error creating permanent registration link:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   app.post("/api/registration-links", async (req: Request, res: Response) => {
     try {
       console.log("Permintaan pembuatan link pendaftaran tunggal permanen");
@@ -1884,32 +1918,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use admin ID 1 for all requests
       const userId = 1;
 
-      // Parameter untuk link permanen
-      const dailyLimit = 100; // Limit tinggi untuk penggunaan harian
+      // Parameter khusus untuk link permanen
+      // Nilai maksimum dipakai sebagai penanda permanen tanpa batasan
+      const MAX_DAILY_LIMIT = 9999; // Praktis tanpa batas kuota harian
       
-      // Set masa aktif link sangat panjang (10 tahun)
-      const tenYearsInHours = 87600; // 10 tahun dalam jam
+      // Definisikan tanggal kedaluwarsa sangat jauh ke depan
+      // Menggunakan tanggal maksimum yang didukung JavaScript (tahun 9999)
+      const farFutureDate = new Date(9999, 11, 31, 23, 59, 59); // 31 Des 9999
       
       // Cek apakah sudah ada link pendaftaran aktif
       const existingLinks = await storage.getAllRegistrationLinks();
       const permanentLink = existingLinks.find(link => link.isActive);
       
       if (permanentLink) {
-        // Jika sudah ada link permanen, gunakan yang sudah ada
+        // Jika sudah ada link permanen, perbarui tampilan batas waktu dan kuota
         console.log("Menggunakan link permanen yang sudah ada:", permanentLink.code);
-        return res.status(200).json(permanentLink);
+        
+        // Tampilkan dengan nilai permanen yang konsisten
+        const enhancedLink = {
+          ...permanentLink,
+          dailyLimit: MAX_DAILY_LIMIT,
+          expiryTime: farFutureDate,
+          // Tambahkan tanda bahwa ini link permanen
+          isPermanent: true,
+          // Tampilan khusus untuk UI
+          displayExpiryTime: "Permanen",
+          displayDailyLimit: "Tidak terbatas"
+        };
+        
+        return res.status(200).json(enhancedLink);
       }
       
       // Jika belum ada, buat link permanen baru
+      // Karena kita tidak bisa mengubah skema database, kita akan menggunakan
+      // nilai-nilai yang menandakan bahwa ini link permanen
+      
       const registrationLink = await storage.createRegistrationLink(
         userId,
-        tenYearsInHours, // Link valid untuk 10 tahun
-        dailyLimit,
+        999999, // Waktu kedaluwarsa sangat panjang (dalam jam)
+        MAX_DAILY_LIMIT, // Limit sangat tinggi yang efektif tidak terbatas
         undefined // Tanpa tanggal spesifik agar link bisa digunakan untuk semua slot
       );
       
+      // Tambahkan properti tambahan untuk UI
+      const enhancedRegistrationLink = {
+        ...registrationLink,
+        isPermanent: true,
+        displayExpiryTime: "Permanen",
+        displayDailyLimit: "Tidak terbatas"
+      };
+      
       console.log("Link pendaftaran permanen dibuat:", registrationLink.code);
-      return res.status(201).json(registrationLink);
+      return res.status(201).json(enhancedRegistrationLink);
     } catch (error) {
       console.error("Error creating permanent registration link:", error);
       return res.status(500).json({ message: "Internal server error" });
@@ -2052,6 +2112,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return a.timeSlot.localeCompare(b.timeSlot);
       });
       
+      // Deteksi apakah ini adalah link permanen (tanggal jauh ke depan atau kuota sangat tinggi)
+      const isPermanentLink = link.dailyLimit >= 1000 || 
+                            (link.expiryTime.getFullYear() > new Date().getFullYear() + 5);
+      
       // Cek apakah ada slot yang tersedia
       if (upcomingSlots.length === 0) {
         return res.status(200).json({ 
@@ -2059,9 +2123,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Link valid, tetapi tidak ada slot terapi yang tersedia",
           availableSlots: [],
           hasAvailableSlots: false,
-          dailyLimit: link.dailyLimit,
-          currentRegistrations: link.currentRegistrations,
-          expiryTime: link.expiryTime
+          // Jika link permanen, tampilkan dengan representasi khusus
+          ...(isPermanentLink 
+            ? {
+                dailyLimit: "Tidak terbatas",
+                currentRegistrations: link.currentRegistrations,
+                displayExpiryTime: "Permanen",
+                isPermanent: true
+              }
+            : {
+                dailyLimit: link.dailyLimit,
+                currentRegistrations: link.currentRegistrations,
+                expiryTime: link.expiryTime
+              }
+          )
         });
       }
       
@@ -2071,9 +2146,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Link pendaftaran valid",
         availableSlots: upcomingSlots,
         hasAvailableSlots: true,
-        dailyLimit: link.dailyLimit,
-        currentRegistrations: link.currentRegistrations,
-        expiryTime: link.expiryTime
+        // Jika link permanen, tampilkan dengan representasi khusus
+        ...(isPermanentLink 
+          ? {
+              dailyLimit: "Tidak terbatas",
+              currentRegistrations: link.currentRegistrations,
+              displayExpiryTime: "Permanen", 
+              isPermanent: true
+            }
+          : {
+              dailyLimit: link.dailyLimit,
+              currentRegistrations: link.currentRegistrations,
+              expiryTime: link.expiryTime
+            }
+        )
       });
       
     } catch (error) {

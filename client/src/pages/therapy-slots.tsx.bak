@@ -1697,7 +1697,7 @@ export default function TherapySlots() {
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                className="h-12 sm:h-10"
+                                className="h-12"
                                 onClick={() => {
                                   const publicUrl = window.location.origin;
                                   const registrationUrl = `${publicUrl}/register?code=${link.code}`;
@@ -1711,37 +1711,34 @@ export default function TherapySlots() {
                                 <Copy className="h-4 w-4 mr-2" />
                                 Salin Link
                               </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="outline" size="icon" className="h-12 sm:h-10 ml-2">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                                  {link.isActive && (
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        setLinkToDeactivate(link.id);
-                                        setIsDeactivateDialogOpen(true);
-                                      }}
-                                    >
-                                      <Ban className="h-4 w-4 mr-2" />
-                                      Nonaktifkan
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuItem
+                              <div className="space-x-2">
+                                {link.isActive && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="h-12 border-red-200 text-red-700"
                                     onClick={() => {
-                                      setLinkToDelete(link.id);
-                                      setIsDeleteDialogOpen(true);
+                                      setLinkToDeactivate(link.id);
+                                      setIsDeactivateDialogOpen(true);
                                     }}
-                                    className="text-red-600"
                                   >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Hapus Link
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                                    <Ban className="h-4 w-4 mr-2" />
+                                    Nonaktifkan
+                                  </Button>
+                                )}
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="h-12 border-red-200 text-red-700"
+                                  onClick={() => {
+                                    setLinkToDelete(link.id);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Hapus
+                                </Button>
+                              </div>
                             </CardFooter>
                           </Card>
                         );
@@ -1976,8 +1973,8 @@ export default function TherapySlots() {
                 try {
                   if (!linkToDeactivate) return;
                   
-                  const response = await fetch(`/api/registration-links/deactivate/${linkToDeactivate}`, {
-                    method: "POST",
+                  const response = await fetch(`/api/registration-links/${linkToDeactivate}/deactivate`, {
+                    method: "PUT",
                   });
 
                   if (response.ok) {
