@@ -372,7 +372,7 @@ export function PatientForm({
                 <Textarea 
                   placeholder="Masukkan alamat" 
                   autoComplete="street-address"
-                  className="min-h-[80px] p-4"
+                  className="min-h-[80px] p-3 md:p-4"
                   {...field} 
                 />
               </FormControl>
@@ -390,7 +390,7 @@ export function PatientForm({
               <FormControl>
                 <Textarea 
                   placeholder="Keluhan yang dirasakan pasien saat ini" 
-                  className="min-h-[100px] p-4"
+                  className="min-h-[100px] p-3 md:p-4"
                   {...field} 
                 />
               </FormControl>

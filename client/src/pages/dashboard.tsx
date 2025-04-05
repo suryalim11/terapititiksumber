@@ -241,62 +241,114 @@ export default function Dashboard() {
                   </div>
                 ) : slotsByPeriod.length > 0 ? (
                   <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
-                    <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-background">
-                        <tr className="border-b text-muted-foreground">
-                          <th className="pb-2 font-medium text-left">Tanggal / Waktu</th>
-                          <th className="pb-2 font-medium text-center">Kuota</th>
-                          <th className="pb-2 font-medium text-center">Terisi</th>
-                          <th className="pb-2 font-medium text-right">Persentase</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {slotsByPeriod.map((slot: any) => (
-                          <tr 
-                            key={slot.id} 
-                            className="py-2 hover:bg-muted/50 cursor-pointer transition-colors"
-                            onClick={() => handleSlotClick(slot.id)}
-                          >
-                            <td className="py-3 text-left">
-                              <div className="flex flex-col">
-                                <span>{slot.timeSlot}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {slot.date ? formatDateDDMMYYYY(slot.date) : '-'}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3 text-center">{slot.maxQuota}</td>
-                            <td className="py-3 text-center">{slot.currentCount}</td>
-                            <td className="py-3 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <div className="w-16">
-                                  <Progress 
-                                    value={slot.percentage} 
-                                    max={100} 
-                                    className={cn(
-                                      "h-2",
-                                      slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 75 ? "bg-amber-200" : "bg-primary/20")
-                                    )}
-                                    indicatorClassName={
-                                      slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 75 ? "bg-amber-500" : "bg-primary")
-                                    }
-                                  />
-                                </div>
-                                <span className={cn(
-                                  "text-xs",
-                                  slot.percentage >= 100 ? "text-red-600" : (slot.percentage > 75 ? "text-amber-600" : "")
-                                )}>
-                                  {Math.round(slot.percentage)}%
-                                </span>
-                                {slot.percentage >= 100 && (
-                                  <AlertCircle className="h-3 w-3 text-red-500" />
-                                )}
-                              </div>
-                            </td>
+                    {/* Table view for desktop */}
+                    <div className="hidden md:block">
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-background">
+                          <tr className="border-b text-muted-foreground">
+                            <th className="pb-2 font-medium text-left">Tanggal / Waktu</th>
+                            <th className="pb-2 font-medium text-center">Kuota</th>
+                            <th className="pb-2 font-medium text-center">Terisi</th>
+                            <th className="pb-2 font-medium text-right">Persentase</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y">
+                          {slotsByPeriod.map((slot: any) => (
+                            <tr 
+                              key={slot.id} 
+                              className="py-2 hover:bg-muted/50 cursor-pointer transition-colors"
+                              onClick={() => handleSlotClick(slot.id)}
+                            >
+                              <td className="py-3 text-left">
+                                <div className="flex flex-col">
+                                  <span>{slot.timeSlot}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {slot.date ? formatDateDDMMYYYY(slot.date) : '-'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-3 text-center">{slot.maxQuota}</td>
+                              <td className="py-3 text-center">{slot.currentCount}</td>
+                              <td className="py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <div className="w-16">
+                                    <Progress 
+                                      value={slot.percentage} 
+                                      max={100} 
+                                      className={cn(
+                                        "h-2",
+                                        slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 75 ? "bg-amber-200" : "bg-primary/20")
+                                      )}
+                                      indicatorClassName={
+                                        slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 75 ? "bg-amber-500" : "bg-primary")
+                                      }
+                                    />
+                                  </div>
+                                  <span className={cn(
+                                    "text-xs",
+                                    slot.percentage >= 100 ? "text-red-600" : (slot.percentage > 75 ? "text-amber-600" : "")
+                                  )}>
+                                    {Math.round(slot.percentage)}%
+                                  </span>
+                                  {slot.percentage >= 100 && (
+                                    <AlertCircle className="h-3 w-3 text-red-500" />
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* Card view for mobile */}
+                    <div className="grid grid-cols-1 gap-3 md:hidden">
+                      {slotsByPeriod.map((slot: any) => (
+                        <div 
+                          key={slot.id}
+                          className="border rounded-lg p-3 hover:bg-muted/50 cursor-pointer transition-colors"
+                          onClick={() => handleSlotClick(slot.id)}
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <div>
+                              <div className="font-medium">{slot.timeSlot}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {slot.date ? formatDateDDMMYYYY(slot.date) : '-'}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm">
+                                <span className="font-medium">{slot.currentCount}</span>
+                                <span className="text-muted-foreground"> / {slot.maxQuota}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 mt-2">
+                            <Progress 
+                              value={slot.percentage} 
+                              max={100} 
+                              className={cn(
+                                "h-2 flex-1",
+                                slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 75 ? "bg-amber-200" : "bg-primary/20")
+                              )}
+                              indicatorClassName={
+                                slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 75 ? "bg-amber-500" : "bg-primary")
+                              }
+                            />
+                            <span className={cn(
+                              "text-xs font-medium",
+                              slot.percentage >= 100 ? "text-red-600" : (slot.percentage > 75 ? "text-amber-600" : "")
+                            )}>
+                              {Math.round(slot.percentage)}%
+                            </span>
+                            {slot.percentage >= 100 && (
+                              <AlertCircle className="h-3 w-3 text-red-500" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="rounded-lg border border-dashed p-8 text-center">
@@ -351,14 +403,15 @@ export default function Dashboard() {
             <div className="space-y-4">
               {activePackages.map((pkg) => (
                 <div key={pkg.id} className="border rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between items-center">
+                  {/* Tampilan desktop dan mobile yang responsif */}
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
                     <div>
                       <div className="font-medium">{pkg.patient?.name || 'Unknown Patient'}</div>
                       <div className="text-sm text-muted-foreground">
                         ID: {pkg.patient?.patientId || 'Unknown'}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className={cn("md:text-right", "text-left mt-1 md:mt-0")}>
                       <div className="font-medium">{pkg.package?.name || 'Unknown Package'}</div>
                       <div className="text-sm text-muted-foreground">
                         {pkg.sessionsUsed} dari {pkg.totalSessions} sesi
@@ -373,14 +426,14 @@ export default function Dashboard() {
                     indicatorClassName={pkg.progress >= 90 ? "bg-green-500" : "bg-primary"}
                   />
                   
-                  <div className="flex justify-between items-center text-xs">
-                    <div>
+                  <div className="flex flex-col md:flex-row justify-between text-xs gap-2">
+                    <div className="flex gap-1 md:gap-0 md:block">
                       <span className="text-muted-foreground">Mulai: </span>
-                      {pkg.startDate ? formatDateDDMMYYYY(pkg.startDate) : '-'}
+                      <span>{pkg.startDate ? formatDateDDMMYYYY(pkg.startDate) : '-'}</span>
                     </div>
-                    <div>
+                    <div className="flex gap-1 md:gap-0 md:block">
                       <span className="text-muted-foreground">Terakhir: </span>
-                      {pkg.lastSessionDate ? formatDateDDMMYYYY(pkg.lastSessionDate) : '-'}
+                      <span>{pkg.lastSessionDate ? formatDateDDMMYYYY(pkg.lastSessionDate) : '-'}</span>
                     </div>
                     <div className="font-medium">
                       {pkg.progress}%
@@ -390,7 +443,7 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed p-8 text-center">
+            <div className="rounded-lg border border-dashed p-6 md:p-8 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                 <PackageIcon className="h-6 w-6 text-primary" />
               </div>

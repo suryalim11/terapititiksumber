@@ -71,12 +71,12 @@ export default function Layout({ children }: LayoutProps) {
       {/* Sidebar for desktop */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-200 ease-in-out",
+          "fixed inset-y-0 left-0 z-50 w-72 md:w-64 transform border-r bg-card transition-transform duration-200 ease-in-out overflow-y-auto",
           isMobile ? "-translate-x-full" : "translate-x-0",
           sidebarOpen && "translate-x-0"
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b px-4">
+        <div className="sticky top-0 z-10 flex h-16 items-center justify-between border-b px-4 bg-card">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-6 w-6 text-primary" />
             <h1 className="text-xl font-bold">Terapi Titik Sumber</h1>
@@ -84,7 +84,7 @@ export default function Layout({ children }: LayoutProps) {
           {isMobile && (
             <button
               onClick={toggleSidebar}
-              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               <X className="h-5 w-5" />
             </button>
@@ -153,32 +153,32 @@ export default function Layout({ children }: LayoutProps) {
           {isMobile && (
             <button
               onClick={toggleSidebar}
-              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               <Menu className="h-5 w-5" />
             </button>
           )}
-          <div className="ml-auto flex items-center gap-4">
+          <div className="ml-auto flex items-center gap-2 md:gap-4">
             {isAuthenticated && user ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="hidden md:flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">
                     {user.name}
                   </span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                    {user.name
-                      .split(" ")
-                      .map((n: string) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .substring(0, 2)}
-                  </div>
+                </div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  {user.name
+                    .split(" ")
+                    .map((n: string) => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .substring(0, 2)}
                 </div>
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={handleLogout}
-                  className="flex items-center gap-1"
+                  className="flex items-center gap-1 h-8 px-2 md:px-3"
                 >
                   <LogOut className="h-4 w-4" />
                   <span className="hidden sm:inline">Logout</span>
@@ -193,7 +193,7 @@ export default function Layout({ children }: LayoutProps) {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-3 md:p-6">{children}</main>
       </div>
     </div>
   );
