@@ -20,11 +20,14 @@ export async function handleTherapySlotsBatch(req: Request, res: Response) {
     const creationResults = [];
     const errors = [];
     
+    console.log(`Membuat ${slots.length} slot terapi secara batch`);
+    
     // Proses setiap slot
     for (const slotData of slots) {
       try {
         // Validasi data slot
         if (!slotData.date || !slotData.timeSlot || !slotData.maxQuota) {
+          console.log(`Validasi gagal untuk slot: ${JSON.stringify(slotData)}`);
           errors.push({
             slot: slotData,
             error: "Missing required fields (date, timeSlot, or maxQuota)"
@@ -32,14 +35,24 @@ export async function handleTherapySlotsBatch(req: Request, res: Response) {
           continue;
         }
         
+        // Log detail permintaan
+        console.log(`Memproses slot: date=${slotData.date} (${typeof slotData.date}), timeSlot=${slotData.timeSlot}, maxQuota=${slotData.maxQuota}`);
+        
         // Cek apakah kombinasi tanggal dan waktu sudah ada
         const existingSlots = await storage.getTherapySlotsByDate(new Date(slotData.date));
-        const slotExists = existingSlots.some(slot => 
-          slot.timeSlot === slotData.timeSlot && 
-          new Date(slot.date).toDateString() === new Date(slotData.date).toDateString()
-        );
+        console.log(`Ditemukan ${existingSlots.length} slot yang sudah ada pada tanggal ${slotData.date}`);
+        
+        const slotExists = existingSlots.some(slot => {
+          const existingDate = new Date(slot.date).toDateString();
+          const newDate = new Date(slotData.date).toDateString();
+          const isSameTimeSlot = slot.timeSlot === slotData.timeSlot;
+          const isSameDate = existingDate === newDate;
+          console.log(`Perbandingan: existingDate=${existingDate}, newDate=${newDate}, isSameTimeSlot=${isSameTimeSlot}, isSameDate=${isSameDate}`);
+          return isSameTimeSlot && isSameDate;
+        });
         
         if (slotExists) {
+          console.log(`Slot terapi sudah ada untuk date=${slotData.date}, timeSlot=${slotData.timeSlot}`);
           errors.push({
             slot: slotData,
             error: "Therapy slot with this date and time already exists"

@@ -112,9 +112,13 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
       // Buat array request untuk setiap kombinasi tanggal dan slot waktu
       const requests = [];
       
-      for (const date of dates) {
+      console.log("------------- MEMBUAT BATCH SLOTS -------------");
+      console.log("Base date:", data.startDate);
+      
+      for (let i = 0; i < dates.length; i++) {
+        const date = dates[i];
         const formattedDate = fixTimezone(date);
-        console.log(`Batch dialog formattedDate: ${formattedDate}, type: ${typeof formattedDate}`);
+        console.log(`Slot date for day ${i}:`, formattedDate);
         
         for (const slot of data.slots) {
           const timeSlot = `${slot.startTime}-${slot.endTime}`;
