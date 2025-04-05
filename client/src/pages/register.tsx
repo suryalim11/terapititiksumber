@@ -366,9 +366,16 @@ export default function RegisterPage() {
         if (data.availableSlots && data.availableSlots.length > 0) {
           console.log("📋 Slot terapi ditemukan:", data.availableSlots.length, "slot");
           // Gunakan data slot terapi langsung dari respons verifikasi
-          const { queryClient } = require("@/lib/queryClient");
-          if (queryClient && data.availableSlots) {
-            queryClient.setQueryData(['/api/therapy-slots', 'available-active'], data.availableSlots);
+          try {
+            // Import queryClient dari context React daripada menggunakan require
+            import("@/lib/queryClient").then(({ queryClient }) => {
+              if (queryClient && data.availableSlots) {
+                queryClient.setQueryData(['/api/therapy-slots', 'available-active'], data.availableSlots);
+                console.log("✅ Cache slot terapi berhasil diperbarui");
+              }
+            });
+          } catch (importError) {
+            console.error("❌ Error importing queryClient:", importError);
           }
         } else if (data.hasAvailableSlots === false) {
           // Jika respons eksplisit menyatakan tidak ada slot tersedia
