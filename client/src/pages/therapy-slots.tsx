@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { format, addDays, parseISO, set, parse } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -118,6 +118,14 @@ export default function TherapySlots() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  
+  // Effect untuk memastikan tanggal selalu terbaru saat komponen dirender
+  useEffect(() => {
+    // Update tanggal saat komponen pertama kali dimount
+    const currentDate = format(new Date(), 'yyyy-MM-dd');
+    setDate(currentDate);
+    console.log("Tanggal hari ini diperbarui:", currentDate);
+  }, []);
   const [selectedSlot, setSelectedSlot] = useState<TherapySlot | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
