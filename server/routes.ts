@@ -2071,23 +2071,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { code } = req.body as VerifyRegistrationLinkBody;
       
       if (!code) {
+        console.log("Kode pendaftaran tidak ditemukan di body request");
         return res.status(400).json({ valid: false, message: "Kode pendaftaran diperlukan" });
       }
+      
+      // Log untuk debugging
+      console.log("Verifikasi link pendaftaran:", {
+        code,
+        dailyLimit: 9999,
+        expiryTime: "2139-05-05T11:21:55.485Z",
+        currentYear: new Date().getFullYear(),
+        expiryYear: 2139
+      });
       
       const link = await storage.getRegistrationLinkByCode(code);
       
       if (!link) {
+        console.log("Link dengan kode", code, "tidak ditemukan di database");
         return res.status(404).json({ valid: false, message: "Kode pendaftaran tidak valid" });
       }
       
       // Check if link is active
       if (!link.isActive) {
+        console.log("Link dengan kode", code, "sudah tidak aktif");
         return res.status(400).json({ valid: false, message: "Link pendaftaran sudah tidak aktif" });
       }
       
       // Check if link is expired
       const now = new Date();
       if (now > link.expiryTime) {
+        console.log("Link dengan kode", code, "sudah kedaluwarsa pada", link.expiryTime);
         return res.status(400).json({ valid: false, message: "Link pendaftaran sudah kedaluwarsa" });
       }
       

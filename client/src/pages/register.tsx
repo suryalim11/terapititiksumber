@@ -280,7 +280,7 @@ export default function RegisterPage() {
       console.log("Memverifikasi kode pendaftaran:", code);
       console.log("Menggunakan fetch API dengan mode no-cache");
       
-      // Tambahkan timestamp untuk menghindari caching
+      // Tambahkan timestamp untuk menghindari caching di browser
       const timestamp = new Date().getTime();
       const response = await fetch(`/api/verify-registration-link?_t=${timestamp}`, {
         method: 'POST',
@@ -343,8 +343,18 @@ export default function RegisterPage() {
         // Tetap muat slot terapi dengan refetchTherapySlots jika diperlukan
         refetchTherapySlots();
       } else {
-        // Handle berbagai skenario error berdasarkan pesan
-        if (data.status === "quota-reached") {
+        console.log("Verifikasi gagal dengan data:", data);
+        // Handle berbagai skenario error berdasarkan pesan dan status valid
+        if (data.valid === false) {
+          // Respons dengan valid=false dan status kode
+          setRegistrationStatus("error");
+          toast({
+            variant: "destructive",
+            title: "Verifikasi Gagal",
+            description: data.message || "Terjadi kesalahan saat memverifikasi kode pendaftaran.",
+          });
+        }
+        else if (data.status === "quota-reached") {
           setRegistrationStatus("quota-reached");
           if (data.dailyLimit) setRegistrationLimit(data.dailyLimit);
           if (data.currentRegistrations !== undefined) setCurrentRegistrations(data.currentRegistrations);
