@@ -122,9 +122,15 @@ export default function TherapySlots() {
   // Effect untuk memastikan tanggal selalu terbaru saat komponen dirender
   useEffect(() => {
     // Update tanggal saat komponen pertama kali dimount
-    const currentDate = format(new Date(), 'yyyy-MM-dd');
+    const todayDate = new Date();
+    const currentDate = format(todayDate, 'yyyy-MM-dd');
+    console.log("Memperbarui tanggal ke hari ini:", currentDate);
+    console.log("Hari ini adalah tanggal:", todayDate.toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }));
     setDate(currentDate);
-    console.log("Tanggal hari ini diperbarui:", currentDate);
   }, []);
   const [selectedSlot, setSelectedSlot] = useState<TherapySlot | null>(null);
   const { toast } = useToast();
