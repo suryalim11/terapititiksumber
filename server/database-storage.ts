@@ -1198,8 +1198,51 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTherapySlot(slot: InsertTherapySlot): Promise<TherapySlot> {
-    const result = await db.insert(schema.therapySlots).values(slot).returning();
-    return result[0];
+    try {
+      // Pastikan jika date adalah string, gunakan string tersebut
+      // Ini untuk mencegah error "value.toISOString is not a function"
+      if (typeof slot.date === 'string') {
+        console.log(`Creating therapy slot with string date: ${slot.date}`);
+        
+        // Pastikan format tanggal dalam bentuk yang benar (YYYY-MM-DD)
+        let dateString = slot.date;
+        // Jika slot.date dalam format lain (misalnya DD-MM-YYYY), konversi ke YYYY-MM-DD
+        if (slot.date.includes('/') || slot.date.includes('-') && slot.date.split('-')[0].length !== 4) {
+          const parts = slot.date.split(/[-\/]/);
+          if (parts.length === 3) {
+            // Asumsi format DD-MM-YYYY atau DD/MM/YYYY
+            if (parts[0].length <= 2 && parts[1].length <= 2 && parts[2].length === 4) {
+              dateString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+              console.log(`Converted date format from ${slot.date} to ${dateString}`);
+            }
+          }
+        }
+        
+        // Jalankan query dengan nilai yang sudah divalidasi
+        const result = await db.insert(schema.therapySlots).values({
+          ...slot,
+          date: dateString
+        }).returning();
+        
+        return result[0];
+      } else {
+        // Jika date adalah objek Date, konversi ke string ISO
+        const dateObj = slot.date as unknown as Date;
+        const isoString = dateObj.toISOString().split('T')[0];
+        console.log(`Creating therapy slot with Date object, converted to ISO string: ${isoString}`);
+        
+        const result = await db.insert(schema.therapySlots).values({
+          ...slot,
+          date: isoString
+        }).returning();
+        
+        return result[0];
+      }
+    } catch (error) {
+      console.error(`Error in createTherapySlot: ${error}`);
+      console.error(`Slot data: ${JSON.stringify(slot)}`);
+      throw error;
+    }
   }
 
   async updateTherapySlot(id: number, slot: Partial<InsertTherapySlot>): Promise<TherapySlot | undefined> {
