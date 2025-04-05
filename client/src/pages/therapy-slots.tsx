@@ -361,9 +361,13 @@ export default function TherapySlots() {
   // Membuat slot terapi untuk beberapa hari ke depan
   const createBatchSlots = async (days: number, timeSlots: {time: string, quota: number}[]) => {
     try {
+      console.log("------------- MEMBUAT BATCH SLOTS -------------");
       // Pastikan kita menggunakan Date object di sini untuk perhitungan
       const baseDate = typeof date === 'string' ? parseISO(date) : (date || new Date());
-      const creationPromises = [];
+      console.log("Base date:", baseDate);
+      
+      // Kumpulkan semua slot yang akan dibuat
+      const slots = [];
 
       for (let i = 0; i < days; i++) {
         const slotDate = addDays(baseDate, i);
@@ -373,41 +377,43 @@ export default function TherapySlots() {
         
         // Gunakan fixTimezone untuk mendapatkan format 'yyyy-MM-dd' yang konsisten
         const slotDateString = fixTimezone(slotDate);
+        console.log(`Slot date for day ${i}:`, slotDateString);
         
         // Create all time slots for this day
         for (const slot of timeSlots) {
-          const slotData = {
+          slots.push({
             date: slotDateString, // Kirim string, bukan Date object
             timeSlot: slot.time,
             maxQuota: slot.quota,
             isActive: true,
-          };
-
-          creationPromises.push(
-            fetch("/api/therapy-slots", {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(slotData)
-            })
-          );
+          });
         }
       }
-
-      const results = await Promise.all(creationPromises);
       
-      // Check if any request failed
-      for (const res of results) {
-        if (!res.ok) {
-          throw new Error('Failed to create one or more therapy slots');
-        }
+      console.log(`Membuat ${slots.length} slot terapi secara batch`);
+      
+      // Kirim semua slot dalam satu request batch
+      const response = await fetch("/api/therapy-slots/batch", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slots })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal membuat slot terapi batch');
       }
+      
+      const result = await response.json();
+      console.log("Hasil batch creation:", result);
       
       queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
       toast({
         title: "Berhasil!",
-        description: `Slot terapi untuk ${days} hari ke depan telah dibuat.`,
+        description: `${result.createdCount || 0} slot terapi untuk ${days} hari ke depan telah dibuat.`,
       });
     } catch (error) {
+      console.error("Error dalam createBatchSlots:", error);
       toast({
         title: "Gagal membuat batch slot",
         description: error instanceof Error ? error.message : "Terjadi kesalahan",
