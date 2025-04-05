@@ -193,7 +193,7 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                 {medicalHistories.map((history) => (
                   <TableRow key={history.id}>
                     <TableCell>
-                      {format(new Date(history.treatmentDate), "dd/MM/yyyy", {
+                      {format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
                         locale: idLocale,
                       })}
                     </TableCell>
