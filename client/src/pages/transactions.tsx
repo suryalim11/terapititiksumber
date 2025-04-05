@@ -209,13 +209,15 @@ export default function Transactions() {
       
       // KOREKSI ZONA WAKTU:
       // Dari pengujian, tanggal dari database perlu dikurangi 14 jam
-      // untuk mendapatkan waktu yang benar di WIB
+      // kemudian ditambahkan 7 jam untuk mendapatkan waktu WIB yang benar
       let date;
       if (dateString.includes('T')) {
         // Format ISO (2025-04-03T12:56:44.699Z)
         date = new Date(dateString);
         // Kurangi 14 jam sesuai koreksi
         date = new Date(date.getTime() - (14 * 60 * 60 * 1000));
+        // Tambahkan 7 jam untuk WIB
+        date = new Date(date.getTime() + (7 * 60 * 60 * 1000));
       } else {
         // Format SQL (2025-04-03 12:56:44.699)
         const parts = dateString.split(' ');
@@ -225,15 +227,19 @@ export default function Transactions() {
           date = new Date(isoString);
           // Kurangi 14 jam sesuai koreksi
           date = new Date(date.getTime() - (14 * 60 * 60 * 1000));
+          // Tambahkan 7 jam untuk WIB
+          date = new Date(date.getTime() + (7 * 60 * 60 * 1000));
         } else {
           // Fallback untuk format lain
           date = new Date(dateString);
           // Kurangi 14 jam sesuai koreksi
           date = new Date(date.getTime() - (14 * 60 * 60 * 1000));
+          // Tambahkan 7 jam untuk WIB
+          date = new Date(date.getTime() + (7 * 60 * 60 * 1000));
         }
       }
       
-      console.log("Original:", dateString, "-> Corrected date:", date.toISOString());
+      console.log("Original:", dateString, "-> Corrected date (WIB):", date.toISOString());
       
       // Format dengan locale Indonesia
       return format(date, "dd/MM/yyyy HH:mm", { locale: id });
