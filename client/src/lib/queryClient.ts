@@ -48,11 +48,17 @@ export const getQueryFn = <T,>({ on401: unauthorizedBehavior }: {
   on401: UnauthorizedBehavior;
 }): QueryFunction<T> => {
   return async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    const url = queryKey[0] as string;
+    console.log(`Fetching data with getQueryFn: ${url}`);
+    
+    const res = await fetch(url, {
       credentials: "include",
     });
+    
+    console.log(`Response for ${url}: status=${res.status}`);
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+      console.log(`401 Unauthorized for ${url}, returning null as configured`);
       return null as unknown as T;
     }
 
@@ -62,9 +68,13 @@ export const getQueryFn = <T,>({ on401: unauthorizedBehavior }: {
     
     try {
       // Parse JSON dari response asli
-      return await res.json() as T;
+      const data = await res.json() as T;
+      console.log(`Successfully parsed data from ${url}:`, 
+        Array.isArray(data) ? `Array with ${data.length} items` : 
+        (data === null ? 'null' : typeof data));
+      return data;
     } catch (error) {
-      console.warn("Failed to parse query response as JSON:", error);
+      console.warn(`Failed to parse query response from ${url} as JSON:`, error);
       return {} as unknown as T;
     }
   };

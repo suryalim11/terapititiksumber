@@ -43,13 +43,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
+        console.log("Memeriksa status autentikasi...");
         const response = await apiRequest<AuthResponse>("/api/auth/status", {
           method: "GET",
         });
         
+        console.log("Status autentikasi:", response.authenticated);
+        
         if (response.authenticated && response.user) {
+          console.log("Pengguna terautentikasi:", response.user.username);
           setUser(response.user);
         } else {
+          console.log("Pengguna tidak terautentikasi");
           setUser(null);
         }
       } catch (error) {

@@ -281,6 +281,19 @@ export default function Transactions() {
   };
   
   // Filter dan sort transaksi berdasarkan pencarian, periode, dan urutan
+  // Log data yang diterima
+  useEffect(() => {
+    if (transactions) {
+      console.log("Data transaksi tersedia:", transactions.length);
+    } else {
+      console.log("Data transaksi belum tersedia");
+    }
+    
+    if (patients) {
+      console.log("Data pasien tersedia:", patients.length);
+    }
+  }, [transactions, patients]);
+  
   const filteredTransactions = transactions 
     ? transactions
         .filter((transaction: Transaction) => {
