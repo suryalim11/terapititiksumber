@@ -466,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               therapySlotId: therapySlotId,
               notes: validatedData.complaints,
               status: "Scheduled",
-              date: new Date(therapySlot.date),
+              date: therapySlot.date, // Gunakan langsung dalam format string
               timeSlot: therapySlot.timeSlot,
               sessionId: null,
               registrationNumber: null

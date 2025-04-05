@@ -1346,27 +1346,30 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getAppointmentsByDate(date: Date): Promise<Appointment[]> {
-    // Perbaikan: Buat rentang tanggal untuk satu hari penuh (00:00:00 hingga 23:59:59)
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const day = date.getDate();
+  async getAppointmentsByDate(date: Date | string): Promise<Appointment[]> {
+    // Ekstrak tanggal dalam format YYYY-MM-DD
+    let dateStr: string;
     
-    const startDate = new Date(year, month, day, 0, 0, 0, 0);
-    const endDate = new Date(year, month, day, 23, 59, 59, 999);
+    if (typeof date === 'string') {
+      dateStr = date;
+    } else if (date instanceof Date) {
+      dateStr = date.toISOString().split('T')[0];
+    } else {
+      // Fallback ke hari ini
+      dateStr = new Date().toISOString().split('T')[0];
+    }
     
-    console.log(`Fetching appointments for date: ${date.toISOString().split('T')[0]}`);
-    console.log(`Start date: ${startDate.toISOString()}, End date: ${endDate.toISOString()}`);
+    console.log(`Fetching appointments for date: ${dateStr}`);
     
+    // Query berdasarkan string date, tanpa perlu konversi ke Date object
     const appointments = await db.query.appointments.findMany({
       where: and(
-        gte(schema.appointments.date, startDate),
-        lte(schema.appointments.date, endDate),
+        eq(schema.appointments.date, dateStr),
         not(eq(schema.appointments.status, "Cancelled")) // Filter out cancelled appointments
       )
     });
     
-    console.log(`Found ${appointments.length} appointments for date ${date.toISOString().split('T')[0]}`);
+    console.log(`Found ${appointments.length} appointments for date ${dateStr}`);
     
     return appointments;
   }
@@ -1445,13 +1448,21 @@ export class DatabaseStorage implements IStorage {
     if (appointment.therapySlotId) {
       const therapySlot = await this.getTherapySlot(appointment.therapySlotId);
       if (therapySlot) {
+        // Sudah dipastikan therapySlot.date adalah string
         appointmentDate = therapySlot.date;
         console.log(`[APPOINTMENT] Using therapy slot date: ${appointmentDate} for new appointment`);
       }
     }
     
+    // Konversi appointmentDate ke string jika masih berupa Date
+    let dateStr = typeof appointmentDate === 'string' 
+      ? appointmentDate 
+      : appointmentDate instanceof Date 
+        ? format(appointmentDate, 'yyyy-MM-dd')
+        : format(new Date(), 'yyyy-MM-dd'); // Fallback ke hari ini jika tidak ada
+    
     // Log untuk debugging
-    console.log(`[APPOINTMENT] Creating appointment with date: ${appointmentDate}`);
+    console.log(`[APPOINTMENT] Creating appointment with date: ${dateStr} (${typeof dateStr})`);
     
     // Pastikan date menggunakan zona waktu WIB untuk konsistensi
     const result = await db.insert(schema.appointments)
@@ -1459,7 +1470,7 @@ export class DatabaseStorage implements IStorage {
         patientId: appointment.patientId,
         sessionId: appointment.sessionId,
         therapySlotId: appointment.therapySlotId,
-        date: appointmentDate, // Gunakan tanggal therapy slot
+        date: dateStr, // Gunakan string untuk format tanggal
         timeSlot: appointment.timeSlot,
         notes: appointment.notes,
         status: appointment.status,
@@ -1467,11 +1478,8 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     
-    // Konversi date ke WIB untuk tampilan
-    return {
-      ...result[0],
-      date: getWIBDate(result[0].date)
-    };
+    // Tidak perlu lagi konversi date karena sudah disimpan sebagai string
+    return result[0];
   }
   
   /**
@@ -1497,16 +1505,20 @@ export class DatabaseStorage implements IStorage {
             const therapySlot = await this.getTherapySlot(appointment.therapySlotId);
             
             if (therapySlot) {
-              // Bandingkan tanggal appointment dengan tanggal therapy slot
-              const appointmentDate = new Date(appointment.date).toISOString().split('T')[0];
-              const therapySlotDate = new Date(therapySlot.date).toISOString().split('T')[0];
+              // Sekarang, appointment.date dan therapySlot.date sudah dalam bentuk string
+              // Kita bisa membandingkannya langsung
+              const appointmentDate = typeof appointment.date === 'string' 
+                ? appointment.date 
+                : new Date(appointment.date).toISOString().split('T')[0];
+                
+              const therapySlotDate = therapySlot.date;
               
               if (appointmentDate !== therapySlotDate) {
                 console.log(`Fixing appointment ${appointment.id}: changing date from ${appointmentDate} to ${therapySlotDate}`);
                 
                 // Perbarui tanggal appointment agar sesuai dengan tanggal therapy slot
                 await db.update(schema.appointments)
-                  .set({ date: therapySlot.date })
+                  .set({ date: therapySlotDate })
                   .where(eq(schema.appointments.id, appointment.id));
                 
                 fixedCount++;
@@ -1828,14 +1840,25 @@ export class DatabaseStorage implements IStorage {
           const patient = patientMap.get(appointment.patientId);
           
           if (patient) {
-            const appointmentDate = new Date(appointment.date);
-            const dateStr = formatDateString(appointmentDate);
+            // Konversi string date menjadi Date object jika dibutuhkan
+            let appointmentDate: Date;
+            let dateStr: string;
+            
+            if (typeof appointment.date === 'string') {
+              // Jika date sudah string format YYYY-MM-DD, gunakan langsung
+              dateStr = appointment.date;
+              appointmentDate = new Date(appointment.date);
+            } else {
+              // Fallback jika appointment.date adalah Date object (seharusnya tidak terjadi lagi)
+              appointmentDate = new Date(appointment.date);
+              dateStr = formatDateString(appointmentDate);
+            }
             
             activities.push({
               id: 1000 + appointment.id, // Menambahkan offset untuk menghindari konflik ID
               type: "appointment",
-              description: `${patient.name} terjadwal untuk sesi terapi`,
-              timestamp: getWIBDate(appointmentDate).toISOString()
+              description: `${patient.name} terjadwal untuk sesi terapi pada ${dateStr}`,
+              timestamp: new Date().toISOString() // Fallback ke waktu sekarang
             });
           }
         }
@@ -1875,15 +1898,38 @@ export class DatabaseStorage implements IStorage {
         .where(eq(medicalHistories.patientId, patientId))
         .orderBy(desc(medicalHistories.treatmentDate));
       
-      // Pastikan setiap record memiliki treatmentDate yang valid
+      // Pastikan setiap record memiliki treatmentDate yang valid sebagai string
       const validRecords = records.map(record => {
-        // Jika treatmentDate null atau 1970, gunakan created_at sebagai fallback
-        if (!record.treatmentDate || new Date(record.treatmentDate).getFullYear() <= 1970) {
+        // Periksa apakah treatmentDate masih valid
+        if (!record.treatmentDate) {
+          // Jika tidak ada treatmentDate, gunakan createdAt sebagai string format YYYY-MM-DD
+          const createdAtStr = new Date(record.createdAt).toISOString().split('T')[0];
           return {
             ...record,
-            treatmentDate: record.createdAt
+            treatmentDate: createdAtStr
+          };
+        } else if (typeof record.treatmentDate === 'string') {
+          // Jika sudah string, pastikan ini valid
+          const testDate = new Date(record.treatmentDate);
+          if (isNaN(testDate.getTime()) || testDate.getFullYear() <= 1970) {
+            // String tidak valid, gunakan createdAt
+            const createdAtStr = new Date(record.createdAt).toISOString().split('T')[0];
+            return {
+              ...record,
+              treatmentDate: createdAtStr
+            };
+          }
+          // String sudah valid, gunakan apa adanya
+          return record;
+        } else if (record.treatmentDate instanceof Date) {
+          // Jika Date object, konversi ke string
+          return {
+            ...record,
+            treatmentDate: record.treatmentDate.toISOString().split('T')[0]
           };
         }
+        
+        // Fallback jika tidak ada kondisi yang terpenuhi
         return record;
       });
       
@@ -1897,17 +1943,31 @@ export class DatabaseStorage implements IStorage {
   async createMedicalHistory(medicalHistory: InsertMedicalHistory): Promise<MedicalHistory> {
     try {
       // Validasi tanggal pengobatan sebelum menyimpan ke database
-      let validTreatmentDate = medicalHistory.treatmentDate;
+      let validTreatmentDate: string;
       
-      // Pastikan tanggal pengobatan valid (bukan null atau 1970)
-      if (!validTreatmentDate || new Date(validTreatmentDate).getFullYear() <= 1970) {
+      if (typeof medicalHistory.treatmentDate === 'string') {
+        // Jika sudah string, pastikan ini valid
+        const testDate = new Date(medicalHistory.treatmentDate);
+        if (!isNaN(testDate.getTime()) && testDate.getFullYear() > 1970) {
+          validTreatmentDate = medicalHistory.treatmentDate;
+        } else {
+          // String yang tidak valid, gunakan hari ini
+          validTreatmentDate = new Date().toISOString().split('T')[0];
+        }
+      } else if (medicalHistory.treatmentDate instanceof Date) {
+        // Jika Date object, konversi ke string
+        validTreatmentDate = medicalHistory.treatmentDate.toISOString().split('T')[0];
+      } else {
+        // Tidak ada treatmentDate atau tidak valid, gunakan hari ini
         console.log("Invalid treatment date provided in createMedicalHistory, using current date");
-        validTreatmentDate = new Date();
+        validTreatmentDate = new Date().toISOString().split('T')[0];
       }
+      
+      console.log(`Creating medical history with treatment date: ${validTreatmentDate} (${typeof validTreatmentDate})`);
       
       const now = new Date();
       
-      // Simpan ke database dengan tanggal yang valid
+      // Simpan ke database dengan tanggal yang valid sebagai string
       const [record] = await db.insert(medicalHistories)
         .values({
           ...medicalHistory,
@@ -1938,30 +1998,41 @@ export class DatabaseStorage implements IStorage {
       // 1. Tanggal pengobatan yang diberikan dalam update jika ada dan valid
       // 2. Tanggal pengobatan yang sudah ada jika valid
       // 3. Tanggal pembuatan record sebagai fallback
-      let validTreatmentDate: Date | undefined = undefined;
+      let validTreatmentDate: string;
       
       // Periksa apakah ada tanggal pengobatan dalam update dan valid
       if (medicalHistory.treatmentDate) {
-        const treatmentDate = new Date(medicalHistory.treatmentDate);
-        if (!isNaN(treatmentDate.getTime()) && treatmentDate.getFullYear() > 1970) {
-          validTreatmentDate = treatmentDate;
+        if (typeof medicalHistory.treatmentDate === 'string') {
+          // Jika sudah string, pastikan valid
+          const testDate = new Date(medicalHistory.treatmentDate);
+          if (!isNaN(testDate.getTime()) && testDate.getFullYear() > 1970) {
+            validTreatmentDate = medicalHistory.treatmentDate;
+          } else {
+            // String tidak valid, gunakan tanggal existing atau today
+            validTreatmentDate = typeof existingHistory.treatmentDate === 'string' 
+              ? existingHistory.treatmentDate 
+              : new Date().toISOString().split('T')[0];
+          }
+        } else if (medicalHistory.treatmentDate instanceof Date) {
+          // Jika Date object, konversi ke string format YYYY-MM-DD
+          validTreatmentDate = medicalHistory.treatmentDate.toISOString().split('T')[0];
+        } else {
+          // Fallback ke tanggal existing atau tanggal hari ini
+          validTreatmentDate = typeof existingHistory.treatmentDate === 'string' 
+            ? existingHistory.treatmentDate 
+            : new Date().toISOString().split('T')[0];
         }
+      } else if (existingHistory.treatmentDate) {
+        // Gunakan tanggal yang sudah ada jika ada
+        validTreatmentDate = typeof existingHistory.treatmentDate === 'string'
+          ? existingHistory.treatmentDate
+          : new Date(existingHistory.treatmentDate).toISOString().split('T')[0];
+      } else {
+        // Jika masih belum ada yang valid, gunakan tanggal pembuatan
+        validTreatmentDate = new Date(existingHistory.createdAt).toISOString().split('T')[0];
       }
       
-      // Jika tidak ada dalam update, gunakan yang sudah ada jika valid
-      if (!validTreatmentDate && existingHistory.treatmentDate) {
-        const existingDate = new Date(existingHistory.treatmentDate);
-        if (!isNaN(existingDate.getTime()) && existingDate.getFullYear() > 1970) {
-          validTreatmentDate = existingDate;
-        }
-      }
-      
-      // Jika masih belum ada yang valid, gunakan tanggal pembuatan
-      if (!validTreatmentDate) {
-        validTreatmentDate = new Date(existingHistory.createdAt);
-      }
-      
-      // Pastikan treatmentDate selalu valid dalam update
+      // Pastikan treatmentDate selalu valid dalam update sebagai string
       const dataToUpdate = {
         ...medicalHistory,
         treatmentDate: validTreatmentDate
@@ -1969,7 +2040,7 @@ export class DatabaseStorage implements IStorage {
       
       console.log('Received medical history update data:', medicalHistory);
       console.log('Processed medical history update data:', dataToUpdate);
-      console.log(`Using treatment date: ${validTreatmentDate}`);
+      console.log(`Using treatment date: ${validTreatmentDate} (${typeof validTreatmentDate})`);
       
       const [updated] = await db.update(medicalHistories)
         .set(dataToUpdate)

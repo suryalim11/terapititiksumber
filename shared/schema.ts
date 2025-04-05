@@ -214,7 +214,7 @@ export const appointments = pgTable("appointments", {
   patientId: integer("patient_id").notNull(),
   sessionId: integer("session_id"),
   therapySlotId: integer("therapy_slot_id"), // Referensi ke slot terapi yang dipilih
-  date: timestamp("date").notNull(),
+  date: text("date").notNull(), // Ubah dari timestamp ke text untuk konsistensi
   timeSlot: text("time_slot"), // Menyimpan time_slot yang dipilih
   registrationNumber: text("registration_number"), // Nomor registrasi unik
   status: text("status").notNull().default("Active"), // Active, Cancelled, Completed
@@ -230,6 +230,32 @@ export const insertAppointmentSchema = createInsertSchema(appointments).pick({
   registrationNumber: true,
   notes: true,
   status: true,
+}).extend({
+  // Memastikan date selalu dalam bentuk string
+  date: z.preprocess(
+    (val) => {
+      // Jika sudah string, langsung gunakan
+      if (typeof val === 'string') {
+        return val;
+      }
+      
+      // Jika Date object, konversi ke format YYYY-MM-DD
+      if (val instanceof Date) {
+        const year = val.getFullYear();
+        const month = String(val.getMonth() + 1).padStart(2, '0');
+        const day = String(val.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      
+      // Default fallback: hari ini
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    },
+    z.string()
+  )
 });
 
 // Registration Link insertSchema
