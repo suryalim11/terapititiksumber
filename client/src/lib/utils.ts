@@ -137,7 +137,7 @@ export function isValidDate(dateString: string): boolean {
 export function formatDate(date: Date): string {
   const hasTimeComponent = date.getHours() !== 0 || date.getMinutes() !== 0;
   if (hasTimeComponent) {
-    return dateFnsFormat(date, "dd/MM/yyyy HH:mm", { locale: id }) + " WIB";
+    return dateFnsFormat(date, "dd/MM/yyyy HH:mm", { locale: id });
   } else {
     return dateFnsFormat(date, "dd/MM/yyyy", { locale: id });
   }
@@ -191,7 +191,7 @@ export function formatISOtoWIB(isoString: string, isLocalTime: boolean = false, 
     
     // Format the date based on whether it has a time component
     if (hasTimeComponent) {
-      // Format with time and WIB timezone
+      // Format with time (tanpa tambahan WIB)
       return new Intl.DateTimeFormat('id-ID', {
         day: '2-digit',
         month: '2-digit',
@@ -199,7 +199,7 @@ export function formatISOtoWIB(isoString: string, isLocalTime: boolean = false, 
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
-      }).format(adjustedDate) + " WIB";
+      }).format(adjustedDate);
     } else {
       // Format date only without WIB
       return new Intl.DateTimeFormat('id-ID', {
