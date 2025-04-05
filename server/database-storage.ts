@@ -1194,37 +1194,75 @@ export class DatabaseStorage implements IStorage {
       const results = [];
       let updatedCount = 0;
       
+      console.log(`Mulai sinkronisasi ${allSlots.length} slot terapi...`);
+      
       // Untuk setiap slot, hitung ulang kuota berdasarkan jumlah appointment aktif
       for (const slot of allSlots) {
-        // Dapatkan semua appointment aktif untuk slot ini
-        const appointments = await this.getAppointmentsByTherapySlot(slot.id);
-        const activeCount = appointments.length; // getAppointmentsByTherapySlot sudah filter yang aktif saja
-        
-        // Jika nilai di database berbeda, update
-        if (slot.currentCount !== activeCount) {
-          console.log(`Menyinkronkan slot ${slot.id}: mengubah currentCount dari ${slot.currentCount} menjadi ${activeCount}`);
+        try {
+          // Dapatkan semua appointment untuk slot terapi ini
+          const allAppointmentsForSlot = await db.query.appointments.findMany({
+            where: eq(schema.appointments.therapySlotId, slot.id)
+          });
           
-          const updatedSlot = await db
-            .update(schema.therapySlots)
-            .set({ currentCount: activeCount })
-            .where(eq(schema.therapySlots.id, slot.id))
-            .returning();
+          // Log semua appointment yang ditemukan untuk slot ini
+          console.log(`Slot ${slot.id} (${slot.date} ${slot.timeSlot}): ${allAppointmentsForSlot.length} total appointments`);
+          console.log(`Detail appointments:`, allAppointmentsForSlot.map(a => ({ id: a.id, status: a.status })));
           
-          if (updatedSlot.length > 0) {
-            const formattedDate = format(new Date(slot.date), 'dd MMMM yyyy');
+          // Filter hanya appointment aktif (dengan status yang spesifik)
+          const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+          const activeAppointments = allAppointmentsForSlot.filter(app => {
+            // Status yang dibatalkan (Cancelled) secara eksplisit dikeluarkan
+            if (app.status === 'Cancelled' || app.status === 'Completed') {
+              return false;
+            }
             
-            results.push({
-              slotId: slot.id,
-              date: formattedDate,
-              timeSlot: slot.timeSlot,
-              oldCount: slot.currentCount,
-              newCount: activeCount
-            });
-            updatedCount++;
+            // Hanya sertakan status yang ada di daftar status aktif
+            return activeStatuses.includes(app.status);
+          });
+          
+          const activeCount = activeAppointments.length;
+          console.log(`Slot ${slot.id}: ${activeCount} active appointments, current count in DB: ${slot.currentCount}`);
+          
+          // Jika nilai di database berbeda, update
+          if (slot.currentCount !== activeCount) {
+            console.log(`Sinkronisasi slot ${slot.id}: mengubah currentCount dari ${slot.currentCount} menjadi ${activeCount}`);
+            
+            const updatedSlot = await db
+              .update(schema.therapySlots)
+              .set({ currentCount: activeCount })
+              .where(eq(schema.therapySlots.id, slot.id))
+              .returning();
+            
+            if (updatedSlot.length > 0) {
+              let formattedDate;
+              try {
+                // Gunakan metode yang sama dengan getWIBDate untuk format tanggal yang konsisten
+                const originalDate = new Date(slot.date);
+                const correctedDate = new Date(originalDate.getTime() - (14 * 60 * 60 * 1000));
+                const wibDate = new Date(correctedDate.getTime() + (7 * 60 * 60 * 1000));
+                formattedDate = format(wibDate, 'dd MMMM yyyy');
+              } catch (error) {
+                console.error(`Error formatting date for slot ${slot.id}:`, error);
+                formattedDate = String(slot.date);
+              }
+              
+              results.push({
+                slotId: slot.id,
+                date: formattedDate,
+                timeSlot: slot.timeSlot,
+                oldCount: slot.currentCount,
+                newCount: activeCount
+              });
+              updatedCount++;
+            }
           }
+        } catch (slotError) {
+          console.error(`Error processing slot ${slot.id}:`, slotError);
+          // Lanjutkan ke slot berikutnya meski ada error
         }
       }
       
+      console.log(`Sinkronisasi selesai. ${updatedCount} slot diperbarui.`);
       return { updatedSlots: updatedCount, results };
     } catch (error) {
       console.error("Error in syncTherapySlotQuota:", error);
@@ -1403,40 +1441,33 @@ export class DatabaseStorage implements IStorage {
         where: eq(schema.appointments.therapySlotId, therapySlotId)
       });
       
-      // Log hanya pada mode development
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`All appointments for slot ${therapySlotId}:`, 
-          allAppointmentsForSlot.map(a => ({id: a.id, status: a.status}))
-        );
-      }
+      // Selalu log untuk debugging
+      console.log(`All appointments for slot ${therapySlotId}:`, 
+        allAppointmentsForSlot.map(a => ({id: a.id, status: a.status}))
+      );
       
       // Filter semua status yang aktif (tidak dibatalkan dan dalam status valid)
-      const activeStatusPatterns = ['active', 'booked', 'confirmed', 'scheduled'];
+      // Gunakan status fixed yang jelas, tanpa partial matching
+      const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
       const nonCancelledAppointments = allAppointmentsForSlot.filter(app => {
-        const statusLower = app.status.toLowerCase();
-        // Jika status mengandung 'cancel' maka itu dibatalkan
-        if (statusLower.includes('cancel')) {
+        // Status yang dibatalkan (Cancelled) secara eksplisit dikeluarkan
+        if (app.status === 'Cancelled' || app.status === 'Completed') {
           return false;
         }
-        // Periksa apakah status termasuk dalam daftar status aktif
-        const isActiveStatus = activeStatusPatterns.some(pattern => 
-          statusLower.includes(pattern)
-        );
         
-        // Debug - Tambahkan log untuk mempermudah pelacakan (hanya pada mode development)
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Appointment ${app.id} (${app.status}): isActiveStatus=${isActiveStatus}`);
-        }
+        // Periksa apakah status termasuk dalam daftar status aktif (exact match)
+        const isActiveStatus = activeStatuses.includes(app.status);
+        
+        // Debug - Tambahkan log untuk mempermudah pelacakan
+        console.log(`Appointment ${app.id} (${app.status}): isActiveStatus=${isActiveStatus}`);
         
         return isActiveStatus;
       });
       
-      // Log hanya pada mode development
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`Non-cancelled appointments for slot ${therapySlotId}:`, 
-          nonCancelledAppointments.map(a => ({id: a.id, status: a.status}))
-        );
-      }
+      // Selalu log untuk debugging
+      console.log(`Non-cancelled appointments for slot ${therapySlotId}:`, 
+        nonCancelledAppointments.map(a => ({id: a.id, status: a.status}))
+      );
       
       return nonCancelledAppointments;
     } catch (error) {
