@@ -414,9 +414,15 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         // Jika menggunakan fitur kredit, nilai isPaid = false
         // creditAmount adalah jumlah yang belum dibayar
         // paidAmount adalah jumlah yang sudah dibayar
-        const isPaid = !useCredit;
-        const creditAmount = useCredit ? values.creditAmount || "0" : "0";
-        const paidAmount = useCredit ? values.paidAmount || "0" : totalAmount.toString();
+        let isPaid = !useCredit;
+        let creditAmount = useCredit ? values.creditAmount || "0" : "0";
+        let paidAmount = useCredit ? values.paidAmount || "0" : totalAmount.toString();
+        
+        // Jika kredit sama dengan total transaksi, ini adalah transaksi "Belum Lunas"
+        if (useCredit && parseFloat(creditAmount) === totalAmount) {
+          isPaid = false;  // Set status belum lunas
+          paidAmount = "0"; // Set pembayaran ke 0
+        }
         
         console.log("Mengirim request ke API dengan data:", {
           patientId: parseInt(values.patientId),
@@ -1801,12 +1807,13 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               // Update paid amount
                               field.onChange(validValue.toString());
                               
-                              // Update credit amount automatically - nilai kredit adalah input user
-                              // Jika DP = 0, maka seluruh total menjadi kredit
-                              const creditAmount = form.getValues("creditAmount") || totalAmount.toString();
-                              
-                              // Hanya update nilai kredit jika user belum mengisinya secara manual
-                              if (parseFloat(creditAmount) === 0 || parseFloat(creditAmount) === totalAmount) {
+                              // Jika pembayaran = 0, berarti seluruh nilai jadi kredit (belum lunas)
+                              if (validValue === 0) {
+                                form.setValue("creditAmount", totalAmount.toString());
+                                form.setValue("isPaid", false);
+                              } else {
+                                // Update credit amount 
+                                // Jika total dibayar < total transaksi, update kredit
                                 const calculatedCredit = Math.max(0, totalAmount - validValue);
                                 form.setValue("creditAmount", calculatedCredit.toString());
                               }
@@ -1851,9 +1858,15 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               // Update credit amount
                               field.onChange(validValue.toString());
                               
-                              // Update paid amount automatically
-                              const paidAmount = Math.max(0, totalAmount - validValue);
-                              form.setValue("paidAmount", paidAmount.toString());
+                              // Jika kredit sama dengan total (belum bayar), maka paidAmount = 0
+                              if (validValue === totalAmount) {
+                                form.setValue("paidAmount", "0");
+                                form.setValue("isPaid", false);
+                              } else {
+                                // Update paid amount automatically
+                                const paidAmount = Math.max(0, totalAmount - validValue);
+                                form.setValue("paidAmount", paidAmount.toString());
+                              }
                             }}
                           />
                         </FormControl>
