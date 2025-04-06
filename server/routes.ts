@@ -210,6 +210,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Internal server error" });
     }
   });
+  
+  // PENTING: Endpoint search harus didefinisikan SEBELUM endpoint dengan parameter (:id)
+  // karena Express akan mencocokkan rute dalam urutan pendefinisian
+  app.get("/api/patients/search", async (req: Request, res: Response) => {
+    try {
+      const { phone } = req.query;
+      
+      if (!phone || typeof phone !== 'string') {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Nomor telepon diperlukan untuk pencarian" 
+        });
+      }
+
+      console.log(`Mencari pasien dengan nomor telepon: ${phone}`);
+      
+      // Gunakan metode khusus di storage untuk mencari berdasarkan nomor telepon
+      const patients = await storage.searchPatientByNameOrPhone(phone);
+      
+      if (patients.length > 0) {
+        console.log(`Pasien ditemukan dengan nomor telepon: ${phone}`);
+        return res.status(200).json({ 
+          success: true, 
+          found: true, 
+          patient: patients[0] // Kembalikan hasil pertama
+        });
+      } else {
+        console.log(`Tidak ada pasien ditemukan dengan nomor telepon: ${phone}`);
+        return res.status(200).json({ 
+          success: true, 
+          found: false,
+          message: "Tidak ada pasien ditemukan dengan nomor telepon tersebut"
+        });
+      }
+    } catch (error) {
+      console.error("Error searching for patient by phone:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Internal server error"
+      });
+    }
+  });
 
   app.get("/api/patients/:id", async (req: Request, res: Response) => {
     try {
