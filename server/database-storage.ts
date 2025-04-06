@@ -833,15 +833,26 @@ export class DatabaseStorage implements IStorage {
         throw new Error(`Transaction ${transactionId} not found`);
       }
       
+      // Ambil pembayaran awal
+      const initialPayment = parseFloat(transaction.paidAmount.toString());
+      
+      // Ambil pembayaran tambahan dari tabel debt_payments
       const payments = await this.getDebtPaymentsByTransaction(transactionId);
-      const totalPaid = payments.reduce(
+      
+      // Hitung total pembayaran dari tabel debt_payments saja
+      const debtPaymentsTotal = payments.reduce(
         (sum, payment) => sum + parseFloat(payment.amount.toString()), 
-        parseFloat(transaction.paidAmount.toString())
+        0  // Mulai dari 0, tidak menambahkan transaction.paidAmount
       );
+      
+      // Total pembayaran: pembayaran awal + pembayaran hutang
+      const totalPaid = initialPayment + debtPaymentsTotal;
       
       // Periksa apakah total pembayaran sudah mencapai atau melebihi total transaksi
       const totalAmount = parseFloat(transaction.totalAmount.toString());
       const isPaid = totalPaid >= totalAmount;
+      
+      console.log(`[Debt Payment] TransactionID: ${transactionId}, Initial Payment: ${initialPayment}, Debt Payments: ${debtPaymentsTotal}, Total: ${totalPaid}, Required: ${totalAmount}`);
       
       // Update status pembayaran
       return this.updateTransaction(transactionId, {

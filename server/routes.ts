@@ -1149,26 +1149,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes
       });
       
-      // Update transaction's paid amount
-      let newPaidAmount = paidAmount + paymentAmount;
+      // Dapatkan nilai terbaru dari transaksi menggunakan storage.updateTransactionPaidStatus
+      // Method ini akan menghitung ulang paidAmount dengan benar berdasarkan semua pembayaran
+      const updatedTransaction = await storage.updateTransactionPaidStatus(transactionId);
       
-      // If new paid amount exceeds or equals total amount, mark as fully paid
-      let isPaid = newPaidAmount >= totalAmount;
-      
-      // Update the transaction
-      const updatedTransaction = await storage.updateTransaction(transactionId, {
-        paidAmount: newPaidAmount.toString(),
-        isPaid
-      });
+      // Hitung sisa hutang yang tersisa
+      const updatedPaidAmount = parseFloat(updatedTransaction?.paidAmount || "0");
+      const remainingDebtAfterPayment = totalAmount - updatedPaidAmount;
       
       // Log payment information
-      console.log(`Debt payment processed - TransactionID: ${transactionId}, Amount: ${paymentAmount}, New status: ${isPaid ? 'Paid' : 'Unpaid'}`);
+      console.log(`Debt payment processed - TransactionID: ${transactionId}, Amount: ${paymentAmount}, New status: ${updatedTransaction?.isPaid ? 'Paid' : 'Unpaid'}`);
       
       return res.status(201).json({
         success: true,
         payment,
         transaction: updatedTransaction,
-        remainingDebt: remainingDebt - paymentAmount
+        // Gunakan nilai sisa hutang yang dihitung dari transaksi yang diperbarui
+        remainingDebt: remainingDebtAfterPayment
       });
     } catch (error) {
       console.error("Error processing debt payment:", error);
@@ -1248,17 +1245,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
       });
       
-      // Update jumlah yang sudah dibayar di transaksi asli
-      const newPaidAmount = currentPaid + paymentAmount;
+      // Gunakan metode updateTransactionPaidStatus untuk menghitung ulang paidAmount dan isPaid dengan benar
+      const updatedTransaction = await storage.updateTransactionPaidStatus(parseInt(transactionId));
       
-      // Jika pembayaran sudah lunas, update status isPaid
-      const isPaid = newPaidAmount >= totalAmount;
-      
-      // Update transaksi asli
-      const updatedTransaction = await storage.updateTransaction(parseInt(transactionId), {
-        paidAmount: newPaidAmount.toString(),
-        isPaid
-      });
+      // Hitung sisa hutang yang tersisa dari transaksi yang sudah diperbarui
+      const newPaidAmount = parseFloat(updatedTransaction?.paidAmount || "0");
+      const remainingDebtAfterPayment = totalAmount - newPaidAmount;
       
       return res.status(201).json({
         success: true,
@@ -1287,18 +1279,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all debt payments for this transaction
       const payments = await storage.getDebtPaymentsByTransaction(transactionId);
       
-      // Calculate remaining debt
-      const totalPaid = payments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
-      const creditAmount = parseFloat(transaction.creditAmount);
-      const remainingDebt = creditAmount - totalPaid;
+      // Ambil data pembayaran dari transaksi (yang sudah diupdate)
+      const totalAmount = parseFloat(transaction.totalAmount);
+      const paidAmount = parseFloat(transaction.paidAmount);
+      
+      // Hitung jumlah total pembayaran hutang dari tabel debt_payments
+      const totalDebtPayments = payments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+      
+      // Hitung sisa hutang dari total transaksi - jumlah yang sudah dibayarkan
+      const remainingDebt = totalAmount - paidAmount;
+      
+      // Tambahkan nilai creditAmount dari transaksi
+      const creditAmount = parseFloat(transaction.creditAmount || "0");
       
       return res.status(200).json({
         success: true,
         payments,
         transaction,
-        totalPaid,
-        creditAmount,
-        remainingDebt
+        totalDebtPayments,  // Total dari pembayaran hutang saja
+        paidAmount,         // Total pembayaran termasuk pembayaran awal
+        totalAmount,        // Total jumlah transaksi
+        creditAmount,       // Jumlah kredit dari transaksi
+        remainingDebt       // Sisa hutang
       });
     } catch (error) {
       console.error("Error fetching debt payments:", error);
