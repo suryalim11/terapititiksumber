@@ -1,0 +1,21 @@
+function formatDateString(dateStr: string | Date): string {
+  try {
+    // Konversi input ke object Date, lalu gunakan getWIBDate untuk mendapat tanggal WIB yang konsisten
+    const originalDate = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+    
+    // Gunakan fungsi getWIBDate yang sudah distandarisasi
+    const wibDate = getWIBDate(originalDate);
+    
+    // Format tanggal menggunakan date-fns
+    return format(wibDate, 'dd MMMM yyyy');
+  } catch (error) {
+    console.error("Error formatting date string:", error, dateStr);
+    // Fallback untuk jaga-jaga jika terjadi error
+    return typeof dateStr === 'string' ? dateStr : dateStr.toISOString().split('T')[0];
+  }
+}
+
+// ==========================================
+// 3. Fungsi getTherapySlotsByDate()
+// ==========================================
+async getTherapySlotsByDate(date: Date | string): Promise<TherapySlot[]> {

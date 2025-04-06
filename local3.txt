@@ -1,0 +1,63 @@
+  async getTherapySlotsByDate(date: Date | string): Promise<TherapySlot[]> {
+    // Menggunakan fungsi getWIBDate untuk mendapatkan tanggal dalam zona waktu WIB secara konsisten
+    let dateString: string;
+    
+    try {
+      // Konversi input ke Date object terlebih dahulu
+      let dateObj: Date;
+      
+      if (date instanceof Date) {
+        dateObj = date;
+        console.log("Input date untuk getTherapySlotsByDate: Date object -", dateObj.toISOString());
+      } else {
+        // Parse string menjadi Date
+        dateObj = new Date(date);
+        
+        if (isNaN(dateObj.getTime())) {
+          // Jika parsing gagal, gunakan tanggal hari ini
+          console.error("Invalid date string, using today's date:", date);
+          dateObj = new Date();
+        }
+        console.log("Input date untuk getTherapySlotsByDate: String -", date, "-> Date object:", dateObj.toISOString());
+      }
+      
+      // Konversi ke WIB menggunakan fungsi helper yang konsisten
+      const wibDate = getWIBDate(dateObj);
+      
+      // Format tanggal ke format YYYY-MM-DD untuk pencarian di database
+      const year = wibDate.getFullYear();
+      const month = String(wibDate.getMonth() + 1).padStart(2, '0');
+      const day = String(wibDate.getDate()).padStart(2, '0');
+      dateString = `${year}-${month}-${day}`;
+      
+      console.log(`Tanggal WIB yang digunakan: ${dateString}`);
+    } catch (error) {
+      // Jika terjadi error, gunakan tanggal hari ini
+      console.error("Error processing date, using today's date:", error);
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      dateString = `${year}-${month}-${day}`;
+--
+        // Definisikan status apa saja yang dianggap aktif (sama seperti di getTherapySlotsByDate)
+        const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+        
+        // Buat fungsi helper untuk check status aktif
+        const isActiveStatus = (s: string) => activeStatuses.includes(s);
+        
+        // Filter hanya appointment dengan status aktif
+        const activeAppointments = allAppointments.filter(app => isActiveStatus(app.status));
+        
+        // Log detail untuk membantu debugging
+        if (activeAppointments.length > 0) {
+          console.log(`Detail appointment aktif untuk slot ${slot.id}:`, 
+            activeAppointments.map(app => ({id: app.id, status: app.status}))
+          );
+        }
+        
+        // Update currentCount langsung di objek slot yang dikembalikan
+        slot.currentCount = activeAppointments.length;
+        
+        // Log jumlah appointment untuk slot ini
+        console.log(`Slot ${slot.id} (${slot.timeSlot} ${slot.date}): ${activeAppointments.length} active appointments dari ${allAppointments.length} total`);
