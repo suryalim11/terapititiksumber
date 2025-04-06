@@ -111,6 +111,7 @@ export const transactions = pgTable("transactions", {
   creditAmount: decimal("credit_amount", { precision: 10, scale: 2 }).default("0").notNull(),
   isPaid: boolean("is_paid").default(true).notNull(), // true=lunas, false=utang
   paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).default("0").notNull(),
+  setAsCredit: boolean("set_as_credit").default(false).notNull(), // Flag untuk menandai transaksi 0 sebagai kredit
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -124,6 +125,7 @@ export const insertTransactionSchema = createInsertSchema(transactions).pick({
   creditAmount: true,
   isPaid: true,
   paidAmount: true,
+  setAsCredit: true,
 });
 
 // Session Schema (For tracking therapy sessions)

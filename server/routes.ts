@@ -1029,9 +1029,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/transactions", async (req: Request, res: Response) => {
     try {
       // Parse schema with additional fields
-      const { subtotal, discount, createSession = true, isPaid = true, creditAmount = "0", paidAmount, ...restData } = req.body;
+      const { subtotal, discount, createSession = true, isPaid = true, creditAmount = "0", paidAmount, setAsCredit = false, ...restData } = req.body;
       
       console.log("Transaction request received:", req.body);
+      
+      // Jika setAsCredit=true, ini adalah transaksi dengan pembayaran 0 yang dianggap sebagai kredit
+      const isCredit = !isPaid || setAsCredit;
       
       // Gunakan total amount yang dikirim dari client, jangan hitung ulang
       // Ini akan memastikan konsistensi nilai yang ditampilkan di client dan tersimpan di database
@@ -1040,10 +1043,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalAmount: restData.totalAmount, // Use the amount passed from client
         discount: discount || "0",
         subtotal: subtotal || restData.totalAmount || "0",
-        isPaid, // Include payment status
-        creditAmount: isPaid ? "0" : (creditAmount || restData.totalAmount || "0"),
-        // Jika bayar penuh (isPaid=true), paidAmount=totalAmount. Jika kredit (isPaid=false), paidAmount=0 atau nilai yang diberikan
-        paidAmount: isPaid ? (paidAmount || restData.totalAmount) : (paidAmount || "0")
+        isPaid: !isCredit, // Bayar penuh = true, kredit = false
+        setAsCredit,  // Apakah ini transaksi 0 yang dijadikan kredit
+        creditAmount: isCredit ? (creditAmount || restData.totalAmount || "0") : "0",
+        // Jika bukan kredit, paidAmount=totalAmount. Jika kredit, paidAmount=0 atau nilai yang diberikan
+        paidAmount: isCredit ? (paidAmount || "0") : (paidAmount || restData.totalAmount)
       });
       
       console.log("Validated transaction data:", validatedData);

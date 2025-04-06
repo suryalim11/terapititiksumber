@@ -115,6 +115,7 @@ const transactionFormSchema = z.object({
   discount: z.string().optional().transform(val => val === '' ? '0' : val),
   subtotal: z.string().optional(),
   totalAmount: z.string().optional(),
+  setAsCredit: z.boolean().optional().default(false),
   items: z.array(
     z.object({
       id: z.number(),
@@ -153,11 +154,19 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       isPaid: true,
       creditAmount: "0",
       paidAmount: "0",
+      setAsCredit: false,
     },
   });
   
   // State untuk menangani kredit/utang
   const [useCredit, setUseCredit] = useState(false);
+  const [setAsCredit, setSetAsCredit] = useState(false);
+  
+  // Gunakan useEffect untuk sinkronisasi antara state React dan form state
+  useEffect(() => {
+    form.setValue("setAsCredit", setAsCredit);
+  }, [setAsCredit, form]);
+  
   // State untuk menangani pembayaran utang sekaligus transaksi baru
   const [payDebt, setPayDebt] = useState(false);
   const [selectedDebtTransaction, setSelectedDebtTransaction] = useState<any>(null);
@@ -410,18 +419,46 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         // Use the validated discount value from above
         const discountAmount = discount;
         
-        // Siapkan kredit data jika menggunakan fitur kredit
-        // Jika menggunakan fitur kredit, nilai isPaid = false
-        // creditAmount adalah jumlah yang belum dibayar
-        // paidAmount adalah jumlah yang sudah dibayar
-        let isPaid = !useCredit;
-        let creditAmount = useCredit ? values.creditAmount || "0" : "0";
-        let paidAmount = useCredit ? values.paidAmount || "0" : totalAmount.toString();
+        // Siapkan data transaksi berdasarkan metode pembayaran dan jumlah yang dibayar
+        let isPaid = false; // Default: belum lunas
+        let creditAmount = "0"; // Default: tidak ada kredit
+        let paidAmount = "0"; // Default: belum ada pembayaran
         
-        // Jika kredit sama dengan total transaksi, ini adalah transaksi "Belum Lunas"
-        if (useCredit && parseFloat(creditAmount) === totalAmount) {
-          isPaid = false;  // Set status belum lunas
-          paidAmount = "0"; // Set pembayaran ke 0
+        if (useCredit) {
+          // Jika menggunakan fitur kredit
+          isPaid = false; // Kredit selalu tidak lunas
+          
+          // Ambil nilai kredit dan pembayaran dari form
+          creditAmount = values.creditAmount || "0";
+          paidAmount = values.paidAmount || "0";
+          
+          // Jika pembayaran 0, maka semua total menjadi kredit (seperti kasus T-20250406-076)
+          if (parseFloat(paidAmount) === 0) {
+            creditAmount = totalAmount.toString();
+          }
+        } else {
+          // Jika pembayaran tunai
+          
+          // Jika tidak diisi nilai pembayaran, anggap belum dibayar (Belum Lunas)
+          if (!values.paidAmount || parseFloat(values.paidAmount) === 0) {
+            isPaid = false;
+            paidAmount = "0";
+            // Tambahkan opsi untuk mengubah status kredit jika dibayar 0
+            if (values.setAsCredit) {
+              creditAmount = totalAmount.toString();
+            }
+          } else if (parseFloat(values.paidAmount) >= totalAmount) {
+            // Jika dibayar lunas atau lebih
+            isPaid = true;
+            paidAmount = totalAmount.toString();
+          } else {
+            // Jika dibayar sebagian (tidak sampai lunas)
+            isPaid = false;
+            paidAmount = values.paidAmount;
+            // Sisanya jadi kredit
+            const remainingAmount = totalAmount - parseFloat(values.paidAmount);
+            creditAmount = remainingAmount.toString();
+          }
         }
         
         console.log("Mengirim request ke API dengan data:", {
@@ -455,6 +492,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
             isPaid: isPaid,
             creditAmount: creditAmount,
             paidAmount: paidAmount,
+            setAsCredit: values.setAsCredit,
             items: cartItems.map(item => ({
               id: item.id,
               type: item.type,
@@ -1177,6 +1215,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         isPaid: isPaid,
         creditAmount: creditAmount,
         paidAmount: paidAmount,
+        setAsCredit: formValues.setAsCredit || false,
       };
       
       // Eksekusi onSubmit
@@ -1602,6 +1641,28 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                       onChange={field.onChange}
                     />
                   </FormControl>
+                  
+                  {/* Opsi "Jadikan sebagai Kredit" untuk transaksi dengan pembayaran 0 */}
+                  <div className="mt-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="setAsCredit"
+                        checked={form.watch("setAsCredit")}
+                        onCheckedChange={(checked) => {
+                          form.setValue("setAsCredit", checked === true);
+                        }}
+                      />
+                      <label
+                        htmlFor="setAsCredit"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Jadikan sebagai Kredit
+                      </label>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Jika dicentang, transaksi dengan pembayaran 0 akan dicatat sebagai kredit (bukan "Belum Lunas")
+                    </p>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
