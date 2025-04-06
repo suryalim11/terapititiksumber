@@ -38,8 +38,8 @@ function Router() {
       <ProtectedRoute path="/backup-restore" component={BackupRestore} />
       <ProtectedRoute path="/date-test" component={DateTest} />
       <Route path="/login" component={Login} />
-      <Route path="/daftar" component={SimpleRegister} />
-      <Route path="/register" component={SimpleRegister} />
+      <Route path="/daftar" component={Register} />
+      <Route path="/register" component={Register} />
       <Route path="/register-simple" component={SimpleRegister} />
       <Route component={NotFound} />
     </Switch>

@@ -149,6 +149,24 @@ export default function RegisterPage() {
   const [foundPatient, setFoundPatient] = useState<any>(null);
   const [selectedSlot, setSelectedSlot] = useState<{id: number, date: string, timeSlot: string} | null>(null);
   
+  // State untuk hasil registrasi
+  const [registrationResult, setRegistrationResult] = useState<RegistrationResponse | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form handling
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerFormSchema),
+    defaultValues: {
+      name: "",
+      phoneNumber: "",
+      email: "",
+      birthDate: "",
+      gender: "Laki-laki",
+      address: "",
+      complaints: "",
+    },
+  });
+
   // Mendapatkan data slot terapi yang tersedia
   const { data: therapySlots, isLoading: isLoadingSlots, refetch: refetchTherapySlots } = useQuery({
     queryKey: ['/api/therapy-slots', 'available-active'],
@@ -176,20 +194,13 @@ export default function RegisterPage() {
       
       const data = await response.json();
       console.log("Slot terapi yang diterima di form pendaftaran:", data.length, "slot");
-      console.log("Detail slot terapi:", data.map(s => ({ 
-        id: s.id, 
-        date: new Date(s.date).toLocaleDateString(),
-        time: s.timeSlot,
-        quota: `${s.currentCount}/${s.maxQuota}`,
-        isActive: s.isActive
-      })));
       
       // Filter lagi di client-side untuk memastikan tidak ada slot dengan kuota penuh
-      const filteredSlots = data.filter(slot => slot.currentCount < slot.maxQuota);
+      const filteredSlots = data.filter((slot: any) => slot.currentCount < slot.maxQuota);
       console.log("Slot terapi setelah filter kuota:", filteredSlots.length, "slot");
       
       // Urutkan berdasarkan tanggal dan waktu
-      return filteredSlots.sort((a, b) => {
+      return filteredSlots.sort((a: any, b: any) => {
         // Bandingkan tanggal terlebih dahulu
         const dateA = new Date(a.date).getTime();
         const dateB = new Date(b.date).getTime();
@@ -346,16 +357,10 @@ export default function RegisterPage() {
   // Function to verify the registration code
   const verifyRegistrationCode = async (code: string) => {
     try {
-      console.log("🔍 Memverifikasi kode pendaftaran:", code);
-      
-      // Tambahkan random string dan timestamp untuk menghindari caching di browser
       const timestamp = new Date().getTime();
       const randomStr = Math.random().toString(36).substring(2, 15);
       const cacheBuster = `_t=${timestamp}&_r=${randomStr}`;
       
-      console.log(`🌐 Request URL: /api/verify-registration-link?${cacheBuster}`);
-      
-      // Buat objek Request untuk mendapatkan lebih banyak kontrol
       const request = new Request(`/api/verify-registration-link?${cacheBuster}`, {
         method: 'POST',
         headers: {
@@ -365,34 +370,19 @@ export default function RegisterPage() {
           'Expires': '0'
         },
         body: JSON.stringify({ code }),
-        credentials: 'include', // Penting: pastikan cookies dikirim
+        credentials: 'include',
       });
       
-      // Tambahkan log detail request untuk debugging
-      console.log("📤 Request headers:", request.headers);
-      console.log("📤 Request body:", { code });
-      
-      // Lakukan fetch dengan mode no-store dan no-cache
       const response = await fetch(request);
       
-      console.log("📥 Response status:", response.status, response.statusText);
-      console.log("📥 Response headers:", response.headers);
-      
-      // Deep clone response sebelum parsing untuk mencegah race condition
-      const clonedResponse = response.clone();
-      
-      // Gunakan try-catch terpisah untuk parsing JSON 
       let data;
       try {
         data = await response.json();
-        console.log("📄 Response data:", JSON.stringify(data, null, 2));
       } catch (parseError) {
-        console.error("❌ Error parsing JSON response:", parseError);
-        // Coba baca respons sebagai teks untuk debugging
-        const textResponse = await clonedResponse.text();
-        console.log("📄 Response as text:", textResponse);
+        console.error("Error parsing JSON response:", parseError);
+        const textResponse = await response.clone().text();
+        console.log("Response as text:", textResponse);
         
-        // Gagal parsing JSON, anggap sebagai error
         setRegistrationStatus("error");
         toast({
           variant: "destructive",
@@ -402,790 +392,720 @@ export default function RegisterPage() {
         return;
       }
       
-      // Validasi data yang diterima
-      console.log("🔍 Data validation:");
-      console.log("- valid property:", data.valid, typeof data.valid);
-      console.log("- response.ok:", response.ok);
-      console.log("- status code:", response.status);
-      console.log("- expiryTime:", data.expiryTime);
-      console.log("- isPermanent:", data.isPermanent);
-      console.log("- availableSlots:", data.availableSlots?.length || 0);
-      
-      // Perilaku baru: selalu percaya status 200 dari server sebagai valid
       if (response.status === 200) {
-        console.log("✅ Respons status 200 diterima, menganggap kode valid");
+        console.log("Respons status 200 diterima, menganggap kode valid");
         
-        // Jika server mengirim respons 200, anggap kode valid, terlepas dari properti lain
         setRegistrationStatus("idle");
         
         // Store metadata if available
         if (data.dailyLimit) {
           setRegistrationLimit(data.dailyLimit);
         }
-        
         if (data.currentRegistrations !== undefined) {
           setCurrentRegistrations(data.currentRegistrations);
         }
-        
         if (data.expiryTime) {
           setExpiryTime(new Date(data.expiryTime));
         }
-        
-        // Cek apakah ada slot terapi tersedia dari respons verifikasi
-        if (data.availableSlots && data.availableSlots.length > 0) {
-          console.log("📋 Slot terapi ditemukan:", data.availableSlots.length, "slot");
-          // Gunakan data slot terapi langsung dari respons verifikasi
-          try {
-            // Import queryClient dari context React daripada menggunakan require
-            import("@/lib/queryClient").then(({ queryClient }) => {
-              if (queryClient && data.availableSlots) {
-                queryClient.setQueryData(['/api/therapy-slots', 'available-active'], data.availableSlots);
-                console.log("✅ Cache slot terapi berhasil diperbarui");
-              }
-            });
-          } catch (importError) {
-            console.error("❌ Error importing queryClient:", importError);
-          }
-        } else if (data.hasAvailableSlots === false) {
-          // Jika respons eksplisit menyatakan tidak ada slot tersedia
-          console.log("⚠️ Tidak ada slot terapi tersedia");
-          toast({
-            title: "Tidak Ada Sesi Tersedia",
-            description: "Saat ini tidak ada sesi terapi yang tersedia. Silakan coba lagi nanti atau hubungi admin.",
-          });
-        }
-        
-        // Tetap muat slot terapi dengan refetchTherapySlots
-        refetchTherapySlots();
       } else {
-        console.log("❌ Verifikasi gagal, status respons:", response.status);
-        
-        // Analisis respons error
-        setRegistrationStatus("error");
-        
-        if (data.message) {
-          console.log("📝 Pesan error:", data.message);
-          
-          // Klasifikasi error berdasarkan pesan
-          if (data.message.includes("expired") || data.message.includes("kedaluwarsa")) {
-            setRegistrationStatus("expired");
-          } else if (data.message.includes("limit") || data.message.includes("reached") || 
-                    data.message.includes("penuh") || data.status === "quota-reached") {
-            setRegistrationStatus("quota-reached");
-            
-            if (data.dailyLimit) {
-              setRegistrationLimit(data.dailyLimit);
-            }
-            
-            if (data.currentRegistrations !== undefined) {
-              setCurrentRegistrations(data.currentRegistrations);
-            }
-          }
-        }
-        
-        // Tampilkan pesan error
-        toast({
-          variant: "destructive",
-          title: "Kode Pendaftaran Tidak Valid",
-          description: data.message || "Terjadi kesalahan saat memverifikasi kode pendaftaran.",
-        });
-      }
-    } catch (error: any) {
-      console.error("❌ Error verifying registration code:", error);
-      
-      // Reset status untuk mencoba lagi
-      setRegistrationStatus("error");
-      
-      // Tampilkan toast error
-      toast({
-        variant: "destructive", 
-        title: "Verifikasi Gagal",
-        description: "Terjadi kesalahan saat menghubungi server. Silakan coba lagi nanti.",
-      });
-      
-      // Tambahkan debugging lebih detail
-      console.log("💾 Status registrasi setelah error:", registrationStatus);
-      console.log("🚫 Error code:", error.code);
-      console.log("🚫 Error name:", error.name);
-      console.log("🚫 Error stack:", error.stack);
-    }
-  };
-
-  // Fungsi untuk mencari pasien berdasarkan nama atau nomor HP
-  const searchPatient = async () => {
-    if (!searchQuery.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Input diperlukan",
-        description: "Silakan masukkan nama atau nomor telepon untuk pencarian",
-      });
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const response = await apiRequest<PatientSearchResponse>(`/api/search-patient?query=${encodeURIComponent(searchQuery)}`, {
-        method: "GET",
-      });
-
-      if (response.success) {
-        if (response.found && response.patient) {
-          setPatientFound(true);
-          setFoundPatient(response.patient);
-          
-          // Prefill form dengan data pasien yang ditemukan
-          form.setValue("name", response.patient.name);
-          form.setValue("phoneNumber", response.patient.phoneNumber);
-          form.setValue("email", response.patient.email || "");
-          // Format tanggal lahir sesuai format yang dibutuhkan input type="date" (yyyy-MM-dd)
-          form.setValue("birthDate", response.patient.birthDate);
-          form.setValue("gender", response.patient.gender);
-          form.setValue("address", response.patient.address);
-          
-          toast({
-            title: "Pasien Ditemukan",
-            description: `Selamat datang kembali, ${response.patient.name}! Data Anda telah terisi otomatis.`,
-            className: "bg-teal-50 border-teal-200 text-teal-800",
-          });
+        console.error("Kode registrasi tidak valid:", data);
+        if (data.expired) {
+          setRegistrationStatus("expired");
         } else {
-          setPatientFound(false);
-          setFoundPatient(null);
-          toast({
-            title: "Pasien Baru",
-            description: "Kami tidak menemukan data Anda. Silakan isi formulir pendaftaran.",
-            className: "bg-amber-50 border-amber-200 text-amber-800",
-          });
+          setRegistrationStatus("error");
         }
-      } else {
+        
         toast({
           variant: "destructive",
-          title: "Pencarian Gagal",
-          description: response.message || "Terjadi kesalahan saat mencari data pasien.",
+          title: "Link Tidak Valid",
+          description: data.message || "Link pendaftaran yang Anda gunakan tidak valid atau telah kedaluwarsa.",
         });
       }
     } catch (error) {
-      console.error("Error searching for patient:", error);
+      console.error("Error verifying registration code:", error);
+      setRegistrationStatus("error");
       toast({
         variant: "destructive",
-        title: "Pencarian Gagal",
-        description: "Terjadi kesalahan saat mencari data pasien.",
+        title: "Koneksi Gagal",
+        description: "Terjadi kesalahan saat memverifikasi kode pendaftaran. Silakan coba lagi nanti.",
+      });
+    }
+  };
+
+  // Fungsi pencarian pasien berdasarkan nomor telepon
+  const handleSearchPatient = async () => {
+    if (!searchQuery || searchQuery.length < 9) {
+      toast({
+        variant: "destructive",
+        title: "Format Nomor Tidak Valid",
+        description: "Masukkan nomor telepon lengkap untuk mencari data pasien.",
+      });
+      return;
+    }
+    
+    setIsSearching(true);
+    
+    try {
+      const response = await fetch(`/api/patients/search?phone=${encodeURIComponent(searchQuery)}`, {
+        credentials: 'include',
+      });
+      
+      const data: PatientSearchResponse = await response.json();
+      
+      if (data.success) {
+        if (data.found && data.patient) {
+          console.log("Pasien ditemukan:", data.patient);
+          setPatientFound(true);
+          setFoundPatient(data.patient);
+          
+          // Isi formulir dengan data pasien
+          form.setValue("name", data.patient.name);
+          form.setValue("phoneNumber", data.patient.phoneNumber);
+          form.setValue("email", data.patient.email || "");
+          form.setValue("birthDate", data.patient.birthDate);
+          form.setValue("gender", data.patient.gender as "Laki-laki" | "Perempuan");
+          form.setValue("address", data.patient.address);
+          if (data.patient.complaints) {
+            form.setValue("complaints", data.patient.complaints);
+          }
+          
+          toast({
+            title: "Data Pasien Ditemukan",
+            description: "Data pasien telah diisi otomatis pada formulir.",
+            className: "bg-green-50 border-green-200 text-green-800",
+          });
+        } else {
+          console.log("Pasien tidak ditemukan");
+          setPatientFound(false);
+          setFoundPatient(null);
+          
+          toast({
+            title: "Pasien Baru",
+            description: "Nomor telepon belum terdaftar. Silakan isi formulir untuk pendaftaran baru.",
+            className: "bg-blue-50 border-blue-200 text-blue-800",
+          });
+        }
+      } else {
+        console.error("Gagal mencari pasien:", data.message);
+        setPatientFound(false);
+        setFoundPatient(null);
+        
+        toast({
+          variant: "destructive",
+          title: "Pencarian Gagal",
+          description: data.message || "Terjadi kesalahan saat mencari data pasien.",
+        });
+      }
+    } catch (error) {
+      console.error("Error searching patient:", error);
+      toast({
+        variant: "destructive",
+        title: "Koneksi Gagal",
+        description: "Terjadi kesalahan saat mencari data pasien. Silakan coba lagi nanti.",
       });
     } finally {
       setIsSearching(false);
     }
   };
 
-  // Initialize form
-  const form = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerFormSchema),
-    defaultValues: {
-      name: "",
-      phoneNumber: "",
-      email: "",
-      birthDate: "",
-      gender: "Laki-laki",
-      address: "",
-      complaints: "",
-    },
-  });
-
-  // Handle form submission
-  // State untuk mencegah multiple submit
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
+  // Handling form submission
   const onSubmit = async (values: RegisterFormValues) => {
-    // Prevent double submission
-    if (isSubmitting) {
-      console.log("Form submission prevented: Already submitting");
-      return;
-    }
-
+    console.log("Form submitted with values:", values);
     setIsSubmitting(true);
     
     try {
-      // Validasi apakah pasien telah memilih sesi terapi
-      if (!values.therapySlotId) {
+      // Validasi jika kode pendaftaran tidak ada
+      if (!registrationCode) {
         toast({
           variant: "destructive",
-          title: "Sesi Terapi Diperlukan",
-          description: "Silakan pilih sesi terapi yang tersedia",
+          title: "Kode Pendaftaran Tidak Valid",
+          description: "Kode pendaftaran tidak tersedia. Silakan reload halaman atau gunakan link yang valid.",
         });
         setIsSubmitting(false);
         return;
       }
       
-      // Create the patient payload
-      const payload = {
-        ...values, 
-        // Convert fields as needed to match schema
-        email: values.email || null,
-        // Memastikan format tanggal tetap yyyy-MM-dd untuk komunikasi dengan backend
-        birthDate: values.birthDate, // Format yyyy-MM-dd sesuai untuk API
-        // Add registration code as metadata
-        registrationCode,
-        // Pastikan therapySlotId dikirim dengan benar
-        therapySlotId: values.therapySlotId
-      };
-
-      console.log("Mengirim data pendaftaran pasien:", payload);
-
-      // Submit the form data to patients endpoint
-      const response = await apiRequest<RegistrationResponse>("/api/patients", {
+      // Validasi slot terapi jika dibutuhkan (tidak untuk pasien walk-in dari admin)
+      if (!isWalkInMode && !values.therapySlotId) {
+        toast({
+          variant: "destructive",
+          title: "Sesi Terapi Belum Dipilih",
+          description: "Silakan pilih sesi terapi yang tersedia.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Kirim data ke server
+      const response = await fetch("/api/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        credentials: "include",
+        body: JSON.stringify({
+          ...values,
+          registrationCode,
+        }),
       });
-
-      if (response && response.id) {
-        // Successfully created the patient
+      
+      const data: RegistrationResponse = await response.json();
+      
+      if (response.ok) {
+        console.log("Pendaftaran berhasil:", data);
+        setRegistrationResult(data);
         setRegistrationStatus("success");
         
-        // Simpan data slot terapi dari response jika ada
-        if (response.appointment && response.appointment.therapySlotDetails) {
-          // Untuk ditampilkan pada halaman sukses
-          setSelectedSlot({
-            id: response.appointment.therapySlotId,
-            date: response.appointment.therapySlotDetails.formattedDate,
-            timeSlot: response.appointment.therapySlotDetails.timeSlot
+        // Refresh kuota pendaftaran
+        if (data.registrationInfo) {
+          setCurrentRegistrations(data.registrationInfo.currentRegistrations);
+          setRegistrationLimit(data.registrationInfo.dailyLimit);
+        }
+        
+        // Kompatibilitas dengan format lama - jika tidak ada appointment, tetap tampilkan hasil
+        if (!data.appointment && data.id) {
+          toast({
+            title: "Pendaftaran Berhasil",
+            description: "Data pasien berhasil didaftarkan.",
+            className: "bg-green-50 border-green-200 text-green-800",
           });
         }
-        
-        toast({
-          title: "Pendaftaran Berhasil",
-          description: "Terima kasih telah mendaftar. Anda akan segera dihubungi oleh tim kami.",
-        });
-        
-        // Sekarang kita tidak perlu menaikkan jumlah pendaftaran di sini
-        // karena servernya telah menangani itu secara otomatis saat pendaftaran
-        
-        // Tampilkan informasi kuota jika tersedia
-        if (response.registrationInfo) {
-          console.log("Registration info from server:", response.registrationInfo);
-          if (response.registrationInfo.currentRegistrations !== undefined) {
-            setCurrentRegistrations(response.registrationInfo.currentRegistrations);
-          }
-          if (response.registrationInfo.dailyLimit) {
-            setRegistrationLimit(response.registrationInfo.dailyLimit);
-          }
-        }
-      } else if (response && response.code === "DUPLICATE_APPOINTMENT") {
-        // Penanganan khusus untuk pendaftaran ganda
-        toast({
-          variant: "destructive",
-          title: "Pendaftaran Gagal",
-          description: response.message || "Anda sudah memiliki jadwal terapi pada hari yang sama. Silakan pilih hari lain.",
-        });
       } else {
+        console.error("Pendaftaran gagal:", data);
+        
+        // Cek apakah kuota sudah penuh
+        if (data.message && data.message.includes("kuota") || data.message && data.message.includes("penuh")) {
+          setRegistrationStatus("quota-reached");
+        }
+        
         toast({
           variant: "destructive",
           title: "Pendaftaran Gagal",
-          description: response?.message || "Terjadi kesalahan saat mendaftar. Silakan coba lagi.",
+          description: data.message || "Terjadi kesalahan saat mendaftarkan pasien. Silakan coba lagi nanti.",
         });
       }
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      
-      // Extract error message if it's a validation error
-      let errorMessage = "Terjadi kesalahan saat mendaftar. Silakan coba lagi.";
-      if (error.errors && Array.isArray(error.errors)) {
-        errorMessage = error.errors.map((err: any) => err.message).join(", ");
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
+    } catch (error) {
+      console.error("Error registering patient:", error);
       toast({
         variant: "destructive",
-        title: "Pendaftaran Gagal",
-        description: errorMessage,
+        title: "Koneksi Gagal",
+        description: "Terjadi kesalahan saat menghubungi server. Silakan coba lagi nanti.",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Display status messages based on registration status
-  const renderStatusMessage = () => {
-    switch (registrationStatus) {
-      case "success":
-        return (
-          <Alert className="my-4 bg-green-50 border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertTitle>Pendaftaran Berhasil!</AlertTitle>
-            <AlertDescription>
-              Terima kasih telah mendaftar di Terapi Titik Sumber. Kami akan segera menghubungi Anda untuk konfirmasi jadwal.
-            </AlertDescription>
-          </Alert>
-        );
-      case "error":
-        return (
-          <Alert variant="destructive" className="my-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Kode Pendaftaran Tidak Valid</AlertTitle>
-            <AlertDescription>
-              Kode pendaftaran yang Anda gunakan tidak valid. Silakan minta kode baru dari admin kami.
-            </AlertDescription>
-          </Alert>
-        );
-      case "quota-reached":
-        return (
-          <Alert variant="destructive" className="my-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Kuota Pendaftaran Telah Penuh</AlertTitle>
-            <AlertDescription>
-              Maaf, kuota pendaftaran untuk hari ini telah mencapai batas maksimum ({currentRegistrations}/{registrationLimit}). 
-              Silakan kembali besok atau hubungi admin untuk informasi lebih lanjut.
-            </AlertDescription>
-          </Alert>
-        );
-      case "expired":
-        return (
-          <Alert variant="destructive" className="my-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Link Pendaftaran Telah Kedaluwarsa</AlertTitle>
-            <AlertDescription>
-              Maaf, link pendaftaran ini telah kedaluwarsa. Silakan minta link baru dari admin kami.
-            </AlertDescription>
-          </Alert>
-        );
-      default:
-        return null;
+  // Fungsi untuk mengelompokkan slot berdasarkan tanggal
+  function renderSlotsByDateGroups() {
+    if (!therapySlots || therapySlots.length === 0) {
+      return (
+        <Alert className="bg-amber-50 border-amber-200">
+          <AlertCircle className="h-4 w-4 text-amber-700" />
+          <AlertTitle className="text-amber-700">Tidak ada sesi tersedia</AlertTitle>
+          <AlertDescription className="text-amber-600">
+            Maaf, saat ini tidak ada sesi terapi yang tersedia. Silakan hubungi admin untuk informasi lebih lanjut.
+          </AlertDescription>
+        </Alert>
+      );
     }
-  };
+
+    // Kelompokkan slot berdasarkan tanggal
+    const groupedByDate: Record<string, any[]> = {};
+    
+    therapySlots.forEach((slot: any) => {
+      const dateStr = format(new Date(slot.date), "yyyy-MM-dd");
+      if (!groupedByDate[dateStr]) {
+        groupedByDate[dateStr] = [];
+      }
+      groupedByDate[dateStr].push(slot);
+    });
+    
+    // Render grup tanggal dan slot-nya
+    return (
+      <div className="space-y-4">
+        {Object.entries(groupedByDate).map(([dateStr, slots]) => {
+          const formattedDate = format(new Date(dateStr), "EEEE, dd MMMM yyyy", { locale: idLocale });
+          
+          return (
+            <div key={dateStr} className="border rounded-md p-3">
+              <h4 className="font-medium mb-2 flex items-center">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formattedDate}
+              </h4>
+              <div className="grid grid-cols-2 gap-2">
+                {slots.map((slot: any) => (
+                  <div key={slot.id} className="flex">
+                    <label
+                      htmlFor={`slot-${slot.id}`}
+                      className={cn(
+                        "flex items-center justify-between w-full p-2 border rounded-md text-sm cursor-pointer",
+                        "hover:bg-teal-50 hover:border-teal-200",
+                        form.watch("therapySlotId") === slot.id ? "bg-teal-50 border-teal-500 ring-1 ring-teal-500" : ""
+                      )}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id={`slot-${slot.id}`}
+                          value={slot.id}
+                          checked={form.watch("therapySlotId") === slot.id}
+                          className="sr-only"
+                          onChange={() => {
+                            form.setValue("therapySlotId", slot.id);
+                            setSelectedSlot({
+                              id: slot.id,
+                              date: format(new Date(slot.date), "dd MMMM yyyy", { locale: idLocale }),
+                              timeSlot: slot.timeSlot
+                            });
+                          }}
+                        />
+                        <Clock className="h-4 w-4 text-gray-500" />
+                        <span>{slot.timeSlot}</span>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {slot.currentCount}/{slot.maxQuota}
+                      </span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (registrationStatus === "success" && registrationResult) {
+    return (
+      <div className="container max-w-2xl mx-auto p-4">
+        <Card className="bg-white shadow-md">
+          <CardHeader className="bg-green-50 border-b border-green-100">
+            <div className="flex justify-center mb-4">
+              <CheckCircle className="h-16 w-16 text-green-600" />
+            </div>
+            <CardTitle className="text-center text-2xl text-green-800">Pendaftaran Berhasil!</CardTitle>
+            <CardDescription className="text-center text-green-700">
+              Terima kasih telah mendaftar di klinik Terapi Titik Sumber
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="border-b pb-4">
+                <h3 className="font-medium text-gray-700 mb-2 flex items-center">
+                  <User className="mr-2 h-4 w-4" />
+                  Data Pasien
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-sm text-gray-500">Nama</p>
+                    <p className="font-medium">{registrationResult.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Nomor HP</p>
+                    <p className="font-medium">{registrationResult.phoneNumber}</p>
+                  </div>
+                  {registrationResult.email && (
+                    <div>
+                      <p className="text-sm text-gray-500">Email</p>
+                      <p className="font-medium">{registrationResult.email}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm text-gray-500">Tanggal Lahir</p>
+                    <p className="font-medium">{formatBirthDate(registrationResult.birthDate || "")}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Jenis Kelamin</p>
+                    <p className="font-medium">{registrationResult.gender}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-sm text-gray-500">Alamat</p>
+                    <p className="font-medium">{registrationResult.address}</p>
+                  </div>
+                </div>
+              </div>
+
+              {registrationResult.appointment && (
+                <div className="border-b pb-4">
+                  <h3 className="font-medium text-gray-700 mb-2 flex items-center">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Detail Jadwal Terapi
+                  </h3>
+                  <div className="bg-blue-50 p-3 rounded-md border border-blue-100 flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center mb-2 md:mb-0">
+                      <CalendarIcon className="mr-2 h-4 w-4 text-blue-700" />
+                      <span className="text-blue-900 font-medium">
+                        {format(new Date(registrationResult.appointment.date), "EEEE, dd MMMM yyyy", { locale: idLocale })}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="mr-2 h-4 w-4 text-blue-700" />
+                      <span className="text-blue-900 font-medium">
+                        {registrationResult.appointment.timeSlot}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="border-b pb-4">
+                <h3 className="font-medium text-gray-700 mb-2">Informasi Penting</h3>
+                <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                  <li>Silakan simpan bukti pendaftaran ini sebagai referensi</li>
+                  <li>Mohon datang 15 menit sebelum jadwal terapi</li>
+                  <li>Harap lakukan konfirmasi kehadiran melalui WhatsApp</li>
+                  <li>Bawa kartu identitas untuk verifikasi</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+
+          <CardFooter className="flex flex-col sm:flex-row gap-3">
+            {registrationResult.appointment && (
+              <RegistrationPDF
+                patientData={{
+                  name: registrationResult.name || "",
+                  phoneNumber: registrationResult.phoneNumber || "",
+                  email: registrationResult.email || "",
+                  birthDate: registrationResult.birthDate || "",
+                  gender: registrationResult.gender || "",
+                  address: registrationResult.address || ""
+                }}
+                appointmentData={{
+                  date: registrationResult.appointment.date,
+                  timeSlot: registrationResult.appointment.timeSlot
+                }}
+              />
+            )}
+            <Button onClick={() => window.location.reload()} variant="outline" className="w-full sm:w-auto">
+              Pendaftaran Baru
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  if (registrationStatus === "expired") {
+    return (
+      <div className="container max-w-md mx-auto p-4">
+        <Card className="bg-white shadow-md">
+          <CardHeader className="bg-amber-50 border-b border-amber-100">
+            <CardTitle className="text-center text-xl text-amber-800">Link Pendaftaran Kedaluwarsa</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="flex justify-center mb-4">
+              <AlertCircle className="h-12 w-12 text-amber-500" />
+            </div>
+            <p className="text-center mb-4">
+              Maaf, link pendaftaran yang Anda gunakan telah kedaluwarsa atau tidak valid.
+            </p>
+            <p className="text-center text-sm text-gray-600">
+              Silakan hubungi admin klinik untuk mendapatkan link pendaftaran yang baru.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (registrationStatus === "error") {
+    return (
+      <div className="container max-w-md mx-auto p-4">
+        <Card className="bg-white shadow-md">
+          <CardHeader className="bg-red-50 border-b border-red-100">
+            <CardTitle className="text-center text-xl text-red-800">Terjadi Kesalahan</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="flex justify-center mb-4">
+              <AlertCircle className="h-12 w-12 text-red-500" />
+            </div>
+            <p className="text-center mb-4">
+              Maaf, terjadi kesalahan saat menghubungi server pendaftaran.
+            </p>
+            <p className="text-center text-sm text-gray-600 mb-6">
+              Silakan coba lagi nanti atau hubungi admin klinik untuk bantuan.
+            </p>
+            <div className="flex justify-center">
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Muat Ulang Halaman
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (registrationStatus === "quota-reached") {
+    return (
+      <div className="container max-w-md mx-auto p-4">
+        <Card className="bg-white shadow-md">
+          <CardHeader className="bg-amber-50 border-b border-amber-100">
+            <CardTitle className="text-center text-xl text-amber-800">Kuota Pendaftaran Penuh</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="flex justify-center mb-4">
+              <Users className="h-12 w-12 text-amber-500" />
+            </div>
+            <p className="text-center mb-4">
+              Maaf, kuota pendaftaran untuk hari ini telah penuh.
+            </p>
+            <p className="text-center text-sm text-gray-600 mb-6">
+              Silakan coba lagi besok atau hubungi admin klinik untuk informasi lebih lanjut.
+            </p>
+            <div className="flex justify-center">
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Muat Ulang Halaman
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-teal-700">Terapi Titik Sumber</h1>
-          <p className="text-gray-600 mt-2">
-            {isWalkInMode ? "Pendaftaran Pasien Walk-in" : "Formulir Pendaftaran Pasien Baru"}
-          </p>
-        </div>
+    <div className="container mx-auto py-6 px-4">
+      <div className="max-w-3xl mx-auto">
+        <Card className="bg-white shadow-md">
+          <CardHeader className="bg-teal-50 border-b border-teal-100">
+            <CardTitle className="text-2xl font-bold text-center text-teal-800">Pendaftaran Terapi Titik Sumber</CardTitle>
+            <CardDescription className="text-center text-teal-600">
+              Silakan isi formulir di bawah ini untuk mendaftar sebagai pasien
+            </CardDescription>
 
-        {/* Banner untuk mode walk-in */}
-        {isWalkInMode && (
-          <Alert className="my-4 bg-blue-50 border-blue-200">
-            <User className="h-4 w-4 text-blue-600" />
-            <AlertTitle className="text-blue-700">Mode Pendaftaran Langsung</AlertTitle>
-            <AlertDescription className="text-blue-600">
-              Anda sedang mendaftarkan pasien walk-in langsung di klinik. 
-              Sesi terapi telah dipilih otomatis. Isi form dengan data pasien untuk melanjutkan.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {renderStatusMessage()}
-
-        {/* Show current quota if code is valid */}
-        {registrationStatus === "idle" && registrationCode && (
-          <div className="mb-6 text-center">
-            <div className="inline-flex items-center bg-teal-50 rounded-full px-4 py-2 text-sm text-teal-700">
-              <CalendarIcon className="w-4 h-4 mr-2" />
-              Pendaftaran tersedia: {currentRegistrations}/{registrationLimit}
-            </div>
-            {expiryTime && (
-              <div className="inline-flex items-center bg-amber-50 rounded-full px-4 py-2 text-sm text-amber-700 ml-2">
-                <Clock className="w-4 h-4 mr-2" />
-                Berlaku hingga: {format(expiryTime, "dd/MM/yyyy HH:mm")}
+            {(currentRegistrations !== null && registrationLimit !== null) && (
+              <div className="mt-2 bg-white border border-teal-200 rounded-md p-2 text-sm">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-gray-600">Status Pendaftaran:</span>
+                  <span className="font-medium">
+                    {registrationLimit === 9999 ? "Tidak terbatas" : `${currentRegistrations}/${registrationLimit}`}
+                  </span>
+                </div>
+                {expiryTime && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Masa Berlaku Link:</span>
+                    <span className="font-medium">
+                      {expiryTime.getFullYear() >= 9999 ? "Permanen" : format(expiryTime, "dd MMM yyyy", { locale: idLocale })}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Only show the form if the code is valid and quota not reached */}
-        {registrationStatus === "idle" && registrationCode && (
-          <Card className="shadow-lg border-teal-100">
-            <CardHeader className="bg-teal-50 border-b border-teal-100">
-              <CardTitle className="text-teal-800">Form Pendaftaran</CardTitle>
-              <CardDescription>
-                Silakan isi data diri Anda dengan lengkap dan benar
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {/* Search box for existing patients - simpel untuk walk-in, lengkap untuk pendaftaran umum */}
-              <div className="mb-6 pb-6 border-b border-gray-200">
-                {isWalkInMode ? (
-                  <>
-                    <h3 className="text-lg font-medium mb-3 text-blue-700">Pencarian Data Pasien</h3>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <div className="flex-1">
-                        <Input
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Masukkan nama atau nomor WA pasien"
-                          className="w-full"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              searchPatient();
-                            }
-                          }}
-                        />
-                      </div>
-                      <Button
-                        onClick={searchPatient}
-                        disabled={isSearching}
-                        type="button"
-                        variant={patientFound ? "outline" : "default"}
-                        className={cn(
-                          "flex items-center gap-1",
-                          patientFound ? "bg-teal-100 text-teal-800 hover:bg-teal-200" : ""
-                        )}
-                      >
-                        {patientFound ? <CheckCircle className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-                        {isSearching ? 'Mencari...' : patientFound ? 'Data Ditemukan' : 'Cari Pasien'}
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="text-lg font-medium mb-3">Sudah pernah terapi di Titik Sumber?</h3>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <div className="flex-1">
-                        <Input
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Masukkan nama atau nomor WA Anda"
-                          className="w-full"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              searchPatient();
-                            }
-                          }}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Cari berdasarkan nama atau nomor whatsapp untuk mengisi data otomatis
-                        </p>
-                      </div>
-                      <Button
-                        onClick={searchPatient}
-                        disabled={isSearching}
-                        type="button"
-                        variant="outline"
-                        className="flex items-center gap-1"
-                      >
-                        <Search className="h-4 w-4" />
-                        {isSearching ? 'Mencari...' : 'Cari Data'}
-                      </Button>
-                    </div>
-                  </>
-                )}
-                
-                {patientFound && foundPatient && (
-                  <Alert className="mt-4 bg-teal-50 border-teal-200">
-                    <CheckCircle className="h-4 w-4 text-teal-600" />
-                    <AlertTitle>Pasien Ditemukan!</AlertTitle>
-                    <AlertDescription>
-                      {isWalkInMode 
-                        ? `Data pasien ${foundPatient.name} telah terisi otomatis.` 
-                        : `Selamat datang kembali, ${foundPatient.name}! Data Anda telah terisi otomatis.`
+            {isWalkInMode && (
+              <Alert className="mt-3 bg-blue-50 border-blue-200">
+                <AlertCircle className="h-4 w-4 text-blue-700" />
+                <AlertTitle className="text-blue-700">Pendaftaran Pasien Walk-in</AlertTitle>
+                <AlertDescription className="text-blue-600">
+                  Ini adalah mode pendaftaran untuk pasien yang datang langsung ke klinik.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardHeader>
+
+          <CardContent className="pt-6">
+            <div className="mb-6">
+              <h3 className="text-base font-medium mb-2">Cari Pasien yang Sudah Terdaftar</h3>
+              <div className="flex space-x-2">
+                <div className="flex-1">
+                  <Input 
+                    placeholder="Masukkan nomor telepon" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSearchPatient();
                       }
-                    </AlertDescription>
-                  </Alert>
-                )}
+                    }}
+                  />
+                </div>
+                <Button 
+                  onClick={handleSearchPatient} 
+                  disabled={isSearching} 
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSearching ? "Mencari..." : <Search className="h-4 w-4" />}
+                </Button>
               </div>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <p className="text-sm text-gray-500 mt-1">
+                Masukkan nomor telepon untuk mencari data pasien yang sudah terdaftar sebelumnya
+              </p>
+            </div>
+
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nama Lengkap</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Masukkan nama lengkap" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phoneNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nomor HP</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Masukkan nomor HP (contoh: 08123456789)" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email (opsional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Masukkan alamat email" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
-                    name="name"
+                    name="birthDate"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nama Lengkap</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Masukkan nama lengkap Anda" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="phoneNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nomor HP</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Contoh: 08123456789" {...field} />
-                          </FormControl>
-                          <FormDescription>
-                            Nomor WhatsApp aktif
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email (Opsional)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="email@contoh.com" 
-                              {...field} 
-                              value={field.value || ''} 
-                            />
-                          </FormControl>
-                          <FormDescription className="text-xs">
-                            Boleh dikosongkan jika tidak memiliki email
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="birthDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tanggal Lahir</FormLabel>
-                          <FormControl>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant="outline"
-                                    className={cn(
-                                      "w-full pl-3 text-left font-normal h-12 px-4 md:h-10",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    {field.value ? (
-                                      formatBirthDate(field.value)
-                                    ) : (
-                                      <span>Pilih tanggal lahir</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value ? new Date(field.value) : undefined}
-                                  onSelect={(date) => {
-                                    if (date) {
-                                      // Konversi Date ke string format YYYY-MM-DD
-                                      const dateString = format(date, 'yyyy-MM-dd');
-                                      field.onChange(dateString);
-                                    }
-                                  }}
-                                  initialFocus
-                                  disabled={(date) => date > new Date()}
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="gender"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Jenis Kelamin</FormLabel>
-                          <FormControl>
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              className="flex flex-col space-y-1"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="Laki-laki" id="male" />
-                                <FormLabel htmlFor="male" className="font-normal">
-                                  Laki-laki
-                                </FormLabel>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="Perempuan" id="female" />
-                                <FormLabel htmlFor="female" className="font-normal">
-                                  Perempuan
-                                </FormLabel>
-                              </div>
-                            </RadioGroup>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Alamat</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Masukkan alamat lengkap Anda"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Slot Terapi Section */}
-                  {isWalkInMode && selectedSlot ? (
-                    <div className="mb-6 space-y-3">
-                      <h3 className="text-base font-medium text-blue-700">Sesi Terapi Terpilih</h3>
-                      <Alert className="bg-blue-50 border-blue-200">
-                        <CalendarIcon className="h-4 w-4 text-blue-600" />
-                        <AlertTitle className="text-blue-700">Detail Sesi</AlertTitle>
-                        <AlertDescription className="text-blue-600">
-                          <p><strong>Tanggal:</strong> {selectedSlot.date}</p>
-                          <p><strong>Jam:</strong> {selectedSlot.timeSlot}</p>
-                        </AlertDescription>
-                      </Alert>
-                    </div>
-                  ) : (
-                    <FormField
-                      control={form.control}
-                      name="therapySlotId"
-                      render={({ field }) => (
-                        <FormItem className="space-y-3">
-                          <FormLabel className="text-base">Pilih Sesi Terapi</FormLabel>
-                          <FormDescription>
-                            Pilih jadwal sesi terapi yang tersedia sesuai dengan kebutuhan Anda
-                          </FormDescription>
-                          <FormControl>
-                            <div className="space-y-4">
-                            {isLoadingSlots ? (
-                              <div className="w-full py-8 flex items-center justify-center">
-                                <div className="animate-spin h-6 w-6 border-2 border-teal-500 rounded-full border-t-transparent"></div>
-                              </div>
-                            ) : therapySlots && therapySlots.length > 0 ? (
-                              <RadioGroup 
-                                onValueChange={(value) => field.onChange(parseInt(value))}
-                                className="space-y-6"
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Tanggal Lahir</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
                               >
-                                {/* Mengelompokkan slot berdasarkan tanggal */}
-                                {(() => {
-                                  // Mengelompokkan slot berdasarkan tanggal (YYYY-MM-DD)
-                                  const groupedSlots: {[key: string]: any[]} = {};
-                                  
-                                  therapySlots.forEach((slot: any) => {
-                                    const slotDate = parseISO(slot.date);
-                                    const dateKey = format(slotDate, "yyyy-MM-dd");
-                                    
-                                    if (!groupedSlots[dateKey]) {
-                                      groupedSlots[dateKey] = [];
-                                    }
-                                    
-                                    groupedSlots[dateKey].push(slot);
-                                  });
-                                  
-                                  // Mengubah object groupedSlots menjadi array untuk ditampilkan
-                                  return Object.entries(groupedSlots).map(([dateKey, slots]) => {
-                                    const slotDate = parseISO(dateKey);
-                                    const formattedDate = format(slotDate, "EEEE, dd MMMM yyyy", { locale: idLocale });
-                                    
-                                    // Filtering logic untuk menampilkan hanya slot yang belum lewat
-                                    const now = new Date();
-                                    
-                                    // Tambahkan 7 jam untuk zona waktu Indonesia (WIB/UTC+7)
-                                    // Ini cara yang lebih aman untuk mendapatkan waktu lokal Indonesia
-                                    const localTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-                                    
-                                    // De-duplikasi slot berdasarkan kombinasi timeSlot dan date
-                                    // Gunakan Map dengan kunci gabungan (date + timeSlot) untuk menghilangkan duplikasi
-                                    const uniqueSlots = new Map();
-                                    
-                                    // Simpan slot yang unik ke Map
-                                    slots.forEach((slot: any) => {
-                                      const slotKey = `${dateKey}-${slot.timeSlot}`;
-                                      if (!uniqueSlots.has(slotKey)) {
-                                        uniqueSlots.set(slotKey, slot);
-                                      }
-                                    });
-                                    
-                                    // Konversi Map kembali ke array
-                                    const deduplicatedSlots = Array.from(uniqueSlots.values());
-                                    
-                                    // Filter slot yang belum lewat waktunya
-                                    const validSlots = deduplicatedSlots.filter((slot: any) => {
-                                      try {
-                                        // Format dari timeSlot adalah "10:00-11:30", ambil jam awal saja
-                                        const startTime = slot.timeSlot.split('-')[0].trim();
-                                        const [hours, minutes] = startTime.split(':').map(Number);
-                                        
-                                        // Buat objek tanggal slot dengan tanggal hari slot + jam dari timeSlot
-                                        const slotDateTime = new Date(slotDate);
-                                        slotDateTime.setHours(hours, minutes, 0, 0);
-                                        
-                                        // Bandingkan dengan waktu lokal Indonesia
-                                        return slotDateTime > localTime;
-                                      } catch (err) {
-                                        console.error("Error comparing dates:", err);
-                                        return false; // Jika ada error, anggap slot sudah tidak valid
-                                      }
-                                    });
-                                    
-                                    // If there are no slots at all, return null
-                                    if (validSlots.length === 0) return null;
-                                    
-                                    return (
-                                      <div key={dateKey} className="border rounded-lg overflow-hidden">
-                                        <div className="bg-teal-50 px-4 py-2 border-b border-teal-100">
-                                          <h3 className="font-medium text-teal-800">{formattedDate}</h3>
-                                        </div>
-                                        <div className="p-3 space-y-2">
-                                          {validSlots.map((slot: any) => {
-                                            // Pastikan lagi bahwa slot ini masih memiliki kuota tersedia
-                                            // dan menggunakan hasil perhitungan terbaru
-                                            if (slot.currentCount >= slot.maxQuota) return null;
-                                            
-                                            const availableSeats = slot.maxQuota - slot.currentCount;
-                                            const isAlmostFull = availableSeats <= 2;
-                                            
-                                            return (
-                                              <div key={slot.id} className="flex items-center space-x-3 border border-gray-200 rounded-md p-2 hover:bg-teal-50 cursor-pointer transition-colors">
-                                                <RadioGroupItem value={String(slot.id)} id={`slot-${slot.id}`} />
-                                                <div className="grid grid-cols-2 w-full gap-1">
-                                                  <FormLabel htmlFor={`slot-${slot.id}`} className="font-medium text-sm">
-                                                    <Clock className="h-3.5 w-3.5 inline mr-1 text-gray-500" />
-                                                    {slot.timeSlot}
-                                                  </FormLabel>
-                                                  <div className="flex items-center justify-end text-xs">
-                                                    <Users className="h-3 w-3 mr-1" />
-                                                    <span className={`${isAlmostFull ? 'text-red-600 font-medium' : 'text-amber-700'}`}>
-                                                      {availableSeats}/{slot.maxQuota} kursi
-                                                    </span>
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    );
-                                  });
-                                })()}
-                              </RadioGroup>
+                                {field.value ? (
+                                  formatDateDDMMYYYY(field.value)
+                                ) : (
+                                  <span>Pilih tanggal</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ? new Date(field.value) : undefined}
+                              onSelect={(date) => field.onChange(date ? date.toISOString() : "")}
+                              disabled={(date) => date > new Date()}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>Jenis Kelamin</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="flex space-x-4"
+                          >
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="Laki-laki" />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                Laki-laki
+                              </FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="Perempuan" />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                Perempuan
+                              </FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Alamat</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Masukkan alamat lengkap"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {selectedSlot ? (
+                  <div className="py-2">
+                    <FormLabel className="block mb-2">Sesi Terapi Terpilih</FormLabel>
+                    <Alert className="bg-blue-50 border-blue-100">
+                      <CalendarIcon className="h-4 w-4 text-blue-700" />
+                      <AlertTitle className="text-blue-700">Detail Sesi</AlertTitle>
+                      <AlertDescription className="text-blue-600">
+                        <p><strong>Tanggal:</strong> {selectedSlot.date}</p>
+                        <p><strong>Jam:</strong> {selectedSlot.timeSlot}</p>
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="therapySlotId"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel className="text-base">Pilih Sesi Terapi</FormLabel>
+                        <FormDescription>
+                          Pilih jadwal sesi terapi yang tersedia sesuai dengan kebutuhan Anda
+                        </FormDescription>
+                        <FormControl>
+                          <div className={isLoadingSlots ? "opacity-60" : ""}>
+                            {isLoadingSlots ? (
+                              <div className="flex justify-center p-4">
+                                <div className="animate-spin w-8 h-8 border-4 border-teal-400 border-t-transparent rounded-full"></div>
+                              </div>
                             ) : (
-                              <Alert className="bg-amber-50 border-amber-200">
-                                <AlertCircle className="h-4 w-4 text-amber-700" />
-                                <AlertTitle className="text-amber-700">Tidak ada sesi tersedia</AlertTitle>
-                                <AlertDescription className="text-amber-600">
-                                  Maaf, saat ini tidak ada sesi terapi yang tersedia. Silakan hubungi admin untuk informasi lebih lanjut.
-                                </AlertDescription>
-                              </Alert>
+                              renderSlotsByDateGroups()
                             )}
                           </div>
                         </FormControl>
@@ -1193,164 +1113,36 @@ export default function RegisterPage() {
                       </FormItem>
                     )}
                   />
-
-                  <FormField
-                    control={form.control}
-                    name="complaints"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Keluhan</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Ceritakan keluhan yang Anda alami"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-
-
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-teal-600 hover:bg-teal-700"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Memproses...
-                      </>
-                    ) : (
-                      'Daftar Sekarang'
-                    )}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-            <CardFooter className="bg-gray-50 border-t border-gray-100 flex flex-col items-start">
-              <p className="text-sm text-gray-600 mt-2">
-                Dengan mengisi formulir ini, Anda menyetujui untuk dihubungi oleh tim Terapi Titik Sumber.
-              </p>
-            </CardFooter>
-          </Card>
-        )}
-
-        {/* Display loading message while getting permanent link */}
-        {!registrationCode && registrationStatus === "idle" && (
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle>Mempersiapkan Pendaftaran</CardTitle>
-              <CardDescription>
-                Kami sedang mempersiapkan formulir pendaftaran untuk Anda...
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center items-center py-12">
-              <div className="animate-spin h-12 w-12 border-4 border-teal-500 rounded-full border-t-transparent"></div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Show success state after registration */}
-        {registrationStatus === "success" && (
-          <Card className="shadow-lg bg-teal-50 border-teal-200">
-            <CardHeader>
-              <CardTitle className="text-teal-800 flex items-center">
-                <CheckCircle className="mr-2 h-5 w-5" /> Pendaftaran Berhasil!
-              </CardTitle>
-              <CardDescription>
-                Terima kasih telah mendaftar di Terapi Titik Sumber
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-white rounded-md p-4 mb-4 border border-teal-100">
-                <h3 className="font-medium text-teal-800 mb-2">Detail Jadwal Terapi Anda:</h3>
-                {selectedSlot ? (
-                  <div className="space-y-1">
-                    <p className="text-gray-700"><span className="font-medium">Tanggal:</span> {selectedSlot.date}</p>
-                    <p className="text-gray-700"><span className="font-medium">Jam:</span> {selectedSlot.timeSlot}</p>
-                    <div className="mt-2 py-2 px-3 bg-yellow-50 border border-yellow-100 rounded text-sm text-yellow-700">
-                      Silakan datang 15 menit sebelum jadwal untuk persiapan terapi.
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-600 italic">Detail jadwal akan diinformasikan oleh admin kami.</p>
                 )}
-              </div>
-              <p className="mb-4 text-gray-700">
-                Tim kami akan segera menghubungi Anda melalui WhatsApp untuk konfirmasi jadwal terapi.
-              </p>
-              
-              {/* Add PDF download button */}
-              <div className="mb-4">
-                <div className="bg-green-50 rounded-md p-4 border border-green-200 mb-4">
-                  <h3 className="text-green-800 font-semibold flex items-center gap-2 text-lg">
-                    <CheckCircle className="h-5 w-5" /> Jadwal Terapi Anda telah dikonfirmasi!
-                  </h3>
-                  {selectedSlot && (
-                    <div className="mt-2 mb-2 bg-white rounded p-3 border border-green-100">
-                      <p className="text-sm font-medium text-gray-800">Detail Jadwal Terkonfirmasi:</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <CalendarIcon className="h-4 w-4 text-teal-500" />
-                        <span className="text-sm text-gray-700">{selectedSlot.date}</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Clock className="h-4 w-4 text-teal-500" />
-                        <span className="text-sm text-gray-700">{selectedSlot.timeSlot} WIB</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <MapPin className="h-4 w-4 text-teal-500" />
-                        <span className="text-sm text-gray-700">Klinik Terapi Titik Sumber</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span className="text-sm font-medium text-green-700">TERJADWAL & TERKONFIRMASI</span>
-                      </div>
-                    </div>
+
+                <FormField
+                  control={form.control}
+                  name="complaints"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Keluhan</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Ceritakan keluhan yang Anda alami"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  <p className="text-sm text-green-700 mt-1">
-                    Silakan unduh bukti pendaftaran resmi di bawah ini. Bukti ini harap dibawa saat datang ke klinik.
-                  </p>
-                  
-                  <div className="mt-3 pt-3 border-t border-green-200">
-                    <p className="text-sm text-gray-700 mb-2">Hubungi kami jika ada pertanyaan:</p>
-                    <a 
-                      href="https://wa.me/628127003608" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-md text-sm font-medium w-fit"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                      </svg>
-                      Chat WhatsApp Kami
-                    </a>
-                  </div>
-                </div>
-                <RegistrationPDF 
-                  patientName={form.getValues("name")}
-                  registrationNumber={`TTS-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`}
-                  patientId={foundPatient?.patientId || undefined}
-                  phoneNumber={form.getValues("phoneNumber")}
-                  therapyDate={selectedSlot?.date}
-                  therapyTime={selectedSlot?.timeSlot}
                 />
-              </div>
-              
-              <Button 
-                onClick={() => window.location.href = "/"}
-                className="w-full bg-teal-600 hover:bg-teal-700"
-              >
-                Kembali ke Beranda
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+
+                <Button 
+                  type="submit" 
+                  className="w-full bg-teal-600 hover:bg-teal-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Mendaftar..." : "Daftar Terapi"}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

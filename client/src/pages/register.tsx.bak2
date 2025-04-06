@@ -1,0 +1,1357 @@
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { format, parseISO, isAfter, isSameDay, addHours } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
+import { formatDateDDMMYYYY, formatBirthDate, cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { RegistrationPDF } from "@/components/registration/registration-pdf";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { 
+  AlertCircle, 
+  CalendarIcon, 
+  Clock, 
+  CheckCircle, 
+  MapPin,
+  Search, 
+  Users,
+  User
+} from "lucide-react";
+
+// Form validation schema
+const registerFormSchema = z.object({
+  name: z.string().min(3, "Nama harus minimal 3 karakter"),
+  phoneNumber: z.string().min(10, "Nomor telepon harus minimal 10 digit"),
+  email: z.string().email("Format email tidak valid").optional().or(z.literal("")),
+  birthDate: z.string().refine(val => {
+    const date = new Date(val);
+    return !isNaN(date.getTime());
+  }, { message: "Format tanggal lahir tidak valid" }),
+  gender: z.enum(["Laki-laki", "Perempuan"], {
+    required_error: "Pilih jenis kelamin",
+  }),
+  address: z.string().min(5, "Alamat harus minimal 5 karakter"),
+  complaints: z.string().min(5, "Keluhan harus minimal 5 karakter"),
+  therapySlotId: z.number({
+    required_error: "Pilih sesi terapi",
+    invalid_type_error: "Pilih sesi terapi",
+  }).optional(),
+});
+
+type RegisterFormValues = z.infer<typeof registerFormSchema>;
+
+// Patient response types
+type PatientSearchResponse = {
+  success: boolean;
+  found: boolean;
+  message?: string;
+  patient?: {
+    id: number;
+    name: string;
+    phoneNumber: string;
+    email: string | null;
+    birthDate: string;
+    gender: string;
+    address: string;
+    complaints?: string;
+  }
+}
+
+// Registration response types
+type TherapySlotDetails = {
+  date: string;
+  timeSlot: string;
+  formattedDate: string;
+}
+
+type AppointmentResponse = {
+  id: number;
+  patientId: number;
+  therapySlotId: number;
+  therapySlotDetails: TherapySlotDetails;
+  date: string;
+  timeSlot: string;
+  status: string;
+}
+
+type RegistrationResponse = {
+  id?: number;
+  name?: string;
+  phoneNumber?: string;
+  email?: string | null; 
+  birthDate?: string;
+  gender?: string;
+  address?: string;
+  appointment?: AppointmentResponse;
+  confirmationLink?: string;
+  code?: string;
+  message?: string;
+  registrationInfo?: {
+    currentRegistrations: number;
+    dailyLimit: number;
+  }
+}
+
+export default function RegisterPage() {
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const [registrationCode, setRegistrationCode] = useState<string | null>(null);
+  const [registrationStatus, setRegistrationStatus] = useState<"idle" | "success" | "error" | "quota-reached" | "expired">("idle");
+  const [registrationLimit, setRegistrationLimit] = useState<number | null>(null);
+  const [currentRegistrations, setCurrentRegistrations] = useState<number | null>(null);
+  const [expiryTime, setExpiryTime] = useState<Date | null>(null);
+  
+  // State untuk pencarian pasien
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [patientFound, setPatientFound] = useState<boolean>(false);
+  const [foundPatient, setFoundPatient] = useState<any>(null);
+  const [selectedSlot, setSelectedSlot] = useState<{id: number, date: string, timeSlot: string} | null>(null);
+  
+  // Mendapatkan data slot terapi yang tersedia
+  const { data: therapySlots, isLoading: isLoadingSlots, refetch: refetchTherapySlots } = useQuery({
+    queryKey: ['/api/therapy-slots', 'available-active'],
+    queryFn: async () => {
+      console.log("Mengambil slot terapi untuk form pendaftaran");
+      // Pastikan hanya menampilkan slot yang:
+      // 1. Aktif (active=true)
+      // 2. Masih tersedia (available=true)
+      // 3. Slot yang tanggalnya hari ini atau kemudian
+      
+      // Penting: Tambahkan parameter waktu untuk menghindari cache browser dan force refresh
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/therapy-slots?available=true&active=true&_t=${timestamp}`, {
+        credentials: 'include', // Tambahkan credentials untuk mendukung cookies
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (!response.ok) {
+        console.error(`Error fetching therapy slots: ${response.status} - ${response.statusText}`);
+        throw new Error('Gagal mengambil data slot terapi');
+      }
+      
+      const data = await response.json();
+      console.log("Slot terapi yang diterima di form pendaftaran:", data.length, "slot");
+      console.log("Detail slot terapi:", data.map(s => ({ 
+        id: s.id, 
+        date: new Date(s.date).toLocaleDateString(),
+        time: s.timeSlot,
+        quota: `${s.currentCount}/${s.maxQuota}`,
+        isActive: s.isActive
+      })));
+      
+      // Filter lagi di client-side untuk memastikan tidak ada slot dengan kuota penuh
+      const filteredSlots = data.filter(slot => slot.currentCount < slot.maxQuota);
+      console.log("Slot terapi setelah filter kuota:", filteredSlots.length, "slot");
+      
+      // Urutkan berdasarkan tanggal dan waktu
+      return filteredSlots.sort((a, b) => {
+        // Bandingkan tanggal terlebih dahulu
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        
+        // Jika tanggal sama, bandingkan jam mulai
+        return a.timeSlot.localeCompare(b.timeSlot);
+      });
+    },
+    enabled: registrationStatus === "idle" && !!registrationCode,
+    refetchInterval: 30000, // Mempersingkat interval refresh menjadi 30 detik
+    refetchOnWindowFocus: true, // Refresh saat window kembali difokuskan
+    staleTime: 10000 // Data dianggap stale setelah 10 detik
+  });
+
+  // Parse the URL for registration code - untuk link permanen
+  useEffect(() => {
+    // Perhatikan: Pada halaman pertama load, window.location.search mungkin belum tersedia
+    console.log("Full URL saat akses halaman register:", window.location.href);
+    console.log("URL search params:", window.location.search);
+    
+    const params = new URLSearchParams(window.location.search);
+    // Mendukung parameter "code" dan "kode" untuk backward compatibility
+    const code = params.get("code") || params.get("kode");
+    
+    // Mendapatkan slotId dari URL jika ada (parameter dari admin untuk pasien walk-in)
+    const slotIdParam = params.get("slotId");
+    if (slotIdParam) {
+      console.log("SlotId yang ditemukan di URL:", slotIdParam);
+      
+      // Simpan slotId untuk digunakan nanti setelah slot terapi dimuat
+      const slotId = parseInt(slotIdParam);
+      if (!isNaN(slotId)) {
+        // Simpan ID slot untuk digunakan saat therapySlots tersedia
+        sessionStorage.setItem("selectedSlotId", slotId.toString());
+      }
+    }
+    
+    console.log("Kode yang ditemukan di URL:", code);
+    
+    // Jika tidak ada kode di URL, coba dapatkan secara otomatis link pendaftaran permanen
+    if (code) {
+      console.log("Menggunakan kode pendaftaran dari URL:", code);
+      setRegistrationCode(code);
+      // Verifikasi kode pendaftaran dari server
+      verifyRegistrationCode(code);
+    } else {
+      console.log("Tidak ada kode pendaftaran di URL, mencoba mendapatkan link permanen...");
+      
+      // Coba buat link permanen untuk menangani kasus akses langsung ke halaman pendaftaran
+      // tanpa parameter kode
+      getActivePermanentLink();
+    }
+  }, []);
+
+  // State untuk mode pendaftaran walk-in (dari admin)
+  const [isWalkInMode, setIsWalkInMode] = useState<boolean>(false);
+
+  // Effect untuk men-set therapySlotId dari sessionStorage setelah therapySlots dimuat
+  useEffect(() => {
+    if (therapySlots && therapySlots.length > 0) {
+      // Cek apakah ada slotId yang tersimpan di sessionStorage atau di URL
+      const savedSlotId = sessionStorage.getItem("selectedSlotId");
+      const params = new URLSearchParams(window.location.search);
+      const slotIdParam = params.get("slotId");
+      
+      // Prioritaskan slotId dari URL (pendaftaran langsung dari admin)
+      const slotIdToUse = slotIdParam || savedSlotId;
+      
+      if (slotIdToUse) {
+        const slotId = parseInt(slotIdToUse);
+        
+        // Cari slot yang sesuai
+        const matchingSlot = therapySlots.find((slot: any) => slot.id === slotId);
+        if (matchingSlot) {
+          console.log("Menemukan therapy slot yang cocok dari ID:", matchingSlot);
+          
+          // Set nilai pada form
+          form.setValue("therapySlotId", slotId);
+          
+          // Simpan data slot untuk tampilan
+          setSelectedSlot({
+            id: slotId,
+            date: format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale }),
+            timeSlot: matchingSlot.timeSlot
+          });
+          
+          // Hapus dari sessionStorage agar tidak digunakan lagi
+          sessionStorage.removeItem("selectedSlotId");
+          
+          // Deteksi apakah ini pendaftaran walk-in dari admin
+          if (slotIdParam) {
+            setIsWalkInMode(true);
+            toast({
+              title: "Mode Pendaftaran Pasien Walk-in",
+              description: `Pendaftaran untuk pasien walk-in pada sesi ${matchingSlot.timeSlot}, ${format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale })}.`,
+              className: "bg-blue-50 border-blue-200 text-blue-800",
+            });
+          } else {
+            toast({
+              title: "Sesi Terapi Telah Dipilih",
+              description: `Kami telah memilih sesi ${matchingSlot.timeSlot} pada ${format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale })} untuk Anda.`,
+              className: "bg-teal-50 border-teal-200 text-teal-800",
+            });
+          }
+        }
+      }
+    }
+  }, [therapySlots, form, toast]);
+
+  // Fungsi untuk mendapatkan link pendaftaran permanen yang aktif
+  const getActivePermanentLink = async () => {
+    try {
+      console.log("Mencoba mendapatkan link pendaftaran permanen...");
+      // Coba dapatkan (atau buat jika belum ada) link pendaftaran permanen
+      const response = await fetch('/api/registration-links', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Pastikan cookies dikirim
+        // Tidak perlu body karena endpoint menggunakan nilai default untuk link permanen
+      });
+      
+      console.log("Respons link permanen:", response.status, response.statusText);
+      const data = await response.json();
+      console.log("Detail data link permanen:", data);
+      
+      if (response.ok && data.code) {
+        console.log("Mendapatkan link pendaftaran permanen:", data.code);
+        setRegistrationCode(data.code);
+        // Verifikasi link permanen yang didapat
+        verifyRegistrationCode(data.code);
+      } else {
+        console.error("Gagal mendapatkan link pendaftaran permanen:", data);
+        setRegistrationStatus("error");
+        toast({
+          variant: "destructive",
+          title: "Tidak Dapat Mengakses Pendaftaran",
+          description: "Terjadi kesalahan saat mempersiapkan halaman pendaftaran. Silakan coba lagi nanti.",
+        });
+      }
+    } catch (error) {
+      console.error("Error mendapatkan link pendaftaran permanen:", error);
+      setRegistrationStatus("error");
+      toast({
+        variant: "destructive",
+        title: "Koneksi Gagal",
+        description: "Terjadi kesalahan saat menghubungi server. Silakan coba lagi nanti.",
+      });
+    }
+  };
+
+  // Function to verify the registration code
+  const verifyRegistrationCode = async (code: string) => {
+    try {
+      console.log("🔍 Memverifikasi kode pendaftaran:", code);
+      
+      // Tambahkan random string dan timestamp untuk menghindari caching di browser
+      const timestamp = new Date().getTime();
+      const randomStr = Math.random().toString(36).substring(2, 15);
+      const cacheBuster = `_t=${timestamp}&_r=${randomStr}`;
+      
+      console.log(`🌐 Request URL: /api/verify-registration-link?${cacheBuster}`);
+      
+      // Buat objek Request untuk mendapatkan lebih banyak kontrol
+      const request = new Request(`/api/verify-registration-link?${cacheBuster}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, private',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        body: JSON.stringify({ code }),
+        credentials: 'include', // Penting: pastikan cookies dikirim
+      });
+      
+      // Tambahkan log detail request untuk debugging
+      console.log("📤 Request headers:", request.headers);
+      console.log("📤 Request body:", { code });
+      
+      // Lakukan fetch dengan mode no-store dan no-cache
+      const response = await fetch(request);
+      
+      console.log("📥 Response status:", response.status, response.statusText);
+      console.log("📥 Response headers:", response.headers);
+      
+      // Deep clone response sebelum parsing untuk mencegah race condition
+      const clonedResponse = response.clone();
+      
+      // Gunakan try-catch terpisah untuk parsing JSON 
+      let data;
+      try {
+        data = await response.json();
+        console.log("📄 Response data:", JSON.stringify(data, null, 2));
+      } catch (parseError) {
+        console.error("❌ Error parsing JSON response:", parseError);
+        // Coba baca respons sebagai teks untuk debugging
+        const textResponse = await clonedResponse.text();
+        console.log("📄 Response as text:", textResponse);
+        
+        // Gagal parsing JSON, anggap sebagai error
+        setRegistrationStatus("error");
+        toast({
+          variant: "destructive",
+          title: "Format Respons Tidak Valid",
+          description: "Server mengirimkan format data yang tidak dapat diproses. Silakan coba lagi nanti.",
+        });
+        return;
+      }
+      
+      // Validasi data yang diterima
+      console.log("🔍 Data validation:");
+      console.log("- valid property:", data.valid, typeof data.valid);
+      console.log("- response.ok:", response.ok);
+      console.log("- status code:", response.status);
+      console.log("- expiryTime:", data.expiryTime);
+      console.log("- isPermanent:", data.isPermanent);
+      console.log("- availableSlots:", data.availableSlots?.length || 0);
+      
+      // Perilaku baru: selalu percaya status 200 dari server sebagai valid
+      if (response.status === 200) {
+        console.log("✅ Respons status 200 diterima, menganggap kode valid");
+        
+        // Jika server mengirim respons 200, anggap kode valid, terlepas dari properti lain
+        setRegistrationStatus("idle");
+        
+        // Store metadata if available
+        if (data.dailyLimit) {
+          setRegistrationLimit(data.dailyLimit);
+        }
+        
+        if (data.currentRegistrations !== undefined) {
+          setCurrentRegistrations(data.currentRegistrations);
+        }
+        
+        if (data.expiryTime) {
+          setExpiryTime(new Date(data.expiryTime));
+        }
+        
+        // Cek apakah ada slot terapi tersedia dari respons verifikasi
+        if (data.availableSlots && data.availableSlots.length > 0) {
+          console.log("📋 Slot terapi ditemukan:", data.availableSlots.length, "slot");
+          // Gunakan data slot terapi langsung dari respons verifikasi
+          try {
+            // Import queryClient dari context React daripada menggunakan require
+            import("@/lib/queryClient").then(({ queryClient }) => {
+              if (queryClient && data.availableSlots) {
+                queryClient.setQueryData(['/api/therapy-slots', 'available-active'], data.availableSlots);
+                console.log("✅ Cache slot terapi berhasil diperbarui");
+              }
+            });
+          } catch (importError) {
+            console.error("❌ Error importing queryClient:", importError);
+          }
+        } else if (data.hasAvailableSlots === false) {
+          // Jika respons eksplisit menyatakan tidak ada slot tersedia
+          console.log("⚠️ Tidak ada slot terapi tersedia");
+          toast({
+            title: "Tidak Ada Sesi Tersedia",
+            description: "Saat ini tidak ada sesi terapi yang tersedia. Silakan coba lagi nanti atau hubungi admin.",
+          });
+        }
+        
+        // Tetap muat slot terapi dengan refetchTherapySlots
+        refetchTherapySlots();
+      } else {
+        console.log("❌ Verifikasi gagal, status respons:", response.status);
+        
+        // Analisis respons error
+        setRegistrationStatus("error");
+        
+        if (data.message) {
+          console.log("📝 Pesan error:", data.message);
+          
+          // Klasifikasi error berdasarkan pesan
+          if (data.message.includes("expired") || data.message.includes("kedaluwarsa")) {
+            setRegistrationStatus("expired");
+          } else if (data.message.includes("limit") || data.message.includes("reached") || 
+                    data.message.includes("penuh") || data.status === "quota-reached") {
+            setRegistrationStatus("quota-reached");
+            
+            if (data.dailyLimit) {
+              setRegistrationLimit(data.dailyLimit);
+            }
+            
+            if (data.currentRegistrations !== undefined) {
+              setCurrentRegistrations(data.currentRegistrations);
+            }
+          }
+        }
+        
+        // Tampilkan pesan error
+        toast({
+          variant: "destructive",
+          title: "Kode Pendaftaran Tidak Valid",
+          description: data.message || "Terjadi kesalahan saat memverifikasi kode pendaftaran.",
+        });
+      }
+    } catch (error: any) {
+      console.error("❌ Error verifying registration code:", error);
+      
+      // Reset status untuk mencoba lagi
+      setRegistrationStatus("error");
+      
+      // Tampilkan toast error
+      toast({
+        variant: "destructive", 
+        title: "Verifikasi Gagal",
+        description: "Terjadi kesalahan saat menghubungi server. Silakan coba lagi nanti.",
+      });
+      
+      // Tambahkan debugging lebih detail
+      console.log("💾 Status registrasi setelah error:", registrationStatus);
+      console.log("🚫 Error code:", error.code);
+      console.log("🚫 Error name:", error.name);
+      console.log("🚫 Error stack:", error.stack);
+    }
+  };
+
+  // Fungsi untuk mencari pasien berdasarkan nama atau nomor HP
+  const searchPatient = async () => {
+    if (!searchQuery.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Input diperlukan",
+        description: "Silakan masukkan nama atau nomor telepon untuk pencarian",
+      });
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await apiRequest<PatientSearchResponse>(`/api/search-patient?query=${encodeURIComponent(searchQuery)}`, {
+        method: "GET",
+      });
+
+      if (response.success) {
+        if (response.found && response.patient) {
+          setPatientFound(true);
+          setFoundPatient(response.patient);
+          
+          // Prefill form dengan data pasien yang ditemukan
+          form.setValue("name", response.patient.name);
+          form.setValue("phoneNumber", response.patient.phoneNumber);
+          form.setValue("email", response.patient.email || "");
+          // Format tanggal lahir sesuai format yang dibutuhkan input type="date" (yyyy-MM-dd)
+          form.setValue("birthDate", response.patient.birthDate);
+          form.setValue("gender", response.patient.gender);
+          form.setValue("address", response.patient.address);
+          
+          toast({
+            title: "Pasien Ditemukan",
+            description: `Selamat datang kembali, ${response.patient.name}! Data Anda telah terisi otomatis.`,
+            className: "bg-teal-50 border-teal-200 text-teal-800",
+          });
+        } else {
+          setPatientFound(false);
+          setFoundPatient(null);
+          toast({
+            title: "Pasien Baru",
+            description: "Kami tidak menemukan data Anda. Silakan isi formulir pendaftaran.",
+            className: "bg-amber-50 border-amber-200 text-amber-800",
+          });
+        }
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Pencarian Gagal",
+          description: response.message || "Terjadi kesalahan saat mencari data pasien.",
+        });
+      }
+    } catch (error) {
+      console.error("Error searching for patient:", error);
+      toast({
+        variant: "destructive",
+        title: "Pencarian Gagal",
+        description: "Terjadi kesalahan saat mencari data pasien.",
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Initialize form
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerFormSchema),
+    defaultValues: {
+      name: "",
+      phoneNumber: "",
+      email: "",
+      birthDate: "",
+      gender: "Laki-laki",
+      address: "",
+      complaints: "",
+    },
+  });
+
+  // Handle form submission
+  // State untuk mencegah multiple submit
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  const onSubmit = async (values: RegisterFormValues) => {
+    // Prevent double submission
+    if (isSubmitting) {
+      console.log("Form submission prevented: Already submitting");
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      // Validasi apakah pasien telah memilih sesi terapi
+      if (!values.therapySlotId) {
+        toast({
+          variant: "destructive",
+          title: "Sesi Terapi Diperlukan",
+          description: "Silakan pilih sesi terapi yang tersedia",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Create the patient payload
+      const payload = {
+        ...values, 
+        // Convert fields as needed to match schema
+        email: values.email || null,
+        // Memastikan format tanggal tetap yyyy-MM-dd untuk komunikasi dengan backend
+        birthDate: values.birthDate, // Format yyyy-MM-dd sesuai untuk API
+        // Add registration code as metadata
+        registrationCode,
+        // Pastikan therapySlotId dikirim dengan benar
+        therapySlotId: values.therapySlotId
+      };
+
+      console.log("Mengirim data pendaftaran pasien:", payload);
+
+      // Submit the form data to patients endpoint
+      const response = await apiRequest<RegistrationResponse>("/api/patients", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response && response.id) {
+        // Successfully created the patient
+        setRegistrationStatus("success");
+        
+        // Simpan data slot terapi dari response jika ada
+        if (response.appointment && response.appointment.therapySlotDetails) {
+          // Untuk ditampilkan pada halaman sukses
+          setSelectedSlot({
+            id: response.appointment.therapySlotId,
+            date: response.appointment.therapySlotDetails.formattedDate,
+            timeSlot: response.appointment.therapySlotDetails.timeSlot
+          });
+        }
+        
+        toast({
+          title: "Pendaftaran Berhasil",
+          description: "Terima kasih telah mendaftar. Anda akan segera dihubungi oleh tim kami.",
+        });
+        
+        // Sekarang kita tidak perlu menaikkan jumlah pendaftaran di sini
+        // karena servernya telah menangani itu secara otomatis saat pendaftaran
+        
+        // Tampilkan informasi kuota jika tersedia
+        if (response.registrationInfo) {
+          console.log("Registration info from server:", response.registrationInfo);
+          if (response.registrationInfo.currentRegistrations !== undefined) {
+            setCurrentRegistrations(response.registrationInfo.currentRegistrations);
+          }
+          if (response.registrationInfo.dailyLimit) {
+            setRegistrationLimit(response.registrationInfo.dailyLimit);
+          }
+        }
+      } else if (response && response.code === "DUPLICATE_APPOINTMENT") {
+        // Penanganan khusus untuk pendaftaran ganda
+        toast({
+          variant: "destructive",
+          title: "Pendaftaran Gagal",
+          description: response.message || "Anda sudah memiliki jadwal terapi pada hari yang sama. Silakan pilih hari lain.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Pendaftaran Gagal",
+          description: response?.message || "Terjadi kesalahan saat mendaftar. Silakan coba lagi.",
+        });
+      }
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      
+      // Extract error message if it's a validation error
+      let errorMessage = "Terjadi kesalahan saat mendaftar. Silakan coba lagi.";
+      if (error.errors && Array.isArray(error.errors)) {
+        errorMessage = error.errors.map((err: any) => err.message).join(", ");
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "Pendaftaran Gagal",
+        description: errorMessage,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Display status messages based on registration status
+  const renderStatusMessage = () => {
+    switch (registrationStatus) {
+      case "success":
+        return (
+          <Alert className="my-4 bg-green-50 border-green-200">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertTitle>Pendaftaran Berhasil!</AlertTitle>
+            <AlertDescription>
+              Terima kasih telah mendaftar di Terapi Titik Sumber. Kami akan segera menghubungi Anda untuk konfirmasi jadwal.
+            </AlertDescription>
+          </Alert>
+        );
+      case "error":
+        return (
+          <Alert variant="destructive" className="my-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Kode Pendaftaran Tidak Valid</AlertTitle>
+            <AlertDescription>
+              Kode pendaftaran yang Anda gunakan tidak valid. Silakan minta kode baru dari admin kami.
+            </AlertDescription>
+          </Alert>
+        );
+      case "quota-reached":
+        return (
+          <Alert variant="destructive" className="my-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Kuota Pendaftaran Telah Penuh</AlertTitle>
+            <AlertDescription>
+              Maaf, kuota pendaftaran untuk hari ini telah mencapai batas maksimum ({currentRegistrations}/{registrationLimit}). 
+              Silakan kembali besok atau hubungi admin untuk informasi lebih lanjut.
+            </AlertDescription>
+          </Alert>
+        );
+      case "expired":
+        return (
+          <Alert variant="destructive" className="my-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Link Pendaftaran Telah Kedaluwarsa</AlertTitle>
+            <AlertDescription>
+              Maaf, link pendaftaran ini telah kedaluwarsa. Silakan minta link baru dari admin kami.
+            </AlertDescription>
+          </Alert>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-teal-700">Terapi Titik Sumber</h1>
+          <p className="text-gray-600 mt-2">
+            {isWalkInMode ? "Pendaftaran Pasien Walk-in" : "Formulir Pendaftaran Pasien Baru"}
+          </p>
+        </div>
+
+        {/* Banner untuk mode walk-in */}
+        {isWalkInMode && (
+          <Alert className="my-4 bg-blue-50 border-blue-200">
+            <User className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-700">Mode Pendaftaran Langsung</AlertTitle>
+            <AlertDescription className="text-blue-600">
+              Anda sedang mendaftarkan pasien walk-in langsung di klinik. 
+              Sesi terapi telah dipilih otomatis. Isi form dengan data pasien untuk melanjutkan.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {renderStatusMessage()}
+
+        {/* Show current quota if code is valid */}
+        {registrationStatus === "idle" && registrationCode && (
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center bg-teal-50 rounded-full px-4 py-2 text-sm text-teal-700">
+              <CalendarIcon className="w-4 h-4 mr-2" />
+              Pendaftaran tersedia: {currentRegistrations}/{registrationLimit}
+            </div>
+            {expiryTime && (
+              <div className="inline-flex items-center bg-amber-50 rounded-full px-4 py-2 text-sm text-amber-700 ml-2">
+                <Clock className="w-4 h-4 mr-2" />
+                Berlaku hingga: {format(expiryTime, "dd/MM/yyyy HH:mm")}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Only show the form if the code is valid and quota not reached */}
+        {registrationStatus === "idle" && registrationCode && (
+          <Card className="shadow-lg border-teal-100">
+            <CardHeader className="bg-teal-50 border-b border-teal-100">
+              <CardTitle className="text-teal-800">Form Pendaftaran</CardTitle>
+              <CardDescription>
+                Silakan isi data diri Anda dengan lengkap dan benar
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {/* Search box for existing patients - simpel untuk walk-in, lengkap untuk pendaftaran umum */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                {isWalkInMode ? (
+                  <>
+                    <h3 className="text-lg font-medium mb-3 text-blue-700">Pencarian Data Pasien</h3>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="flex-1">
+                        <Input
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Masukkan nama atau nomor WA pasien"
+                          className="w-full"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              searchPatient();
+                            }
+                          }}
+                        />
+                      </div>
+                      <Button
+                        onClick={searchPatient}
+                        disabled={isSearching}
+                        type="button"
+                        variant={patientFound ? "outline" : "default"}
+                        className={cn(
+                          "flex items-center gap-1",
+                          patientFound ? "bg-teal-100 text-teal-800 hover:bg-teal-200" : ""
+                        )}
+                      >
+                        {patientFound ? <CheckCircle className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+                        {isSearching ? 'Mencari...' : patientFound ? 'Data Ditemukan' : 'Cari Pasien'}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-medium mb-3">Sudah pernah terapi di Titik Sumber?</h3>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="flex-1">
+                        <Input
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Masukkan nama atau nomor WA Anda"
+                          className="w-full"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              searchPatient();
+                            }
+                          }}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Cari berdasarkan nama atau nomor whatsapp untuk mengisi data otomatis
+                        </p>
+                      </div>
+                      <Button
+                        onClick={searchPatient}
+                        disabled={isSearching}
+                        type="button"
+                        variant="outline"
+                        className="flex items-center gap-1"
+                      >
+                        <Search className="h-4 w-4" />
+                        {isSearching ? 'Mencari...' : 'Cari Data'}
+                      </Button>
+                    </div>
+                  </>
+                )}
+                
+                {patientFound && foundPatient && (
+                  <Alert className="mt-4 bg-teal-50 border-teal-200">
+                    <CheckCircle className="h-4 w-4 text-teal-600" />
+                    <AlertTitle>Pasien Ditemukan!</AlertTitle>
+                    <AlertDescription>
+                      {isWalkInMode 
+                        ? `Data pasien ${foundPatient.name} telah terisi otomatis.` 
+                        : `Selamat datang kembali, ${foundPatient.name}! Data Anda telah terisi otomatis.`
+                      }
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nama Lengkap</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Masukkan nama lengkap Anda" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="phoneNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nomor HP</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Contoh: 08123456789" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Nomor WhatsApp aktif
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email (Opsional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="email@contoh.com" 
+                              {...field} 
+                              value={field.value || ''} 
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            Boleh dikosongkan jika tidak memiliki email
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="birthDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tanggal Lahir</FormLabel>
+                          <FormControl>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal h-12 px-4 md:h-10",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      formatBirthDate(field.value)
+                                    ) : (
+                                      <span>Pilih tanggal lahir</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value ? new Date(field.value) : undefined}
+                                  onSelect={(date) => {
+                                    if (date) {
+                                      // Konversi Date ke string format YYYY-MM-DD
+                                      const dateString = format(date, 'yyyy-MM-dd');
+                                      field.onChange(dateString);
+                                    }
+                                  }}
+                                  initialFocus
+                                  disabled={(date) => date > new Date()}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Jenis Kelamin</FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              className="flex flex-col space-y-1"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="Laki-laki" id="male" />
+                                <FormLabel htmlFor="male" className="font-normal">
+                                  Laki-laki
+                                </FormLabel>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="Perempuan" id="female" />
+                                <FormLabel htmlFor="female" className="font-normal">
+                                  Perempuan
+                                </FormLabel>
+                              </div>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Alamat</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Masukkan alamat lengkap Anda"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Slot Terapi Section */}
+                  {isWalkInMode && selectedSlot ? (
+                    <div className="mb-6 space-y-3">
+                      <h3 className="text-base font-medium text-blue-700">Sesi Terapi Terpilih</h3>
+                      <Alert className="bg-blue-50 border-blue-200">
+                        <CalendarIcon className="h-4 w-4 text-blue-600" />
+                        <AlertTitle className="text-blue-700">Detail Sesi</AlertTitle>
+                        <AlertDescription className="text-blue-600">
+                          <p><strong>Tanggal:</strong> {selectedSlot.date}</p>
+                          <p><strong>Jam:</strong> {selectedSlot.timeSlot}</p>
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="therapySlotId"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3">
+                          <FormLabel className="text-base">Pilih Sesi Terapi</FormLabel>
+                          <FormDescription>
+                            Pilih jadwal sesi terapi yang tersedia sesuai dengan kebutuhan Anda
+                          </FormDescription>
+                          <FormControl>
+                            <div className="space-y-4">
+                            {isLoadingSlots ? (
+                              <div className="w-full py-8 flex items-center justify-center">
+                                <div className="animate-spin h-6 w-6 border-2 border-teal-500 rounded-full border-t-transparent"></div>
+                              </div>
+                            ) : therapySlots && therapySlots.length > 0 ? (
+                              <RadioGroup 
+                                onValueChange={(value) => field.onChange(parseInt(value))}
+                                className="space-y-6"
+                              >
+                                {/* Mengelompokkan slot berdasarkan tanggal */}
+                                {(() => {
+                                  // Mengelompokkan slot berdasarkan tanggal (YYYY-MM-DD)
+                                  const groupedSlots: {[key: string]: any[]} = {};
+                                  
+                                  therapySlots.forEach((slot: any) => {
+                                    const slotDate = parseISO(slot.date);
+                                    const dateKey = format(slotDate, "yyyy-MM-dd");
+                                    
+                                    if (!groupedSlots[dateKey]) {
+                                      groupedSlots[dateKey] = [];
+                                    }
+                                    
+                                    groupedSlots[dateKey].push(slot);
+                                  });
+                                  
+                                  // Mengubah object groupedSlots menjadi array untuk ditampilkan
+                                  return Object.entries(groupedSlots).map(([dateKey, slots]) => {
+                                    const slotDate = parseISO(dateKey);
+                                    const formattedDate = format(slotDate, "EEEE, dd MMMM yyyy", { locale: idLocale });
+                                    
+                                    // Filtering logic untuk menampilkan hanya slot yang belum lewat
+                                    const now = new Date();
+                                    
+                                    // Tambahkan 7 jam untuk zona waktu Indonesia (WIB/UTC+7)
+                                    // Ini cara yang lebih aman untuk mendapatkan waktu lokal Indonesia
+                                    const localTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+                                    
+                                    // De-duplikasi slot berdasarkan kombinasi timeSlot dan date
+                                    // Gunakan Map dengan kunci gabungan (date + timeSlot) untuk menghilangkan duplikasi
+                                    const uniqueSlots = new Map();
+                                    
+                                    // Simpan slot yang unik ke Map
+                                    slots.forEach((slot: any) => {
+                                      const slotKey = `${dateKey}-${slot.timeSlot}`;
+                                      if (!uniqueSlots.has(slotKey)) {
+                                        uniqueSlots.set(slotKey, slot);
+                                      }
+                                    });
+                                    
+                                    // Konversi Map kembali ke array
+                                    const deduplicatedSlots = Array.from(uniqueSlots.values());
+                                    
+                                    // Filter slot yang belum lewat waktunya
+                                    const validSlots = deduplicatedSlots.filter((slot: any) => {
+                                      try {
+                                        // Format dari timeSlot adalah "10:00-11:30", ambil jam awal saja
+                                        const startTime = slot.timeSlot.split('-')[0].trim();
+                                        const [hours, minutes] = startTime.split(':').map(Number);
+                                        
+                                        // Buat objek tanggal slot dengan tanggal hari slot + jam dari timeSlot
+                                        const slotDateTime = new Date(slotDate);
+                                        slotDateTime.setHours(hours, minutes, 0, 0);
+                                        
+                                        // Bandingkan dengan waktu lokal Indonesia
+                                        return slotDateTime > localTime;
+                                      } catch (err) {
+                                        console.error("Error comparing dates:", err);
+                                        return false; // Jika ada error, anggap slot sudah tidak valid
+                                      }
+                                    });
+                                    
+                                    // If there are no slots at all, return null
+                                    if (validSlots.length === 0) return null;
+                                    
+                                    return (
+                                      <div key={dateKey} className="border rounded-lg overflow-hidden">
+                                        <div className="bg-teal-50 px-4 py-2 border-b border-teal-100">
+                                          <h3 className="font-medium text-teal-800">{formattedDate}</h3>
+                                        </div>
+                                        <div className="p-3 space-y-2">
+                                          {validSlots.map((slot: any) => {
+                                            // Pastikan lagi bahwa slot ini masih memiliki kuota tersedia
+                                            // dan menggunakan hasil perhitungan terbaru
+                                            if (slot.currentCount >= slot.maxQuota) return null;
+                                            
+                                            const availableSeats = slot.maxQuota - slot.currentCount;
+                                            const isAlmostFull = availableSeats <= 2;
+                                            
+                                            return (
+                                              <div key={slot.id} className="flex items-center space-x-3 border border-gray-200 rounded-md p-2 hover:bg-teal-50 cursor-pointer transition-colors">
+                                                <RadioGroupItem value={String(slot.id)} id={`slot-${slot.id}`} />
+                                                <div className="grid grid-cols-2 w-full gap-1">
+                                                  <FormLabel htmlFor={`slot-${slot.id}`} className="font-medium text-sm">
+                                                    <Clock className="h-3.5 w-3.5 inline mr-1 text-gray-500" />
+                                                    {slot.timeSlot}
+                                                  </FormLabel>
+                                                  <div className="flex items-center justify-end text-xs">
+                                                    <Users className="h-3 w-3 mr-1" />
+                                                    <span className={`${isAlmostFull ? 'text-red-600 font-medium' : 'text-amber-700'}`}>
+                                                      {availableSeats}/{slot.maxQuota} kursi
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  });
+                                })()}
+                              </RadioGroup>
+                            ) : (
+                              <Alert className="bg-amber-50 border-amber-200">
+                                <AlertCircle className="h-4 w-4 text-amber-700" />
+                                <AlertTitle className="text-amber-700">Tidak ada sesi tersedia</AlertTitle>
+                                <AlertDescription className="text-amber-600">
+                                  Maaf, saat ini tidak ada sesi terapi yang tersedia. Silakan hubungi admin untuk informasi lebih lanjut.
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="complaints"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Keluhan</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Ceritakan keluhan yang Anda alami"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+
+
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-teal-600 hover:bg-teal-700"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Memproses...
+                      </>
+                    ) : (
+                      'Daftar Sekarang'
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+            <CardFooter className="bg-gray-50 border-t border-gray-100 flex flex-col items-start">
+              <p className="text-sm text-gray-600 mt-2">
+                Dengan mengisi formulir ini, Anda menyetujui untuk dihubungi oleh tim Terapi Titik Sumber.
+              </p>
+            </CardFooter>
+          </Card>
+        )}
+
+        {/* Display loading message while getting permanent link */}
+        {!registrationCode && registrationStatus === "idle" && (
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle>Mempersiapkan Pendaftaran</CardTitle>
+              <CardDescription>
+                Kami sedang mempersiapkan formulir pendaftaran untuk Anda...
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center items-center py-12">
+              <div className="animate-spin h-12 w-12 border-4 border-teal-500 rounded-full border-t-transparent"></div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Show success state after registration */}
+        {registrationStatus === "success" && (
+          <Card className="shadow-lg bg-teal-50 border-teal-200">
+            <CardHeader>
+              <CardTitle className="text-teal-800 flex items-center">
+                <CheckCircle className="mr-2 h-5 w-5" /> Pendaftaran Berhasil!
+              </CardTitle>
+              <CardDescription>
+                Terima kasih telah mendaftar di Terapi Titik Sumber
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-white rounded-md p-4 mb-4 border border-teal-100">
+                <h3 className="font-medium text-teal-800 mb-2">Detail Jadwal Terapi Anda:</h3>
+                {selectedSlot ? (
+                  <div className="space-y-1">
+                    <p className="text-gray-700"><span className="font-medium">Tanggal:</span> {selectedSlot.date}</p>
+                    <p className="text-gray-700"><span className="font-medium">Jam:</span> {selectedSlot.timeSlot}</p>
+                    <div className="mt-2 py-2 px-3 bg-yellow-50 border border-yellow-100 rounded text-sm text-yellow-700">
+                      Silakan datang 15 menit sebelum jadwal untuk persiapan terapi.
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-600 italic">Detail jadwal akan diinformasikan oleh admin kami.</p>
+                )}
+              </div>
+              <p className="mb-4 text-gray-700">
+                Tim kami akan segera menghubungi Anda melalui WhatsApp untuk konfirmasi jadwal terapi.
+              </p>
+              
+              {/* Add PDF download button */}
+              <div className="mb-4">
+                <div className="bg-green-50 rounded-md p-4 border border-green-200 mb-4">
+                  <h3 className="text-green-800 font-semibold flex items-center gap-2 text-lg">
+                    <CheckCircle className="h-5 w-5" /> Jadwal Terapi Anda telah dikonfirmasi!
+                  </h3>
+                  {selectedSlot && (
+                    <div className="mt-2 mb-2 bg-white rounded p-3 border border-green-100">
+                      <p className="text-sm font-medium text-gray-800">Detail Jadwal Terkonfirmasi:</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <CalendarIcon className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-gray-700">{selectedSlot.date}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Clock className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-gray-700">{selectedSlot.timeSlot} WIB</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <MapPin className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-gray-700">Klinik Terapi Titik Sumber</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-sm font-medium text-green-700">TERJADWAL & TERKONFIRMASI</span>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-sm text-green-700 mt-1">
+                    Silakan unduh bukti pendaftaran resmi di bawah ini. Bukti ini harap dibawa saat datang ke klinik.
+                  </p>
+                  
+                  <div className="mt-3 pt-3 border-t border-green-200">
+                    <p className="text-sm text-gray-700 mb-2">Hubungi kami jika ada pertanyaan:</p>
+                    <a 
+                      href="https://wa.me/628127003608" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-md text-sm font-medium w-fit"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                      </svg>
+                      Chat WhatsApp Kami
+                    </a>
+                  </div>
+                </div>
+                <RegistrationPDF 
+                  patientName={form.getValues("name")}
+                  registrationNumber={`TTS-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`}
+                  patientId={foundPatient?.patientId || undefined}
+                  phoneNumber={form.getValues("phoneNumber")}
+                  therapyDate={selectedSlot?.date}
+                  therapyTime={selectedSlot?.timeSlot}
+                />
+              </div>
+              
+              <Button 
+                onClick={() => window.location.href = "/"}
+                className="w-full bg-teal-600 hover:bg-teal-700"
+              >
+                Kembali ke Beranda
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
