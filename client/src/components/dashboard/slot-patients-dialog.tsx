@@ -303,7 +303,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       // Tunggu sebentar untuk memastikan komponen transactions sudah di-mount
       setTimeout(() => {
         // Gunakan event system untuk berkomunikasi antar komponen
-        const transactionEvent = new CustomEvent('open-transaction-form', {
+        const transactionEvent = new CustomEvent('openTransactionForm', {
           detail: { patientId: patient.id }
         });
         window.dispatchEvent(transactionEvent);
