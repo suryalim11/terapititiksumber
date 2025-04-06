@@ -213,7 +213,7 @@ export default function TherapySlots() {
   });
 
   // State untuk filter
-  const [showActiveOnly, setShowActiveOnly] = useState(true);
+  const [showActiveOnly, setShowActiveOnly] = useState(false); // Default: tampilkan semua slot
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
 
   // Query untuk mendapatkan slot terapi
@@ -966,7 +966,18 @@ export default function TherapySlots() {
           </div>
         </div>
         
-        <Tabs defaultValue="calendar">
+        <Tabs defaultValue="calendar" onValueChange={(value) => {
+            // Ketika tab berubah, sesuaikan filter berdasarkan tab yang dipilih
+            if (value === "list") {
+              // Untuk Daftar Semua Slot, set date menjadi kosong agar menampilkan semua slot
+              // dan pastikan showActiveOnly false agar menampilkan semua slot
+              setDate("");
+              setShowActiveOnly(false);
+            } else if (value === "calendar") {
+              // Untuk Kalender, gunakan tanggal hari ini
+              setDate(format(new Date(), 'yyyy-MM-dd'));
+            }
+          }}>
           <TabsList className="mb-4">
             <TabsTrigger value="calendar">Kalender</TabsTrigger>
             <TabsTrigger value="quick">Buat Batch</TabsTrigger>
@@ -1427,8 +1438,12 @@ export default function TherapySlots() {
               <CardHeader>
                 <CardTitle>Semua Slot Terapi</CardTitle>
                 <CardDescription>
-                  Daftar lengkap semua slot terapi
+                  Daftar lengkap semua slot terapi (hari ini dan ke depan)
                 </CardDescription>
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <InfoIcon className="h-4 w-4" />
+                  <p>Tab ini menampilkan semua slot tanpa filter tanggal, baik aktif maupun non-aktif</p>
+                </div>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
