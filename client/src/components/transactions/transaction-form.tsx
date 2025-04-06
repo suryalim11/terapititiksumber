@@ -1801,9 +1801,15 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               // Update paid amount
                               field.onChange(validValue.toString());
                               
-                              // Update credit amount automatically
-                              const creditAmount = Math.max(0, totalAmount - validValue);
-                              form.setValue("creditAmount", creditAmount.toString());
+                              // Update credit amount automatically - nilai kredit adalah input user
+                              // Jika DP = 0, maka seluruh total menjadi kredit
+                              const creditAmount = form.getValues("creditAmount") || totalAmount.toString();
+                              
+                              // Hanya update nilai kredit jika user belum mengisinya secara manual
+                              if (parseFloat(creditAmount) === 0 || parseFloat(creditAmount) === totalAmount) {
+                                const calculatedCredit = Math.max(0, totalAmount - validValue);
+                                form.setValue("creditAmount", calculatedCredit.toString());
+                              }
                             }}
                           />
                         </FormControl>
@@ -1824,13 +1830,35 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                         <FormControl>
                           <Input
                             type="number"
-                            readOnly
-                            className="bg-muted"
+                            min="0"
+                            step="1000"
+                            placeholder="0"
                             {...field}
+                            onChange={(e) => {
+                              // Ensure value is not negative
+                              const value = Math.max(0, parseFloat(e.target.value) || 0);
+                              
+                              // Calculate subtotal and discount
+                              const subtotal = cartItems.reduce(
+                                (sum, item) => sum + parseFloat(item.price) * item.quantity, 0
+                              );
+                              const discount = parseFloat(form.getValues().discount || "0");
+                              const totalAmount = Math.max(0, subtotal - discount);
+
+                              // Validate that credit doesn't exceed total amount
+                              const validValue = Math.min(value, totalAmount);
+                              
+                              // Update credit amount
+                              field.onChange(validValue.toString());
+                              
+                              // Update paid amount automatically
+                              const paidAmount = Math.max(0, totalAmount - validValue);
+                              form.setValue("paidAmount", paidAmount.toString());
+                            }}
                           />
                         </FormControl>
                         <FormDescription className="text-xs">
-                          Jumlah hutang yang harus dilunasi. Dihitung otomatis.
+                          Jumlah hutang yang harus dilunasi. Bisa diubah secara manual.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
