@@ -215,37 +215,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // karena Express akan mencocokkan rute dalam urutan pendefinisian
   app.get("/api/patients/search", async (req: Request, res: Response) => {
     try {
-      const { phone } = req.query;
+      // Mendukung baik parameter 'phone' (untuk kompatibilitas) maupun 'query' (untuk pencarian lebih luas)
+      const query = req.query.query || req.query.phone;
       
-      if (!phone || typeof phone !== 'string') {
+      if (!query || typeof query !== 'string') {
         return res.status(400).json({ 
           success: false, 
-          message: "Nomor telepon diperlukan untuk pencarian" 
+          message: "Parameter pencarian diperlukan" 
         });
       }
 
-      console.log(`Mencari pasien dengan nomor telepon: ${phone}`);
+      console.log(`Mencari pasien dengan kata kunci: ${query}`);
       
-      // Gunakan metode khusus di storage untuk mencari berdasarkan nomor telepon
-      const patients = await storage.searchPatientByNameOrPhone(phone);
+      // Gunakan metode untuk mencari berdasarkan nama atau nomor telepon
+      const patients = await storage.searchPatientByNameOrPhone(query);
       
       if (patients.length > 0) {
-        console.log(`Pasien ditemukan dengan nomor telepon: ${phone}`);
+        console.log(`Pasien ditemukan dengan kata kunci: ${query}`);
         return res.status(200).json({ 
           success: true, 
           found: true, 
           patient: patients[0] // Kembalikan hasil pertama
         });
       } else {
-        console.log(`Tidak ada pasien ditemukan dengan nomor telepon: ${phone}`);
+        console.log(`Tidak ada pasien ditemukan dengan kata kunci: ${query}`);
         return res.status(200).json({ 
           success: true, 
           found: false,
-          message: "Tidak ada pasien ditemukan dengan nomor telepon tersebut"
+          message: "Tidak ada pasien ditemukan dengan kata kunci tersebut"
         });
       }
     } catch (error) {
-      console.error("Error searching for patient by phone:", error);
+      console.error("Error searching for patient:", error);
       return res.status(500).json({ 
         success: false, 
         message: "Internal server error"

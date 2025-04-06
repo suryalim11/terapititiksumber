@@ -432,13 +432,13 @@ export default function RegisterPage() {
     }
   };
 
-  // Fungsi pencarian pasien berdasarkan nomor telepon
+  // Fungsi pencarian pasien berdasarkan nama atau nomor telepon
   const handleSearchPatient = async () => {
-    if (!searchQuery || searchQuery.length < 9) {
+    if (!searchQuery || searchQuery.trim().length < 3) {
       toast({
         variant: "destructive",
-        title: "Format Nomor Tidak Valid",
-        description: "Masukkan nomor telepon lengkap untuk mencari data pasien.",
+        title: "Format Pencarian Tidak Valid",
+        description: "Masukkan minimal 3 karakter (nama atau nomor telepon) untuk mencari data pasien.",
       });
       return;
     }
@@ -446,7 +446,7 @@ export default function RegisterPage() {
     setIsSearching(true);
     
     try {
-      const response = await fetch(`/api/patients/search?phone=${encodeURIComponent(searchQuery)}`, {
+      const response = await fetch(`/api/patients/search?query=${encodeURIComponent(searchQuery)}`, {
         credentials: 'include',
       });
       
@@ -906,7 +906,7 @@ export default function RegisterPage() {
               <div className="flex space-x-2">
                 <div className="flex-1">
                   <Input 
-                    placeholder="Masukkan nomor telepon" 
+                    placeholder="Masukkan nama atau nomor telepon" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
@@ -926,7 +926,7 @@ export default function RegisterPage() {
                 </Button>
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                Masukkan nomor telepon untuk mencari data pasien yang sudah terdaftar sebelumnya
+                Masukkan nama atau nomor telepon untuk mencari data pasien yang sudah terdaftar
               </p>
             </div>
 

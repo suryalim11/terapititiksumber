@@ -386,17 +386,36 @@ export class DatabaseStorage implements IStorage {
   async searchPatientByNameOrPhone(query: string): Promise<Patient[]> {
     const queryLowerCase = query.toLowerCase();
     
-    // Using direct column equality approach instead of raw SQL to fix type issues
-    const results = await db.query.patients.findMany({
-      where: (fields, { or, like, eq }) => 
-        or(
-          like(fields.name, `%${queryLowerCase}%`),
-          like(fields.phoneNumber, `%${query}%`)
-        ),
-      orderBy: [desc(schema.patients.createdAt)]
-    });
+    // Debug: log apa yang dicari
+    console.log(`Search query: "${query}", lowercase: "${queryLowerCase}"`);
     
-    return results;
+    // Menggunakan pendekatan JavaScript sederhana - fetch semua pasien dan filter di memory
+    // Ini lebih reliable meskipun kurang efisien untuk database besar
+    // Tapi untuk kasus klinik dengan ratusan pasien, ini lebih dari cukup
+    try {
+      console.log("Using JavaScript filtering approach for optimal search");
+      const allPatients = await db.query.patients.findMany({
+        orderBy: [desc(schema.patients.createdAt)]
+      });
+      
+      // Filter pasien berdasarkan nama (case-insensitive) atau nomor telepon (case-sensitive)
+      const filtered = allPatients.filter(patient => 
+        // Cek apakah nama mengandung query (case-insensitive)
+        patient.name.toLowerCase().includes(queryLowerCase) || 
+        // Cek apakah nomor telepon mengandung query (case-sensitive)
+        patient.phoneNumber.includes(query)
+      );
+      
+      console.log(`Search found ${filtered.length} patients matching "${query}"`);
+      if (filtered.length > 0) {
+        console.log("Matched patients:", filtered.map(p => `${p.id}: ${p.name} (${p.phoneNumber})`).join(", "));
+      }
+      
+      return filtered;
+    } catch (error) {
+      console.error("Error searching patients:", error);
+      return []; // Return empty array if there's an error
+    }
   }
   
   // Confirmation Token methods
