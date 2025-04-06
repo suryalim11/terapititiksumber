@@ -680,13 +680,22 @@ export class DatabaseStorage implements IStorage {
   // Fungsi untuk mendapatkan daftar utang semua pasien
   async getUnpaidTransactions(): Promise<Transaction[]> {
     try {
+      // Dapatkan semua transaksi dengan isPaid = false
       const unpaidTransactions = await db
         .select()
         .from(schema.transactions)
         .where(eq(schema.transactions.isPaid, false))
         .orderBy(desc(schema.transactions.createdAt));
+      
+      // Filter transaksi yang benar-benar masih memiliki utang
+      // (totalAmount > paidAmount)
+      const realUnpaidTransactions = unpaidTransactions.filter(trans => {
+        const totalAmount = parseFloat(trans.totalAmount);
+        const paidAmount = parseFloat(trans.paidAmount);
+        return totalAmount > paidAmount; // Hanya tampilkan jika masih ada utang yang tersisa
+      });
         
-      return unpaidTransactions.map(trans => ({
+      return realUnpaidTransactions.map(trans => ({
         ...trans,
         createdAt: getWIBDate(trans.createdAt)
       }));
@@ -699,6 +708,7 @@ export class DatabaseStorage implements IStorage {
   // Fungsi untuk mendapatkan daftar utang pasien tertentu
   async getUnpaidTransactionsByPatient(patientId: number): Promise<Transaction[]> {
     try {
+      // Dapatkan semua transaksi pasien dengan isPaid = false
       const unpaidTransactions = await db
         .select()
         .from(schema.transactions)
@@ -709,8 +719,16 @@ export class DatabaseStorage implements IStorage {
           )
         )
         .orderBy(desc(schema.transactions.createdAt));
+      
+      // Filter transaksi yang benar-benar masih memiliki utang
+      // (totalAmount > paidAmount)
+      const realUnpaidTransactions = unpaidTransactions.filter(trans => {
+        const totalAmount = parseFloat(trans.totalAmount);
+        const paidAmount = parseFloat(trans.paidAmount);
+        return totalAmount > paidAmount; // Hanya tampilkan jika masih ada utang yang tersisa
+      });
         
-      return unpaidTransactions.map(trans => ({
+      return realUnpaidTransactions.map(trans => ({
         ...trans,
         createdAt: getWIBDate(trans.createdAt)
       }));
