@@ -1441,7 +1441,7 @@ export default function TherapySlots() {
                   Daftar lengkap semua slot terapi (hari ini dan ke depan)
                 </CardDescription>
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  <InfoIcon className="h-4 w-4" />
+                  <Info className="h-4 w-4" />
                   <p>Tab ini menampilkan semua slot tanpa filter tanggal, baik aktif maupun non-aktif</p>
                 </div>
               </CardHeader>
