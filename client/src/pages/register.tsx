@@ -766,18 +766,10 @@ export default function RegisterPage() {
           <CardFooter className="flex flex-col sm:flex-row gap-3">
             {registrationResult.appointment && (
               <RegistrationPDF
-                patientData={{
-                  name: registrationResult.name || "",
-                  phoneNumber: registrationResult.phoneNumber || "",
-                  email: registrationResult.email || "",
-                  birthDate: registrationResult.birthDate || "",
-                  gender: registrationResult.gender || "",
-                  address: registrationResult.address || ""
-                }}
-                appointmentData={{
-                  date: registrationResult.appointment.date,
-                  timeSlot: registrationResult.appointment.timeSlot
-                }}
+                patientName={registrationResult.name || ""}
+                phoneNumber={registrationResult.phoneNumber || ""}
+                therapyDate={format(new Date(registrationResult.appointment.date), "dd/MM/yyyy")}
+                therapyTime={registrationResult.appointment.timeSlot}
               />
             )}
             <Button onClick={() => window.location.reload()} variant="outline" className="w-full sm:w-auto">
