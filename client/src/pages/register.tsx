@@ -537,7 +537,7 @@ export default function RegisterPage() {
       }
       
       // Kirim data ke server
-      const response = await fetch("/api/register", {
+      const response = await fetch("/api/patients", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

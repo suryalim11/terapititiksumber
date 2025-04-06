@@ -39,9 +39,31 @@ export default function SimpleRegisterPage() {
   // Handle form submission
   const onSubmit = async (values: RegisterFormValues) => {
     console.log("Form submitted", values);
-    // Simulate successful submission
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    alert("Form berhasil dikirim!");
+    
+    try {
+      // Kirim data ke server
+      const response = await fetch("/api/patients", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(values),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        alert("Pendaftaran berhasil!");
+        console.log("Pendaftaran berhasil:", data);
+      } else {
+        alert("Pendaftaran gagal: " + (data.message || "Terjadi kesalahan"));
+        console.error("Pendaftaran gagal:", data);
+      }
+    } catch (error) {
+      console.error("Error registering patient:", error);
+      alert("Terjadi kesalahan saat menghubungi server. Silakan coba lagi nanti.");
+    }
   };
   
   return (
