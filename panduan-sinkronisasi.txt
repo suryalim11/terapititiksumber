@@ -1,0 +1,150 @@
+PANDUAN SINKRONISASI APLIKASI TERAPI TITIK SUMBER
+
+Dokumen ini berisi langkah-langkah untuk menyinkronkan aplikasi lokal dengan aplikasi yang sudah di-deploy, khususnya terkait perbaikan timezone WIB.
+
+=======================================================
+LANGKAH 1: PERSIAPAN FILES
+=======================================================
+
+1. Download file-file berikut dari aplikasi lokal:
+   - wib-timezone-fixes.ts
+   - database-storage-backup.ts (sebagai referensi)
+   
+2. Di aplikasi yang sudah di-deploy, backup file:
+   - Salin server/database-storage.ts ke server/database-storage.ts.bak
+
+=======================================================
+LANGKAH 2: PERBAIKAN FUNGSI getWIBDate()
+=======================================================
+
+Di server/database-storage.ts di aplikasi yang sudah di-deploy, temukan dan ganti fungsi getWIBDate() dengan:
+
+export function getWIBDate(date: Date): Date {
+  // Metode yang konsisten untuk konversi ke WIB (UTC+7)
+  const originalDate = new Date(date);
+  
+  // 1. Konversi ke UTC
+  const utcMillis = originalDate.getTime() + (originalDate.getTimezoneOffset() * 60000);
+  
+  // 2. Tambahkan 7 jam untuk WIB (UTC+7)
+  const WIB_OFFSET = 7; // dalam jam
+  const wibDate = new Date(utcMillis + (WIB_OFFSET * 3600000));
+  
+  // Log konsisten untuk monitoring
+  console.log(`Formatting date string: ${originalDate.toISOString()}`);
+  console.log(`Original: ${originalDate.toISOString()} -> Corrected date (WIB): ${wibDate.toISOString()}`);
+  
+  return wibDate;
+}
+
+=======================================================
+LANGKAH 3: PERBAIKAN FUNGSI formatDateString()
+=======================================================
+
+Di server/database-storage.ts di aplikasi yang sudah di-deploy, temukan dan ganti fungsi formatDateString() dengan:
+
+function formatDateString(dateStr: string | Date): string {
+  try {
+    // Konversi input ke object Date, lalu gunakan getWIBDate untuk mendapat tanggal WIB yang konsisten
+    const originalDate = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+    
+    // Gunakan fungsi getWIBDate yang sudah distandarisasi
+    const wibDate = getWIBDate(originalDate);
+    
+    // Format tanggal menggunakan date-fns
+    return format(wibDate, 'dd MMMM yyyy');
+  } catch (error) {
+    console.error("Error formatting date string:", error, dateStr);
+    // Fallback untuk jaga-jaga jika terjadi error
+    return typeof dateStr === 'string' ? dateStr : dateStr.toISOString().split('T')[0];
+  }
+}
+
+=======================================================
+LANGKAH 4: PERBAIKAN FUNGSI getTherapySlotsByDate()
+=======================================================
+
+Di server/database-storage.ts di aplikasi yang sudah di-deploy, temukan dan ganti fungsi getTherapySlotsByDate() dengan:
+
+async getTherapySlotsByDate(date: Date | string): Promise<TherapySlot[]> {
+  // Menggunakan fungsi getWIBDate untuk mendapatkan tanggal dalam zona waktu WIB secara konsisten
+  let dateString: string;
+  
+  try {
+    // Konversi input ke Date object terlebih dahulu
+    let dateObj: Date;
+    
+    if (date instanceof Date) {
+      dateObj = date;
+      console.log("Input date untuk getTherapySlotsByDate: Date object -", dateObj.toISOString());
+    } else {
+      // Parse string menjadi Date
+      dateObj = new Date(date);
+      
+      if (isNaN(dateObj.getTime())) {
+        // Jika parsing gagal, gunakan tanggal hari ini
+        console.error("Invalid date string, using today's date:", date);
+        dateObj = new Date();
+      }
+      console.log("Input date untuk getTherapySlotsByDate: String -", date, "-> Date object:", dateObj.toISOString());
+    }
+    
+    // Konversi ke WIB menggunakan fungsi helper yang konsisten
+    const wibDate = getWIBDate(dateObj);
+    
+    // Format tanggal ke format YYYY-MM-DD untuk pencarian di database
+    const year = wibDate.getFullYear();
+    const month = String(wibDate.getMonth() + 1).padStart(2, '0');
+    const day = String(wibDate.getDate()).padStart(2, '0');
+    dateString = `${year}-${month}-${day}`;
+    
+    console.log(`Tanggal WIB yang digunakan: ${dateString}`);
+  } catch (error) {
+    // Jika terjadi error, gunakan tanggal hari ini
+    console.error("Error processing date, using today's date:", error);
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    dateString = `${year}-${month}-${day}`;
+  }
+  
+  console.log("Mencari slot terapi dengan date text:", dateString);
+  
+  // Gunakan fungsi query di Drizzle ORM untuk filter berdasarkan string date 
+  // karena kita mengubah kolom date dari timestamp menjadi text
+  const slots = await db.query.therapySlots.findMany({
+    where: and(
+      eq(schema.therapySlots.date, dateString),
+      eq(schema.therapySlots.isActive, true)
+    ),
+    orderBy: [asc(schema.therapySlots.timeSlot)]
+  });
+
+  // Sisanya tetap sama seperti fungsi asli
+  return slots;
+}
+
+=======================================================
+LANGKAH 5: RESTART SERVER DAN VERIFIKASI
+=======================================================
+
+1. Setelah melakukan perubahan di atas, simpan file database-storage.ts
+2. Restart server aplikasi yang sudah di-deploy
+3. Login ke aplikasi dan periksa:
+   - Tanggal di dashboard 
+   - Tampilan slot terapi
+   - Tanggal appointment
+   - Tanggal transaksi
+
+Pastikan semua tanggal ditampilkan dengan benar dan konsisten dalam zona waktu WIB (GMT+7).
+
+=======================================================
+CATATAN PENTING
+=======================================================
+
+1. Selalu backup file sebelum melakukan perubahan
+2. Periksa log server untuk memastikan tidak ada error
+3. Jika terjadi masalah, kembalikan ke file backup
+4. Perbaikan ini fokus pada masalah timezone WIB saja
+5. Laporkan jika masih ada masalah setelah perubahan
