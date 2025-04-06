@@ -240,7 +240,12 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         doc.text("Total:", 140, y + 10, { align: 'right' });
         // Gunakan totalAmount dari transaksi sebagai total akhir 
         // (lebih konsisten dan mencegah hasil perhitungan yang berbeda)
-        doc.text(formatPrice(data.transaction.totalAmount.toString()), 195, y + 10, { align: 'right' });
+        // Untuk transaksi kredit, kolom total dikosongkan dengan tanda "-"
+        if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0) {
+          doc.text("-", 195, y + 10, { align: 'right' });
+        } else {
+          doc.text(formatPrice(data.transaction.totalAmount.toString()), 195, y + 10, { align: 'right' });
+        }
         y += 10;
         
         // Jika ada kredit, tambahkan ke PDF
@@ -396,6 +401,8 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Gunakan totalAmount dari transaksi sebagai total akhir
         // untuk mencegah perbedaan perhitungan dan memastikan konsistensi
         const totalAmount = data.transaction.totalAmount.toString();
+        // Cek apakah transaksi ini adalah transaksi kredit
+        const hasCredit = data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0;
         
         // Buat informasi kredit jika transaksi menggunakan kredit
         let creditInfo = '';
@@ -411,7 +418,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         message = settings.whatsappTemplate
           .replace(/{{companyName}}/g, settings.companyName)
           .replace(/{{invoiceId}}/g, invoiceId)
-          .replace(/{{totalAmount}}/g, formatPrice(totalAmount))
+          .replace(/{{totalAmount}}/g, hasCredit ? '-' : formatPrice(totalAmount))
           .replace(/{{patientName}}/g, data.patient.name)
           .replace(/{{bankInfo}}/g, bankInfo || '')
           .replace(/{{items}}/g, itemDetails || '')
@@ -437,8 +444,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           message += `\nDiskon: ${formatPrice(data.discount.toString())}`;
         }
         
-        // Gunakan nilai totalAmount dari transaksi
-        message += `\nTotal Pembayaran: ${formatPrice(data.transaction.totalAmount.toString())}`;
+        // Gunakan nilai totalAmount dari transaksi atau tanda "-" untuk transaksi kredit
+        const hasCredit = data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0;
+        message += `\nTotal Pembayaran: ${hasCredit ? '-' : formatPrice(data.transaction.totalAmount.toString())}`;
         
         // Tambahkan informasi kredit jika ada
         if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0) {
@@ -623,7 +631,10 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   <td colSpan={2}></td>
                   <td className="px-4 py-2 text-right font-semibold text-gray-700">Total:</td>
                   <td className="px-4 py-2 text-right font-semibold text-primary">
-                    {formatPrice(data.transaction.totalAmount.toString())}
+                    {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0
+                      ? '-' // Untuk transaksi kredit, kolom total dikosongkan dengan tanda "-"
+                      : formatPrice(data.transaction.totalAmount.toString())
+                    }
                   </td>
                 </tr>
                 {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
@@ -668,7 +679,12 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               {/* Total akhir */}
               <div className="flex justify-between text-base font-bold mt-2 pt-2 border-t border-gray-200">
                 <span>Total</span>
-                <span>{formatPrice(data.transaction.totalAmount.toString())}</span>
+                <span>
+                  {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0
+                    ? '-' // Untuk transaksi kredit, kolom total dikosongkan dengan tanda "-"
+                    : formatPrice(data.transaction.totalAmount.toString())
+                  }
+                </span>
               </div>
               
               {/* Kredit (jika ada) */}

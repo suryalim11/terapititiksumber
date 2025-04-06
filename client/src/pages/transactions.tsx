@@ -703,11 +703,10 @@ export default function Transactions() {
                             : '-'}
                         </TableCell>
                         <TableCell>
-                          {formatPrice(
-                            transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
-                              ? (parseFloat(transaction.totalAmount.toString()) - parseFloat(transaction.creditAmount.toString())).toString()
-                              : transaction.totalAmount.toString()
-                          )}
+                          {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
+                            ? '-' // Untuk transaksi kredit, kolom total dikosongkan dengan tanda "-"
+                            : formatPrice(transaction.totalAmount.toString())
+                          }
                         </TableCell>
                         <TableCell>
                           {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
@@ -816,7 +815,12 @@ export default function Transactions() {
                       </div>
                       <div>
                         <div className="text-muted-foreground">Total</div>
-                        <div className="font-medium">{formatPrice(transaction.totalAmount.toString())}</div>
+                        <div className="font-medium">
+                          {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
+                            ? '-' // Untuk transaksi kredit, kolom total dikosongkan dengan tanda "-"
+                            : formatPrice(transaction.totalAmount.toString())
+                          }
+                        </div>
                       </div>
                       
                       {(transaction.subtotal && parseFloat(transaction.subtotal.toString()) > 0) && (
