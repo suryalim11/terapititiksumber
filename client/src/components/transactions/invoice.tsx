@@ -576,11 +576,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                 </p>
                 <p className="text-gray-600">
                   <strong>Status:</strong> {" "}
-                  {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0
-                    ? <span className="text-yellow-600">Kredit</span>
-                    : data.transaction.isPaid === undefined || data.transaction.isPaid 
-                      ? <span className="text-green-600">Lunas</span> 
-                      : <span className="text-red-600">Belum Lunas</span>}
+                  {data.transaction.isPaid 
+                    ? <span className="text-green-600">Lunas</span> 
+                    : <span className="text-yellow-600">Kredit</span>}
                 </p>
               </div>
             </div>
