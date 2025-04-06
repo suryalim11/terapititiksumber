@@ -154,6 +154,9 @@ export default function TherapySlots() {
   const [linkToDelete, setLinkToDelete] = useState<number | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
+  // Track which tab is currently active
+  const [currentTab, setCurrentTab] = useState('calendar');
+  
   // Query untuk mendapatkan link pendaftaran
   const { data: links = [], isLoading: isLoadingLinks, error: linksError } = useQuery({
     queryKey: ['/api/registration-links'],
@@ -216,23 +219,32 @@ export default function TherapySlots() {
   const [showActiveOnly, setShowActiveOnly] = useState(false); // Default: tampilkan semua slot
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
 
-  // Query untuk mendapatkan slot terapi
+  // Query untuk mendapatkan slot terapi berdasarkan tanggal atau periode
   const { data: therapySlots = [], isLoading } = useQuery<TherapySlot[]>({
     queryKey: [
       '/api/therapy-slots', 
       date || 'all',
       showActiveOnly ? 'active' : 'all',
-      showAvailableOnly ? 'available' : 'all'
+      showAvailableOnly ? 'available' : 'all',
+      currentTab === 'calendar' || currentTab === 'list' ? 'filtered' : 'all'
     ],
     queryFn: async () => {
-      let endpoint = '/api/therapy-slots';
+      let endpoint: string;
       const params = new URLSearchParams();
       
-      if (date) {
-        // Jika date sudah dalam format string 'yyyy-MM-dd', gunakan langsung
-        // Jika date dalam format Date object, gunakan format()
-        const dateValue = typeof date === 'string' ? date : format(date as Date, 'yyyy-MM-dd');
-        params.append('date', dateValue);
+      // Gunakan endpoint yang berbeda berdasarkan view yang aktif
+      if (currentTab === 'calendar' || currentTab === 'list') {
+        endpoint = '/api/therapy-slots';
+        
+        if (date) {
+          // Jika date sudah dalam format string 'yyyy-MM-dd', gunakan langsung
+          // Jika date dalam format Date object, gunakan format()
+          const dateValue = typeof date === 'string' ? date : format(date as Date, 'yyyy-MM-dd');
+          params.append('date', dateValue);
+        }
+      } else {
+        // Untuk tampilan lainnya, gunakan endpoint yang mengambil semua data (termasuk semua periode)
+        endpoint = '/api/therapy-slots';
       }
       
       if (showActiveOnly) {
@@ -989,6 +1001,9 @@ export default function TherapySlots() {
         <Tabs 
           defaultValue="calendar" 
           onValueChange={(value) => {
+            // Update current tab state
+            setCurrentTab(value);
+            
             // Adjust filter settings based on selected tab
             if (value === "list") {
               // For "List All Slots", clear date filter to show all slots
@@ -999,6 +1014,9 @@ export default function TherapySlots() {
               // For "Calendar" view, use today's date
               setDate(format(new Date(), 'yyyy-MM-dd'));
             }
+            
+            // Manually trigger re-fetch when tab changes
+            queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
           }}
         >
           {/* Tab navigation buttons */}
