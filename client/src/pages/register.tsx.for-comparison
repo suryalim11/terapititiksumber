@@ -217,6 +217,16 @@ export default function RegisterPage() {
     
     // Mendapatkan slotId dari URL jika ada (parameter dari admin untuk pasien walk-in)
     const slotIdParam = params.get("slotId");
+    // Cek parameter walk-in
+    const walkinParam = params.get("walkin");
+    const isWalkin = walkinParam === "true";
+    
+    if (isWalkin) {
+      console.log("Mode walk-in terdeteksi di URL");
+      setIsWalkInMode(true);
+    }
+    
+    // Periksa jika ada slotId di URL atau di sessionStorage
     if (slotIdParam) {
       console.log("SlotId yang ditemukan di URL:", slotIdParam);
       
@@ -754,6 +764,109 @@ export default function RegisterPage() {
     }
   };
 
+  // Fungsi untuk menampilkan slot terapi yang dikelompokkan berdasarkan tanggal
+  const renderGroupedSlots = () => {
+    // Mengelompokkan slot berdasarkan tanggal (YYYY-MM-DD)
+    const groupedSlots: {[key: string]: any[]} = {};
+    
+    therapySlots.forEach((slot: any) => {
+      const slotDate = parseISO(slot.date);
+      const dateKey = format(slotDate, "yyyy-MM-dd");
+      
+      if (!groupedSlots[dateKey]) {
+        groupedSlots[dateKey] = [];
+      }
+      
+      groupedSlots[dateKey].push(slot);
+    });
+    
+    // Mengubah object groupedSlots menjadi array untuk ditampilkan
+    return Object.entries(groupedSlots).map(([dateKey, slots]) => {
+      const slotDate = parseISO(dateKey);
+      const formattedDate = format(slotDate, "EEEE, dd MMMM yyyy", { locale: idLocale });
+      
+      // Filtering logic untuk menampilkan hanya slot yang belum lewat
+      const now = new Date();
+      
+      // Tambahkan 7 jam untuk zona waktu Indonesia (WIB/UTC+7)
+      // Ini cara yang lebih aman untuk mendapatkan waktu lokal Indonesia
+      const localTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+      
+      // De-duplikasi slot berdasarkan kombinasi timeSlot dan date
+      // Gunakan Map dengan kunci gabungan (date + timeSlot) untuk menghilangkan duplikasi
+      const uniqueSlots = new Map();
+      
+      // Simpan slot yang unik ke Map
+      slots.forEach((slot: any) => {
+        const slotKey = `${dateKey}-${slot.timeSlot}`;
+        if (!uniqueSlots.has(slotKey)) {
+          uniqueSlots.set(slotKey, slot);
+        }
+      });
+      
+      // Konversi Map kembali ke array
+      const deduplicatedSlots = Array.from(uniqueSlots.values());
+      
+      // Filter slot yang belum lewat waktunya
+      const validSlots = deduplicatedSlots.filter((slot: any) => {
+        try {
+          // Format dari timeSlot adalah "10:00-11:30", ambil jam awal saja
+          const startTime = slot.timeSlot.split('-')[0].trim();
+          const [hours, minutes] = startTime.split(':').map(Number);
+          
+          // Buat objek tanggal slot dengan tanggal hari slot + jam dari timeSlot
+          const slotDateTime = new Date(slotDate);
+          slotDateTime.setHours(hours, minutes, 0, 0);
+          
+          // Bandingkan dengan waktu lokal Indonesia
+          return slotDateTime > localTime;
+        } catch (err) {
+          console.error("Error comparing dates:", err);
+          return false; // Jika ada error, anggap slot sudah tidak valid
+        }
+      });
+      
+      // If there are no slots at all, return null
+      if (validSlots.length === 0) return null;
+      
+      return (
+        <div key={dateKey} className="border rounded-lg overflow-hidden">
+          <div className="bg-teal-50 px-4 py-2 border-b border-teal-100">
+            <h3 className="font-medium text-teal-800">{formattedDate}</h3>
+          </div>
+          <div className="p-3 space-y-2">
+            {validSlots.map((slot: any) => {
+              // Pastikan lagi bahwa slot ini masih memiliki kuota tersedia
+              // dan menggunakan hasil perhitungan terbaru
+              if (slot.currentCount >= slot.maxQuota) return null;
+              
+              const availableSeats = slot.maxQuota - slot.currentCount;
+              const isAlmostFull = availableSeats <= 2;
+              
+              return (
+                <div key={slot.id} className="flex items-center space-x-3 border border-gray-200 rounded-md p-2 hover:bg-teal-50 cursor-pointer transition-colors">
+                  <RadioGroupItem value={String(slot.id)} id={`slot-${slot.id}`} />
+                  <div className="grid grid-cols-2 w-full gap-1">
+                    <FormLabel htmlFor={`slot-${slot.id}`} className="font-medium text-sm">
+                      <Clock className="h-3.5 w-3.5 inline mr-1 text-gray-500" />
+                      {slot.timeSlot}
+                    </FormLabel>
+                    <div className="flex items-center justify-end text-xs">
+                      <Users className="h-3 w-3 mr-1" />
+                      <span className={`${isAlmostFull ? 'text-red-600 font-medium' : 'text-amber-700'}`}>
+                        {availableSeats}/{slot.maxQuota} kursi
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md mx-auto">
@@ -1076,107 +1189,8 @@ export default function RegisterPage() {
                                 className="space-y-6"
                               >
                                 {/* Mengelompokkan slot berdasarkan tanggal */}
-                                {(() => {
-                                  // Mengelompokkan slot berdasarkan tanggal (YYYY-MM-DD)
-                                  const groupedSlots: {[key: string]: any[]} = {};
-                                  
-                                  therapySlots.forEach((slot: any) => {
-                                    const slotDate = parseISO(slot.date);
-                                    const dateKey = format(slotDate, "yyyy-MM-dd");
-                                    
-                                    if (!groupedSlots[dateKey]) {
-                                      groupedSlots[dateKey] = [];
-                                    }
-                                    
-                                    groupedSlots[dateKey].push(slot);
-                                  });
-                                  
-                                  // Mengubah object groupedSlots menjadi array untuk ditampilkan
-                                  return Object.entries(groupedSlots).map(([dateKey, slots]) => {
-                                    const slotDate = parseISO(dateKey);
-                                    const formattedDate = format(slotDate, "EEEE, dd MMMM yyyy", { locale: idLocale });
-                                    
-                                    // Filtering logic untuk menampilkan hanya slot yang belum lewat
-                                    const now = new Date();
-                                    
-                                    // Tambahkan 7 jam untuk zona waktu Indonesia (WIB/UTC+7)
-                                    // Ini cara yang lebih aman untuk mendapatkan waktu lokal Indonesia
-                                    const localTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-                                    
-                                    // De-duplikasi slot berdasarkan kombinasi timeSlot dan date
-                                    // Gunakan Map dengan kunci gabungan (date + timeSlot) untuk menghilangkan duplikasi
-                                    const uniqueSlots = new Map();
-                                    
-                                    // Simpan slot yang unik ke Map
-                                    slots.forEach((slot: any) => {
-                                      const slotKey = `${dateKey}-${slot.timeSlot}`;
-                                      if (!uniqueSlots.has(slotKey)) {
-                                        uniqueSlots.set(slotKey, slot);
-                                      }
-                                    });
-                                    
-                                    // Konversi Map kembali ke array
-                                    const deduplicatedSlots = Array.from(uniqueSlots.values());
-                                    
-                                    // Filter slot yang belum lewat waktunya
-                                    const validSlots = deduplicatedSlots.filter((slot: any) => {
-                                      try {
-                                        // Format dari timeSlot adalah "10:00-11:30", ambil jam awal saja
-                                        const startTime = slot.timeSlot.split('-')[0].trim();
-                                        const [hours, minutes] = startTime.split(':').map(Number);
-                                        
-                                        // Buat objek tanggal slot dengan tanggal hari slot + jam dari timeSlot
-                                        const slotDateTime = new Date(slotDate);
-                                        slotDateTime.setHours(hours, minutes, 0, 0);
-                                        
-                                        // Bandingkan dengan waktu lokal Indonesia
-                                        return slotDateTime > localTime;
-                                      } catch (err) {
-                                        console.error("Error comparing dates:", err);
-                                        return false; // Jika ada error, anggap slot sudah tidak valid
-                                      }
-                                    });
-                                    
-                                    // If there are no slots at all, return null
-                                    if (validSlots.length === 0) return null;
-                                    
-                                    return (
-                                      <div key={dateKey} className="border rounded-lg overflow-hidden">
-                                        <div className="bg-teal-50 px-4 py-2 border-b border-teal-100">
-                                          <h3 className="font-medium text-teal-800">{formattedDate}</h3>
-                                        </div>
-                                        <div className="p-3 space-y-2">
-                                          {validSlots.map((slot: any) => {
-                                            // Pastikan lagi bahwa slot ini masih memiliki kuota tersedia
-                                            // dan menggunakan hasil perhitungan terbaru
-                                            if (slot.currentCount >= slot.maxQuota) return null;
-                                            
-                                            const availableSeats = slot.maxQuota - slot.currentCount;
-                                            const isAlmostFull = availableSeats <= 2;
-                                            
-                                            return (
-                                              <div key={slot.id} className="flex items-center space-x-3 border border-gray-200 rounded-md p-2 hover:bg-teal-50 cursor-pointer transition-colors">
-                                                <RadioGroupItem value={String(slot.id)} id={`slot-${slot.id}`} />
-                                                <div className="grid grid-cols-2 w-full gap-1">
-                                                  <FormLabel htmlFor={`slot-${slot.id}`} className="font-medium text-sm">
-                                                    <Clock className="h-3.5 w-3.5 inline mr-1 text-gray-500" />
-                                                    {slot.timeSlot}
-                                                  </FormLabel>
-                                                  <div className="flex items-center justify-end text-xs">
-                                                    <Users className="h-3 w-3 mr-1" />
-                                                    <span className={`${isAlmostFull ? 'text-red-600 font-medium' : 'text-amber-700'}`}>
-                                                      {availableSeats}/{slot.maxQuota} kursi
-                                                    </span>
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    );
-                                  });
-                                })()}
+                                {/* Proses data untuk tampilan slot berdasarkan tanggal */}
+                                {renderGroupedSlots()}
                               </RadioGroup>
                             ) : (
                               <Alert className="bg-amber-50 border-amber-200">

@@ -12,6 +12,8 @@ import Products from "@/pages/products";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import Register from "@/pages/register";
+// Import halaman register sederhana untuk testing
+import SimpleRegister from "@/pages/register.simple";
 import Login from "@/pages/login";
 import BackupRestore from "@/pages/backup-restore";
 import DateTest from "@/pages/date-test";
@@ -36,8 +38,9 @@ function Router() {
       <ProtectedRoute path="/backup-restore" component={BackupRestore} />
       <ProtectedRoute path="/date-test" component={DateTest} />
       <Route path="/login" component={Login} />
-      <Route path="/daftar" component={Register} />
-      <Route path="/register" component={Register} />
+      <Route path="/daftar" component={SimpleRegister} />
+      <Route path="/register" component={SimpleRegister} />
+      <Route path="/register-simple" component={SimpleRegister} />
       <Route component={NotFound} />
     </Switch>
   );
