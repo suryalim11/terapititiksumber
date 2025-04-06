@@ -263,7 +263,27 @@ export default function TherapySlots() {
       console.log("Fetching therapy slots with URL:", endpoint);
       const response = await fetch(endpoint);
       if (!response.ok) throw new Error('Failed to fetch therapy slots');
-      return response.json();
+      
+      // Dapatkan data dari respons
+      const data = await response.json();
+      
+      // Deduplikasi data berdasarkan kombinasi tanggal + waktu
+      const uniqueSlots = new Map<string, TherapySlot>();
+      
+      // Proses deduplikasi
+      data.forEach((slot: TherapySlot) => {
+        const key = `${slot.date}-${slot.timeSlot}`;
+        
+        // Jika slot dengan kombinasi yang sama sudah ada, gunakan yang ID nya lebih besar (biasanya yang lebih baru)
+        if (!uniqueSlots.has(key) || uniqueSlots.get(key)!.id < slot.id) {
+          uniqueSlots.set(key, slot);
+        }
+      });
+      
+      console.log(`Data sebelum deduplikasi: ${data.length} slots, setelah deduplikasi: ${uniqueSlots.size} slots`);
+      
+      // Kembalikan array dari nilai-nilai Map (slot-slot unik)
+      return Array.from(uniqueSlots.values());
     },
   });
 
