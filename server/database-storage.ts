@@ -29,34 +29,32 @@ function formatRupiah(amount: number): string {
 // Utility function untuk mendapatkan waktu dengan zona waktu Indonesia (GMT+7/WIB)
 // Konsisten untuk digunakan di seluruh aplikasi saat menyimpan atau mengambil data dari database
 export function getWIBDate(date: Date): Date {
-  // Gunakan metode yang konsisten dengan client-side
-  // Timezone offset dalam milidetik
+  // Metode yang konsisten untuk konversi ke WIB (UTC+7)
   const originalDate = new Date(date);
   
-  // Dapatkan waktu UTC dengan menambahkan timezone offset
-  const utcTime = originalDate.getTime() + (originalDate.getTimezoneOffset() * 60000);
+  // 1. Konversi ke UTC
+  const utcMillis = originalDate.getTime() + (originalDate.getTimezoneOffset() * 60000);
   
-  // Tambahkan 7 jam (WIB = UTC+7)
+  // 2. Tambahkan 7 jam untuk WIB (UTC+7)
   const WIB_OFFSET = 7; // dalam jam
-  const wibDate = new Date(utcTime + (WIB_OFFSET * 3600000));
+  const wibDate = new Date(utcMillis + (WIB_OFFSET * 3600000));
   
-  // Log untuk debugging
-  console.log(`Original date: ${originalDate.toISOString()}, UTC time: ${new Date(utcTime).toISOString()}, WIB date: ${wibDate.toISOString()}`);
+  // Log konsisten untuk monitoring
+  console.log(`Formatting date string: ${originalDate.toISOString()}`);
+  console.log(`Original: ${originalDate.toISOString()} -> Corrected date (WIB): ${wibDate.toISOString()}`);
   
   return wibDate;
 }
 
 function formatDateString(dateStr: string | Date): string {
   try {
+    // Konversi input ke object Date, lalu gunakan getWIBDate untuk mendapat tanggal WIB yang konsisten
     const originalDate = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
     
-    // Gunakan koreksi zona waktu yang sama (kurangi 14 jam, tambah 7 jam)
-    // Pertama kurangi 14 jam (koreksi terhadap data dari PostgreSQL)
-    const correctedDate = new Date(originalDate.getTime() - (14 * 60 * 60 * 1000));
+    // Gunakan fungsi getWIBDate yang sudah distandarisasi
+    const wibDate = getWIBDate(originalDate);
     
-    // Kemudian tambahkan 7 jam untuk WIB
-    const wibDate = new Date(correctedDate.getTime() + (7 * 60 * 60 * 1000));
-    
+    // Format tanggal menggunakan date-fns
     return format(wibDate, 'dd MMMM yyyy');
   } catch (error) {
     console.error("Error formatting date string:", error, dateStr);
@@ -1126,31 +1124,46 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTherapySlotsByDate(date: Date | string): Promise<TherapySlot[]> {
-    // Konversi ke string format YYYY-MM-DD untuk dicocokkan dengan field date yang berupa text
+    // Menggunakan fungsi getWIBDate untuk mendapatkan tanggal dalam zona waktu WIB secara konsisten
     let dateString: string;
     
-    if (date instanceof Date) {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      dateString = `${year}-${month}-${day}`;
-      console.log("Input date untuk getTherapySlotsByDate: Date object -", date.toISOString());
-    } else {
-      // Jika sudah string, pastikan format YYYY-MM-DD
-      dateString = date;
-      if (!/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
-        // Coba parse jika bukan format YYYY-MM-DD
-        try {
-          const parsedDate = new Date(dateString);
-          const year = parsedDate.getFullYear();
-          const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
-          const day = String(parsedDate.getDate()).padStart(2, '0');
-          dateString = `${year}-${month}-${day}`;
-        } catch (e) {
-          console.error("Invalid date string:", date);
+    try {
+      // Konversi input ke Date object terlebih dahulu
+      let dateObj: Date;
+      
+      if (date instanceof Date) {
+        dateObj = date;
+        console.log("Input date untuk getTherapySlotsByDate: Date object -", dateObj.toISOString());
+      } else {
+        // Parse string menjadi Date
+        dateObj = new Date(date);
+        
+        if (isNaN(dateObj.getTime())) {
+          // Jika parsing gagal, gunakan tanggal hari ini
+          console.error("Invalid date string, using today's date:", date);
+          dateObj = new Date();
         }
+        console.log("Input date untuk getTherapySlotsByDate: String -", date, "-> Date object:", dateObj.toISOString());
       }
-      console.log("Input date untuk getTherapySlotsByDate: String -", dateString);
+      
+      // Konversi ke WIB menggunakan fungsi helper yang konsisten
+      const wibDate = getWIBDate(dateObj);
+      
+      // Format tanggal ke format YYYY-MM-DD untuk pencarian di database
+      const year = wibDate.getFullYear();
+      const month = String(wibDate.getMonth() + 1).padStart(2, '0');
+      const day = String(wibDate.getDate()).padStart(2, '0');
+      dateString = `${year}-${month}-${day}`;
+      
+      console.log(`Tanggal WIB yang digunakan: ${dateString}`);
+    } catch (error) {
+      // Jika terjadi error, gunakan tanggal hari ini
+      console.error("Error processing date, using today's date:", error);
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      dateString = `${year}-${month}-${day}`;
     }
     
     console.log("Mencari slot terapi dengan date text:", dateString);
