@@ -1841,10 +1841,47 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
             </div>
 
             {/* Transaction Summary */}
-            {cartItems.length > 0 && (
+            {(cartItems.length > 0 || (payDebt && selectedDebtTransaction)) && (
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Ringkasan Transaksi</h4>
                 <div className="space-y-2 text-sm">
+                  {/* Pembayaran Utang */}
+                  {payDebt && selectedDebtTransaction && (
+                    <div className="mb-3 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-800">
+                      <div className="flex items-center gap-1 text-amber-700 dark:text-amber-400 font-medium mb-2">
+                        <Receipt className="h-4 w-4" />
+                        <span>Pembayaran Utang</span>
+                      </div>
+                      
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Transaksi ID</span>
+                          <span className="font-medium">{selectedDebtTransaction.transactionId}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Tanggal Transaksi</span>
+                          <span className="font-medium">{new Date(selectedDebtTransaction.createdAt).toLocaleDateString('id-ID')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Total Utang</span>
+                          <span className="font-medium">{formatPrice(selectedDebtTransaction.totalAmount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Sudah Dibayar</span>
+                          <span className="font-medium">{formatPrice(selectedDebtTransaction.paidAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-amber-800 dark:text-amber-400 font-medium border-t border-amber-200 dark:border-amber-800 pt-1 mt-1">
+                          <span>Sisa Utang</span>
+                          <span>{formatPrice((parseFloat(selectedDebtTransaction.totalAmount) - parseFloat(selectedDebtTransaction.paidAmount)).toString())}</span>
+                        </div>
+                        <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-medium border-t border-amber-200 dark:border-amber-800 pt-1 mt-1">
+                          <span>Jumlah Dibayar</span>
+                          <span>{formatPrice(paymentAmount)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                
                   {cartItems.map((item, index) => (
                     <div key={index} className="flex justify-between">
                       <span className="text-gray-500 dark:text-gray-400">
@@ -1856,34 +1893,38 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                     </div>
                   ))}
                   
-                  {/* Subtotal */}
-                  <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between">
-                    <span className="text-gray-700 dark:text-gray-300">Subtotal</span>
-                    <span className="text-gray-800 dark:text-gray-200">
-                      {formatPrice(
-                        cartItems.reduce(
-                          (sum, item) => sum + parseFloat(item.price) * item.quantity,
-                          0
-                        ).toString()
+                  {cartItems.length > 0 && (
+                    <>
+                      {/* Subtotal */}
+                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between">
+                        <span className="text-gray-700 dark:text-gray-300">Subtotal</span>
+                        <span className="text-gray-800 dark:text-gray-200">
+                          {formatPrice(
+                            cartItems.reduce(
+                              (sum, item) => sum + parseFloat(item.price) * item.quantity,
+                              0
+                            ).toString()
+                          )}
+                        </span>
+                      </div>
+                      
+                      {/* Discount */}
+                      {parseFloat(form.watch("discount") || "0") > 0 && (
+                        <div className="flex justify-between text-red-500">
+                          <span>Diskon</span>
+                          <span>-{formatPrice(form.watch("discount") || "0")}</span>
+                        </div>
                       )}
-                    </span>
-                  </div>
-                  
-                  {/* Discount */}
-                  {parseFloat(form.watch("discount") || "0") > 0 && (
-                    <div className="flex justify-between text-red-500">
-                      <span>Diskon</span>
-                      <span>-{formatPrice(form.watch("discount") || "0")}</span>
-                    </div>
+                      
+                      {/* Total after discount */}
+                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between font-semibold">
+                        <span className="text-gray-700 dark:text-gray-300">Total</span>
+                        <span className="text-primary dark:text-primary-light">
+                          {formatPrice(calculateTotal().toString())}
+                        </span>
+                      </div>
+                    </>
                   )}
-                  
-                  {/* Total after discount */}
-                  <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between font-semibold">
-                    <span className="text-gray-700 dark:text-gray-300">Total</span>
-                    <span className="text-primary dark:text-primary-light">
-                      {formatPrice(calculateTotal().toString())}
-                    </span>
-                  </div>
                   
                   {/* Credit status */}
                   {useCredit && (
@@ -1907,6 +1948,21 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                         <span className="font-medium text-red-600 dark:text-red-500">
                           {formatPrice(form.watch("creditAmount") || "0")}
                         </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Total Keseluruhan (Transaksi + Pembayaran Utang) */}
+                  {payDebt && selectedDebtTransaction && cartItems.length > 0 && (
+                    <div className="mt-3 pt-2 border-t-2 border-gray-300 dark:border-gray-600">
+                      <div className="flex justify-between font-bold text-base">
+                        <span className="text-gray-800 dark:text-gray-200">Total Keseluruhan</span>
+                        <span className="text-primary">
+                          {formatPrice((parseFloat(paymentAmount) + calculateTotal()).toString())}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Total pembayaran termasuk barang baru dan pembayaran utang
                       </div>
                     </div>
                   )}

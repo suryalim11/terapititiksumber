@@ -2671,6 +2671,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint untuk membuat banyak therapy slot sekaligus (batch processing)
   app.post("/api/therapy-slots/batch", handleTherapySlotsBatch);
   
+  // Endpoint untuk memperbaiki status isPaid transaksi berdasarkan total vs pembayaran
+  app.post("/api/transactions/fix-paid-status", async (req: Request, res: Response) => {
+    try {
+      // Auth check untuk admin
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Admin privileges required" });
+      }
+      
+      const fixType = req.query.type || "all";
+      console.log(`Tipe perbaikan: ${fixType}`);
+      
+      let fixedCount = 0;
+      const updatedIds = [];
+      
+      // Perbaikan tipe 1: transaksi yang seharusnya lunas tapi belum ditandai
+      if (fixType === "all" || fixType === "false-negative") {
+        // Dapatkan semua transaksi yang tandanya belum lunas
+        const unpaidTransactions = await db
+          .select()
+          .from(schema.transactions)
+          .where(eq(schema.transactions.isPaid, false));
+        
+        console.log(`Ditemukan ${unpaidTransactions.length} transaksi dengan isPaid=false`);
+        
+        // Periksa setiap transaksi
+        for (const transaction of unpaidTransactions) {
+          const totalAmount = parseFloat(transaction.totalAmount || "0");
+          const paidAmount = parseFloat(transaction.paidAmount || "0");
+          
+          if (isNaN(totalAmount) || isNaN(paidAmount)) {
+            continue; // Skip transaksi dengan nilai tidak valid
+          }
+          
+          // Jika pembayaran sudah sama atau melebihi total, tandai sebagai lunas
+          if (paidAmount >= totalAmount) {
+            console.log(`Fixing transaction ${transaction.id} (${transaction.transactionId}): paidAmount=${paidAmount}, totalAmount=${totalAmount}`);
+            
+            // Update transaksi menjadi lunas
+            const result = await db
+              .update(schema.transactions)
+              .set({ isPaid: true })
+              .where(eq(schema.transactions.id, transaction.id))
+              .returning();
+            
+            if (result && result.length > 0) {
+              console.log(`  - Berhasil update isPaid menjadi true`);
+              fixedCount++;
+              updatedIds.push(transaction.id);
+            }
+          }
+        }
+      }
+      
+      // Perbaikan tipe 2: transaksi yang ditandai lunas tapi belum bayar
+      if (fixType === "all" || fixType === "false-positive") {
+        // Dapatkan semua transaksi yang tandanya sudah lunas tapi paid_amount = 0
+        const invalidPaidTransactions = await db
+          .select()
+          .from(schema.transactions)
+          .where(
+            and(
+              eq(schema.transactions.isPaid, true),
+              or(
+                eq(schema.transactions.paidAmount, "0"),
+                eq(schema.transactions.paidAmount, "0.00"),
+                isNull(schema.transactions.paidAmount)
+              )
+            )
+          );
+        
+        console.log(`Ditemukan ${invalidPaidTransactions.length} transaksi dengan isPaid=true tapi paidAmount=0`);
+        
+        // Periksa setiap transaksi
+        for (const transaction of invalidPaidTransactions) {
+          console.log(`Fixing transaction ${transaction.id} (${transaction.transactionId}): isPaid=true but paidAmount=${transaction.paidAmount}`);
+          
+          // Update transaksi sesuai dengan total amount
+          const result = await db
+            .update(schema.transactions)
+            .set({ 
+              isPaid: false,
+              paidAmount: "0.00" 
+            })
+            .where(eq(schema.transactions.id, transaction.id))
+            .returning();
+          
+          if (result && result.length > 0) {
+            console.log(`  - Berhasil update isPaid menjadi false dan paidAmount menjadi 0.00`);
+            fixedCount++;
+            updatedIds.push(transaction.id);
+          }
+        }
+      }
+      
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(200).json({ 
+        message: `Berhasil memperbaiki ${fixedCount} transaksi`,
+        fixType,
+        updatedIds
+      });
+    } catch (error) {
+      console.error("Error fixing transaction paid status:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Endpoint untuk memeriksa semua transaksi dengan status inconsistent
+  app.get("/api/transactions/check-inconsistencies", async (req: Request, res: Response) => {
+    try {
+      // Auth check untuk admin
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Admin privileges required" });
+      }
+      
+      console.log("Memeriksa inkonsistensi status transaksi...");
+      
+      // Dapatkan semua transaksi
+      const allTransactions = await db
+        .select()
+        .from(schema.transactions);
+      
+      console.log(`Total transaksi: ${allTransactions.length}`);
+      
+      // Transaksi dengan status inconsistent
+      const inconsistentTransactions = allTransactions.filter(transaction => {
+        // Pastikan nilai numerik valid 
+        const totalAmount = parseFloat(transaction.totalAmount || "0");
+        const paidAmount = parseFloat(transaction.paidAmount || "0");
+        
+        if (isNaN(totalAmount) || isNaN(paidAmount)) {
+          console.log(`WARNING: Transaksi dengan ID ${transaction.id} memiliki nilai tidak valid: totalAmount=${transaction.totalAmount}, paidAmount=${transaction.paidAmount}`);
+          return false;
+        }
+        
+        // 1. Tandanya belum lunas tetapi sudah bayar penuh
+        if (!transaction.isPaid && paidAmount >= totalAmount) {
+          return true;
+        }
+        
+        // 2. Tandanya sudah lunas tetapi belum bayar penuh
+        if (transaction.isPaid && paidAmount < totalAmount) {
+          return true;
+        }
+        
+        return false;
+      });
+      
+      // Kelompokkan hasil
+      const result = {
+        totalTransactions: allTransactions.length,
+        inconsistentCount: inconsistentTransactions.length,
+        falsePositives: inconsistentTransactions
+          .filter(t => !t.isPaid && parseFloat(t.paidAmount || "0") >= parseFloat(t.totalAmount || "0"))
+          .map(t => ({
+            id: t.id,
+            transactionId: t.transactionId,
+            paidAmount: t.paidAmount,
+            totalAmount: t.totalAmount,
+            difference: (parseFloat(t.paidAmount || "0") - parseFloat(t.totalAmount || "0")).toFixed(2)
+          })),
+        falseNegatives: inconsistentTransactions
+          .filter(t => t.isPaid && parseFloat(t.paidAmount || "0") < parseFloat(t.totalAmount || "0"))
+          .map(t => ({
+            id: t.id,
+            transactionId: t.transactionId,
+            paidAmount: t.paidAmount,
+            totalAmount: t.totalAmount,
+            shortage: (parseFloat(t.totalAmount || "0") - parseFloat(t.paidAmount || "0")).toFixed(2)
+          }))
+      };
+      
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error("Error checking transaction inconsistencies:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   app.post("/api/therapy-slots/:id/increment", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);

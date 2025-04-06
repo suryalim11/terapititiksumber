@@ -790,6 +790,22 @@ export class DatabaseStorage implements IStorage {
   // Fungsi untuk mengupdate data transaksi secara umum
   async updateTransaction(id: number, transactionData: Partial<schema.Transaction>): Promise<schema.Transaction | undefined> {
     try {
+      // Jika paidAmount ada dalam data yang dikirim, periksa apakah perlu mengubah isPaid
+      if (transactionData.paidAmount !== undefined) {
+        // Dapatkan transaksi saat ini
+        const currentTransaction = await this.getTransaction(id);
+        if (currentTransaction) {
+          const paidAmount = parseFloat(transactionData.paidAmount);
+          const totalAmount = parseFloat(currentTransaction.totalAmount);
+          
+          // Jika pembayaran sudah sama atau lebih dari total, maka tandai sebagai lunas
+          if (paidAmount >= totalAmount) {
+            transactionData.isPaid = true;
+            console.log(`Marking transaction ${id} as paid because paidAmount ${paidAmount} >= totalAmount ${totalAmount}`);
+          }
+        }
+      }
+      
       const [updatedTransaction] = await db
         .update(schema.transactions)
         .set(transactionData)
