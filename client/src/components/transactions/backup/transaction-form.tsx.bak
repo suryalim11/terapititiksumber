@@ -1638,10 +1638,10 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                   </div>
                   <Switch
                     checked={payDebt}
-                    disabled={!unpaidTransactions.some((tx: any) => parseInt(tx.patientId) === parseInt(form.getValues().patientId || "0"))}
+                    disabled={unpaidTransactions.length === 0}
                     onCheckedChange={(checked) => {
                       setPayDebt(checked);
-                      setDebtOnlyPayment(checked);
+                      setDebtOnlyPayment(checked && true);
                       if (!checked) {
                         setSelectedDebtTransaction(null);
                         setPaymentAmount("0");
@@ -1654,12 +1654,6 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                 <FormDescription className="text-xs mb-2">
                   Aktifkan untuk membayar utang sebelumnya sambil melakukan transaksi baru.
                 </FormDescription>
-                
-                {!unpaidTransactions.some((tx: any) => parseInt(tx.patientId) === parseInt(form.getValues().patientId || "0")) && (
-                  <div className="text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">
-                    Tidak ada transaksi dengan utang yang tersisa untuk pasien ini.
-                  </div>
-                )}
                 
                 {payDebt && (
                   <div className="flex items-center justify-between mt-1 mb-1 pl-6">
@@ -1675,48 +1669,76 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                   </div>
                 )}
                 
-                {payDebt && unpaidTransactions.some((tx: any) => parseInt(tx.patientId) === parseInt(form.getValues().patientId || "0")) && (
+                {payDebt && (
                   <div className="grid gap-3 pt-2 border-t border-amber-200 dark:border-amber-800">
                     <div className="text-sm font-medium">Pilih Transaksi Kredit:</div>
-                    <div className="max-h-40 overflow-y-auto space-y-2">
-                      {unpaidTransactions
-                        .filter((tx: any) => parseInt(tx.patientId) === parseInt(form.getValues().patientId || "0"))
-                        .map((transaction: any) => {
-                          // Hitung sisa utang yang benar
-                          const totalTransactionAmount = parseFloat(transaction.totalAmount);
-                          const paidAmount = parseFloat(transaction.paidAmount);
-                          const remainingDebt = totalTransactionAmount - paidAmount;
-                          
-                          return (
-                            <div 
-                              key={transaction.id}
-                              className={`flex justify-between items-center p-2 rounded-md cursor-pointer border ${
-                                selectedDebtTransaction?.id === transaction.id 
-                                  ? 'border-primary bg-primary/10' 
-                                  : 'border-muted bg-card'
-                              }`}
-                              onClick={() => handleDebtSelect(transaction)}
-                            >
-                              <div className="overflow-hidden">
-                                <div className="font-medium text-sm truncate">
-                                  {transaction.transactionId}
+                    
+                    {/* Jika tidak ada transaksi utang sama sekali */}
+                    {unpaidTransactions.length === 0 && (
+                      <div className="text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">
+                        Tidak ada transaksi dengan utang yang tersisa untuk pasien ini.
+                      </div>
+                    )}
+                    
+                    {/* Jika ada transaksi utang tetapi tidak untuk pasien ini */}
+                    {unpaidTransactions.length > 0 && 
+                     unpaidTransactions.filter((tx: any) => parseInt(tx.patientId) === parseInt(form.getValues().patientId)).length === 0 && (
+                      <div className="text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">
+                        Tidak ada transaksi dengan utang yang tersisa untuk pasien ini.
+                      </div>
+                    )}
+                    
+                    {/* Jika ada transaksi utang untuk pasien ini */}
+                    {unpaidTransactions.length > 0 && 
+                     unpaidTransactions.filter((tx: any) => parseInt(tx.patientId) === parseInt(form.getValues().patientId)).length > 0 && (
+                      <div className="max-h-40 overflow-y-auto space-y-2">
+                        {unpaidTransactions
+                          .filter((tx: any) => parseInt(tx.patientId) === parseInt(form.getValues().patientId))
+                          .map((transaction: any) => {
+                            // Hitung sisa utang yang benar
+                            const totalTransactionAmount = parseFloat(transaction.totalAmount);
+                            const paidAmount = parseFloat(transaction.paidAmount);
+                            const remainingDebt = totalTransactionAmount - paidAmount;
+                            
+                            console.log("Detail utang transaksi:", {
+                              id: transaction.id,
+                              transactionId: transaction.transactionId, 
+                              totalAmount: totalTransactionAmount,
+                              paidAmount: paidAmount,
+                              remainingDebt: remainingDebt
+                            });
+                            
+                            return (
+                              <div 
+                                key={transaction.id}
+                                className={`flex justify-between items-center p-2 rounded-md cursor-pointer border ${
+                                  selectedDebtTransaction?.id === transaction.id 
+                                    ? 'border-primary bg-primary/10' 
+                                    : 'border-muted bg-card'
+                                }`}
+                                onClick={() => handleDebtSelect(transaction)}
+                              >
+                                <div className="overflow-hidden">
+                                  <div className="font-medium text-sm truncate">
+                                    {transaction.transactionId}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {new Date(transaction.createdAt).toLocaleDateString('id-ID')}
+                                  </div>
                                 </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(transaction.createdAt).toLocaleDateString('id-ID')}
+                                <div className="text-right">
+                                  <div className="font-semibold text-sm">
+                                    {formatPrice(remainingDebt.toString())}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Utang tersisa
+                                  </div>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <div className="font-semibold text-sm">
-                                  {formatPrice(remainingDebt.toString())}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  Utang tersisa
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
+                            );
+                          })}
+                      </div>
+                    )}
                     
                     {selectedDebtTransaction && (
                       <div className="grid gap-2">
