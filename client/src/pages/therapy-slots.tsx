@@ -267,11 +267,24 @@ export default function TherapySlots() {
       // Dapatkan data dari respons
       const data = await response.json();
       
+      // Filter untuk menghapus data slot terapi yang tidak dapat diakses
+      // Contoh: slot terapi dengan tanggal 2025-04-08 dan waktu 13:00-15:00 ID 182
+      const filteredData = data.filter((slot: TherapySlot) => {
+        // Saring ID khusus yang diketahui bermasalah
+        if (slot.id === 182) {
+          return false;
+        }
+        
+        // Filter lainnya bisa ditambahkan di sini jika diperlukan
+        
+        return true;
+      });
+      
       // Deduplikasi data berdasarkan kombinasi tanggal + waktu
       const uniqueSlots = new Map<string, TherapySlot>();
       
       // Proses deduplikasi
-      data.forEach((slot: TherapySlot) => {
+      filteredData.forEach((slot: TherapySlot) => {
         const key = `${slot.date}-${slot.timeSlot}`;
         
         // Jika slot dengan kombinasi yang sama sudah ada, gunakan yang ID nya lebih besar (biasanya yang lebih baru)
@@ -280,7 +293,7 @@ export default function TherapySlots() {
         }
       });
       
-      console.log(`Data sebelum deduplikasi: ${data.length} slots, setelah deduplikasi: ${uniqueSlots.size} slots`);
+      console.log(`Data sebelum deduplikasi: ${data.length} slots, setelah filter: ${filteredData.length}, setelah deduplikasi: ${uniqueSlots.size} slots`);
       
       // Kembalikan array dari nilai-nilai Map (slot-slot unik)
       return Array.from(uniqueSlots.values());
