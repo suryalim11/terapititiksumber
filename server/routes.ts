@@ -1118,35 +1118,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid payment amount" });
       }
       
-      // Buat transaksi baru untuk mencatat pembayaran utang ini
-      const paymentTransactionId = `DP-${format(new Date(), 'yyyyMMdd')}-${String(transaction.id).padStart(3, '0')}`;
-      
-      // Buat transaksi baru sebagai catatan pembayaran
-      const newTransaction = await storage.createTransaction({
-        patientId: transaction.patientId,
-        transactionId: paymentTransactionId,
-        totalAmount: amount,
-        discount: "0.00",
-        subtotal: amount,
-        paymentMethod: paymentMethod,
-        items: JSON.stringify([{
-          id: 0,
-          type: "debt-payment",
-          quantity: 1,
-          price: amount,
-          description: `Pembayaran utang untuk transaksi ${transaction.transactionId}`
-        }]),
-        isPaid: true,
-        creditAmount: "0.00",
-        paidAmount: amount
-      });
+      // PERUBAHAN: Tidak perlu membuat transaksi baru untuk pembayaran hutang
+      // Cukup mencatat pembayaran di tabel debt_payments
       
       // Create debt payment record
       const payment = await storage.createDebtPayment({
         transactionId,
         amount,
         paymentMethod,
-        notes
+        notes: notes || `Pembayaran hutang untuk transaksi ${transaction.transactionId}`
       });
       
       // Dapatkan nilai terbaru dari transaksi menggunakan storage.updateTransactionPaidStatus
@@ -1214,28 +1194,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Buat transaksi baru untuk mencatat pembayaran utang ini
-      const paymentTransactionId = `DP-${format(new Date(), 'yyyyMMdd')}-${String(transaction.id).padStart(3, '0')}`;
-      
-      // Buat transaksi baru sebagai catatan pembayaran
-      const newTransaction = await storage.createTransaction({
-        patientId: transaction.patientId,
-        transactionId: paymentTransactionId,
-        totalAmount: amount,
-        discount: "0.00",
-        subtotal: amount,
-        paymentMethod: paymentMethod,
-        items: JSON.stringify([{
-          id: 0,
-          type: "debt-payment",
-          quantity: 1,
-          price: amount,
-          description: `Pembayaran utang untuk transaksi ${transaction.transactionId}`
-        }]),
-        isPaid: true,
-        creditAmount: "0.00",
-        paidAmount: amount
-      });
+      // PERUBAHAN: Tidak perlu membuat transaksi baru untuk pembayaran hutang
+      // Cukup mencatat pembayaran hutang di tabel debt_payments
+      let newTransaction = null;
       
       // Buat catatan pembayaran utang
       const payment = await storage.createDebtPayment({
@@ -1255,7 +1216,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(201).json({
         success: true,
         payment,
-        paymentTransaction: newTransaction,
         originalTransaction: updatedTransaction,
         remainingDebt: totalAmount - newPaidAmount
       });
