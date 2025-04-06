@@ -703,10 +703,11 @@ export default function Transactions() {
                             : '-'}
                         </TableCell>
                         <TableCell>
-                          {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
-                            ? '-' // Untuk transaksi kredit, kolom total dikosongkan dengan tanda "-"
-                            : formatPrice(transaction.totalAmount.toString())
-                          }
+                          {formatPrice(
+                            transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
+                              ? (parseFloat(transaction.totalAmount.toString()) - parseFloat(transaction.creditAmount.toString())).toString()
+                              : transaction.totalAmount.toString()
+                          )}
                         </TableCell>
                         <TableCell>
                           {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
@@ -716,7 +717,14 @@ export default function Transactions() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {transaction.isPaid ? (
+                          {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Kredit
+                            </span>
+                          ) : transaction.isPaid ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -724,12 +732,11 @@ export default function Transactions() {
                               Lunas
                             </span>
                           ) : (
-                            // Semua transaksi yang tidak lunas ditampilkan sebagai Kredit
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
-                              Kredit
+                              Belum Lunas
                             </span>
                           )}
                         </TableCell>
@@ -788,13 +795,17 @@ export default function Transactions() {
                         <div className="text-sm text-muted-foreground">{formatDate(transaction.createdAt)}</div>
                       </div>
                       <div className={`text-xs inline-flex items-center font-semibold px-2.5 py-1 rounded-full ${
-                        transaction.isPaid 
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
+                        transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : transaction.isPaid 
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
                       }`}>
-                        {transaction.isPaid 
-                          ? 'Lunas'
-                          : 'Kredit'}
+                        {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
+                          ? 'Kredit'
+                          : transaction.isPaid 
+                            ? 'Lunas'
+                            : 'Belum Lunas'}
                       </div>
                     </div>
                     
@@ -805,12 +816,7 @@ export default function Transactions() {
                       </div>
                       <div>
                         <div className="text-muted-foreground">Total</div>
-                        <div className="font-medium">
-                          {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
-                            ? '-' // Untuk transaksi kredit, kolom total dikosongkan dengan tanda "-"
-                            : formatPrice(transaction.totalAmount.toString())
-                          }
-                        </div>
+                        <div className="font-medium">{formatPrice(transaction.totalAmount.toString())}</div>
                       </div>
                       
                       {(transaction.subtotal && parseFloat(transaction.subtotal.toString()) > 0) && (
