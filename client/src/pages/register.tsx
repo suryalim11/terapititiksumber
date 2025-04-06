@@ -214,6 +214,19 @@ export default function RegisterPage() {
     // Mendukung parameter "code" dan "kode" untuk backward compatibility
     const code = params.get("code") || params.get("kode");
     
+    // Mendapatkan slotId dari URL jika ada (parameter dari admin untuk pasien walk-in)
+    const slotIdParam = params.get("slotId");
+    if (slotIdParam) {
+      console.log("SlotId yang ditemukan di URL:", slotIdParam);
+      
+      // Simpan slotId untuk digunakan nanti setelah slot terapi dimuat
+      const slotId = parseInt(slotIdParam);
+      if (!isNaN(slotId)) {
+        // Simpan ID slot untuk digunakan saat therapySlots tersedia
+        sessionStorage.setItem("selectedSlotId", slotId.toString());
+      }
+    }
+    
     console.log("Kode yang ditemukan di URL:", code);
     
     // Jika tidak ada kode di URL, coba dapatkan secara otomatis link pendaftaran permanen
@@ -230,6 +243,42 @@ export default function RegisterPage() {
       getActivePermanentLink();
     }
   }, []);
+
+  // Effect untuk men-set therapySlotId dari sessionStorage setelah therapySlots dimuat
+  useEffect(() => {
+    if (therapySlots && therapySlots.length > 0) {
+      // Cek apakah ada slotId yang tersimpan di sessionStorage
+      const savedSlotId = sessionStorage.getItem("selectedSlotId");
+      if (savedSlotId) {
+        const slotId = parseInt(savedSlotId);
+        
+        // Cari slot yang sesuai
+        const matchingSlot = therapySlots.find((slot: any) => slot.id === slotId);
+        if (matchingSlot) {
+          console.log("Menemukan therapy slot yang cocok dari ID yang tersimpan:", matchingSlot);
+          
+          // Set nilai pada form
+          form.setValue("therapySlotId", slotId);
+          
+          // Simpan data slot untuk tampilan
+          setSelectedSlot({
+            id: slotId,
+            date: format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale }),
+            timeSlot: matchingSlot.timeSlot
+          });
+          
+          // Hapus dari sessionStorage agar tidak digunakan lagi
+          sessionStorage.removeItem("selectedSlotId");
+          
+          toast({
+            title: "Sesi Terapi Telah Dipilih",
+            description: `Kami telah memilih sesi ${matchingSlot.timeSlot} pada ${format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale })} untuk Anda.`,
+            className: "bg-teal-50 border-teal-200 text-teal-800",
+          });
+        }
+      }
+    }
+  }, [therapySlots, form, toast]);
 
   // Fungsi untuk mendapatkan link pendaftaran permanen yang aktif
   const getActivePermanentLink = async () => {

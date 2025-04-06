@@ -127,9 +127,11 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Estados para el diálogo
+  // Dialog states
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  // State untuk dialog pendaftaran pasien
+  const [isRegisterPatientOpen, setIsRegisterPatientOpen] = useState(false);
   
   // Data fetching
   const { data, isLoading, error, refetch } = useQuery({
@@ -421,7 +423,22 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
               
               {/* Appointments List */}
               <div>
-                <h3 className="text-sm font-medium mb-2">Daftar Pasien Aktif</h3>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-medium">Daftar Pasien Aktif</h3>
+                  {/* Tombol untuk mendaftarkan pasien baru */}
+                  {data.slot && data.slot.isActive && 
+                   data.slot.currentCount < data.slot.maxQuota && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="h-8 px-2 text-xs bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100"
+                      onClick={() => navigate(`/patients/register?slotId=${slotId}`)}
+                    >
+                      <User className="h-3 w-3 mr-1" />
+                      Daftarkan Pasien
+                    </Button>
+                  )}
+                </div>
                 {!activeAppointments.length ? (
                   <p className="text-center py-4 text-sm text-muted-foreground border rounded">
                     Belum ada pasien aktif
