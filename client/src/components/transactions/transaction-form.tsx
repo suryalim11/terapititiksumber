@@ -115,7 +115,6 @@ const transactionFormSchema = z.object({
   discount: z.string().optional().transform(val => val === '' ? '0' : val),
   subtotal: z.string().optional(),
   totalAmount: z.string().optional(),
-  setAsCredit: z.boolean().optional().default(false),
   items: z.array(
     z.object({
       id: z.number(),
@@ -154,19 +153,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       isPaid: true,
       creditAmount: "0",
       paidAmount: "0",
-      setAsCredit: false,
     },
   });
   
   // State untuk menangani kredit/utang
   const [useCredit, setUseCredit] = useState(false);
-  const [setAsCredit, setSetAsCredit] = useState(false);
-  
-  // Gunakan useEffect untuk sinkronisasi antara state React dan form state
-  useEffect(() => {
-    form.setValue("setAsCredit", setAsCredit);
-  }, [setAsCredit, form]);
-  
   // State untuk menangani pembayaran utang sekaligus transaksi baru
   const [payDebt, setPayDebt] = useState(false);
   const [selectedDebtTransaction, setSelectedDebtTransaction] = useState<any>(null);
@@ -419,47 +410,13 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         // Use the validated discount value from above
         const discountAmount = discount;
         
-        // Siapkan data transaksi berdasarkan metode pembayaran dan jumlah yang dibayar
-        let isPaid = false; // Default: belum lunas
-        let creditAmount = "0"; // Default: tidak ada kredit
-        let paidAmount = "0"; // Default: belum ada pembayaran
-        
-        if (useCredit) {
-          // Jika menggunakan fitur kredit
-          isPaid = false; // Kredit selalu tidak lunas
-          
-          // Ambil nilai kredit dan pembayaran dari form
-          creditAmount = values.creditAmount || "0";
-          paidAmount = values.paidAmount || "0";
-          
-          // Jika pembayaran 0, maka semua total menjadi kredit (seperti kasus T-20250406-076)
-          if (parseFloat(paidAmount) === 0) {
-            creditAmount = totalAmount.toString();
-          }
-        } else {
-          // Jika pembayaran tunai
-          
-          // Jika tidak diisi nilai pembayaran, anggap belum dibayar (Belum Lunas)
-          if (!values.paidAmount || parseFloat(values.paidAmount) === 0) {
-            isPaid = false;
-            paidAmount = "0";
-            // Tambahkan opsi untuk mengubah status kredit jika dibayar 0
-            if (values.setAsCredit) {
-              creditAmount = totalAmount.toString();
-            }
-          } else if (parseFloat(values.paidAmount) >= totalAmount) {
-            // Jika dibayar lunas atau lebih
-            isPaid = true;
-            paidAmount = totalAmount.toString();
-          } else {
-            // Jika dibayar sebagian (tidak sampai lunas)
-            isPaid = false;
-            paidAmount = values.paidAmount;
-            // Sisanya jadi kredit
-            const remainingAmount = totalAmount - parseFloat(values.paidAmount);
-            creditAmount = remainingAmount.toString();
-          }
-        }
+        // Siapkan kredit data jika menggunakan fitur kredit
+        // Jika menggunakan fitur kredit, nilai isPaid = false
+        // creditAmount adalah jumlah yang belum dibayar
+        // paidAmount adalah jumlah yang sudah dibayar
+        const isPaid = !useCredit;
+        const creditAmount = useCredit ? values.creditAmount || "0" : "0";
+        const paidAmount = useCredit ? values.paidAmount || "0" : totalAmount.toString();
         
         console.log("Mengirim request ke API dengan data:", {
           patientId: parseInt(values.patientId),
@@ -492,7 +449,6 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
             isPaid: isPaid,
             creditAmount: creditAmount,
             paidAmount: paidAmount,
-            setAsCredit: values.setAsCredit,
             items: cartItems.map(item => ({
               id: item.id,
               type: item.type,
@@ -1215,7 +1171,6 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         isPaid: isPaid,
         creditAmount: creditAmount,
         paidAmount: paidAmount,
-        setAsCredit: formValues.setAsCredit || false,
       };
       
       // Eksekusi onSubmit
@@ -1641,28 +1596,6 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                       onChange={field.onChange}
                     />
                   </FormControl>
-                  
-                  {/* Opsi "Jadikan sebagai Kredit" untuk transaksi dengan pembayaran 0 */}
-                  <div className="mt-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="setAsCredit"
-                        checked={form.watch("setAsCredit")}
-                        onCheckedChange={(checked) => {
-                          form.setValue("setAsCredit", checked === true);
-                        }}
-                      />
-                      <label
-                        htmlFor="setAsCredit"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Jadikan sebagai Kredit
-                      </label>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Jika dicentang, transaksi dengan pembayaran 0 akan dicatat sebagai kredit (bukan "Belum Lunas")
-                    </p>
-                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -1868,13 +1801,12 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               // Update paid amount
                               field.onChange(validValue.toString());
                               
-                              // Jika pembayaran = 0, berarti seluruh nilai jadi kredit (belum lunas)
-                              if (validValue === 0) {
-                                form.setValue("creditAmount", totalAmount.toString());
-                                form.setValue("isPaid", false);
-                              } else {
-                                // Update credit amount 
-                                // Jika total dibayar < total transaksi, update kredit
+                              // Update credit amount automatically - nilai kredit adalah input user
+                              // Jika DP = 0, maka seluruh total menjadi kredit
+                              const creditAmount = form.getValues("creditAmount") || totalAmount.toString();
+                              
+                              // Hanya update nilai kredit jika user belum mengisinya secara manual
+                              if (parseFloat(creditAmount) === 0 || parseFloat(creditAmount) === totalAmount) {
                                 const calculatedCredit = Math.max(0, totalAmount - validValue);
                                 form.setValue("creditAmount", calculatedCredit.toString());
                               }
@@ -1919,15 +1851,9 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               // Update credit amount
                               field.onChange(validValue.toString());
                               
-                              // Jika kredit sama dengan total (belum bayar), maka paidAmount = 0
-                              if (validValue === totalAmount) {
-                                form.setValue("paidAmount", "0");
-                                form.setValue("isPaid", false);
-                              } else {
-                                // Update paid amount automatically
-                                const paidAmount = Math.max(0, totalAmount - validValue);
-                                form.setValue("paidAmount", paidAmount.toString());
-                              }
+                              // Update paid amount automatically
+                              const paidAmount = Math.max(0, totalAmount - validValue);
+                              form.setValue("paidAmount", paidAmount.toString());
                             }}
                           />
                         </FormControl>

@@ -50,21 +50,6 @@ async function fixTransactionsTable() {
       END $$;
     `);
     console.log('paid_amount column check complete');
-    
-    // Add setAsCredit column if it doesn't exist
-    await db.execute(sql`
-      DO $$ 
-      BEGIN 
-        IF NOT EXISTS (
-          SELECT FROM information_schema.columns 
-          WHERE table_name = 'transactions' AND column_name = 'set_as_credit'
-        ) THEN 
-          ALTER TABLE transactions 
-          ADD COLUMN set_as_credit BOOLEAN NOT NULL DEFAULT FALSE;
-        END IF;
-      END $$;
-    `);
-    console.log('set_as_credit column check complete');
 
     console.log('Schema fix for transactions table completed successfully');
   } catch (error) {

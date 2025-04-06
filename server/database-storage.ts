@@ -646,7 +646,6 @@ export class DatabaseStorage implements IStorage {
         subtotal: transaction.subtotal || transaction.totalAmount || "0",
         creditAmount: transaction.creditAmount || "0",
         isPaid: transaction.isPaid !== undefined ? transaction.isPaid : true,
-        setAsCredit: transaction.setAsCredit !== undefined ? transaction.setAsCredit : false,
         paidAmount: transaction.paidAmount || (transaction.isPaid ? transaction.totalAmount : "0")
       };
       
