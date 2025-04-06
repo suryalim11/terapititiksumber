@@ -158,21 +158,6 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   
   // State untuk menangani kredit/utang
   const [useCredit, setUseCredit] = useState(false);
-  
-  // Ketika toggle kredit diaktifkan, isi nilai kredit dengan total transaksi
-  useEffect(() => {
-    if (useCredit) {
-      const subtotal = cartItems.reduce(
-        (sum, item) => sum + parseFloat(item.price) * item.quantity, 0
-      );
-      const discount = parseFloat(form.getValues().discount || "0");
-      const totalAmount = Math.max(0, subtotal - discount);
-      
-      // Isi nilai kredit dengan total amount
-      form.setValue("creditAmount", totalAmount.toString());
-      form.setValue("paidAmount", "0");
-    }
-  }, [useCredit, cartItems, form]);
   // State untuk menangani pembayaran utang sekaligus transaksi baru
   const [payDebt, setPayDebt] = useState(false);
   const [selectedDebtTransaction, setSelectedDebtTransaction] = useState<any>(null);
@@ -430,9 +415,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         // creditAmount adalah jumlah yang belum dibayar
         // paidAmount adalah jumlah yang sudah dibayar
         const isPaid = !useCredit;
-        
-        // Pastikan creditAmount selalu diisi dengan nilai dari form saat menggunakan kredit
-        const creditAmount = useCredit ? values.creditAmount || totalAmount.toString() : "0";
+        const creditAmount = useCredit ? values.creditAmount || "0" : "0";
         const paidAmount = useCredit ? values.paidAmount || "0" : totalAmount.toString();
         
         console.log("Mengirim request ke API dengan data:", {
@@ -1170,30 +1153,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
 
       // Siapkan data kredit jika menggunakan fitur kredit
       const isPaid = !useCredit;
-      
-      // Jika menggunakan kredit, pastikan creditAmount berisi nilai
-      // Jika creditAmount masih kosong, isi dengan total amount
-      let creditAmount = "0";
-      let paidAmount = totalAmount.toString();
-      
-      if (useCredit) {
-        // Jika nilai kredit tidak diisi atau 0, default ke total amount
-        if (!formValues.creditAmount || parseFloat(formValues.creditAmount) === 0) {
-          creditAmount = totalAmount.toString();
-          paidAmount = "0"; // Jika semua kredit, maka pembayaran awal = 0
-        } else {
-          // Gunakan nilai kredit yang diinput user
-          creditAmount = formValues.creditAmount;
-          paidAmount = formValues.paidAmount || "0";
-        }
-        
-        console.log("Data kredit yang akan dikirim:", {
-          isPaid,
-          totalAmount,
-          creditAmount,
-          paidAmount
-        });
-      }
+      const creditAmount = useCredit ? formValues.creditAmount || "0" : "0";
+      const paidAmount = useCredit ? formValues.paidAmount || "0" : totalAmount.toString();
       
       const submissionData: TransactionFormValues = {
         patientId: formValues.patientId || "",
@@ -1799,30 +1760,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                 </div>
                 <Switch
                   checked={useCredit}
-                  onCheckedChange={(checked) => {
-                    setUseCredit(checked);
-                    if (checked) {
-                      // Jika kredit diaktifkan, isi nilai kredit dengan total transaksi
-                      const subtotal = cartItems.reduce(
-                        (sum, item) => sum + parseFloat(item.price) * item.quantity, 0
-                      );
-                      const discount = parseFloat(form.getValues().discount || "0");
-                      const totalAmount = Math.max(0, subtotal - discount);
-                      
-                      // Isi nilai kredit dengan total amount
-                      form.setValue("creditAmount", totalAmount.toString());
-                      form.setValue("paidAmount", "0");
-                    } else {
-                      // Jika kredit dinonaktifkan, reset nilai kredit
-                      form.setValue("creditAmount", "0");
-                      const subtotal = cartItems.reduce(
-                        (sum, item) => sum + parseFloat(item.price) * item.quantity, 0
-                      );
-                      const discount = parseFloat(form.getValues().discount || "0");
-                      const totalAmount = Math.max(0, subtotal - discount);
-                      form.setValue("paidAmount", totalAmount.toString());
-                    }
-                  }}
+                  onCheckedChange={setUseCredit}
                 />
               </div>
               
