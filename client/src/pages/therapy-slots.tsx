@@ -808,9 +808,13 @@ export default function TherapySlots() {
       </Dialog>
       
       <div className="container mx-auto py-6 px-4">
+        {/* Header section with title and action buttons */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h3 className="text-lg font-medium">Manajemen Slot Terapi</h3>
+          
+          {/* Action buttons container - improved responsive layout */}
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            {/* Batch slot creation button */}
             <Button 
               variant="default" 
               onClick={() => setBatchDialogOpen(true)}
@@ -819,6 +823,8 @@ export default function TherapySlots() {
               <PlusCircle className="mr-2 h-4 w-4" />
               <span className="whitespace-nowrap">Buat Slot Batch</span>
             </Button>
+            
+            {/* Single slot creation dialog */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="flex-1 sm:flex-none h-12 sm:h-10">
@@ -836,6 +842,7 @@ export default function TherapySlots() {
                 
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    {/* Date selection field */}
                     <FormField
                       control={form.control}
                       name="date"
@@ -867,18 +874,8 @@ export default function TherapySlots() {
                                 selected={typeof field.value === 'string' ? parseISO(field.value) : field.value}
                                 onSelect={(date) => {
                                   if (date) {
-                                    console.log("============= CALENDAR DEBUG =============");
-                                    console.log("Raw date yang dipilih dari calendar:", date);
-                                    console.log("toString():", date.toString());
-                                    console.log("toISOString():", date.toISOString());
-                                    console.log("Timezone offset (menit):", date.getTimezoneOffset());
-                                    
                                     // Gunakan fixTimezone untuk mendapatkan string tanggal yang konsisten
                                     const dateString = fixTimezone(date);
-                                    
-                                    console.log("Calendar: date setelah fixTimezone:", dateString);
-                                    console.log("============= END CALENDAR DEBUG =============");
-                                    
                                     field.onChange(dateString); // Simpan string, bukan Date object
                                   }
                                 }}
@@ -891,6 +888,7 @@ export default function TherapySlots() {
                       )}
                     />
                     
+                    {/* Start time field */}
                     <FormField
                       control={form.control}
                       name="startTime"
@@ -908,6 +906,7 @@ export default function TherapySlots() {
                       )}
                     />
                     
+                    {/* End time field */}
                     <FormField
                       control={form.control}
                       name="endTime"
@@ -925,6 +924,7 @@ export default function TherapySlots() {
                       )}
                     />
                     
+                    {/* Max quota field */}
                     <FormField
                       control={form.control}
                       name="maxQuota"
@@ -958,26 +958,36 @@ export default function TherapySlots() {
                 </Form>
               </DialogContent>
             </Dialog>
-            {/* Kosongkan - sudah di-render di bagian bawah */}
-            <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] })}>
+            
+            {/* Refresh button */}
+            <Button 
+              variant="outline" 
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] })}
+              className="flex-1 sm:flex-none h-12 sm:h-10"
+            >
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
           </div>
         </div>
         
-        <Tabs defaultValue="calendar" onValueChange={(value) => {
-            // Ketika tab berubah, sesuaikan filter berdasarkan tab yang dipilih
+        {/* Main tabs navigation for different therapy slot management views */}
+        <Tabs 
+          defaultValue="calendar" 
+          onValueChange={(value) => {
+            // Adjust filter settings based on selected tab
             if (value === "list") {
-              // Untuk Daftar Semua Slot, set date menjadi kosong agar menampilkan semua slot
-              // dan pastikan showActiveOnly false agar menampilkan semua slot
+              // For "List All Slots", clear date filter to show all slots
+              // and ensure showActiveOnly is false to display all slots
               setDate("");
               setShowActiveOnly(false);
             } else if (value === "calendar") {
-              // Untuk Kalender, gunakan tanggal hari ini
+              // For "Calendar" view, use today's date
               setDate(format(new Date(), 'yyyy-MM-dd'));
             }
-          }}>
+          }}
+        >
+          {/* Tab navigation buttons */}
           <TabsList className="mb-4">
             <TabsTrigger value="calendar">Kalender</TabsTrigger>
             <TabsTrigger value="quick">Buat Batch</TabsTrigger>
@@ -1001,18 +1011,9 @@ export default function TherapySlots() {
                     selected={typeof date === 'string' ? parseISO(date) : date}
                     onSelect={(selectedDate) => {
                       if (selectedDate) {
-                        console.log("============= CALENDAR MAIN DEBUG =============");
-                        console.log("Raw date yang dipilih dari calendar main:", selectedDate);
-                        console.log("toString():", selectedDate.toString());
-                        console.log("toISOString():", selectedDate.toISOString());
-                        console.log("Timezone offset (menit):", selectedDate.getTimezoneOffset());
-                        
                         // Gunakan fixTimezone untuk mendapatkan string tanggal yang konsisten
+                        // dengan format YYYY-MM-DD dan mengatasi masalah timezone
                         const dateString = fixTimezone(selectedDate);
-                        
-                        console.log("Calendar (main): date setelah fixTimezone:", dateString);
-                        console.log("============= END CALENDAR MAIN DEBUG =============");
-                        
                         setDate(dateString); // Simpan string, bukan Date object
                       }
                     }}
