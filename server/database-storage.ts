@@ -1456,16 +1456,49 @@ export class DatabaseStorage implements IStorage {
 
   // Appointment methods
   async getAppointment(id: number): Promise<Appointment | undefined> {
-    const result = await db.query.appointments.findFirst({
+    // Cari appointment berdasarkan ID
+    const appointment = await db.query.appointments.findFirst({
       where: eq(schema.appointments.id, id)
     });
-    return result;
+    
+    if (!appointment) return undefined;
+    
+    // Dapatkan data pasien terkait
+    if (appointment.patientId) {
+      const patient = await this.getPatient(appointment.patientId);
+      
+      // Gabungkan data appointment dengan data pasien
+      return {
+        ...appointment,
+        patient: patient
+      };
+    }
+    
+    return appointment;
   }
 
   async getAllAppointments(): Promise<Appointment[]> {
-    return db.query.appointments.findMany({
+    const appointments = await db.query.appointments.findMany({
       orderBy: [desc(schema.appointments.date)]
     });
+    
+    // Tambahkan informasi pasien ke setiap appointment
+    const appointmentsWithPatients = await Promise.all(
+      appointments.map(async (appointment) => {
+        if (appointment.patientId) {
+          const patient = await this.getPatient(appointment.patientId);
+          if (patient) {
+            return {
+              ...appointment,
+              patient
+            };
+          }
+        }
+        return appointment;
+      })
+    );
+    
+    return appointmentsWithPatients;
   }
 
   async getAppointmentsByDate(date: Date | string): Promise<Appointment[]> {
@@ -1493,14 +1526,41 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`Found ${appointments.length} appointments for date ${dateStr}`);
     
-    return appointments;
+    // Tambahkan data pasien ke setiap janji temu
+    const appointmentsWithPatients = await Promise.all(
+      appointments.map(async (appointment) => {
+        if (appointment.patientId) {
+          const patient = await this.getPatient(appointment.patientId);
+          return {
+            ...appointment,
+            patient: patient
+          };
+        }
+        return appointment;
+      })
+    );
+    
+    return appointmentsWithPatients;
   }
 
   async getAppointmentsByPatient(patientId: number): Promise<Appointment[]> {
-    return db.query.appointments.findMany({
+    const appointments = await db.query.appointments.findMany({
       where: eq(schema.appointments.patientId, patientId),
       orderBy: [desc(schema.appointments.date)]
     });
+    
+    // Dapatkan informasi pasien sekali saja
+    const patient = await this.getPatient(patientId);
+    
+    // Tambahkan informasi pasien ke setiap appointment
+    if (patient) {
+      return appointments.map(appointment => ({
+        ...appointment,
+        patient
+      }));
+    }
+    
+    return appointments;
   }
 
   async getAppointmentsByTherapySlot(therapySlotId: number): Promise<Appointment[]> {
@@ -1538,7 +1598,23 @@ export class DatabaseStorage implements IStorage {
         nonCancelledAppointments.map(a => ({id: a.id, status: a.status}))
       );
       
-      return nonCancelledAppointments;
+      // Tambahkan data pasien untuk setiap appointment
+      const appointmentsWithPatients = await Promise.all(
+        nonCancelledAppointments.map(async (appointment) => {
+          if (appointment.patientId) {
+            const patient = await this.getPatient(appointment.patientId);
+            if (patient) {
+              return {
+                ...appointment,
+                patient
+              };
+            }
+          }
+          return appointment;
+        })
+      );
+      
+      return appointmentsWithPatients;
     } catch (error) {
       console.error(`Error in getAppointmentsByTherapySlot for slot ${therapySlotId}:`, error);
       // Kembalikan array kosong jika terjadi error
@@ -1724,6 +1800,17 @@ export class DatabaseStorage implements IStorage {
       .set({ status })
       .where(eq(schema.appointments.id, id))
       .returning();
+    
+    if (result[0] && result[0].patientId) {
+      // Ambil data pasien
+      const patient = await this.getPatient(result[0].patientId);
+      if (patient) {
+        return {
+          ...result[0],
+          patient
+        };
+      }
+    }
       
     return result[0];
   }
