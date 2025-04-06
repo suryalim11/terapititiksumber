@@ -65,7 +65,7 @@ interface ActivePackage {
 export default function Dashboard() {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState<string>("day");
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
   const queryClient = useQueryClient();
   
   // Format today's date to YYYY-MM-DD for API query with WIB timezone
@@ -187,6 +187,16 @@ export default function Dashboard() {
             const slotDate = new Date(getSlotDateStr(slot));
             return slotDate >= startOfMonth && slotDate <= endOfMonth;
           });
+        } else if (selectedPeriod === 'all') {
+          // Tampilkan semua slot yang tanggalnya >= hari ini (masa depan)
+          // Gunakan nowWIB untuk mendapatkan tanggal saat ini dalam WIB
+          
+          filteredByPeriod = uniqueSlots.filter((slot: any) => {
+            const slotDate = new Date(getSlotDateStr(slot));
+            return slotDate >= getStartOfDayWIB(new Date()); // Filter hanya slot yang >= hari ini
+          });
+          
+          console.log(`Mode "Semua Slot": menampilkan ${filteredByPeriod.length} slot dari sekarang ke depan`);
         }
         
         console.log(`After period (${selectedPeriod}) filtering: ${filteredByPeriod.length} slots`);
@@ -336,7 +346,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <Tabs 
-              defaultValue="day" 
+              defaultValue="all" 
               className="w-full" 
               value={selectedPeriod}
               onValueChange={handlePeriodChange}
@@ -345,7 +355,7 @@ export default function Dashboard() {
                 <TabsTrigger value="day">Hari Ini</TabsTrigger>
                 <TabsTrigger value="week">Minggu Ini</TabsTrigger>
                 <TabsTrigger value="month">Bulan Ini</TabsTrigger>
-                <TabsTrigger value="past-week">7 Hari Terakhir</TabsTrigger>
+                <TabsTrigger value="all">Semua Slot</TabsTrigger>
               </TabsList>
               
               <TabsContent value={selectedPeriod} className="mt-0">
