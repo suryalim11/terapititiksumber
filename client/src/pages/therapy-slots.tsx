@@ -590,8 +590,22 @@ export default function TherapySlots() {
   };
 
   // Format tanggal untuk ditampilkan
+  // Fungsi untuk memformat tanggal slot terapi dengan benar
+  // Menggunakan fixTimezone untuk memastikan format yang konsisten
   const formatSlotDate = (dateStr: string) => {
-    return formatDateDDMMYYYY(dateStr);
+    try {
+      // Ubah string tanggal ke format Date
+      const dateObj = new Date(dateStr);
+      
+      // Gunakan fixTimezone untuk mendapatkan format YYYY-MM-DD yang konsisten
+      const fixedDate = fixTimezone(dateObj);
+      
+      // Format ke tampilan yang lebih user-friendly
+      return formatDateDDMMYYYY(fixedDate);
+    } catch (error) {
+      console.error("Error formatting slot date:", error);
+      return formatDateDDMMYYYY(dateStr);
+    }
   };
 
   // Quick actions untuk membuat batch slot
@@ -1466,7 +1480,7 @@ export default function TherapySlots() {
                     <TableBody>
                       {therapySlots.map((slot) => (
                         <TableRow key={slot.id}>
-                          <TableCell>{formatSlotDate(slot.date.toString())}</TableCell>
+                          <TableCell>{formatSlotDate(slot.date)}</TableCell>
                           <TableCell>{slot.timeSlot}</TableCell>
                           <TableCell>
                             {slot.currentCount} / {slot.maxQuota}
