@@ -432,7 +432,12 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                       size="sm" 
                       variant="outline"
                       className="h-8 px-2 text-xs bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100"
-                      onClick={() => navigate(`/patients/register?slotId=${slotId}`)}
+                      onClick={() => {
+                        // Simpan ID slot ke sessionStorage
+                        sessionStorage.setItem('selectedSlotId', String(slotId));
+                        // Redirect ke halaman pendaftaran dengan parameter walk-in
+                        navigate(`/register?walkin=true`);
+                      }}
                     >
                       <User className="h-3 w-3 mr-1" />
                       Daftarkan Pasien

@@ -217,16 +217,6 @@ export default function RegisterPage() {
     
     // Mendapatkan slotId dari URL jika ada (parameter dari admin untuk pasien walk-in)
     const slotIdParam = params.get("slotId");
-    // Cek parameter walk-in
-    const walkinParam = params.get("walkin");
-    const isWalkin = walkinParam === "true";
-    
-    if (isWalkin) {
-      console.log("Mode walk-in terdeteksi di URL");
-      setIsWalkInMode(true);
-    }
-    
-    // Periksa jika ada slotId di URL atau di sessionStorage
     if (slotIdParam) {
       console.log("SlotId yang ditemukan di URL:", slotIdParam);
       
