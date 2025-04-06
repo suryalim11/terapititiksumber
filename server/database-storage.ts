@@ -638,13 +638,20 @@ export class DatabaseStorage implements IStorage {
       console.log("Database Storage: Creating transaction with data:", transaction);
       
       // Pastikan semua field memiliki nilai default yang tepat
+      const totalAmount = parseFloat(transaction.totalAmount || "0");
+      const paidAmount = parseFloat(transaction.paidAmount || (transaction.isPaid ? transaction.totalAmount : "0"));
+      
+      // Hitung debtAmount (sisa utang) berdasarkan totalAmount dan paidAmount
+      const debtAmount = Math.max(0, totalAmount - paidAmount);
+      
       const transactionData = {
         ...transaction,
         discount: transaction.discount || "0",
         subtotal: transaction.subtotal || transaction.totalAmount || "0",
         creditAmount: transaction.creditAmount || "0",
         isPaid: transaction.isPaid !== undefined ? transaction.isPaid : true,
-        paidAmount: transaction.paidAmount || (transaction.isPaid ? transaction.totalAmount : "0")
+        paidAmount: paidAmount.toString(),
+        debtAmount: debtAmount.toString()
       };
       
       // Generate transaction ID dengan menggunakan waktu WIB
@@ -685,12 +692,10 @@ export class DatabaseStorage implements IStorage {
         .where(eq(schema.transactions.isPaid, false))
         .orderBy(desc(schema.transactions.createdAt));
       
-      // Filter transaksi yang benar-benar masih memiliki utang
-      // (totalAmount > paidAmount)
+      // Filter transaksi yang benar-benar masih memiliki utang berdasarkan debtAmount
       const realUnpaidTransactions = unpaidTransactions.filter(trans => {
-        const totalAmount = parseFloat(trans.totalAmount);
-        const paidAmount = parseFloat(trans.paidAmount);
-        return totalAmount > paidAmount; // Hanya tampilkan jika masih ada utang yang tersisa
+        const debtAmount = parseFloat(trans.debtAmount || "0");
+        return debtAmount > 0; // Hanya tampilkan jika debtAmount > 0
       });
         
       return realUnpaidTransactions.map(trans => ({
@@ -718,12 +723,10 @@ export class DatabaseStorage implements IStorage {
         )
         .orderBy(desc(schema.transactions.createdAt));
       
-      // Filter transaksi yang benar-benar masih memiliki utang
-      // (totalAmount > paidAmount)
+      // Filter transaksi yang benar-benar masih memiliki utang berdasarkan debtAmount
       const realUnpaidTransactions = unpaidTransactions.filter(trans => {
-        const totalAmount = parseFloat(trans.totalAmount);
-        const paidAmount = parseFloat(trans.paidAmount);
-        return totalAmount > paidAmount; // Hanya tampilkan jika masih ada utang yang tersisa
+        const debtAmount = parseFloat(trans.debtAmount || "0");
+        return debtAmount > 0; // Hanya tampilkan jika debtAmount > 0
       });
         
       return realUnpaidTransactions.map(trans => ({
@@ -788,19 +791,25 @@ export class DatabaseStorage implements IStorage {
   // Fungsi untuk mengupdate data transaksi secara umum
   async updateTransaction(id: number, transactionData: Partial<schema.Transaction>): Promise<schema.Transaction | undefined> {
     try {
-      // Jika paidAmount ada dalam data yang dikirim, periksa apakah perlu mengubah isPaid
+      // Dapatkan transaksi saat ini
+      const currentTransaction = await this.getTransaction(id);
+      if (!currentTransaction) {
+        return undefined;
+      }
+      
+      // Jika paidAmount ada dalam data yang dikirim, perbarui debtAmount dan isPaid
       if (transactionData.paidAmount !== undefined) {
-        // Dapatkan transaksi saat ini
-        const currentTransaction = await this.getTransaction(id);
-        if (currentTransaction) {
-          const paidAmount = parseFloat(transactionData.paidAmount);
-          const totalAmount = parseFloat(currentTransaction.totalAmount);
-          
-          // Jika pembayaran sudah sama atau lebih dari total, maka tandai sebagai lunas
-          if (paidAmount >= totalAmount) {
-            transactionData.isPaid = true;
-            console.log(`Marking transaction ${id} as paid because paidAmount ${paidAmount} >= totalAmount ${totalAmount}`);
-          }
+        const paidAmount = parseFloat(transactionData.paidAmount);
+        const totalAmount = parseFloat(currentTransaction.totalAmount);
+        
+        // Hitung debtAmount (sisa utang) berdasarkan totalAmount dan paidAmount yang baru
+        const debtAmount = Math.max(0, totalAmount - paidAmount);
+        transactionData.debtAmount = debtAmount.toString();
+        
+        // Jika pembayaran sudah sama atau lebih dari total, maka tandai sebagai lunas
+        if (paidAmount >= totalAmount) {
+          transactionData.isPaid = true;
+          console.log(`Marking transaction ${id} as paid because paidAmount ${paidAmount} >= totalAmount ${totalAmount}`);
         }
       }
       
@@ -852,12 +861,16 @@ export class DatabaseStorage implements IStorage {
       const totalAmount = parseFloat(transaction.totalAmount.toString());
       const isPaid = totalPaid >= totalAmount;
       
-      console.log(`[Debt Payment] TransactionID: ${transactionId}, Initial Payment: ${initialPayment}, Debt Payments: ${debtPaymentsTotal}, Total: ${totalPaid}, Required: ${totalAmount}`);
+      // Hitung jumlah hutang yang tersisa
+      const debtAmount = Math.max(0, totalAmount - totalPaid);
       
-      // Update status pembayaran
+      console.log(`[Debt Payment] TransactionID: ${transactionId}, Initial Payment: ${initialPayment}, Debt Payments: ${debtPaymentsTotal}, Total: ${totalPaid}, Required: ${totalAmount}, Remaining Debt: ${debtAmount}`);
+      
+      // Update status pembayaran dan jumlah hutang
       return this.updateTransaction(transactionId, {
         isPaid,
-        paidAmount: totalPaid.toString()
+        paidAmount: totalPaid.toString(),
+        debtAmount: debtAmount.toString()
       });
     } catch (error) {
       console.error(`Error updating paid status for transaction ${transactionId}:`, error);
@@ -901,16 +914,12 @@ export class DatabaseStorage implements IStorage {
                 if (originalTransaction) {
                   console.log(`Mengembalikan status transaksi asli ${originalTransactionId} ke belum lunas.`);
                   
-                  // Kembalikan status transaksi asli ke belum lunas
-                  await db.update(schema.transactions)
-                    .set({ 
-                      isPaid: false 
-                    })
-                    .where(eq(schema.transactions.id, originalTransaction.id));
-                    
-                  // Hapus juga data pembayaran utang dari tabel debt_payments
+                  // Hapus data pembayaran utang dari tabel debt_payments
                   await db.delete(schema.debtPayments)
                     .where(eq(schema.debtPayments.transactionId, originalTransaction.id));
+                    
+                  // Perbarui status pembayaran dan hutang pada transaksi asli
+                  await this.updateTransactionPaidStatus(originalTransaction.id);
                 }
               }
             }
