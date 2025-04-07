@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation, useRoute } from "wouter";
 import { 
   ArrowLeft, 
@@ -186,13 +186,60 @@ export default function PatientDetail() {
     enabled: !!patientId,
   });
   
-  // Fetch medical histories
+  // Fetch all patients to find related patients (with same name)
+  const { data: allPatients, isLoading: isLoadingAllPatients } = useQuery({
+    queryKey: [`/api/patients`],
+    enabled: !!patientId && !!patient?.name,
+  });
+  
+  // Temukan semua ID pasien dengan nama yang sama
+  const relatedPatientIds = useMemo(() => {
+    if (!allPatients || !patient) return [patientId as number];
+    
+    // Konversi allPatients ke array jika belum
+    const patientsArray = Array.isArray(allPatients) ? allPatients : [];
+    
+    // Cari pasien dengan nama yang sama (case insensitive)
+    const sameNamePatients = patientsArray.filter((p: any) => {
+      // Pastikan objek pasien dan properti nama valid
+      if (!p || typeof p !== 'object' || !p.name || typeof p.name !== 'string') return false;
+      if (!patient.name || typeof patient.name !== 'string') return false;
+      
+      return p.name.toLowerCase() === patient.name.toLowerCase();
+    });
+    
+    // Ambil ID dari semua pasien tersebut
+    return sameNamePatients.map((p: any) => p.id);
+  }, [allPatients, patient, patientId]);
+  
+  // Fetch medical histories for all related patients
   const { data: medicalHistories, isLoading: isLoadingMedicalHistories, refetch: refetchMedicalHistories } = useQuery({
-    queryKey: [`/api/medical-histories/patient/${patientId}`],
+    queryKey: [`/api/medical-histories/for-patient-group`, relatedPatientIds],
     queryFn: async () => {
-      return await apiRequest(`/api/medical-histories/patient/${patientId}`);
+      // Buat array dari semua riwayat medis
+      let allHistories: any[] = [];
+      
+      // Pastikan relatedPatientIds adalah array
+      const patientIds = Array.isArray(relatedPatientIds) ? relatedPatientIds : [patientId as number];
+      
+      // Ambil semua riwayat medis untuk setiap ID pasien terkait
+      for (const id of patientIds) {
+        try {
+          const histories = await apiRequest(`/api/medical-histories/patient/${id}`);
+          if (Array.isArray(histories)) {
+            allHistories = [...allHistories, ...histories];
+          }
+        } catch (error) {
+          console.error(`Error fetching medical histories for patient ${id}:`, error);
+        }
+      }
+      
+      // Urutkan berdasarkan tanggal terapi (terbaru dulu)
+      return allHistories.sort((a: any, b: any) => 
+        new Date(b.treatmentDate).getTime() - new Date(a.treatmentDate).getTime()
+      );
     },
-    enabled: !!patientId,
+    enabled: !!patientId && !!patient && relatedPatientIds.length > 0,
   });
 
   const refreshAll = () => {
