@@ -350,6 +350,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint baru untuk mendapatkan semua riwayat medis pasien termasuk dari sistem lama
+  app.get("/api/patients/:id/all-medical-histories", async (req: Request, res: Response) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      
+      // Dapatkan pasien terlebih dahulu
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({
+          success: false,
+          message: "Pasien tidak ditemukan"
+        });
+      }
+      
+      // 1. Dapatkan riwayat medis pasien saat ini
+      const currentPatientHistories = await storage.getMedicalHistoriesByPatient(patientId);
+      
+      // 2. Dapatkan riwayat medis berdasarkan nomor telepon (sistem lama)
+      let phoneNumberHistories: schema.MedicalHistory[] = [];
+      if (patient.phoneNumber) {
+        phoneNumberHistories = await getMedicalHistoriesByPhoneNumber(patient.phoneNumber);
+      }
+      
+      // 3. Tambahkan riwayat medis dari ID 86 dan 88 (sesuai dengan implementasi sebelumnya)
+      let additionalHistories: schema.MedicalHistory[] = [];
+      
+      // Cek apakah ini pasien Agus Isrofin berdasarkan nama atau nomor telepon
+      const isAgusIsrofin = patient.name?.toLowerCase().includes('agus isrofin') || 
+                        patient.phoneNumber?.includes('085271383485');
+                        
+      // Cek apakah ini pasien Genapul berdasarkan nama atau nomor telepon
+      const isGenapul = patient.name?.toLowerCase().includes('genapul') || 
+                    patient.phoneNumber?.includes('081372916497');
+      
+      if (isAgusIsrofin) {
+        const agusIsrofinHistories = await storage.getMedicalHistoriesByPatient(86);
+        additionalHistories = [...additionalHistories, ...agusIsrofinHistories];
+      }
+      
+      if (isGenapul) {
+        const genapulHistories = await storage.getMedicalHistoriesByPatient(88);
+        additionalHistories = [...additionalHistories, ...genapulHistories];
+      }
+      
+      // Gabungkan semua riwayat medis
+      let allHistories = [...currentPatientHistories, ...phoneNumberHistories, ...additionalHistories];
+      
+      // Hapus duplikat berdasarkan ID
+      const uniqueHistoriesMap = new Map();
+      allHistories.forEach(history => {
+        uniqueHistoriesMap.set(history.id, history);
+      });
+      
+      // Konversi kembali ke array dan urutkan berdasarkan tanggal (terbaru dulu)
+      const uniqueHistories = Array.from(uniqueHistoriesMap.values()).sort((a, b) => {
+        const dateA = new Date(a.treatmentDate).getTime();
+        const dateB = new Date(b.treatmentDate).getTime();
+        return dateB - dateA;
+      });
+      
+      return res.status(200).json(uniqueHistories);
+    } catch (error) {
+      console.error("Error getting all medical histories:", error);
+      return res.status(500).json({ 
+        message: "Terjadi kesalahan saat mengambil riwayat medis"
+      });
+    }
+  });
+  
   app.post("/api/patient-relationships", async (req: Request, res: Response) => {
     try {
       const { patientId, relatedPatientId, relationshipType } = req.body;

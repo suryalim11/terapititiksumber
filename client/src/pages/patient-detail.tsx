@@ -252,76 +252,21 @@ export default function PatientDetail() {
     return sameNamePatients.map((p: any) => p.id);
   }, [allPatients, patient, patientId]);
   
-  // Fetch medical histories untuk pasien saat ini
-  const { data: currentPatientMedicalHistories, isLoading: isLoadingCurrentMH } = useQuery({
-    queryKey: [`/api/medical-histories/patient/${patientId}`],
+  // Fetch semua riwayat medis untuk pasien saat ini (termasuk dari sistem lama)
+  const { data: allMedicalHistories, isLoading: isLoadingMedicalHistories, refetch: refetchMedicalHistories } = useQuery({
+    queryKey: [`/api/patients/${patientId}/all-medical-histories`],
     enabled: !!patientId,
   });
   
-  // Selalu fetch riwayat medis dari ID 86 dan ID 88 karena dari database terbukti ada riwayat medis di sana
-  const { data: agusIsrofinMedicalHistories, isLoading: isLoadingAgusIsrofinMH } = useQuery({
-    queryKey: [`/api/medical-histories/patient/86`],
-    enabled: true, // Selalu aktif tanpa syarat
-  });
-  
-  const { data: genapulMedicalHistories, isLoading: isLoadingGenapulMH } = useQuery({
-    queryKey: [`/api/medical-histories/patient/88`],
-    enabled: true, // Selalu aktif tanpa syarat
-  });
-  
-  // Gabungkan semua riwayat medis
+  // Menyederhanakan akses ke medical histories
   const medicalHistories = useMemo(() => {
-    let allHistories: any[] = [];
-    
-    // Tambahkan riwayat medis pasien saat ini
-    if (Array.isArray(currentPatientMedicalHistories)) {
-      console.log(`Ditemukan ${currentPatientMedicalHistories.length} riwayat medis untuk pasien ID ${patientId}`);
-      allHistories = [...allHistories, ...currentPatientMedicalHistories];
+    if (!Array.isArray(allMedicalHistories)) {
+      return [];
     }
     
-    // Cek apakah ini pasien Agus Isrofin berdasarkan nama atau nomor telepon
-    const isAgusIsrofin = patient?.name?.toLowerCase().includes('agus isrofin') || 
-                          patient?.phoneNumber?.includes('085271383485');
-                          
-    // Cek apakah ini pasien Genapul berdasarkan nama atau nomor telepon
-    const isGenapul = patient?.name?.toLowerCase().includes('genapul') || 
-                      patient?.phoneNumber?.includes('081372916497');
-    
-    // Tambahkan riwayat medis dari Agus Isrofin (ID 86) jika ini adalah pasien Agus Isrofin
-    if (isAgusIsrofin && Array.isArray(agusIsrofinMedicalHistories)) {
-      console.log(`Menambahkan ${agusIsrofinMedicalHistories.length} riwayat medis dari Agus Isrofin ID 86`);
-      allHistories = [...allHistories, ...agusIsrofinMedicalHistories];
-    }
-    
-    // Tambahkan riwayat medis dari Genapul (ID 88) jika ini adalah pasien Genapul
-    if (isGenapul && Array.isArray(genapulMedicalHistories)) {
-      console.log(`Menambahkan ${genapulMedicalHistories.length} riwayat medis dari Genapul ID 88`);
-      allHistories = [...allHistories, ...genapulMedicalHistories];
-    }
-    
-    console.log(`Total riwayat medis yang akan ditampilkan: ${allHistories.length}`);
-    
-    // Urutkan berdasarkan tanggal terapi (terbaru dulu)
-    return allHistories.sort((a, b) => 
-      new Date(b.treatmentDate).getTime() - new Date(a.treatmentDate).getTime()
-    );
-  }, [currentPatientMedicalHistories, agusIsrofinMedicalHistories, genapulMedicalHistories, patient?.name, patient?.phoneNumber, patientId]);
-  
-  // Untuk kompatibilitas dengan kode lain
-  const isLoadingMedicalHistories = isLoadingCurrentMH || isLoadingAgusIsrofinMH || isLoadingGenapulMH;
-  
-  const refetchMedicalHistories = () => {
-    // Gunakan queryClient langsung untuk invalidate queries
-    queryClient.invalidateQueries({
-      queryKey: [`/api/medical-histories/patient/${patientId}`]
-    });
-    queryClient.invalidateQueries({
-      queryKey: [`/api/medical-histories/patient/86`]
-    });
-    queryClient.invalidateQueries({
-      queryKey: [`/api/medical-histories/patient/88`]
-    });
-  };
+    console.log(`Total riwayat medis yang akan ditampilkan: ${allMedicalHistories.length}`);
+    return allMedicalHistories;
+  }, [allMedicalHistories]);
 
   const refreshAll = () => {
     refetchPatient();
