@@ -403,7 +403,7 @@ export default function PatientDetail() {
               <div className="flex items-center">
                 <Phone className="h-5 w-5 mr-3 text-primary" />
                 <a 
-                  href={`https://wa.me/${patient.phoneNumber?.replace(/[^0-9]/g, '')}`} 
+                  href={`https://wa.me/${patient.phoneNumber ? patient.phoneNumber.replace(/[^0-9]/g, '') : ''}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-base font-medium hover:underline flex items-center"
@@ -497,7 +497,13 @@ export default function PatientDetail() {
                 <Button 
                   size="sm" 
                   className="h-8 text-xs"
-                  onClick={() => navigate(`/appointments/new?patientId=${patientId}`)}
+                  onClick={() => {
+                    toast({
+                      title: "Membuat janji temu baru",
+                      description: `Mengarahkan ke form transaksi dengan paket terapi untuk pasien ini`
+                    });
+                    navigate(`/transactions/new?patientId=${patientId}`);
+                  }}
                 >
                   + Tambah
                 </Button>
@@ -555,7 +561,13 @@ export default function PatientDetail() {
                 <Button 
                   size="sm" 
                   className="h-8 text-xs"
-                  onClick={() => navigate(`/transactions/new?patientId=${patientId}`)}
+                  onClick={() => {
+                    toast({
+                      title: "Menambah paket",
+                      description: "Mengarahkan ke form transaksi untuk pembelian paket"
+                    });
+                    navigate(`/transactions/new?patientId=${patientId}`);
+                  }}
                 >
                   + Tambah
                 </Button>
@@ -621,7 +633,13 @@ export default function PatientDetail() {
                 <Button 
                   size="sm" 
                   className="h-8 text-xs"
-                  onClick={() => navigate(`/transactions/new?patientId=${patientId}`)}
+                  onClick={() => {
+                    toast({
+                      title: "Membuat transaksi baru",
+                      description: "Mengarahkan ke form pembuatan transaksi"
+                    });
+                    navigate(`/transactions/new?patientId=${patientId}`);
+                  }}
                 >
                   + Tambah
                 </Button>
@@ -682,7 +700,13 @@ export default function PatientDetail() {
                 <Button 
                   size="sm" 
                   className="h-8 text-xs"
-                  onClick={() => navigate(`/medical-history/new?patientId=${patientId}`)}
+                  onClick={() => {
+                    // Medical history modal is handled by MedicalHistoryList component with AddMedicalHistoryDialog
+                    toast({
+                      title: "Fitur Riwayat Medis",
+                      description: "Gunakan tombol + di dalam daftar riwayat medis untuk menambahkan data baru."
+                    });
+                  }}
                 >
                   + Tambah
                 </Button>
