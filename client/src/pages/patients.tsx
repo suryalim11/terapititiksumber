@@ -272,7 +272,22 @@ export default function Patients() {
       ) : filteredPatients.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredPatients.map((patient) => (
-            <Card key={patient.id} className="overflow-hidden mobile-card">
+            <Card 
+              key={patient.id} 
+              className="overflow-hidden mobile-card relative"
+              style={{ 
+                borderLeft: patients.filter(p => p.phoneNumber === patient.phoneNumber).length > 1 
+                  ? "4px solid #3b82f6" // Blue border for duplicate phone numbers
+                  : undefined 
+              }}
+            >
+              {patients.filter(p => p.phoneNumber === patient.phoneNumber).length > 1 && (
+                <div className="absolute top-0 right-0 m-2 z-10">
+                  <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200">
+                    Telepon Sama
+                  </Badge>
+                </div>
+              )}
               <CardHeader 
                 className="border-b bg-muted/40 p-3 md:p-4 cursor-pointer hover:bg-muted/60 transition-colors"
                 onClick={() => handleNewTransaction(patient)}
@@ -283,9 +298,14 @@ export default function Patients() {
                   </span>
                   {patient.name}
                 </CardTitle>
-                <div className="mt-1 text-xs text-muted-foreground flex items-center">
-                  <CreditCard className="h-3 w-3 mr-1" />
-                  Klik untuk buat transaksi
+                <div className="mt-1 text-xs text-muted-foreground flex items-center justify-between">
+                  <div className="flex items-center">
+                    <CreditCard className="h-3 w-3 mr-1" />
+                    Klik untuk buat transaksi
+                  </div>
+                  <Badge variant="outline" className="text-xs font-normal">
+                    {patient.patientId}
+                  </Badge>
                 </div>
               </CardHeader>
               <CardContent className="p-3 md:p-4">
@@ -305,6 +325,9 @@ export default function Patients() {
                   
                   <div className="text-muted-foreground">Jenis Kelamin</div>
                   <div className="font-medium">{patient.gender}</div>
+                  
+                  <div className="text-muted-foreground">Terdaftar</div>
+                  <div className="font-medium">{format(new Date(patient.createdAt), 'dd/MM/yyyy')}</div>
                 </div>
                 
                 <div className="mt-4 grid grid-cols-3 gap-2">
