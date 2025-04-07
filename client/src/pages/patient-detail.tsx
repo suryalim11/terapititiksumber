@@ -107,6 +107,11 @@ interface Appointment {
   status: string;
   registrationNumber: string | null;
   notes: string | null;
+  patient?: {
+    id: number;
+    name: string;
+    patientId: string;
+  };
 }
 
 
@@ -185,11 +190,11 @@ export default function PatientDetail() {
     enabled: !!patientId,
   });
 
-  // Fetch appointments
+  // Fetch appointments, including those from related patients
   const { data: appointments, isLoading: isLoadingAppointments, refetch: refetchAppointments } = useQuery({
-    queryKey: [`/api/appointments?patientId=${patientId}`],
+    queryKey: [`/api/appointments?patientId=${patientId}&includeRelated=true`],
     queryFn: async () => {
-      return await apiRequest(`/api/appointments?patientId=${patientId}`);
+      return await apiRequest(`/api/appointments?patientId=${patientId}&includeRelated=true`);
     },
     enabled: !!patientId,
   });
@@ -619,6 +624,12 @@ export default function PatientDetail() {
                               <p className="font-medium">
                                 {formatDate(appointment.date)}
                                 {appointment.timeSlot && ` · ${appointment.timeSlot}`}
+                                {appointment.patient && appointment.patient.id !== patient.id && (
+                                  <span className="inline-flex items-center ml-2 text-muted-foreground text-xs">
+                                    <Share2 className="h-3 w-3 mr-1" />
+                                    <span>dari {appointment.patient.name}</span>
+                                  </span>
+                                )}
                               </p>
                               <p className="text-xs md:text-sm text-muted-foreground">
                                 {appointment.registrationNumber || `#${appointment.id}`}

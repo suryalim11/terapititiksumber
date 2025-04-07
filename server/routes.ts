@@ -1680,10 +1680,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const patientId = req.query.patientId;
       const date = req.query.date;
+      const includeRelated = req.query.includeRelated === 'true';
       
       if (patientId) {
-        const patientAppointments = await storage.getAppointmentsByPatient(parseInt(patientId as string));
-        return res.status(200).json(patientAppointments);
+        if (includeRelated) {
+          try {
+            // Get the patient
+            const patient = await storage.getPatient(parseInt(patientId as string));
+            if (!patient) {
+              return res.status(404).json({ message: "Patient not found" });
+            }
+            
+            // Get related patients
+            const relatedPatients = await storage.getRelatedPatients(parseInt(patientId as string));
+            console.log(`Found ${relatedPatients.length} related patients for patient ${patientId}`);
+            
+            // Get appointments for the current patient
+            const patientAppointments = await storage.getAppointmentsByPatient(parseInt(patientId as string));
+            
+            // If no related patients, just return the patient's appointments
+            if (relatedPatients.length === 0) {
+              return res.status(200).json(patientAppointments);
+            }
+            
+            // Get appointments for all related patients
+            const allAppointments = [...patientAppointments];
+            
+            for (const relatedPatient of relatedPatients) {
+              const relatedAppointments = await storage.getAppointmentsByPatient(relatedPatient.id);
+              
+              // Add a patient property to indicate the source of this appointment
+              const enhancedAppointments = relatedAppointments.map(appointment => ({
+                ...appointment,
+                patient: {
+                  id: relatedPatient.id,
+                  name: relatedPatient.name,
+                  patientId: relatedPatient.patientId
+                }
+              }));
+              
+              allAppointments.push(...enhancedAppointments);
+            }
+            
+            // Sort by date (most recent first)
+            allAppointments.sort((a, b) => {
+              if (!a.date || !b.date) return 0;
+              return new Date(b.date).getTime() - new Date(a.date).getTime();
+            });
+            
+            return res.status(200).json(allAppointments);
+          } catch (error) {
+            console.error(`Error getting appointments for patient ${patientId} with related:`, error);
+            // If there's an error, fall back to just returning the current patient's appointments
+            const patientAppointments = await storage.getAppointmentsByPatient(parseInt(patientId as string));
+            return res.status(200).json(patientAppointments);
+          }
+        } else {
+          // Regular path - just get this patient's appointments
+          const patientAppointments = await storage.getAppointmentsByPatient(parseInt(patientId as string));
+          return res.status(200).json(patientAppointments);
+        }
       }
       
       if (date) {
@@ -1698,6 +1754,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       return res.status(200).json(allAppointments);
     } catch (error) {
+      console.error("Error fetching appointments:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });

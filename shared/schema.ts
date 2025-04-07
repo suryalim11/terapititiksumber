@@ -334,7 +334,11 @@ export type TherapySlot = typeof therapySlots.$inferSelect;
 export type InsertTherapySlot = z.infer<typeof insertTherapySlotSchema>;
 
 export type Appointment = typeof appointments.$inferSelect & {
-  patient?: Patient;
+  patient?: Patient | {
+    id: number;
+    name: string;
+    patientId: string;
+  };
   therapySlot?: TherapySlot;
 };
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
