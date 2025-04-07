@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -18,7 +18,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FilePenLine, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { FilePenLine, Trash2, FileText, UserRound, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import {
@@ -33,6 +34,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AddMedicalHistoryDialog } from "./add-medical-history-dialog";
 import { MedicalHistoryForm } from "./medical-history-form";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface MedicalHistory {
   id: number;
@@ -49,6 +56,12 @@ interface MedicalHistory {
   appointmentId: number | null;
 }
 
+interface PatientInfo {
+  id: number;
+  name: string;
+  phoneNumber: string;
+}
+
 interface MedicalHistoryListProps {
   patientId: number;
 }
@@ -59,12 +72,55 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [patientMap, setPatientMap] = useState<Record<number, PatientInfo>>({});
   
   // Fetch all medical histories (including from old system) through our new comprehensive endpoint
   const { data: allMedicalHistories, isLoading, isError, refetch } = useQuery<MedicalHistory[]>({
     queryKey: [`/api/patients/${patientId}/all-medical-histories`],
     enabled: !!patientId,
   });
+  
+  // Fetch patient data to display source patient names
+  useEffect(() => {
+    const fetchPatientInfo = async (id: number) => {
+      try {
+        const response = await fetch(`/api/patients/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setPatientMap(prev => ({
+            ...prev,
+            [id]: {
+              id: data.id,
+              name: data.name,
+              phoneNumber: data.phoneNumber
+            }
+          }));
+        }
+      } catch (error) {
+        console.error(`Error fetching patient info for ID ${id}:`, error);
+      }
+    };
+    
+    // If we have medical histories from other patients, fetch their info
+    if (allMedicalHistories && allMedicalHistories.length > 0) {
+      // Create an object to deduplicate IDs
+      const patientIdsMap: {[key: number]: boolean} = {};
+      
+      // Collect all unique patient IDs
+      allMedicalHistories.forEach(h => {
+        patientIdsMap[h.patientId] = true;
+      });
+      
+      // Convert to array and skip the current patient
+      const otherPatientIds = Object.keys(patientIdsMap)
+        .map(Number)
+        .filter(id => id !== patientId);
+      
+      otherPatientIds.forEach(id => {
+        fetchPatientInfo(id);
+      });
+    }
+  }, [allMedicalHistories, patientId]);
   
   // Process medical histories
   const medicalHistories = useMemo(() => {
@@ -96,13 +152,31 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
   }, [allMedicalHistories, patientId]);
   
   const handleEditClick = (history: MedicalHistory) => {
-    setEditingHistory(history);
-    setIsEditDialogOpen(true);
+    // Hanya izinkan edit jika riwayat medis milik pasien ini
+    if (history.patientId === patientId) {
+      setEditingHistory(history);
+      setIsEditDialogOpen(true);
+    } else {
+      toast({
+        title: "Tidak dapat mengedit",
+        description: "Riwayat medis dari pasien lain tidak dapat diedit.",
+        variant: "destructive",
+      });
+    }
   };
   
-  const handleDeleteClick = (id: number) => {
-    setDeletingId(id);
-    setIsDeleteDialogOpen(true);
+  const handleDeleteClick = (id: number, sourcePatientId: number) => {
+    // Hanya izinkan hapus jika riwayat medis milik pasien ini
+    if (sourcePatientId === patientId) {
+      setDeletingId(id);
+      setIsDeleteDialogOpen(true);
+    } else {
+      toast({
+        title: "Tidak dapat menghapus",
+        description: "Riwayat medis dari pasien lain tidak dapat dihapus.",
+        variant: "destructive",
+      });
+    }
   };
   
   const handleConfirmDelete = async () => {
@@ -140,6 +214,35 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
     refetch();
     setIsEditDialogOpen(false);
     setEditingHistory(null);
+  };
+  
+  // Helper to get patient name
+  const getPatientName = (id: number) => {
+    if (id === patientId) return null; // Current patient, don't show a label
+    return patientMap[id]?.name || `Pasien #${id}`;
+  };
+  
+  const renderSourceBadge = (historyPatientId: number) => {
+    if (historyPatientId === patientId) return null;
+    
+    const sourceName = getPatientName(historyPatientId);
+    if (!sourceName) return null;
+    
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="ml-2 text-xs px-1.5 py-0.5 border rounded-md cursor-help inline-flex items-center">
+              <UserRound className="h-3 w-3 mr-1" />
+              {sourceName}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Data riwayat medis dari pasien lain</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
   };
   
   if (isLoading) {
@@ -188,6 +291,9 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
     );
   }
   
+  // Add note if we have data from other patients
+  const hasDataFromOtherPatients = medicalHistories.some(history => history.patientId !== patientId);
+  
   return (
     <Card>
       <CardHeader>
@@ -198,8 +304,14 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
             onSuccess={refetch}
           />
         </CardTitle>
-        <CardDescription>
-          Daftar catatan medis pasien
+        <CardDescription className="flex items-center">
+          <span>Daftar catatan medis pasien</span>
+          {hasDataFromOtherPatients && (
+            <span className="inline-flex items-center ml-2 text-xs bg-muted/50 px-2 py-0.5 rounded-md">
+              <FileText className="h-3 w-3 mr-1" />
+              Termasuk data dari pasien lain
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -222,127 +334,175 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {medicalHistories.map((history) => (
-                    <TableRow key={history.id}>
-                      <TableCell>
-                        {history.treatmentDate 
-                          ? format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
-                              locale: idLocale,
-                            })
-                          : "Tanggal tidak tersedia"
-                        }
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {history.complaint}
-                      </TableCell>
-                      <TableCell>{history.beforeBloodPressure || "-"}</TableCell>
-                      <TableCell>{history.afterBloodPressure || "-"}</TableCell>
-                      <TableCell>{history.heartRate || "-"}</TableCell>
-                      <TableCell>{history.pulseRate || "-"}</TableCell>
-                      <TableCell>{history.weight || "-"}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {history.notes || "-"}
-                      </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditClick(history)}
-                        >
-                          <FilePenLine className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteClick(history.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Hapus</span>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {medicalHistories.map((history) => {
+                    const isFromOtherPatient = history.patientId !== patientId;
+                    
+                    return (
+                      <TableRow 
+                        key={history.id}
+                        className={isFromOtherPatient ? "bg-muted/30" : ""}
+                      >
+                        <TableCell>
+                          <div className="flex items-center">
+                            <div>
+                              {history.treatmentDate 
+                                ? format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
+                                    locale: idLocale,
+                                  })
+                                : "Tanggal tidak tersedia"
+                              }
+                            </div>
+                            {renderSourceBadge(history.patientId)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {history.complaint}
+                        </TableCell>
+                        <TableCell>{history.beforeBloodPressure || "-"}</TableCell>
+                        <TableCell>{history.afterBloodPressure || "-"}</TableCell>
+                        <TableCell>{history.heartRate || "-"}</TableCell>
+                        <TableCell>{history.pulseRate || "-"}</TableCell>
+                        <TableCell>{history.weight || "-"}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {history.notes || "-"}
+                        </TableCell>
+                        <TableCell className="text-right space-x-1">
+                          {!isFromOtherPatient ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditClick(history)}
+                              >
+                                <FilePenLine className="h-4 w-4" />
+                                <span className="sr-only">Edit</span>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteClick(history.id, history.patientId)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Hapus</span>
+                              </Button>
+                            </>
+                          ) : (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-xs px-2 py-1 border rounded-md cursor-help">
+                                    Hanya lihat
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Data dari pasien lain hanya dapat dilihat, tidak dapat diedit atau dihapus</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
             
             {/* Tampilan card untuk mobile */}
             <div className="grid grid-cols-1 gap-4 md:hidden">
-              {medicalHistories.map((history) => (
-                <Card key={history.id} className="overflow-hidden">
-                  <CardHeader className="p-4 pb-2 bg-muted/30">
-                    <div className="flex justify-between items-center">
-                      <CardTitle className="text-base font-medium">
-                        {history.treatmentDate 
-                          ? format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
-                              locale: idLocale,
-                            })
-                          : "Tanggal tidak tersedia"
-                        }
-                      </CardTitle>
-                      <div className="flex space-x-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleEditClick(history)}
-                        >
-                          <FilePenLine className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleDeleteClick(history.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Hapus</span>
-                        </Button>
+              {medicalHistories.map((history) => {
+                const isFromOtherPatient = history.patientId !== patientId;
+                const sourceName = getPatientName(history.patientId);
+                
+                return (
+                  <Card 
+                    key={history.id} 
+                    className={`overflow-hidden ${isFromOtherPatient ? "border-muted-foreground/30" : ""}`}
+                  >
+                    <CardHeader className={`p-4 pb-2 ${isFromOtherPatient ? "bg-muted/50" : "bg-muted/30"}`}>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <CardTitle className="text-base font-medium flex items-center">
+                            <Clock className="h-4 w-4 mr-2" />
+                            {history.treatmentDate 
+                              ? format(new Date(history.treatmentDate), "EEEE, dd/MM/yyyy", {
+                                  locale: idLocale,
+                                })
+                              : "Tanggal tidak tersedia"
+                            }
+                          </CardTitle>
+                          {sourceName && (
+                            <div className="text-xs text-muted-foreground mt-1 flex items-center">
+                              <UserRound className="h-3 w-3 mr-1" />
+                              Data dari pasien: {sourceName}
+                            </div>
+                          )}
+                        </div>
+                        {!isFromOtherPatient && (
+                          <div className="flex space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleEditClick(history)}
+                            >
+                              <FilePenLine className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleDeleteClick(history.id, history.patientId)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Hapus</span>
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-2">
-                    <div className="grid grid-cols-1 gap-1 text-sm">
-                      <div>
-                        <span className="font-medium">Keluhan:</span>{" "}
-                        <span className="line-clamp-2">{history.complaint}</span>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-2">
+                      <div className="grid grid-cols-1 gap-1 text-sm">
+                        <div>
+                          <span className="font-medium">Keluhan:</span>{" "}
+                          <span className="line-clamp-2">{history.complaint}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="font-medium">Darah (Sebelum):</span>{" "}
+                            {history.beforeBloodPressure || "-"}
+                          </div>
+                          <div>
+                            <span className="font-medium">Darah (Sesudah):</span>{" "}
+                            {history.afterBloodPressure || "-"}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <span className="font-medium">Jantung:</span>{" "}
+                            {history.heartRate || "-"}
+                          </div>
+                          <div>
+                            <span className="font-medium">Nadi:</span>{" "}
+                            {history.pulseRate || "-"}
+                          </div>
+                          <div>
+                            <span className="font-medium">Berat:</span>{" "}
+                            {history.weight || "-"}
+                          </div>
+                        </div>
+                        {history.notes && (
+                          <div className="mt-2">
+                            <span className="font-medium">Catatan:</span>{" "}
+                            <span className="line-clamp-3">{history.notes}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <span className="font-medium">Darah (Sebelum):</span>{" "}
-                          {history.beforeBloodPressure || "-"}
-                        </div>
-                        <div>
-                          <span className="font-medium">Darah (Sesudah):</span>{" "}
-                          {history.afterBloodPressure || "-"}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <span className="font-medium">Jantung:</span>{" "}
-                          {history.heartRate || "-"}
-                        </div>
-                        <div>
-                          <span className="font-medium">Nadi:</span>{" "}
-                          {history.pulseRate || "-"}
-                        </div>
-                        <div>
-                          <span className="font-medium">Berat:</span>{" "}
-                          {history.weight || "-"}
-                        </div>
-                      </div>
-                      {history.notes && (
-                        <div className="mt-2">
-                          <span className="font-medium">Catatan:</span>{" "}
-                          <span className="line-clamp-3">{history.notes}</span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         ) : (
