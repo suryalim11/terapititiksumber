@@ -169,47 +169,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     queryKey: ["/api/patients"],
   });
   
-  // Kelompokkan pasien berdasarkan nomor telepon
-  const patients = useMemo(() => {
-    // Kelompokkan pasien berdasarkan nomor telepon
-    const patientsGroupedByPhone: { [key: string]: Patient[] } = {};
-    
-    allPatients.forEach(patient => {
-      if (!patient.phoneNumber) return; // Lewati pasien tanpa nomor telepon
-      
-      if (!patientsGroupedByPhone[patient.phoneNumber]) {
-        patientsGroupedByPhone[patient.phoneNumber] = [];
-      }
-      
-      patientsGroupedByPhone[patient.phoneNumber].push(patient);
-    });
-    
-    // Hasil akhir: array dari pasien yang sudah dikelompokkan
-    const result: Patient[] = [];
-    
-    Object.values(patientsGroupedByPhone).forEach(patientGroup => {
-      // Jika hanya ada 1 pasien dengan nomor ini, tambahkan langsung
-      if (patientGroup.length === 1) {
-        result.push(patientGroup[0]);
-        return;
-      }
-      
-      // Urutkan pasien dalam grup berdasarkan ID (tanggal pendaftaran) - ambil yang terbaru saja
-      const sortedGroup = [...patientGroup].sort((a, b) => b.id - a.id);
-      
-      // Tambahkan pasien terbaru ke hasil final dengan nama yang dimodifikasi
-      const newestPatient = sortedGroup[0];
-      result.push({
-        ...newestPatient,
-        name: `${newestPatient.name} (${sortedGroup.length} data)`,
-        // Tambahkan properti untuk menyimpan ID pasien terkait
-        relatedPatients: sortedGroup.slice(1).map(p => p.id)
-      });
-    });
-    
-    // Urutkan hasil akhir berdasarkan ID secara descending (terbaru di atas)
-    return result.sort((a, b) => b.id - a.id);
-  }, [allPatients]);
+
 
   // Fetch packages
   const { data: packages = [] } = useQuery<Package[]>({
@@ -252,10 +212,107 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       
       const data = await response.json();
       console.log("Active sessions data:", data);
+      
+      // PERBAIKAN: Muat juga data sesi aktif untuk pasien terkait (jika ada)
+      if (patientId) {
+        // Cari pasien saat ini
+        const currentPatient = allPatients.find(p => p.id === parseInt(patientId));
+        
+        // Jika pasien ditemukan dan memiliki pasien terkait
+        if (currentPatient && currentPatient.relatedPatients && currentPatient.relatedPatients.length > 0) {
+          // Ambil sesi aktif untuk setiap pasien terkait
+          const relatedSessionPromises = currentPatient.relatedPatients.map(async (relatedId) => {
+            try {
+              const relatedResponse = await fetch(`/api/sessions?patientId=${relatedId}&active=true`);
+              if (relatedResponse.ok) {
+                const relatedData = await relatedResponse.json();
+                return relatedData || [];
+              }
+              return [];
+            } catch (error) {
+              console.error(`Error fetching sessions for related patient ${relatedId}:`, error);
+              return [];
+            }
+          });
+          
+          // Gabungkan semua sesi
+          const relatedSessions = await Promise.all(relatedSessionPromises);
+          const allSessions = [...data, ...relatedSessions.flat()];
+          
+          console.log("Sesi dari pasien terkait:", relatedSessions.flat());
+          console.log("Total semua sesi (termasuk yang terkait):", allSessions);
+          
+          return allSessions;
+        }
+      }
+      
       return data;
     },
     enabled: !!form.watch("patientId"), // hanya jalankan jika patientId ada
   });
+
+  // Kelompokkan pasien berdasarkan nomor telepon (setelah activeSessions tersedia)
+  const patients = useMemo(() => {
+    // Kelompokkan pasien berdasarkan nomor telepon
+    const patientsGroupedByPhone: { [key: string]: Patient[] } = {};
+    
+    allPatients.forEach(patient => {
+      if (!patient.phoneNumber) return; // Lewati pasien tanpa nomor telepon
+      
+      if (!patientsGroupedByPhone[patient.phoneNumber]) {
+        patientsGroupedByPhone[patient.phoneNumber] = [];
+      }
+      
+      patientsGroupedByPhone[patient.phoneNumber].push(patient);
+    });
+    
+    // Hasil akhir: array dari pasien yang sudah dikelompokkan
+    const result: Patient[] = [];
+    
+    Object.values(patientsGroupedByPhone).forEach(patientGroup => {
+      // Jika hanya ada 1 pasien dengan nomor ini, tambahkan langsung
+      if (patientGroup.length === 1) {
+        result.push(patientGroup[0]);
+        return;
+      }
+      
+      // Dapatkan semua pasien dalam grup ini yang memiliki sesi aktif
+      // Cek apakah ada session/paket terapi yang aktif untuk salah satu pasien dalam grup
+      let patientWithActiveSession = patientGroup.find(patient => {
+        // Cari di sessions untuk transaksi id ini
+        return activeSessions.some(session => session.patientId === patient.id);
+      });
+      
+      let sortedGroup = [...patientGroup];
+      
+      // Jika ada pasien dengan sesi aktif, gunakan ID tersebut sebagai prioritas
+      // Jika tidak, gunakan pasien terbaru berdasarkan ID seperti biasa
+      if (patientWithActiveSession) {
+        // Urutan: pasien dengan sesi aktif dulu, sisanya berdasarkan ID terbaru
+        sortedGroup = [
+          patientWithActiveSession,
+          ...patientGroup
+            .filter(p => p.id !== patientWithActiveSession!.id)
+            .sort((a, b) => b.id - a.id)
+        ];
+      } else {
+        // Jika tidak ada yang punya sesi aktif, urutkan berdasarkan ID (terbaru dulu)
+        sortedGroup = sortedGroup.sort((a, b) => b.id - a.id);
+      }
+      
+      // Tambahkan pasien pertama ke hasil final dengan nama yang dimodifikasi
+      const patientToShow = sortedGroup[0];
+      result.push({
+        ...patientToShow,
+        name: `${patientToShow.name} (${sortedGroup.length} data)`,
+        // Tambahkan properti untuk menyimpan ID pasien terkait
+        relatedPatients: sortedGroup.slice(1).map(p => p.id)
+      });
+    });
+    
+    // Urutkan hasil akhir berdasarkan ID secara descending (terbaru di atas)
+    return result.sort((a, b) => b.id - a.id);
+  }, [allPatients, activeSessions]);
 
   // Reset cart when form is closed or opened
   useEffect(() => {
