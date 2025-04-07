@@ -68,15 +68,29 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
   
   // Process medical histories
   const medicalHistories = useMemo(() => {
+    console.log(`DEBUG: Raw data from /api/patients/${patientId}/all-medical-histories:`, allMedicalHistories);
+    
     if (!allMedicalHistories) {
       console.log(`MedicalHistoryList: No medical histories found for patient ${patientId}`);
       return [];
     }
     
-    console.log(`MedicalHistoryList: Found ${allMedicalHistories.length} medical histories for patient ${patientId}`);
+    // Memastikan allMedicalHistories adalah array
+    const historiesArray = Array.isArray(allMedicalHistories) ? allMedicalHistories : [];
+    console.log(`MedicalHistoryList: Found ${historiesArray.length} medical histories for patient ${patientId}`);
+    
+    // Debugging informasi lengkap
+    historiesArray.forEach((history, index) => {
+      console.log(`Medical history ${index + 1}:`, {
+        id: history.id,
+        patientId: history.patientId,
+        complaint: history.complaint?.substring(0, 20) + '...',
+        treatmentDate: history.treatmentDate
+      });
+    });
     
     // Records are already sorted by the API, but in case we need to re-sort
-    return allMedicalHistories.sort((a, b) => 
+    return historiesArray.sort((a, b) => 
       new Date(b.treatmentDate).getTime() - new Date(a.treatmentDate).getTime()
     );
   }, [allMedicalHistories, patientId]);
