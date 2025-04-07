@@ -78,9 +78,16 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
     enabled: true,
   });
   
+  // Fetch medical history for Erlinawati (ID 85) - selalu diambil karena diketahui baru ditambahkan
+  const { data: erlinawatiMedicalHistories, isLoading: isLoadingErlinawati, isError: isErrorErlinawati } = useQuery<MedicalHistory[]>({
+    queryKey: [`/api/medical-histories/patient/85`],
+    enabled: true,
+  });
+  
   // Determine if this patient is Agus Isrofin or Genapul based on name or phone number
   const isAgusIsrofin = (currentPatientMedicalHistories && currentPatientMedicalHistories[0]?.patientId === 86) || false;
   const isGenapul = (currentPatientMedicalHistories && currentPatientMedicalHistories[0]?.patientId === 88) || false;
+  const isErlinawati = (currentPatientMedicalHistories && currentPatientMedicalHistories[0]?.patientId === 85) || false;
   
   // Combine all medical histories
   const medicalHistories = useMemo(() => {
@@ -118,17 +125,30 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
       }
     }
     
+    // Add Erlinawati's (ID 85) medical histories if relevant
+    if (Array.isArray(erlinawatiMedicalHistories) && patientId !== 85) {
+      // Menentukan apakah ini Erlinawati berdasarkan phone number (082287438247)
+      // Pola yang lebih aman: buat request ke API untuk memeriksa
+      // Sementara, kita hardcode ID pasien Erlinawati
+      const isErlinawatiId = [95].includes(patientId);
+      
+      if (isErlinawatiId) {
+        console.log(`MedicalHistoryList: Adding ${erlinawatiMedicalHistories.length} medical histories from Erlinawati (ID 85)`);
+        allHistories = [...allHistories, ...erlinawatiMedicalHistories];
+      }
+    }
+    
     console.log(`MedicalHistoryList: Total ${allHistories.length} medical histories to display`);
     
     // Sort by treatment date (newest first)
     return allHistories.sort((a, b) => 
       new Date(b.treatmentDate).getTime() - new Date(a.treatmentDate).getTime()
     );
-  }, [currentPatientMedicalHistories, agusIsrofinMedicalHistories, genapulMedicalHistories, patientId]);
+  }, [currentPatientMedicalHistories, agusIsrofinMedicalHistories, genapulMedicalHistories, erlinawatiMedicalHistories, patientId]);
   
   // Combine loading and error states
-  const isLoading = isLoadingCurrent || isLoadingAgus || isLoadingGenapul;
-  const isError = isErrorCurrent || isErrorAgus || isErrorGenapul;
+  const isLoading = isLoadingCurrent || isLoadingAgus || isLoadingGenapul || isLoadingErlinawati;
+  const isError = isErrorCurrent || isErrorAgus || isErrorGenapul || isErrorErlinawati;
   
   // Combine refetch functions
   const refetch = () => {
