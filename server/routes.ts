@@ -1442,6 +1442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const patientId = req.query.patientId;
       const active = req.query.active;
       const reportMode = req.query.reportMode === 'true';
+      const includeRelated = req.query.includeRelated !== 'false'; // Default true kecuali dimatikan secara eksplisit
       
       // Jika dalam mode laporan, ambil semua sesi untuk reporting
       if (reportMode) {
@@ -1451,24 +1452,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Jika patientId ditentukan, ambil sesi spesifik pasien
       if (patientId) {
+        const patientIdNum = parseInt(patientId as string);
+        
         if (active === 'true') {
-          const activeSessions = await storage.getActiveSessionsByPatient(parseInt(patientId as string));
+          let allActiveSessions = [];
+          
+          // 1. Ambil sesi aktif untuk pasien yang sedang dilihat
+          const activeSessions = await storage.getActiveSessionsByPatient(patientIdNum);
+          allActiveSessions = [...activeSessions];
+
+          // 2. Jika includeRelated=true, ambil juga semua sesi pasien terkait (dengan nomor telepon sama)
+          if (includeRelated) {
+            try {
+              // Dapatkan daftar pasien terkait (dengan nomor telepon yang sama)
+              const relatedPatients = await storage.getRelatedPatients(patientIdNum);
+              
+              if (relatedPatients.length > 0) {
+                console.log(`Found ${relatedPatients.length} related patients for patient ${patientIdNum}`);
+                
+                // Ambil sesi aktif untuk setiap pasien terkait
+                for (const relatedPatient of relatedPatients) {
+                  const relatedSessions = await storage.getActiveSessionsByPatient(relatedPatient.id);
+                  
+                  if (relatedSessions.length > 0) {
+                    console.log(`Found ${relatedSessions.length} active sessions for related patient ${relatedPatient.id}`);
+                    allActiveSessions = [...allActiveSessions, ...relatedSessions];
+                  }
+                }
+              }
+            } catch (error) {
+              console.error("Error getting related patients' sessions:", error);
+              // Lanjutkan dengan sesi pasien utama saja
+            }
+          }
+
+          // Deduplication (menghindari duplikasi sesi dengan ID yang sama)
+          const uniqueSessionIds = new Set();
+          const uniqueSessions = allActiveSessions.filter(session => {
+            if (uniqueSessionIds.has(session.id)) {
+              return false;
+            }
+            uniqueSessionIds.add(session.id);
+            return true;
+          });
           
           // Untuk setiap sesi aktif, ambil informasi paket
           const enrichedSessions = await Promise.all(
-            activeSessions.map(async (session) => {
+            uniqueSessions.map(async (session) => {
               const pkg = await storage.getPackage(session.packageId);
+              
+              // Tambahkan informasi apakah sesi ini milik pasien saat ini atau pasien terkait
+              const isDirectOwner = session.patientId === patientIdNum;
+              
+              // Jika bukan pemilik langsung, ambil informasi pemilik
+              let owner = null;
+              if (!isDirectOwner) {
+                const patientOwner = await storage.getPatient(session.patientId);
+                if (patientOwner) {
+                  owner = {
+                    id: patientOwner.id,
+                    name: patientOwner.name,
+                    patientId: patientOwner.patientId
+                  };
+                }
+              }
+              
               return {
                 ...session,
                 package: pkg || undefined,
-                remainingSessions: session.totalSessions - session.sessionsUsed
+                remainingSessions: session.totalSessions - session.sessionsUsed,
+                isDirectOwner,
+                owner: isDirectOwner ? null : owner,
+                sharedFrom: !isDirectOwner ? session.patientId : null
               };
             })
           );
           
           return res.status(200).json(enrichedSessions);
         } else {
-          const patientSessions = await storage.getSessionsByPatient(parseInt(patientId as string));
+          // Untuk sesi non-aktif, tetap gunakan logika original (hanya sesi milik pasien)
+          const patientSessions = await storage.getSessionsByPatient(patientIdNum);
           return res.status(200).json(patientSessions);
         }
       }

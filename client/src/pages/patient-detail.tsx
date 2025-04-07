@@ -13,13 +13,14 @@ import {
   Activity, 
   Eye, 
   Phone,
-  Mail as MailIcon
+  Mail as MailIcon,
+  Share2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -87,6 +88,13 @@ interface Session {
     description: string;
   };
   remainingSessions?: number;
+  isDirectOwner?: boolean;
+  sharedFrom?: number | null;
+  owner?: {
+    id: number;
+    name: string;
+    patientId: string;
+  } | null;
 }
 
 interface Appointment {
@@ -168,11 +176,11 @@ export default function PatientDetail() {
     enabled: !!patientId,
   });
 
-  // Fetch active sessions (packages)
+  // Fetch active sessions (packages) including related patients with same phone number
   const { data: activeSessions, isLoading: isLoadingSessions, refetch: refetchSessions } = useQuery({
-    queryKey: [`/api/sessions?patientId=${patientId}&active=true`],
+    queryKey: [`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`],
     queryFn: async () => {
-      return await apiRequest(`/api/sessions?patientId=${patientId}&active=true`);
+      return await apiRequest(`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`);
     },
     enabled: !!patientId,
   });
@@ -668,10 +676,26 @@ export default function PatientDetail() {
                       {activeSessions.map((session: Session) => (
                         <div key={session.id} className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                           <div className="flex justify-between items-start mb-3">
-                            <h3 className="font-bold text-sm md:text-base">{session.package?.name || `Paket #${session.packageId}`}</h3>
-                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs">
-                              Aktif
-                            </Badge>
+                            <div>
+                              <h3 className="font-bold text-sm md:text-base">{session.package?.name || `Paket #${session.packageId}`}</h3>
+                              {!session.isDirectOwner && session.owner && (
+                                <p className="text-xs text-amber-600 mt-1">
+                                  <Share2 className="inline-block w-3 h-3 mr-1" />
+                                  Dibagi dengan {session.owner.name}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs">
+                                Aktif
+                              </Badge>
+                              {session.isDirectOwner === false && (
+                                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 text-xs px-2 py-0 h-5">
+                                  <Share2 className="w-3 h-3 mr-1" />
+                                  Dibagikan
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           
                           {/* Progress bar for session usage */}
@@ -701,6 +725,15 @@ export default function PatientDetail() {
                               <div className="col-span-2">
                                 <p className="text-muted-foreground">Sesi Terakhir</p>
                                 <p className="font-medium">{formatDate(session.lastSessionDate)}</p>
+                              </div>
+                            )}
+                            {!session.isDirectOwner && session.owner && (
+                              <div className="col-span-2 mt-1 pt-2 border-t">
+                                <p className="text-muted-foreground">Pemilik Paket</p>
+                                <p className="font-medium flex items-center">
+                                  <User className="w-3.5 h-3.5 mr-1 inline-block" />
+                                  {session.owner.name} ({session.owner.patientId})
+                                </p>
                               </div>
                             )}
                           </div>

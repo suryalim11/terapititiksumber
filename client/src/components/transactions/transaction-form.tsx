@@ -98,6 +98,14 @@ type ActiveSession = {
     price: string;
   };
   remainingSessions: number;
+  // Properti tambahan untuk sesi yang dibagikan dari pasien lain
+  isDirectOwner?: boolean;
+  sharedFrom?: number | null;
+  owner?: {
+    id: number;
+    name: string;
+    patientId: string;
+  } | null;
 };
 
 type CartItem = {
@@ -207,60 +215,15 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       const patientId = form.watch("patientId");
       if (!patientId) return [];
       
-      // Ambil sesi aktif untuk pasien yang dipilih
-      const response = await fetch(`/api/sessions?patientId=${patientId}&active=true`);
+      // Gunakan parameter API baru, API sudah otomatis menampilkan sesi terkait dengan pasien yang memiliki nomor telepon sama
+      // includeRelated=true (default) akan membuat API menampilkan sesi dari pasien dengan nomor telepon yang sama
+      const response = await fetch(`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`);
       if (!response.ok) throw new Error("Failed to fetch active sessions");
       
       const data = await response.json();
-      console.log("Active sessions data untuk ID utama:", data);
+      console.log("Active sessions data (including related patients):", data);
       
-      // PERBAIKAN: Cari semua pasien dengan nomor telepon yang sama
-      if (patientId) {
-        // Cari pasien saat ini
-        const currentPatient = allPatients.find(p => p.id === parseInt(patientId));
-        
-        if (currentPatient && currentPatient.phoneNumber) {
-          // Cari semua pasien dengan nomor telepon yang sama
-          const relatedPatients = allPatients.filter(p => 
-            p.phoneNumber === currentPatient.phoneNumber && 
-            p.id !== currentPatient.id
-          );
-          
-          console.log("Pasien terkait ditemukan:", relatedPatients.length, "pasien");
-          
-          if (relatedPatients.length > 0) {
-            // Ambil sesi aktif untuk setiap pasien terkait
-            const relatedSessionPromises = relatedPatients.map(async (related) => {
-              try {
-                console.log(`Mencoba mengambil sesi untuk pasien terkait: ${related.name} (ID: ${related.id})`);
-                const relatedResponse = await fetch(`/api/sessions?patientId=${related.id}&active=true`);
-                if (relatedResponse.ok) {
-                  const relatedData = await relatedResponse.json();
-                  console.log(`Data sesi untuk pasien terkait ${related.name}:`, relatedData);
-                  return relatedData || [];
-                }
-                return [];
-              } catch (error) {
-                console.error(`Error fetching sessions for related patient ${related.id}:`, error);
-                return [];
-              }
-            });
-            
-            // Gabungkan semua sesi
-            const relatedSessions = await Promise.all(relatedSessionPromises);
-            const relatedSessionsFlat = relatedSessions.flat();
-            const allSessions = [...data, ...relatedSessionsFlat];
-            
-            console.log("Sesi dari pasien terkait:", relatedSessionsFlat);
-            console.log("Total semua sesi (termasuk yang terkait):", allSessions);
-            
-            return allSessions;
-          }
-        } else {
-          console.log("Current patient not found or has no phone number");
-        }
-      }
-      
+      // Data sudah termasuk sesi dari pasien terkait, dan sudah ada informasi isDirectOwner, owner, dll
       return data;
     },
     enabled: !!form.watch("patientId"), // hanya jalankan jika patientId ada
@@ -1487,11 +1450,23 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                       <AccordionItem value={`session-${session.id}`} key={session.id}>
                         <AccordionTrigger className="py-2 text-sm hover:no-underline">
                           <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center gap-2">
-                              <span>{session.package?.name}</span>
-                              <Badge variant={session.remainingSessions > 1 ? 'default' : 'destructive'} className="ml-2">
-                                {session.remainingSessions} sesi tersisa
-                              </Badge>
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <span>{session.package?.name}</span>
+                                <Badge variant={session.remainingSessions > 1 ? 'default' : 'destructive'} className="ml-2">
+                                  {session.remainingSessions} sesi tersisa
+                                </Badge>
+                              </div>
+                              {!session.isDirectOwner && session.owner && (
+                                <div className="text-xs text-amber-600 font-medium flex items-center gap-1 mt-1">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                                    <polyline points="16 6 12 2 8 6" />
+                                    <line x1="12" y1="2" x2="12" y2="15" />
+                                  </svg>
+                                  Dibagi dengan {session.owner.name}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </AccordionTrigger>
