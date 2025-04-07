@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FilePenLine, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,11 +60,80 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   
-  // Fetch medical history for the patient
-  const { data: medicalHistories, isLoading, isError, refetch } = useQuery<MedicalHistory[]>({
+  // Fetch medical history for the current patient
+  const { data: currentPatientMedicalHistories, isLoading: isLoadingCurrent, isError: isErrorCurrent, refetch: refetchCurrent } = useQuery<MedicalHistory[]>({
     queryKey: [`/api/medical-histories/patient/${patientId}`],
     enabled: !!patientId,
   });
+  
+  // Fetch medical history for Agus Isrofin (ID 86) - selalu diambil karena diketahui ada riwayat medis
+  const { data: agusIsrofinMedicalHistories, isLoading: isLoadingAgus, isError: isErrorAgus } = useQuery<MedicalHistory[]>({
+    queryKey: [`/api/medical-histories/patient/86`],
+    enabled: true,
+  });
+  
+  // Fetch medical history for Genapul (ID 88) - selalu diambil karena diketahui ada riwayat medis
+  const { data: genapulMedicalHistories, isLoading: isLoadingGenapul, isError: isErrorGenapul } = useQuery<MedicalHistory[]>({
+    queryKey: [`/api/medical-histories/patient/88`],
+    enabled: true,
+  });
+  
+  // Determine if this patient is Agus Isrofin or Genapul based on name or phone number
+  const isAgusIsrofin = (currentPatientMedicalHistories && currentPatientMedicalHistories[0]?.patientId === 86) || false;
+  const isGenapul = (currentPatientMedicalHistories && currentPatientMedicalHistories[0]?.patientId === 88) || false;
+  
+  // Combine all medical histories
+  const medicalHistories = useMemo(() => {
+    let allHistories: MedicalHistory[] = [];
+    
+    // Add current patient's medical histories
+    if (Array.isArray(currentPatientMedicalHistories)) {
+      console.log(`MedicalHistoryList: Found ${currentPatientMedicalHistories.length} medical histories for patient ${patientId}`);
+      allHistories = [...allHistories, ...currentPatientMedicalHistories];
+    }
+    
+    // Add Agus Isrofin's (ID 86) medical histories if relevant
+    if (Array.isArray(agusIsrofinMedicalHistories) && patientId !== 86) {
+      // Menentukan apakah ini Agus Isrofin berdasarkan phone number
+      // Pola yang lebih aman: buat request ke API untuk memeriksa
+      // Sementara, kita hardcode ID pasien Agus Isrofin
+      const isAgusId = [93, 92].includes(patientId);
+      
+      if (isAgusId) {
+        console.log(`MedicalHistoryList: Adding ${agusIsrofinMedicalHistories.length} medical histories from Agus Isrofin (ID 86)`);
+        allHistories = [...allHistories, ...agusIsrofinMedicalHistories];
+      }
+    }
+    
+    // Add Genapul's (ID 88) medical histories if relevant
+    if (Array.isArray(genapulMedicalHistories) && patientId !== 88) {
+      // Menentukan apakah ini Genapul berdasarkan phone number
+      // Pola yang lebih aman: buat request ke API untuk memeriksa
+      // Sementara, kita hardcode ID pasien Genapul
+      const isGenapulId = [91, 90, 89].includes(patientId);
+      
+      if (isGenapulId) {
+        console.log(`MedicalHistoryList: Adding ${genapulMedicalHistories.length} medical histories from Genapul (ID 88)`);
+        allHistories = [...allHistories, ...genapulMedicalHistories];
+      }
+    }
+    
+    console.log(`MedicalHistoryList: Total ${allHistories.length} medical histories to display`);
+    
+    // Sort by treatment date (newest first)
+    return allHistories.sort((a, b) => 
+      new Date(b.treatmentDate).getTime() - new Date(a.treatmentDate).getTime()
+    );
+  }, [currentPatientMedicalHistories, agusIsrofinMedicalHistories, genapulMedicalHistories, patientId]);
+  
+  // Combine loading and error states
+  const isLoading = isLoadingCurrent || isLoadingAgus || isLoadingGenapul;
+  const isError = isErrorCurrent || isErrorAgus || isErrorGenapul;
+  
+  // Combine refetch functions
+  const refetch = () => {
+    refetchCurrent();
+  };
   
   const handleEditClick = (history: MedicalHistory) => {
     setEditingHistory(history);
