@@ -498,11 +498,13 @@ export default function PatientDetail() {
                   size="sm" 
                   className="h-8 text-xs"
                   onClick={() => {
+                    // Pastikan patientId diteruskan sebagai string di URL
+                    navigate(`/register?patientId=${patientId.toString()}`);
+                    
                     toast({
                       title: "Membuat janji temu baru",
                       description: `Mengarahkan ke form pendaftaran pasien`
                     });
-                    navigate(`/register?patientId=${patientId}`);
                   }}
                 >
                   + Tambah
@@ -562,11 +564,22 @@ export default function PatientDetail() {
                   size="sm" 
                   className="h-8 text-xs"
                   onClick={() => {
-                    toast({
-                      title: "Menambah paket",
-                      description: "Mengarahkan ke form transaksi untuk pembelian paket"
-                    });
-                    navigate(`/transactions/new?patientId=${patientId}`);
+                    // Navigasi ke halaman transaksi
+                    navigate('/transactions');
+                    
+                    // Gunakan event custom untuk membuka form transaksi dengan pasien yang dipilih
+                    setTimeout(() => {
+                      const event = new CustomEvent('openTransactionForm', { 
+                        detail: { patientId: patientId.toString() } 
+                      });
+                      
+                      window.dispatchEvent(event);
+                      
+                      toast({
+                        title: "Menambah paket",
+                        description: "Form transaksi untuk pembelian paket dibuka"
+                      });
+                    }, 100);
                   }}
                 >
                   + Tambah
@@ -634,11 +647,22 @@ export default function PatientDetail() {
                   size="sm" 
                   className="h-8 text-xs"
                   onClick={() => {
-                    toast({
-                      title: "Membuat transaksi baru",
-                      description: "Mengarahkan ke form pembuatan transaksi"
-                    });
-                    navigate(`/transactions/new?patientId=${patientId}`);
+                    // Navigasi ke halaman transaksi
+                    navigate('/transactions');
+                    
+                    // Gunakan event custom untuk membuka form transaksi dengan pasien yang dipilih
+                    setTimeout(() => {
+                      const event = new CustomEvent('openTransactionForm', { 
+                        detail: { patientId: patientId.toString() } 
+                      });
+                      
+                      window.dispatchEvent(event);
+                      
+                      toast({
+                        title: "Membuat transaksi baru",
+                        description: "Form pembuatan transaksi dibuka"
+                      });
+                    }, 100);
                   }}
                 >
                   + Tambah

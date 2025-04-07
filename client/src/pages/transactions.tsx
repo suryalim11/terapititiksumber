@@ -99,7 +99,11 @@ export default function Transactions() {
       const patientId = event.detail?.patientId;
       
       if (patientId) {
-        setSelectedPatientId(patientId);
+        // Parse patientId ke number untuk memastikan tipe data
+        const patientIdNumber = typeof patientId === 'string' ? parseInt(patientId) : patientId;
+        setSelectedPatientId(patientIdNumber);
+        
+        console.log("Membuka form transaksi dengan patient ID:", patientIdNumber);
       } else {
         setSelectedPatientId(null);
       }
