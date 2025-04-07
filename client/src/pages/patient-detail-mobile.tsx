@@ -14,7 +14,9 @@ import {
   Eye, 
   Phone,
   Mail as MailIcon,
-  Trash
+  Trash,
+  Share2,
+  ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,6 +83,12 @@ interface Session {
   status: string;
   startDate: string;
   lastSessionDate: string | null;
+  isDirectOwner?: boolean;
+  owner?: {
+    id: number;
+    name: string;
+    patientId: string;
+  };
   package?: {
     id: number;
     name: string;
@@ -166,11 +174,11 @@ export default function PatientDetail() {
     enabled: !!patientId,
   });
 
-  // Fetch active sessions (packages)
+  // Fetch active sessions (packages) including related patients with same phone number
   const { data: activeSessions, isLoading: isLoadingSessions, refetch: refetchSessions } = useQuery({
-    queryKey: [`/api/sessions?patientId=${patientId}&active=true`],
+    queryKey: [`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`],
     queryFn: async () => {
-      return await apiRequest(`/api/sessions?patientId=${patientId}&active=true`);
+      return await apiRequest(`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`);
     },
     enabled: !!patientId,
   });
@@ -604,10 +612,26 @@ export default function PatientDetail() {
                     return (
                       <div key={session.id} className="border rounded-lg p-3 shadow-sm">
                         <div className="flex justify-between mb-2">
-                          <h4 className="font-medium">{session.package?.name || 'Paket Terapi'}</h4>
-                          <Badge variant={session.status === 'Active' ? 'default' : 'secondary'}>
-                            {session.status}
-                          </Badge>
+                          <div>
+                            <h4 className="font-medium">{session.package?.name || 'Paket Terapi'}</h4>
+                            {!session.isDirectOwner && session.owner && (
+                              <p className="text-xs text-amber-600 mt-1 flex items-center">
+                                <Share2 className="inline-block w-3 h-3 mr-1" />
+                                Dibagi dengan {session.owner.name}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge variant={session.status === 'Active' ? 'default' : 'secondary'}>
+                              {session.status}
+                            </Badge>
+                            {session.isDirectOwner === false && (
+                              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 text-xs px-2 py-0 h-5">
+                                <Share2 className="w-3 h-3 mr-1" />
+                                Dibagikan
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         
                         <div className="flex justify-between text-sm mb-1">
