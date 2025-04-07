@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
@@ -692,11 +693,7 @@ export default function PatientDetail() {
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
               ) : (
-                <MedicalHistoryList 
-                  patientId={patientId}
-                  medicalHistories={medicalHistories || []} 
-                  onUpdate={refreshAll}
-                />
+                <MedicalHistoryList patientId={patientId} />
               )}
             </div>
           </TabsContent>
@@ -704,12 +701,52 @@ export default function PatientDetail() {
       </div>
 
       {isAppointmentDetailOpen && selectedAppointment && (
-        <AppointmentDetailDialog
-          open={isAppointmentDetailOpen}
-          onOpenChange={setIsAppointmentDetailOpen}
-          appointmentId={selectedAppointment.id}
-          onUpdate={refreshAll}
-        />
+        <Dialog open={isAppointmentDetailOpen} onOpenChange={setIsAppointmentDetailOpen}>
+          <DialogContent className="max-w-[90%] rounded-lg">
+            <DialogHeader>
+              <DialogTitle>Detail Janji Temu</DialogTitle>
+              <DialogDescription>
+                Informasi lengkap tentang janji temu pasien
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 my-2 py-2">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Tanggal</p>
+                  <p className="font-medium">{formatDate(selectedAppointment.date)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Waktu</p>
+                  <p className="font-medium">{selectedAppointment.timeSlot || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Status</p>
+                  <div className={`${getStatusColor(selectedAppointment.status)} px-2 py-1 rounded text-xs inline-block`}>
+                    {selectedAppointment.status}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">No. Registrasi</p>
+                  <p className="font-medium">{selectedAppointment.registrationNumber || '-'}</p>
+                </div>
+              </div>
+              
+              {selectedAppointment.notes && (
+                <div>
+                  <p className="text-muted-foreground">Catatan</p>
+                  <p className="p-2 bg-muted/20 rounded">{selectedAppointment.notes}</p>
+                </div>
+              )}
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAppointmentDetailOpen(false)}>
+                Tutup
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
