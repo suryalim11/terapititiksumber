@@ -1481,6 +1481,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint untuk daftar pasien yang dikelompokkan berdasarkan nomor telepon (untuk form transaksi)
+  app.get("/api/patients-grouped", async (req: Request, res: Response) => {
+    try {
+      // Ambil semua pasien
+      const allPatients = await storage.getAllPatients();
+      
+      // Pastikan Content-Type adalah application/json
+      res.setHeader('Content-Type', 'application/json');
+      
+      // Kelompokkan pasien berdasarkan nomor telepon
+      const patientsGroupedByPhone: { [key: string]: any[] } = {};
+      
+      allPatients.forEach(patient => {
+        if (!patient.phoneNumber) return; // Lewati pasien tanpa nomor telepon
+        
+        if (!patientsGroupedByPhone[patient.phoneNumber]) {
+          patientsGroupedByPhone[patient.phoneNumber] = [];
+        }
+        
+        patientsGroupedByPhone[patient.phoneNumber].push(patient);
+      });
+      
+      // Hasil akhir: array dari pasien yang sudah dikelompokkan
+      const result: any[] = [];
+      
+      Object.values(patientsGroupedByPhone).forEach(patientGroup => {
+        // Jika hanya ada 1 pasien dengan nomor ini, tambahkan langsung
+        if (patientGroup.length === 1) {
+          result.push(patientGroup[0]);
+          return;
+        }
+        
+        // Urutkan pasien dalam grup berdasarkan ID (tanggal pendaftaran) - ambil yang terbaru saja
+        const sortedGroup = [...patientGroup].sort((a, b) => b.id - a.id);
+        
+        // Tambahkan pasien terbaru ke hasil final
+        const newestPatient = sortedGroup[0];
+        result.push({
+          ...newestPatient,
+          name: `${newestPatient.name} (${sortedGroup.length} data)`,
+          relatedPatients: sortedGroup.slice(1).map(p => p.id) // Simpan ID pasien terkait
+        });
+      });
+      
+      // Urutkan hasil akhir berdasarkan ID secara descending (terbaru di atas)
+      const sortedResult = result.sort((a, b) => b.id - a.id);
+      
+      return res.status(200).json(sortedResult);
+    } catch (error) {
+      console.error("Error getting grouped patients:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.get("/api/sessions/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);

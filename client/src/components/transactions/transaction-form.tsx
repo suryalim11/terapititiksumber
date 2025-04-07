@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -64,6 +64,7 @@ type Patient = {
   address?: string;
   complaints?: string;
   therapySlotId?: number | null;
+  relatedPatients?: number[]; // ID pasien terkait untuk nomor telepon yang sama
 };
 
 type Package = {
@@ -163,10 +164,52 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const [selectedDebtTransaction, setSelectedDebtTransaction] = useState<any>(null);
   const [paymentAmount, setPaymentAmount] = useState<string>("0");
 
-  // Fetch patients
-  const { data: patients = [] } = useQuery<Patient[]>({
+  // Fetch all patients
+  const { data: allPatients = [] } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
   });
+  
+  // Kelompokkan pasien berdasarkan nomor telepon
+  const patients = useMemo(() => {
+    // Kelompokkan pasien berdasarkan nomor telepon
+    const patientsGroupedByPhone: { [key: string]: Patient[] } = {};
+    
+    allPatients.forEach(patient => {
+      if (!patient.phoneNumber) return; // Lewati pasien tanpa nomor telepon
+      
+      if (!patientsGroupedByPhone[patient.phoneNumber]) {
+        patientsGroupedByPhone[patient.phoneNumber] = [];
+      }
+      
+      patientsGroupedByPhone[patient.phoneNumber].push(patient);
+    });
+    
+    // Hasil akhir: array dari pasien yang sudah dikelompokkan
+    const result: Patient[] = [];
+    
+    Object.values(patientsGroupedByPhone).forEach(patientGroup => {
+      // Jika hanya ada 1 pasien dengan nomor ini, tambahkan langsung
+      if (patientGroup.length === 1) {
+        result.push(patientGroup[0]);
+        return;
+      }
+      
+      // Urutkan pasien dalam grup berdasarkan ID (tanggal pendaftaran) - ambil yang terbaru saja
+      const sortedGroup = [...patientGroup].sort((a, b) => b.id - a.id);
+      
+      // Tambahkan pasien terbaru ke hasil final dengan nama yang dimodifikasi
+      const newestPatient = sortedGroup[0];
+      result.push({
+        ...newestPatient,
+        name: `${newestPatient.name} (${sortedGroup.length} data)`,
+        // Tambahkan properti untuk menyimpan ID pasien terkait
+        relatedPatients: sortedGroup.slice(1).map(p => p.id)
+      });
+    });
+    
+    // Urutkan hasil akhir berdasarkan ID secara descending (terbaru di atas)
+    return result.sort((a, b) => b.id - a.id);
+  }, [allPatients]);
 
   // Fetch packages
   const { data: packages = [] } = useQuery<Package[]>({
@@ -1279,9 +1322,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               <SelectItem 
                                 key={patient.id} 
                                 value={patient.id.toString()}
-                                className="cursor-pointer hover:bg-primary/10"
+                                className={`cursor-pointer hover:bg-primary/10 ${patient.name.includes('(') ? 'border-l-4 border-blue-500 pl-2' : ''}`}
                               >
-                                <span className="font-medium">{patient.name}</span>
+                                <span className="font-medium">
+                                  {patient.name}
+                                </span>
                                 <span className="ml-2 text-xs text-muted-foreground">({patient.patientId})</span>
                               </SelectItem>
                             ))
