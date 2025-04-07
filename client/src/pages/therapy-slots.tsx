@@ -218,6 +218,9 @@ export default function TherapySlots() {
   // State untuk filter
   const [showActiveOnly, setShowActiveOnly] = useState(false); // Default: tampilkan semua slot
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "tomorrow" | "week" | "custom">("all");
+  const [customDateStart, setCustomDateStart] = useState<Date | null>(null);
+  const [customDateEnd, setCustomDateEnd] = useState<Date | null>(null);
 
   // Query untuk mendapatkan slot terapi berdasarkan tanggal atau periode
   const { data: therapySlots = [], isLoading } = useQuery<TherapySlot[]>({
@@ -651,6 +654,52 @@ export default function TherapySlots() {
       console.error("Error formatting slot date:", error);
       return formatDateDDMMYYYY(dateStr);
     }
+  };
+  
+  // Fungsi untuk filter data berdasarkan tanggal
+  const getFilteredTherapySlots = () => {
+    if (!therapySlots || therapySlots.length === 0) return [];
+    
+    // Jika filter tanggal adalah "all", kembalikan semua data
+    if (dateFilter === "all") {
+      return therapySlots;
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    
+    return therapySlots.filter(slot => {
+      const slotDate = new Date(slot.date);
+      slotDate.setHours(0, 0, 0, 0);
+      
+      switch (dateFilter) {
+        case "today":
+          return slotDate.getTime() === today.getTime();
+        case "tomorrow":
+          return slotDate.getTime() === tomorrow.getTime();
+        case "week":
+          return slotDate.getTime() >= today.getTime() && slotDate.getTime() < nextWeek.getTime();
+        case "custom":
+          if (customDateStart && customDateEnd) {
+            const start = new Date(customDateStart);
+            start.setHours(0, 0, 0, 0);
+            
+            const end = new Date(customDateEnd);
+            end.setHours(23, 59, 59, 999);
+            
+            return slotDate.getTime() >= start.getTime() && slotDate.getTime() <= end.getTime();
+          }
+          return true;
+        default:
+          return true;
+      }
+    });
   };
 
   // Quick actions untuk membuat batch slot
@@ -1506,9 +1555,89 @@ export default function TherapySlots() {
                 <CardDescription>
                   Daftar lengkap semua slot terapi (hari ini dan ke depan)
                 </CardDescription>
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  <Info className="h-4 w-4" />
-                  <p>Tab ini menampilkan semua slot tanpa filter tanggal, baik aktif maupun non-aktif</p>
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mt-4">
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <Info className="h-4 w-4" />
+                    <p>Tab ini menampilkan semua slot terapi</p>
+                  </div>
+                  
+                  {/* Filter controls */}
+                  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <Select
+                      value={dateFilter}
+                      onValueChange={(value: "all" | "today" | "tomorrow" | "week" | "custom") => {
+                        setDateFilter(value);
+                        if (value !== "custom") {
+                          setCustomDateStart(null);
+                          setCustomDateEnd(null);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter Tanggal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Tanggal</SelectItem>
+                        <SelectItem value="today">Hari Ini</SelectItem>
+                        <SelectItem value="tomorrow">Besok</SelectItem>
+                        <SelectItem value="week">Minggu Ini</SelectItem>
+                        <SelectItem value="custom">Rentang Kustom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    {dateFilter === "custom" && (
+                      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className={!customDateStart ? "text-muted-foreground" : ""}>
+                              {customDateStart ? formatDateDDMMYYYY(customDateStart) : "Tanggal Mulai"}
+                              <CalendarIcon className="ml-2 h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={customDateStart || undefined}
+                              onSelect={setCustomDateStart}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className={!customDateEnd ? "text-muted-foreground" : ""}>
+                              {customDateEnd ? formatDateDDMMYYYY(customDateEnd) : "Tanggal Akhir"}
+                              <CalendarIcon className="ml-2 h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={customDateEnd || undefined}
+                              onSelect={setCustomDateEnd}
+                              initialFocus
+                              disabled={(date) => customDateStart ? date < customDateStart : false}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="listActiveOnly" 
+                        checked={showActiveOnly}
+                        onCheckedChange={() => setShowActiveOnly(!showActiveOnly)}
+                      />
+                      <label
+                        htmlFor="listActiveOnly"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Hanya Slot Aktif
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1517,68 +1646,78 @@ export default function TherapySlots() {
                     <RefreshCw className="h-6 w-6 animate-spin" />
                   </div>
                 ) : (
-                  <Table>
-                    <TableCaption>Daftar semua slot terapi</TableCaption>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Tanggal</TableHead>
-                        <TableHead>Waktu</TableHead>
-                        <TableHead>Kuota</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Aksi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {therapySlots.map((slot) => (
-                        <TableRow key={slot.id}>
-                          <TableCell>{formatSlotDate(slot.date)}</TableCell>
-                          <TableCell>{slot.timeSlot}</TableCell>
-                          <TableCell>
-                            {slot.currentCount} / {slot.maxQuota}
-                          </TableCell>
-                          <TableCell>
-                            {slot.isActive ? (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                Aktif
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                                Non-aktif
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant={slot.isActive ? "destructive" : "outline"}
-                                size="sm"
-                                onClick={() => handleToggleStatus(slot)}
-                                disabled={toggleStatusMutation.isPending}
-                              >
-                                {slot.isActive ? "Nonaktifkan" : "Aktifkan"}
-                              </Button>
-                              <Button 
-                                variant="outline"
-                                size="sm"
-                                className="border-amber-200 text-amber-600 hover:bg-amber-50"
-                                onClick={() => openEditDialog(slot)}
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 border-red-200 hover:bg-red-50"
-                                onClick={() => setDeletingSlotId(slot.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                  <>
+                    <Table>
+                      <TableCaption>Daftar semua slot terapi</TableCaption>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tanggal</TableHead>
+                          <TableHead>Waktu</TableHead>
+                          <TableHead>Kuota</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Aksi</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {getFilteredTherapySlots().length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                              Tidak ada slot terapi yang ditemukan untuk filter yang dipilih
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          getFilteredTherapySlots().map((slot) => (
+                            <TableRow key={slot.id}>
+                              <TableCell>{formatSlotDate(slot.date)}</TableCell>
+                              <TableCell>{slot.timeSlot}</TableCell>
+                              <TableCell>
+                                {slot.currentCount} / {slot.maxQuota}
+                              </TableCell>
+                              <TableCell>
+                                {slot.isActive ? (
+                                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                    Aktif
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                                    Non-aktif
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex space-x-2">
+                                  <Button
+                                    variant={slot.isActive ? "destructive" : "outline"}
+                                    size="sm"
+                                    onClick={() => handleToggleStatus(slot)}
+                                    disabled={toggleStatusMutation.isPending}
+                                  >
+                                    {slot.isActive ? "Nonaktifkan" : "Aktifkan"}
+                                  </Button>
+                                  <Button 
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-amber-200 text-amber-600 hover:bg-amber-50"
+                                    onClick={() => openEditDialog(slot)}
+                                  >
+                                    <PencilIcon className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                    onClick={() => setDeletingSlotId(slot.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </>
                 )}
               </CardContent>
             </Card>
