@@ -1098,10 +1098,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/transactions", async (req: Request, res: Response) => {
     try {
       const patientId = req.query.patientId;
+      const includeRelated = req.query.includeRelated === 'true';
       
       if (patientId) {
         try {
-          const patientTransactions = await storage.getTransactionsByPatient(parseInt(patientId as string));
+          console.log(`Fetching transactions for patient ${patientId}, includeRelated=${includeRelated}`);
+          const patientTransactions = await storage.getTransactionsByPatient(parseInt(patientId as string), includeRelated);
           return res.status(200).json(patientTransactions);
         } catch (patientError) {
           console.error("Error getting patient transactions:", patientError);

@@ -165,11 +165,11 @@ export default function PatientDetail() {
     enabled: !!patientId,
   });
 
-  // Fetch transactions
+  // Fetch transactions (including related patients with same phone number)
   const { data: transactions, isLoading: isLoadingTransactions, refetch: refetchTransactions } = useQuery({
-    queryKey: [`/api/transactions?patientId=${patientId}`],
+    queryKey: [`/api/transactions?patientId=${patientId}&includeRelated=true`],
     queryFn: async () => {
-      return await apiRequest(`/api/transactions?patientId=${patientId}`);
+      return await apiRequest(`/api/transactions?patientId=${patientId}&includeRelated=true`);
     },
     enabled: !!patientId,
   });
@@ -711,7 +711,16 @@ export default function PatientDetail() {
                       onClick={() => navigate(`/transactions/${transaction.id}`)}
                     >
                       <div className="flex justify-between mb-2">
-                        <div className="font-medium">{transaction.transactionId}</div>
+                        <div className="font-medium">
+                          {transaction.transactionId}
+                          {/* Show indicator for transactions from related patients */}
+                          {transaction.patient && transaction.patient.id !== parseInt(patientId as string) && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                              <Share2 className="h-3 w-3" />
+                              <span>Dari: {transaction.patient.name}</span>
+                            </div>
+                          )}
+                        </div>
                         <Badge variant={transaction.paymentMethod === 'Cash' ? 'default' : 'outline'}>
                           {transaction.paymentMethod}
                         </Badge>

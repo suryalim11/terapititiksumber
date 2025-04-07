@@ -620,11 +620,42 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getTransactionsByPatient(patientId: number): Promise<Transaction[]> {
+  async getTransactionsByPatient(patientId: number, includeRelated: boolean = false): Promise<Transaction[]> {
     try {
+      if (!includeRelated) {
+        return db.query.transactions.findMany({
+          where: eq(schema.transactions.patientId, patientId),
+          orderBy: [desc(schema.transactions.createdAt)]
+        });
+      }
+      
+      // Include transactions from related patients (same phone number)
+      // First get the current patient
+      const patient = await db.query.patients.findFirst({
+        where: eq(schema.patients.id, patientId)
+      });
+      
+      if (!patient) {
+        return [];
+      }
+      
+      // Get all patients with the same phone number
+      const relatedPatients = await db.select()
+        .from(schema.patients)
+        .where(eq(schema.patients.phoneNumber, patient.phoneNumber));
+      
+      // Get IDs of all related patients
+      const relatedPatientIds = relatedPatients.map(p => p.id);
+      
+      console.log(`Including transactions from related patients: ${relatedPatientIds.join(', ')}`);
+      
+      // Get transactions from all these patients
       return db.query.transactions.findMany({
-        where: eq(schema.transactions.patientId, patientId),
-        orderBy: [desc(schema.transactions.createdAt)]
+        where: inArray(schema.transactions.patientId, relatedPatientIds),
+        orderBy: [desc(schema.transactions.createdAt)],
+        with: {
+          patient: true
+        }
       });
     } catch (error) {
       console.error(`Error getting transactions for patient ${patientId}:`, error);
