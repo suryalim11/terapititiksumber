@@ -318,7 +318,13 @@ export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Package = typeof packages.$inferSelect;
 export type InsertPackage = z.infer<typeof insertPackageSchema>;
 
-export type Transaction = typeof transactions.$inferSelect;
+export type Transaction = typeof transactions.$inferSelect & {
+  patient?: {
+    id: number;
+    name: string;
+    patientId: string;
+  };
+};
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 
 export type Session = typeof sessions.$inferSelect;

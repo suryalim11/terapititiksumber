@@ -650,13 +650,26 @@ export class DatabaseStorage implements IStorage {
       console.log(`Including transactions from related patients: ${relatedPatientIds.join(', ')}`);
       
       // Get transactions from all these patients
-      return db.query.transactions.findMany({
-        where: inArray(schema.transactions.patientId, relatedPatientIds),
-        orderBy: [desc(schema.transactions.createdAt)],
-        with: {
-          patient: true
-        }
-      });
+      const transactions = await db.select()
+        .from(schema.transactions)
+        .where(inArray(schema.transactions.patientId, relatedPatientIds))
+        .orderBy(desc(schema.transactions.createdAt));
+        
+      // Tambahkan informasi pasien secara manual
+      const transactionsWithPatientInfo = await Promise.all(
+        transactions.map(async (transaction) => {
+          const patient = await db.query.patients.findFirst({
+            where: eq(schema.patients.id, transaction.patientId)
+          });
+          
+          return {
+            ...transaction,
+            patient
+          };
+        })
+      );
+      
+      return transactionsWithPatientInfo;
     } catch (error) {
       console.error(`Error getting transactions for patient ${patientId}:`, error);
       // Return empty array if error occurs instead of failing the entire operation
