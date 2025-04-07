@@ -325,7 +325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const patientId = parseInt(req.params.id);
       
-      // Dapatkan pasien terlebih dahulu untuk mendapatkan nomor telepon
+      // Dapatkan pasien terlebih dahulu
       const patient = await storage.getPatient(patientId);
       if (!patient) {
         return res.status(404).json({
@@ -334,8 +334,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Dapatkan riwayat medis berdasarkan nomor telepon
-      const histories = await getMedicalHistoriesByPhoneNumber(patient.phoneNumber);
+      // PERUBAHAN: Hanya mengembalikan riwayat medis pasien ini sendiri
+      // Tidak lagi mengambil data dari pasien lain dengan nomor telepon yang sama
+      // untuk menjaga integritas data
+      const histories = await storage.getMedicalHistoriesByPatient(patientId);
+      console.log(`Endpoint medical-histories-by-phone dipanggil untuk pasien ID ${patientId}, mengembalikan hanya data pasien tersebut (${histories.length} catatan)`);
       
       return res.status(200).json({
         success: true,
@@ -370,11 +373,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentPatientHistories = await storage.getMedicalHistoriesByPatient(patientId);
       console.log(`- Riwayat medis ditemukan di sistem baru: ${currentPatientHistories.length}`);
       
-      // 2. Dapatkan riwayat medis berdasarkan nomor telepon (sistem lama)
+      // 2. Tidak lagi menggunakan pencarian riwayat medis berdasarkan nomor telepon (sistem lama)
       let phoneNumberHistories: schema.MedicalHistory[] = [];
       if (patient.phoneNumber) {
-        phoneNumberHistories = await getMedicalHistoriesByPhoneNumber(patient.phoneNumber);
-        console.log(`- Riwayat medis dari nomor telepon ${patient.phoneNumber}: ${phoneNumberHistories.length}`);
+        // Kode ini dinonaktifkan untuk menjaga integritas data
+        // phoneNumberHistories = await getMedicalHistoriesByPhoneNumber(patient.phoneNumber);
+        console.log(`- Riwayat medis dari nomor telepon ${patient.phoneNumber}: 0 (fitur dinonaktifkan)`);
       }
       
       // 3. Perubahan: Tidak lagi mengambil riwayat medis dari pasien lain
