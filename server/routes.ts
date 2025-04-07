@@ -377,11 +377,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertPatientSchema.parse(patientData);
       console.log("Data pasien tervalidasi:", validatedData);
       
-      // Check if patient already exists by phone number
+      // Check if patient already exists by phone number (dinonaktifkan untuk memungkinkan nomor telepon yang sama)
       const existingPatients = await storage.getAllPatients();
-      const existingPatient = existingPatients.find(
-        patient => patient.phoneNumber === validatedData.phoneNumber
-      );
+      // Sebelumnya kami mencari pasien dengan nomor telepon yang sama, sekarang tidak lagi
+      // untuk memungkinkan pendaftaran dengan nomor telepon yang sama
+      const existingPatient = null; // Diubah agar selalu membuat pasien baru
       
       // Jika ada therapySlotId, periksa apakah pasien sudah punya jadwal di hari yang sama
       if (therapySlotId) {
@@ -437,13 +437,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   });
                 }
                 
-                // Jika nomor telepon sama
-                if (patient && patient.phoneNumber === validatedData.phoneNumber) {
-                  return res.status(400).json({
-                    message: "Anda sudah memiliki jadwal terapi pada hari yang sama. Silakan pilih tanggal lain.",
-                    code: "DUPLICATE_APPOINTMENT"
-                  });
-                }
+                // Kode ini dinonaktifkan untuk memungkinkan nomor telepon yang sama mendaftar pada hari yang sama
+                // if (patient && patient.phoneNumber === validatedData.phoneNumber) {
+                //   return res.status(400).json({
+                //     message: "Anda sudah memiliki jadwal terapi pada hari yang sama. Silakan pilih tanggal lain.",
+                //     code: "DUPLICATE_APPOINTMENT"
+                //   });
+                // }
               }
             }
           }
