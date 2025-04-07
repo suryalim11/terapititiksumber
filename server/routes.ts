@@ -381,23 +381,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`- Riwayat medis dari nomor telepon ${patient.phoneNumber}: 0 (fitur dinonaktifkan)`);
       }
       
-      // 3. Perubahan: Tidak lagi mengambil riwayat medis dari pasien lain
+      // 3. Perubahan: Secara default tidak mengambil riwayat medis dari pasien lain
       let additionalHistories: schema.MedicalHistory[] = [];
       
-      // Pasien-pasien yang memiliki riwayat medis (hanya untuk referensi)
-      const patientsWithHistory: {[id: number]: {name: string, phone: string}} = {
-        86: { name: "Agus Isrofin", phone: "085271383485" },
-        88: { name: "Genapul", phone: "081372916497" },
-        97: { name: "Gustanil Pawe", phone: "081377667485" },
-        29: { name: "Lia Apianti", phone: "08117752313" }
-      };
-      
-      // Daftar dahulu pernah memetakan pasien untuk mendapatkan riwayat medis dari pasien lain
-      // tetapi sekarang ini dihapus sesuai kebijakan baru
-      console.log(`- Pasien ${patient.name} (ID: ${patientId}) hanya menggunakan data riwayat medisnya sendiri`);
-      
-      // Tidak lagi mengambil data riwayat medis dari pasien lain
-      // Setiap pasien hanya akan melihat riwayat medisnya sendiri
+      // KASUS KHUSUS: Enny Kusrini memiliki dua ID pasien (65 dan 98)
+      // Pastikan kita menampilkan riwayat medis dari kedua ID jika pasien adalah Enny Kusrini
+      if (patientId === 98 || patientId === 65) {
+        // Jika kita melihat salah satu ID Enny Kusrini, ambil data dari ID lainnya juga
+        const otherEnnyId = patientId === 98 ? 65 : 98;
+        const otherEnnyHistories = await storage.getMedicalHistoriesByPatient(otherEnnyId);
+        
+        if (otherEnnyHistories.length > 0) {
+          console.log(`- Ini adalah kasus khusus: Enny Kusrini memiliki dua ID pasien (65 dan 98)`);
+          console.log(`- Menambahkan ${otherEnnyHistories.length} riwayat medis dari ID Enny Kusrini yang lain: ${otherEnnyId}`);
+          additionalHistories = [...otherEnnyHistories];
+        }
+      } else {
+        // Pasien-pasien yang memiliki riwayat medis (hanya untuk referensi)
+        const patientsWithHistory: {[id: number]: {name: string, phone: string}} = {
+          86: { name: "Agus Isrofin", phone: "085271383485" },
+          88: { name: "Genapul", phone: "081372916497" },
+          97: { name: "Gustanil Pawe", phone: "081377667485" },
+          29: { name: "Lia Apianti", phone: "08117752313" }
+        };
+        
+        // Daftar dahulu pernah memetakan pasien untuk mendapatkan riwayat medis dari pasien lain
+        // tetapi sekarang ini dihapus sesuai kebijakan baru
+        console.log(`- Pasien ${patient.name} (ID: ${patientId}) hanya menggunakan data riwayat medisnya sendiri`);
+      }
       
       console.log(`- Total riwayat medis tambahan: ${additionalHistories.length}`);
       
