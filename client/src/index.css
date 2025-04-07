@@ -7,9 +7,14 @@
     @apply border-border;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply font-sans antialiased bg-background text-foreground;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
   }
 
   /* Better input elements for mobile */
@@ -27,12 +32,25 @@
   a {
     @apply outline-none;
   }
+
+  /* Improved scrolling */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-muted/40 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted rounded-full hover:bg-muted/80;
+  }
 }
 
 @layer components {
   /* Mobile friendly cards */
   .mobile-card {
-    @apply p-3 rounded-lg border shadow-sm;
+    @apply p-3 md:p-4 rounded-lg border shadow-sm transition-all;
   }
 
   /* Touch-friendly buttons */
@@ -43,6 +61,25 @@
   /* Responsive headings */
   .mobile-heading {
     @apply text-lg md:text-xl lg:text-2xl font-bold;
+  }
+
+  /* Page container */
+  .page-container {
+    @apply w-full max-w-[1440px] mx-auto px-3 md:px-6;
+  }
+
+  /* Responsive grids */
+  .responsive-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4;
+  }
+
+  .responsive-grid-compact {
+    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4;
+  }
+  
+  /* Responsive spacing */
+  .section-spacing {
+    @apply my-4 md:my-6;
   }
 
   /* Responsive tables */
@@ -65,5 +102,25 @@
   .table-to-cards td::before {
     content: attr(data-label);
     @apply font-medium md:hidden text-sm text-muted-foreground;
+  }
+
+  /* Responsive form layout */
+  .form-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+  }
+
+  /* Form item full width for mobile, specific width for desktop */
+  .form-item-full {
+    @apply col-span-1 md:col-span-2;
+  }
+
+  /* Improved mobile navigation */
+  .mobile-nav-item {
+    @apply flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition-colors;
+  }
+
+  /* Bottom sheet for mobile interactions */
+  .mobile-bottom-sheet {
+    @apply fixed bottom-0 left-0 right-0 bg-background border-t rounded-t-xl shadow-lg p-4 z-50 md:hidden;
   }
 }

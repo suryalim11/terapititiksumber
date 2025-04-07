@@ -288,28 +288,28 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        <p className="text-muted-foreground">
-          Welcome to your therapy clinic dashboard.
+    <div className="space-y-6 pb-16">
+      <div className="mb-6">
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-1">Dashboard</h2>
+        <p className="text-sm md:text-base text-muted-foreground">
+          Selamat datang di dashboard Terapi Titik Sumber.
         </p>
       </div>
 
       {/* Stats Cards Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-4 md:gap-4">
         {statCards.map((card, i) => (
-          <Card key={i}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card key={i} className="border shadow-sm hover:shadow-md transition-shadow duration-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-4 pt-3 md:pt-4">
               <CardTitle className="text-sm font-medium">
                 {card.title}
               </CardTitle>
-              <div className={`${card.bgColor} rounded-md p-2`}>
+              <div className={`${card.bgColor} rounded-md p-2 flex items-center justify-center`}>
                 <card.icon className={`h-4 w-4 ${card.color}`} />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
+            <CardContent className="pb-3 px-3 md:px-4">
+              <div className="text-xl md:text-2xl font-bold">{card.value}</div>
             </CardContent>
           </Card>
         ))}
@@ -318,10 +318,11 @@ export default function Dashboard() {
       {/* Dashboard Content */}
       <div className="grid gap-4 md:grid-cols-1">
         {/* Slot Tracker */}
-        <Card>
-          <CardHeader>
+        <Card className="border shadow-sm overflow-hidden">
+          <CardHeader className="px-4 py-3 md:p-4 bg-card border-b">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <Calendar className="h-5 w-5 text-primary" />
                 <span>Slot Tracker</span>
               </CardTitle>
               <div className="flex items-center gap-2">
@@ -331,7 +332,7 @@ export default function Dashboard() {
                   onClick={() => {
                     refetchSlotsByPeriod();
                   }}
-                  className="h-8 w-8 p-0"
+                  className="h-8 w-8 p-0 rounded-full"
                 >
                   <RefreshCw className="h-4 w-4" />
                   <span className="sr-only">Refresh</span>
@@ -344,19 +345,21 @@ export default function Dashboard() {
               </p>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <Tabs 
               defaultValue="all" 
               className="w-full" 
               value={selectedPeriod}
               onValueChange={handlePeriodChange}
             >
-              <TabsList className="grid w-full grid-cols-4 mb-4">
-                <TabsTrigger value="day">Hari Ini</TabsTrigger>
-                <TabsTrigger value="week">Minggu Ini</TabsTrigger>
-                <TabsTrigger value="month">Bulan Ini</TabsTrigger>
-                <TabsTrigger value="all">Semua Slot</TabsTrigger>
-              </TabsList>
+              <div className="px-4 pt-4">
+                <TabsList className="grid w-full grid-cols-4 mb-4">
+                  <TabsTrigger value="day">Hari Ini</TabsTrigger>
+                  <TabsTrigger value="week">Minggu Ini</TabsTrigger>
+                  <TabsTrigger value="month">Bulan Ini</TabsTrigger>
+                  <TabsTrigger value="all">Semua Slot</TabsTrigger>
+                </TabsList>
+              </div>
               
               <TabsContent value={selectedPeriod} className="mt-0">
                 {isSlotsLoading ? (
@@ -430,7 +433,7 @@ export default function Dashboard() {
                       {slotsByPeriod.map((slot: any) => (
                         <div 
                           key={slot.id}
-                          className="border rounded-lg p-3 hover:bg-muted/50 cursor-pointer transition-colors"
+                          className="border rounded-lg p-3 hover:bg-muted/50 cursor-pointer transition-colors mobile-card"
                           onClick={() => handleSlotClick(slot.id)}
                         >
                           <div className="flex justify-between items-center mb-2">
@@ -440,7 +443,11 @@ export default function Dashboard() {
                                 {slot.date ? formatDateDDMMYYYY(slot.date) : '-'}
                               </div>
                             </div>
-                            <div className="text-right">
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "w-2 h-2 rounded-full",
+                                slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 75 ? "bg-amber-500" : "bg-emerald-500")
+                              )}></div>
                               <div className="text-sm">
                                 <span className="font-medium">{slot.currentCount}</span>
                                 <span className="text-muted-foreground"> / {slot.maxQuota}</span>
@@ -448,27 +455,27 @@ export default function Dashboard() {
                             </div>
                           </div>
                           
-                          <div className="flex items-center gap-2 mt-2">
+                          <div className="space-y-1 mt-2">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">Kapasitas Terisi</span>
+                              <span className={cn(
+                                "font-medium",
+                                slot.percentage >= 100 ? "text-red-600" : (slot.percentage > 75 ? "text-amber-600" : "")
+                              )}>
+                                {Math.round(slot.percentage)}%
+                              </span>
+                            </div>
                             <Progress 
                               value={slot.percentage} 
                               max={100} 
                               className={cn(
-                                "h-2 flex-1",
+                                "h-2 w-full",
                                 slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 75 ? "bg-amber-200" : "bg-primary/20")
                               )}
                               indicatorClassName={
                                 slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 75 ? "bg-amber-500" : "bg-primary")
                               }
                             />
-                            <span className={cn(
-                              "text-xs font-medium",
-                              slot.percentage >= 100 ? "text-red-600" : (slot.percentage > 75 ? "text-amber-600" : "")
-                            )}>
-                              {Math.round(slot.percentage)}%
-                            </span>
-                            {slot.percentage >= 100 && (
-                              <AlertCircle className="h-3 w-3 text-red-500" />
-                            )}
                           </div>
                         </div>
                       ))}
@@ -494,10 +501,11 @@ export default function Dashboard() {
       </div>
       
       {/* Active Packages Section */}
-      <Card>
-        <CardHeader>
+      <Card className="border shadow-sm overflow-hidden">
+        <CardHeader className="px-4 py-3 md:p-4 bg-card border-b">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <PackageIcon className="h-5 w-5 text-primary" />
               <span>Paket Aktif Pasien</span>
             </CardTitle>
             <div className="flex items-center gap-2">
@@ -507,7 +515,7 @@ export default function Dashboard() {
                 onClick={() => {
                   refetchPackages();
                 }}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 rounded-full"
               >
                 <RefreshCw className="h-4 w-4" />
                 <span className="sr-only">Refresh Packages</span>
@@ -520,50 +528,49 @@ export default function Dashboard() {
             </p>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           {isPackagesLoading ? (
             <div className="flex justify-center items-center py-6">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : activePackages.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
               {activePackages.map((pkg) => (
-                <div key={pkg.id} className="border rounded-lg p-4 space-y-2">
-                  {/* Tampilan desktop dan mobile yang responsif */}
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                <div key={pkg.id} className="border rounded-lg p-3 mobile-card">
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 mb-2">
                     <div>
-                      <div className="font-medium">{pkg.patient?.name || 'Unknown Patient'}</div>
-                      <div className="text-sm text-muted-foreground">
-                        ID: {pkg.patient?.patientId || 'Unknown'}
+                      <div className="font-medium">{pkg.patient?.name || 'Pasien tidak ditemukan'}</div>
+                      <div className="text-xs text-muted-foreground flex gap-1 items-center">
+                        <span className="hidden md:inline">ID:</span> {pkg.patient?.patientId || 'N/A'}
                       </div>
                     </div>
-                    <div className={cn("md:text-right", "text-left mt-1 md:mt-0")}>
-                      <div className="font-medium">{pkg.package?.name || 'Unknown Package'}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {pkg.sessionsUsed} dari {pkg.totalSessions} sesi
-                      </div>
+                    <div className="bg-primary/10 text-primary px-2 py-1 rounded-md inline-block text-sm font-medium">
+                      {pkg.sessionsUsed}/{pkg.totalSessions} Sesi
                     </div>
                   </div>
                   
-                  <Progress 
-                    value={pkg.progress} 
-                    max={100} 
-                    className="h-2 bg-primary/20"
-                    indicatorClassName={pkg.progress >= 90 ? "bg-green-500" : "bg-primary"}
-                  />
+                  <div className="mb-2">
+                    <div className="text-sm mb-1 flex justify-between">
+                      <span>{pkg.package?.name || 'Paket tidak ditemukan'}</span>
+                      <span className="font-medium">{pkg.progress}%</span>
+                    </div>
+                    <Progress 
+                      value={pkg.progress} 
+                      max={100} 
+                      className="h-2 bg-primary/20"
+                      indicatorClassName={pkg.progress >= 90 ? "bg-green-500" : "bg-primary"}
+                    />
+                  </div>
                   
-                  <div className="flex flex-col md:flex-row justify-between text-xs gap-2">
-                    <div className="flex gap-1 md:gap-0 md:block">
-                      <span className="text-muted-foreground">Mulai: </span>
-                      <span>{pkg.startDate ? formatDateDDMMYYYY(pkg.startDate) : '-'}</span>
+                  <div className="flex justify-between items-center text-xs text-muted-foreground mt-2">
+                    <div>
+                      Mulai: {pkg.startDate ? formatDateDDMMYYYY(pkg.startDate) : '-'}
                     </div>
-                    <div className="flex gap-1 md:gap-0 md:block">
-                      <span className="text-muted-foreground">Terakhir: </span>
-                      <span>{pkg.lastSessionDate ? formatDateDDMMYYYY(pkg.lastSessionDate) : '-'}</span>
-                    </div>
-                    <div className="font-medium">
-                      {pkg.progress}%
-                    </div>
+                    {pkg.lastSessionDate && (
+                      <div>
+                        Terakhir: {formatDateDDMMYYYY(pkg.lastSessionDate)}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
