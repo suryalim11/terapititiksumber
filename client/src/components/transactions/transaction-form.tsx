@@ -200,49 +200,64 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     refetchOnWindowFocus: true,
   });
 
-  // Fetch active sessions for a patient
+  // Fetch active sessions for a patient and related patients
   const { data: activeSessions = [], refetch: refetchActiveSessions } = useQuery<ActiveSession[]>({
     queryKey: ["/api/sessions", form.watch("patientId"), "active"],
     queryFn: async () => {
       const patientId = form.watch("patientId");
       if (!patientId) return [];
       
+      // Ambil sesi aktif untuk pasien yang dipilih
       const response = await fetch(`/api/sessions?patientId=${patientId}&active=true`);
       if (!response.ok) throw new Error("Failed to fetch active sessions");
       
       const data = await response.json();
-      console.log("Active sessions data:", data);
+      console.log("Active sessions data untuk ID utama:", data);
       
-      // PERBAIKAN: Muat juga data sesi aktif untuk pasien terkait (jika ada)
+      // PERBAIKAN: Cari semua pasien dengan nomor telepon yang sama
       if (patientId) {
         // Cari pasien saat ini
         const currentPatient = allPatients.find(p => p.id === parseInt(patientId));
         
-        // Jika pasien ditemukan dan memiliki pasien terkait
-        if (currentPatient && currentPatient.relatedPatients && currentPatient.relatedPatients.length > 0) {
-          // Ambil sesi aktif untuk setiap pasien terkait
-          const relatedSessionPromises = currentPatient.relatedPatients.map(async (relatedId) => {
-            try {
-              const relatedResponse = await fetch(`/api/sessions?patientId=${relatedId}&active=true`);
-              if (relatedResponse.ok) {
-                const relatedData = await relatedResponse.json();
-                return relatedData || [];
+        if (currentPatient && currentPatient.phoneNumber) {
+          // Cari semua pasien dengan nomor telepon yang sama
+          const relatedPatients = allPatients.filter(p => 
+            p.phoneNumber === currentPatient.phoneNumber && 
+            p.id !== currentPatient.id
+          );
+          
+          console.log("Pasien terkait ditemukan:", relatedPatients.length, "pasien");
+          
+          if (relatedPatients.length > 0) {
+            // Ambil sesi aktif untuk setiap pasien terkait
+            const relatedSessionPromises = relatedPatients.map(async (related) => {
+              try {
+                console.log(`Mencoba mengambil sesi untuk pasien terkait: ${related.name} (ID: ${related.id})`);
+                const relatedResponse = await fetch(`/api/sessions?patientId=${related.id}&active=true`);
+                if (relatedResponse.ok) {
+                  const relatedData = await relatedResponse.json();
+                  console.log(`Data sesi untuk pasien terkait ${related.name}:`, relatedData);
+                  return relatedData || [];
+                }
+                return [];
+              } catch (error) {
+                console.error(`Error fetching sessions for related patient ${related.id}:`, error);
+                return [];
               }
-              return [];
-            } catch (error) {
-              console.error(`Error fetching sessions for related patient ${relatedId}:`, error);
-              return [];
-            }
-          });
-          
-          // Gabungkan semua sesi
-          const relatedSessions = await Promise.all(relatedSessionPromises);
-          const allSessions = [...data, ...relatedSessions.flat()];
-          
-          console.log("Sesi dari pasien terkait:", relatedSessions.flat());
-          console.log("Total semua sesi (termasuk yang terkait):", allSessions);
-          
-          return allSessions;
+            });
+            
+            // Gabungkan semua sesi
+            const relatedSessions = await Promise.all(relatedSessionPromises);
+            const relatedSessionsFlat = relatedSessions.flat();
+            const allSessions = [...data, ...relatedSessionsFlat];
+            
+            console.log("Sesi dari pasien terkait:", relatedSessionsFlat);
+            console.log("Total semua sesi (termasuk yang terkait):", allSessions);
+            
+            return allSessions;
+          }
+        } else {
+          console.log("Current patient not found or has no phone number");
         }
       }
       
@@ -1451,21 +1466,23 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                 
                 {useExistingPackage ? (
                   <Accordion type="single" collapsible className="w-full">
-                    {/* Only show multi-session packages that have remaining sessions */}
+                    {/* Tampilkan semua sesi paket multi-sesi yang masih ada tersisa */}
+                    {/* Debug info */}
+                    <div className="text-xs text-muted-foreground mb-2">
+                      Total sesi aktif: {activeSessions.length} sesi 
+                    </div>
+                    
                     {activeSessions
-                      .filter(session => 
-                        session.package && 
-                        session.package.sessions > 1 && 
-                        session.remainingSessions > 0 &&
-                        // Memastikan hanya menampilkan paket unik berdasarkan packageId
-                        // dan mengambil yang memiliki ID terkecil (paket yang paling lama dibeli)
-                        !activeSessions.some(s => 
-                          s.id < session.id && 
-                          s.packageId === session.packageId && 
-                          s.patientId === session.patientId &&
-                          s.remainingSessions > 0
+                      .filter(session => {
+                        // Debugging logging
+                        console.log("Checking session:", session.id, "Patient:", session.patientId, "Remaining:", session.remainingSessions, "Package:", session.package?.name);
+                        
+                        return (
+                          session.package && 
+                          session.package.sessions > 1 && 
+                          session.remainingSessions > 0
                         )
-                      )
+                      })
                       .map(session => (
                       <AccordionItem value={`session-${session.id}`} key={session.id}>
                         <AccordionTrigger className="py-2 text-sm hover:no-underline">
