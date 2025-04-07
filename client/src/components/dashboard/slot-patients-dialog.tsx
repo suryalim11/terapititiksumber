@@ -435,8 +435,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                       onClick={() => {
                         // Simpan ID slot ke sessionStorage
                         sessionStorage.setItem('selectedSlotId', String(slotId));
-                        // Redirect ke halaman pendaftaran dengan parameter walk-in
-                        navigate(`/register?walkin=true`);
+                        // Redirect ke halaman pendaftaran dengan parameter walk-in dan slotId
+                        navigate(`/register?walkin=true&slotId=${slotId}`);
                       }}
                     >
                       <User className="h-3 w-3 mr-1" />

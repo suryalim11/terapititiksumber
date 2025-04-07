@@ -266,6 +266,7 @@ export default function RegisterPage() {
       const savedSlotId = sessionStorage.getItem("selectedSlotId");
       const params = new URLSearchParams(window.location.search);
       const slotIdParam = params.get("slotId");
+      const isWalkInParam = params.get("walkin") === "true";
       
       // Prioritaskan slotId dari URL (pendaftaran langsung dari admin)
       const slotIdToUse = slotIdParam || savedSlotId;
@@ -292,7 +293,7 @@ export default function RegisterPage() {
           sessionStorage.removeItem("selectedSlotId");
           
           // Deteksi apakah ini pendaftaran walk-in dari admin
-          if (slotIdParam) {
+          if (isWalkInParam) {
             setIsWalkInMode(true);
             toast({
               title: "Mode Pendaftaran Pasien Walk-in",
@@ -306,6 +307,14 @@ export default function RegisterPage() {
               className: "bg-teal-50 border-teal-200 text-teal-800",
             });
           }
+        } else {
+          // Jika slot tidak ditemukan, berikan feedback
+          console.error("Slot terapi dengan ID", slotId, "tidak ditemukan dalam daftar slot yang tersedia");
+          toast({
+            title: "Slot Tidak Tersedia",
+            description: "Slot terapi yang dipilih tidak tersedia atau telah berubah. Silakan pilih slot terapi lainnya.",
+            variant: "destructive",
+          });
         }
       }
     }
