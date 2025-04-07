@@ -390,7 +390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Pasien-pasien yang perlu mendapatkan akses ke riwayat medis dari sistem lama
       const patientsNeedingHistory: {[id: number]: number[]} = {
-        30: [88], // Erison mendapatkan riwayat dari Genapul (ID 88)
+        // Erison TIDAK mendapatkan riwayat dari siapapun - dia harus memiliki data sendiri
         33: [97, 88], // Novaleo Putra mendapatkan riwayat dari Gustanil (ID 97) dan Genapul (ID 88)
         40: [86], // Pasien contoh lain mendapat riwayat dari Agus Isrofin (ID 86)
         41: [29], // Pasien contoh lain mendapat riwayat dari Lia Apianti (ID 29)
@@ -448,17 +448,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`- Total riwayat medis tambahan: ${additionalHistories.length}`);
       
-      // 6. Jika masih tidak ada riwayat medis, tambahkan riwayat dari beberapa pasien contoh
+      // 6. Jika masih tidak ada riwayat medis, tampilkan array kosong saja
+      // PERUBAHAN: TIDAK mengambil contoh data dari pasien lain lagi, biar ditampilkan kosong saja
       if (currentPatientHistories.length === 0 && phoneNumberHistories.length === 0 && additionalHistories.length === 0) {
-        // Daftar ID pasien yang pasti memiliki riwayat medis
-        const examplePatientIds = [86, 88, 97];
-        
-        // Pilih salah satu secara semi-acak (berdasarkan ID pasien)
-        const exampleId = examplePatientIds[patientId % examplePatientIds.length];
-        console.log(`- Tidak ada riwayat medis ditemukan, menambahkan contoh dari pasien ID ${exampleId}`);
-        
-        const exampleHistories = await storage.getMedicalHistoriesByPatient(exampleId);
-        additionalHistories = [...additionalHistories, ...exampleHistories];
+        console.log(`- Tidak ada riwayat medis ditemukan untuk pasien ${patient.name} (ID: ${patientId}). Menampilkan daftar kosong.`);
+        // Tidak lagi mengambil data contoh dari pasien lain
       }
       
       // Gabungkan semua riwayat medis
