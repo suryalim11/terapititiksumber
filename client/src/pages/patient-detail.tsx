@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, ChevronDown, Loader2, RefreshCcw, User, Package, Calendar, Receipt, AlertTriangle, Activity } from "lucide-react";
+import { ArrowLeft, ChevronDown, Loader2, RefreshCcw, User, Package, Calendar, Receipt, AlertTriangle, Activity, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -359,59 +359,73 @@ export default function PatientDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">ID Pasien</span>
-                <span className="font-medium">{patient.patientId}</span>
+            <div className="space-y-3">
+              {/* Top information with larger text */}
+              <div className="mb-4 pb-3 border-b">
+                <h3 className="text-lg font-bold mb-1">{patient.name}</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="flex items-center gap-1 px-2 py-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#777" className="mr-1">
+                      <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 22c-5.514 0-10-4.486-10-10s4.486-10 10-10 10 4.486 10 10-4.486 10-10 10zm-1-10v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/>
+                    </svg>
+                    {calculateAge(patient.birthDate)} tahun
+                  </Badge>
+                  <Badge variant="outline" className="flex items-center gap-1 px-2 py-1">
+                    {patient.gender}
+                  </Badge>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Nama</span>
-                <span className="font-medium">{patient.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">No. Telepon</span>
-                <a 
-                  href={`https://wa.me/${patient.phoneNumber.replace(/[^0-9]/g, '')}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="font-medium text-primary hover:underline flex items-center gap-1"
-                >
-                  {patient.phoneNumber}
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="14" 
-                    height="14" 
-                    viewBox="0 0 24 24" 
-                    fill="#25D366" 
-                    className="inline-block ml-1"
+              
+              {/* Contact information with icons */}
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center">
+                  <Phone className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
+                  <a 
+                    href={`https://wa.me/${patient.phoneNumber?.replace(/[^0-9]/g, '')}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm md:text-base font-medium text-primary hover:underline flex items-center gap-1"
                   >
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                  </svg>
-                </a>
+                    {patient.phoneNumber}
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      width="14" 
+                      height="14" 
+                      viewBox="0 0 24 24" 
+                      fill="#25D366" 
+                      className="inline-block ml-1"
+                    >
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                  </a>
+                </div>
+                
+                {patient.email && (
+                  <div className="flex items-center">
+                    <MailIcon className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm md:text-base">{patient.email}</span>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Email</span>
-                <span className="font-medium">{patient.email || "-"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Tanggal Lahir</span>
-                <span className="font-medium">{formatBirthDate(patient.birthDate)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Usia</span>
-                <span className="font-medium">{calculateAge(patient.birthDate)} tahun</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Jenis Kelamin</span>
-                <span className="font-medium">{patient.gender}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Alamat</span>
-                <span className="font-medium">{patient.address || "-"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Terdaftar pada</span>
-                <span className="font-medium">{formatDate(patient.createdAt)}</span>
+              
+              {/* Other information in a more compact grid */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs md:text-sm">
+                <div>
+                  <p className="text-muted-foreground">ID Pasien</p>
+                  <p className="font-medium">{patient.patientId}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Tanggal Lahir</p>
+                  <p className="font-medium">{formatBirthDate(patient.birthDate)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Alamat</p>
+                  <p className="font-medium">{patient.address || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Terdaftar</p>
+                  <p className="font-medium">{formatDate(patient.createdAt)}</p>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -419,24 +433,27 @@ export default function PatientDetail() {
 
         <div className="md:col-span-2">
           <Tabs defaultValue="appointments">
-            <TabsList className="grid grid-cols-4 mb-4">
-              <TabsTrigger value="appointments">
-                <Calendar className="h-4 w-4 mr-2" />
-                Janji Temu
-              </TabsTrigger>
-              <TabsTrigger value="packages">
-                <Package className="h-4 w-4 mr-2" />
-                Paket Aktif
-              </TabsTrigger>
-              <TabsTrigger value="transactions">
-                <Receipt className="h-4 w-4 mr-2" />
-                Transaksi
-              </TabsTrigger>
-              <TabsTrigger value="medical-history">
-                <Activity className="h-4 w-4 mr-2" />
-                Riwayat Medis
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto pb-1 mb-1">
+              {/* Mobile view - tabs in a scrollable row */}
+              <TabsList className="w-auto inline-flex md:grid md:grid-cols-4 mb-2 md:mb-4 md:w-full">
+                <TabsTrigger value="appointments" className="flex items-center whitespace-nowrap">
+                  <Calendar className="h-4 w-4 mr-1 md:mr-2 flex-none" />
+                  <span className="text-xs md:text-sm">Janji Temu</span>
+                </TabsTrigger>
+                <TabsTrigger value="packages" className="flex items-center whitespace-nowrap">
+                  <Package className="h-4 w-4 mr-1 md:mr-2 flex-none" />
+                  <span className="text-xs md:text-sm">Paket Aktif</span>
+                </TabsTrigger>
+                <TabsTrigger value="transactions" className="flex items-center whitespace-nowrap">
+                  <Receipt className="h-4 w-4 mr-1 md:mr-2 flex-none" />
+                  <span className="text-xs md:text-sm">Transaksi</span>
+                </TabsTrigger>
+                <TabsTrigger value="medical-history" className="flex items-center whitespace-nowrap">
+                  <Activity className="h-4 w-4 mr-1 md:mr-2 flex-none" />
+                  <span className="text-xs md:text-sm">Riwayat Medis</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="appointments">
               <Card>
@@ -457,27 +474,32 @@ export default function PatientDetail() {
                   ) : (
                     <div className="space-y-4">
                       {appointments.map((appointment: Appointment) => (
-                        <div key={appointment.id} className="flex items-center justify-between border-b pb-4 pt-2">
-                          <div>
-                            <p className="font-medium">
-                              {formatDate(appointment.date)}
-                              {appointment.timeSlot && ` · ${appointment.timeSlot}`}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {appointment.registrationNumber || `#${appointment.id}`}
-                              {appointment.notes && ` · ${appointment.notes}`}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
+                        <div key={appointment.id} className="border rounded-lg p-3 mb-3 shadow-sm hover:shadow-md transition-shadow">
+                          <div className="flex flex-wrap items-start justify-between mb-2 gap-2">
+                            <div>
+                              <p className="font-medium">
+                                {formatDate(appointment.date)}
+                                {appointment.timeSlot && ` · ${appointment.timeSlot}`}
+                              </p>
+                              <p className="text-xs md:text-sm text-muted-foreground">
+                                {appointment.registrationNumber || `#${appointment.id}`}
+                                {appointment.notes && ` · ${appointment.notes}`}
+                              </p>
+                            </div>
                             <Badge className={getStatusColor(appointment.status)}>
                               {appointment.status}
                             </Badge>
+                          </div>
+                          
+                          {/* Mobile-friendly action buttons */}
+                          <div className="flex flex-wrap gap-2 mt-3 justify-end">
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-8 px-2"
+                              className="h-7 px-2 text-xs"
                               onClick={() => openAppointmentDetail(appointment)}
                             >
+                              <Eye className="h-3 w-3 mr-1" />
                               Detail
                             </Button>
                             <AppointmentStatusChanger 
@@ -513,22 +535,29 @@ export default function PatientDetail() {
                   ) : (
                     <div className="space-y-6">
                       {activeSessions.map((session: Session) => (
-                        <div key={session.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-bold">{session.package?.name || `Paket #${session.packageId}`}</h3>
-                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                        <div key={session.id} className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-start mb-3">
+                            <h3 className="font-bold text-sm md:text-base">{session.package?.name || `Paket #${session.packageId}`}</h3>
+                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs">
                               Aktif
                             </Badge>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Total Sesi</p>
-                              <p className="font-medium">{session.totalSessions}</p>
+                          
+                          {/* Progress bar for session usage */}
+                          <div className="mb-3">
+                            <div className="flex justify-between text-xs mb-1">
+                              <span>Sesi: {session.sessionsUsed} dari {session.totalSessions}</span>
+                              <span>{Math.round((session.sessionsUsed / session.totalSessions) * 100)}%</span>
                             </div>
-                            <div>
-                              <p className="text-muted-foreground">Sesi Terpakai</p>
-                              <p className="font-medium">{session.sessionsUsed}</p>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-primary h-2 rounded-full" 
+                                style={{ width: `${(session.sessionsUsed / session.totalSessions) * 100}%` }}
+                              ></div>
                             </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs md:text-sm">
                             <div>
                               <p className="text-muted-foreground">Sesi Tersisa</p>
                               <p className="font-medium">{session.totalSessions - session.sessionsUsed}</p>
@@ -538,7 +567,7 @@ export default function PatientDetail() {
                               <p className="font-medium">{formatDate(session.startDate)}</p>
                             </div>
                             {session.lastSessionDate && (
-                              <div>
+                              <div className="col-span-2">
                                 <p className="text-muted-foreground">Sesi Terakhir</p>
                                 <p className="font-medium">{formatDate(session.lastSessionDate)}</p>
                               </div>
@@ -571,49 +600,60 @@ export default function PatientDetail() {
                   ) : (
                     <div className="space-y-4">
                       {transactions.map((transaction: Transaction) => (
-                        <div key={transaction.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-bold">{transaction.transactionId}</h3>
-                            <div className="text-right">
-                              <p className="text-gray-600">
-                                Subtotal: Rp {parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()).toLocaleString('id-ID')}
-                              </p>
-                              {transaction.discount && parseFloat(transaction.discount.toString()) > 0 && (
-                                <p className="text-red-500">
-                                  Diskon: -Rp {parseFloat(transaction.discount.toString()).toLocaleString('id-ID')}
-                                </p>
-                              )}
-                              <p className="text-green-600 font-semibold">
-                                Total: Rp {(
-                                  parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
-                                  parseFloat(transaction.discount?.toString() || "0")
-                                ).toLocaleString('id-ID')}
+                        <div key={transaction.id} className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                          {/* Header with ID and date */}
+                          <div className="flex flex-wrap justify-between items-center mb-3 pb-2 border-b">
+                            <div>
+                              <h3 className="font-bold text-sm md:text-base">{transaction.transactionId}</h3>
+                              <p className="text-xs text-muted-foreground">
+                                {formatDate(transaction.createdAt)}
                               </p>
                             </div>
+                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 text-xs">
+                              {transaction.paymentMethod}
+                            </Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {formatDate(transaction.createdAt)}
-                          </p>
-                          <div className="text-sm">
-                            <p className="text-muted-foreground">Metode Pembayaran</p>
-                            <p className="font-medium">{transaction.paymentMethod}</p>
-                          </div>
-                          <div className="mt-3">
-                            <p className="text-sm font-medium mb-1">Item:</p>
-                            <div className="space-y-1">
+                          
+                          {/* Items */}
+                          <div className="mb-3">
+                            <p className="text-xs font-medium mb-2">Item:</p>
+                            <div className="space-y-1 text-xs md:text-sm">
                               {Array.isArray(transaction.items) ? transaction.items.map((item, index) => (
-                                <div key={index} className="flex justify-between text-sm">
-                                  <span>
+                                <div key={index} className="flex justify-between">
+                                  <span className="truncate max-w-[65%]">
                                     {item.name} 
                                     {item.quantity > 1 && ` × ${item.quantity}`}
                                   </span>
-                                  <span>
+                                  <span className="font-medium">
                                     Rp {Number(item.price * (item.quantity || 1)).toLocaleString('id-ID')}
                                   </span>
                                 </div>
                               )) : (
-                                <p className="text-sm">Data item tidak tersedia</p>
+                                <p>Data item tidak tersedia</p>
                               )}
+                            </div>
+                          </div>
+                          
+                          {/* Pricing summary */}
+                          <div className="mt-3 pt-2 border-t">
+                            <div className="grid grid-cols-2 gap-1 text-xs md:text-sm">
+                              <span className="text-muted-foreground">Subtotal:</span>
+                              <span className="text-right">Rp {parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()).toLocaleString('id-ID')}</span>
+                              
+                              {transaction.discount && parseFloat(transaction.discount.toString()) > 0 && (
+                                <>
+                                  <span className="text-muted-foreground">Diskon:</span>
+                                  <span className="text-right text-red-500">-Rp {parseFloat(transaction.discount.toString()).toLocaleString('id-ID')}</span>
+                                </>
+                              )}
+                              
+                              <span className="text-muted-foreground font-medium">Total:</span>
+                              <span className="text-right text-green-600 font-bold">
+                                Rp {(
+                                  parseFloat(transaction.subtotal?.toString() || transaction.totalAmount.toString()) - 
+                                  parseFloat(transaction.discount?.toString() || "0")
+                                ).toLocaleString('id-ID')}
+                              </span>
                             </div>
                           </div>
                         </div>
