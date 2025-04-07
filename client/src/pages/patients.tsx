@@ -62,8 +62,22 @@ export default function Patients() {
     queryKey: ['/api/patients'],
   });
   
+  // Deduplicasi pasien dengan membuat Map berdasarkan nama dan nomor telepon
+  const patientDeduplication: Map<string, Patient> = new Map();
+  
+  // Prioritas: ambil yang memiliki ID paling besar (terbaru)
+  patients.sort((a, b) => b.id - a.id).forEach(patient => {
+    const key = `${patient.name.toLowerCase()}_${patient.phoneNumber}`;
+    if (!patientDeduplication.has(key)) {
+      patientDeduplication.set(key, patient);
+    }
+  });
+  
+  // Konversi Map kembali ke array
+  const dedupedPatients = Array.from(patientDeduplication.values());
+  
   // Filter patients based on search term
-  const filteredPatients = patients.filter(patient => 
+  const filteredPatients = dedupedPatients.filter(patient => 
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.patientId.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.phoneNumber.includes(searchTerm)
@@ -276,12 +290,18 @@ export default function Patients() {
               key={patient.id} 
               className="overflow-hidden mobile-card relative"
               style={{ 
-                borderLeft: patients.filter(p => p.phoneNumber === patient.phoneNumber).length > 1 
-                  ? "4px solid #3b82f6" // Blue border for duplicate phone numbers
+                borderLeft: dedupedPatients.filter(p => 
+                  p.phoneNumber === patient.phoneNumber && 
+                  p.name.toLowerCase() !== patient.name.toLowerCase()
+                ).length > 0
+                  ? "4px solid #3b82f6" // Blue border for shared phone numbers (different people)
                   : undefined 
               }}
             >
-              {patients.filter(p => p.phoneNumber === patient.phoneNumber).length > 1 && (
+              {dedupedPatients.filter(p => 
+                  p.phoneNumber === patient.phoneNumber && 
+                  p.name.toLowerCase() !== patient.name.toLowerCase()
+                ).length > 0 && (
                 <div className="absolute top-0 right-0 m-2 z-10">
                   <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200">
                     Telepon Sama
