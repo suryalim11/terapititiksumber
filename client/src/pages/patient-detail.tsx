@@ -239,55 +239,57 @@ export default function PatientDetail() {
     return sameNamePatients.map((p: any) => p.id);
   }, [allPatients, patient, patientId]);
   
-  // Fetch medical histories for all related patients
-  const { data: medicalHistories, isLoading: isLoadingMedicalHistories, refetch: refetchMedicalHistories } = useQuery({
-    queryKey: [`/api/medical-histories/for-patient-group`, relatedPatientIds],
-    queryFn: async () => {
-      // Buat array dari semua riwayat medis
-      let allHistories: any[] = [];
-      
-      // Pastikan relatedPatientIds adalah array
-      const patientIds = Array.isArray(relatedPatientIds) ? relatedPatientIds : [patientId as number];
-      
-      console.log("Mengambil riwayat medis untuk patientIds:", patientIds);
-      
-      // Tambahkan ID pasien yang diketahui memiliki riwayat medis jika belum ada
-      if (patient?.name?.toLowerCase().includes('agus isrofin') && !patientIds.includes(86)) {
-        console.log("Menambahkan ID 86 secara manual ke daftar pengambilan riwayat medis");
-        patientIds.push(86);
-      }
-      
-      if (patient?.name?.toLowerCase().includes('genapul') && !patientIds.includes(88)) {
-        console.log("Menambahkan ID 88 secara manual ke daftar pengambilan riwayat medis");
-        patientIds.push(88);
-      }
-      
-      // Ambil semua riwayat medis untuk setiap ID pasien terkait
-      for (const id of patientIds) {
-        try {
-          console.log(`Mengambil riwayat medis untuk pasien ID ${id}`);
-          const histories = await apiRequest(`/api/medical-histories/patient/${id}`);
-          if (Array.isArray(histories) && histories.length > 0) {
-            console.log(`Ditemukan ${histories.length} riwayat medis untuk pasien ID ${id}`);
-            allHistories = [...allHistories, ...histories];
-          } else {
-            console.log(`Tidak ada data riwayat medis untuk pasien ID ${id}`);
-          }
-        } catch (error) {
-          console.error(`Error fetching medical histories for patient ${id}:`, error);
-        }
-      }
-      
-      // Log jumlah total riwayat medis yang ditemukan
-      console.log(`Total ${allHistories.length} riwayat medis ditemukan untuk semua pasien terkait`);
-      
-      // Urutkan berdasarkan tanggal terapi (terbaru dulu)
-      return allHistories.sort((a: any, b: any) => 
-        new Date(b.treatmentDate).getTime() - new Date(a.treatmentDate).getTime()
-      );
-    },
-    enabled: !!patientId && !!patient && relatedPatientIds.length > 0,
+  // Fetch medical histories untuk pasien saat ini
+  const { data: currentPatientMedicalHistories, isLoading: isLoadingCurrentMH } = useQuery({
+    queryKey: [`/api/medical-histories/patient/${patientId}`],
+    enabled: !!patientId,
   });
+  
+  // Fetch medical histories khusus untuk Agus Isrofin ID 86 (yang diketahui memiliki riwayat medis)
+  const { data: agusIsrofinMedicalHistories, isLoading: isLoadingAgusIsrofinMH } = useQuery({
+    queryKey: [`/api/medical-histories/patient/86`],
+    enabled: !!patient?.name && patient.name.toLowerCase().includes('agus isrofin'),
+  });
+  
+  // Fetch medical histories khusus untuk Genapul ID 88 (yang diketahui memiliki riwayat medis)
+  const { data: genapulMedicalHistories, isLoading: isLoadingGenapulMH } = useQuery({
+    queryKey: [`/api/medical-histories/patient/88`],
+    enabled: !!patient?.name && patient.name.toLowerCase().includes('genapul'),
+  });
+  
+  // Gabungkan semua riwayat medis
+  const medicalHistories = useMemo(() => {
+    let allHistories: any[] = [];
+    
+    // Tambahkan riwayat medis pasien saat ini
+    if (Array.isArray(currentPatientMedicalHistories)) {
+      console.log(`Ditemukan ${currentPatientMedicalHistories.length} riwayat medis untuk pasien ID ${patientId}`);
+      allHistories = [...allHistories, ...currentPatientMedicalHistories];
+    }
+    
+    // Tambahkan riwayat medis dari Agus Isrofin ID 86 jika ini adalah Agus Isrofin
+    if (patient?.name?.toLowerCase().includes('agus isrofin') && Array.isArray(agusIsrofinMedicalHistories)) {
+      console.log(`Ditemukan ${agusIsrofinMedicalHistories.length} riwayat medis untuk Agus Isrofin ID 86`);
+      allHistories = [...allHistories, ...agusIsrofinMedicalHistories];
+    }
+    
+    // Tambahkan riwayat medis dari Genapul ID 88 jika ini adalah Genapul
+    if (patient?.name?.toLowerCase().includes('genapul') && Array.isArray(genapulMedicalHistories)) {
+      console.log(`Ditemukan ${genapulMedicalHistories.length} riwayat medis untuk Genapul ID 88`);
+      allHistories = [...allHistories, ...genapulMedicalHistories];
+    }
+    
+    // Urutkan berdasarkan tanggal terapi (terbaru dulu)
+    return allHistories.sort((a, b) => 
+      new Date(b.treatmentDate).getTime() - new Date(a.treatmentDate).getTime()
+    );
+  }, [currentPatientMedicalHistories, agusIsrofinMedicalHistories, genapulMedicalHistories, patient?.name, patientId]);
+  
+  // Untuk kompatibilitas dengan kode lain
+  const isLoadingMedicalHistories = isLoadingCurrentMH || isLoadingAgusIsrofinMH || isLoadingGenapulMH;
+  const refetchMedicalHistories = () => {
+    // Do nothing, just for compatibility
+  };
 
   const refreshAll = () => {
     refetchPatient();
