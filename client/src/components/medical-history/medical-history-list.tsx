@@ -60,50 +60,26 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   
-  // Fetch medical history for the current patient - only for backward compatibility
-  const { data: currentPatientMedicalHistories, isLoading: isLoadingCurrent, isError: isErrorCurrent, refetch: refetchCurrent } = useQuery<MedicalHistory[]>({
-    queryKey: [`/api/medical-histories/patient/${patientId}`],
+  // Fetch all medical histories (including from old system) through our new comprehensive endpoint
+  const { data: allMedicalHistories, isLoading, isError, refetch } = useQuery<MedicalHistory[]>({
+    queryKey: [`/api/patients/${patientId}/all-medical-histories`],
     enabled: !!patientId,
   });
   
-  // Fetch medical histories by phone number - this is the new comprehensive API
-  const { data: medicalHistoriesResponse, isLoading: isLoadingByPhone, isError: isErrorByPhone, refetch: refetchByPhone } = useQuery<{ success: boolean, medicalHistories: MedicalHistory[] }>({
-    queryKey: [`/api/patients/${patientId}/medical-histories-by-phone`],
-    enabled: !!patientId,
-  });
-  
-  // Combine all medical histories
+  // Process medical histories
   const medicalHistories = useMemo(() => {
-    let allHistories: MedicalHistory[] = [];
-    
-    // Priority 1: Use the new comprehensive API if available
-    if (medicalHistoriesResponse?.success && Array.isArray(medicalHistoriesResponse.medicalHistories)) {
-      console.log(`MedicalHistoryList: Found ${medicalHistoriesResponse.medicalHistories.length} medical histories by phone number for patient ${patientId}`);
-      allHistories = [...medicalHistoriesResponse.medicalHistories];
-    } 
-    // Fallback: Use the current patient's medical histories if comprehensive API fails
-    else if (Array.isArray(currentPatientMedicalHistories)) {
-      console.log(`MedicalHistoryList: Fallback - Using ${currentPatientMedicalHistories.length} direct medical histories for patient ${patientId}`);
-      allHistories = [...currentPatientMedicalHistories];
+    if (!allMedicalHistories) {
+      console.log(`MedicalHistoryList: No medical histories found for patient ${patientId}`);
+      return [];
     }
     
-    console.log(`MedicalHistoryList: Total ${allHistories.length} medical histories to display`);
+    console.log(`MedicalHistoryList: Found ${allMedicalHistories.length} medical histories for patient ${patientId}`);
     
-    // Sort by treatment date (newest first)
-    return allHistories.sort((a, b) => 
+    // Records are already sorted by the API, but in case we need to re-sort
+    return allMedicalHistories.sort((a, b) => 
       new Date(b.treatmentDate).getTime() - new Date(a.treatmentDate).getTime()
     );
-  }, [currentPatientMedicalHistories, medicalHistoriesResponse, patientId]);
-  
-  // Combine loading and error states
-  const isLoading = isLoadingCurrent || isLoadingByPhone;
-  const isError = isErrorCurrent && isErrorByPhone; // Consider error only if both methods fail
-  
-  // Combine refetch functions
-  const refetch = () => {
-    refetchCurrent();
-    refetchByPhone();
-  };
+  }, [allMedicalHistories, patientId]);
   
   const handleEditClick = (history: MedicalHistory) => {
     setEditingHistory(history);
