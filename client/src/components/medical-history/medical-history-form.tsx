@@ -201,10 +201,10 @@ export function MedicalHistoryForm({
   
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md w-[95vw] md:w-auto max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEditMode ? "Edit Catatan Medis" : "Tambah Catatan Medis"}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-md w-[95vw] md:w-auto max-h-[92vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-xl">{isEditMode ? "Edit Catatan Medis" : "Tambah Catatan Medis"}</DialogTitle>
+          <DialogDescription className="text-sm">
             {isEditMode 
               ? "Perbarui data catatan medis pasien" 
               : "Tambahkan catatan medis baru untuk pasien"
@@ -213,21 +213,21 @@ export function MedicalHistoryForm({
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
             {/* Tanggal Terapi */}
             <FormField
               control={form.control}
               name="treatmentDate"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Tanggal Terapi</FormLabel>
+                  <FormLabel className="text-sm font-medium mb-1">Tanggal Terapi</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "pl-3 text-left font-normal",
+                            "pl-3 text-left font-normal h-10 w-full",
                             !field.value && "text-muted-foreground"
                           )}
                         >
@@ -252,7 +252,7 @@ export function MedicalHistoryForm({
                       />
                     </PopoverContent>
                   </Popover>
-                  <FormMessage />
+                  <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />
@@ -263,38 +263,40 @@ export function MedicalHistoryForm({
               name="complaint"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Keluhan</FormLabel>
+                  <FormLabel className="text-sm font-medium mb-1">Keluhan</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Masukkan keluhan pasien"
+                      className="resize-none min-h-[60px]"
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />
             
             {/* Grid untuk tekanan darah */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               {/* Tekanan Darah (Sebelum) */}
               <FormField
                 control={form.control}
                 name="beforeBloodPressure"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tekanan Darah (Sebelum)</FormLabel>
+                    <FormLabel className="text-sm font-medium mb-1">Tekanan Darah (Sebelum)</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Contoh: 120/80"
+                        className="h-10"
                         {...field}
                         inputMode="numeric"
                       />
                     </FormControl>
                     <FormDescription className="text-xs">
-                      Format: Sistolik/Diastolik
+                      Sistolik/Diastolik
                     </FormDescription>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
@@ -305,40 +307,42 @@ export function MedicalHistoryForm({
                 name="afterBloodPressure"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tekanan Darah (Sesudah)</FormLabel>
+                    <FormLabel className="text-sm font-medium mb-1">Tekanan Darah (Sesudah)</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Contoh: 120/80"
+                        className="h-10"
                         {...field}
                         inputMode="numeric"
                       />
                     </FormControl>
                     <FormDescription className="text-xs">
-                      Format: Sistolik/Diastolik
+                      Sistolik/Diastolik
                     </FormDescription>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
             </div>
             
-            {/* Grid untuk parameter vital */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Grid untuk parameter vital - 2 baris di mobile, 3 kolom di desktop */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
               {/* Detak Jantung */}
               <FormField
                 control={form.control}
                 name="heartRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Detak Jantung</FormLabel>
+                    <FormLabel className="text-sm font-medium mb-1">Detak Jantung</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Masukkan detak"
+                        className="h-10"
                         {...field}
                         inputMode="numeric"
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
@@ -349,15 +353,16 @@ export function MedicalHistoryForm({
                 name="pulseRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tekanan Nadi</FormLabel>
+                    <FormLabel className="text-sm font-medium mb-1">Tekanan Nadi</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Masukkan nadi"
+                        className="h-10"
                         {...field}
                         inputMode="numeric"
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
@@ -367,16 +372,17 @@ export function MedicalHistoryForm({
                 control={form.control}
                 name="weight"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Berat Badan</FormLabel>
+                  <FormItem className="col-span-2 md:col-span-1">
+                    <FormLabel className="text-sm font-medium mb-1">Berat Badan</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Masukkan berat"
+                        className="h-10"
                         {...field}
                         inputMode="numeric"
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
@@ -388,31 +394,32 @@ export function MedicalHistoryForm({
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Catatan</FormLabel>
+                  <FormLabel className="text-sm font-medium mb-1">Catatan</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Catatan tambahan tentang terapi"
+                      className="resize-none min-h-[60px]"
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />
             
-            <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
+            <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0 pt-2">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={onClose}
-                className="sm:mr-2 w-full sm:w-auto"
+                className="sm:mr-2 w-full sm:w-auto h-10"
               >
                 Batal
               </Button>
               <Button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto h-10"
               >
                 {isSubmitting ? "Menyimpan..." : isEditMode ? "Perbarui Catatan" : "Tambah Catatan"}
               </Button>
