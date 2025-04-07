@@ -1,12 +1,12 @@
 import { 
   users, patients, products, packages, transactions, sessions, appointments, therapySlots,
-  registrationLinks, confirmationTokens, medicalHistories, debtPayments,
+  registrationLinks, confirmationTokens, medicalHistories, debtPayments, patientRelationships,
   type User, type InsertUser, type Patient, type InsertPatient,
   type Product, type InsertProduct, type Package, type InsertPackage, type Transaction,
   type InsertTransaction, type Session, type InsertSession,
   type Appointment, type InsertAppointment, type TherapySlot, type InsertTherapySlot,
   type ConfirmationToken, type InsertConfirmationToken, type MedicalHistory, type InsertMedicalHistory,
-  type DebtPayment, type InsertDebtPayment
+  type DebtPayment, type InsertDebtPayment, type PatientRelationship, type InsertPatientRelationship
 } from "@shared/schema";
 import { format } from "date-fns";
 
@@ -126,9 +126,16 @@ export interface IStorage {
   deactivateRegistrationLink(id: number): Promise<boolean>;
   deleteRegistrationLink(id: number): Promise<boolean>;
   
+  // Patient Relationships
+  getPatientsByPhoneNumber(phoneNumber: string): Promise<Patient[]>;
+  getRelatedPatients(patientId: number): Promise<Patient[]>;
+  createPatientRelationship(relationship: InsertPatientRelationship): Promise<PatientRelationship>;
+  getPatientRelationships(patientId: number): Promise<PatientRelationship[]>;
+  
   // Medical History
   getMedicalHistory(id: number): Promise<MedicalHistory | undefined>;
   getMedicalHistoriesByPatient(patientId: number): Promise<MedicalHistory[]>;
+  getMedicalHistoriesByPhoneNumber(phoneNumber: string): Promise<MedicalHistory[]>;
   createMedicalHistory(medicalHistory: InsertMedicalHistory): Promise<MedicalHistory>;
   updateMedicalHistory(id: number, medicalHistory: Partial<InsertMedicalHistory>): Promise<MedicalHistory | undefined>;
   deleteMedicalHistory(id: number): Promise<boolean>;
@@ -166,6 +173,7 @@ export class MemStorage implements IStorage {
   private confirmationTokens: Map<string, ConfirmationToken>;
   private medicalHistories: Map<number, MedicalHistory>;
   private debtPayments: Map<number, DebtPayment>;
+  private patientRelationships: Map<number, PatientRelationship>;
   
   private userCurrentId: number;
   private patientCurrentId: number;
@@ -179,6 +187,7 @@ export class MemStorage implements IStorage {
   private confirmationTokenCurrentId: number;
   private medicalHistoryCurrentId: number;
   private debtPaymentCurrentId: number;
+  private patientRelationshipCurrentId: number;
 
   // Session store for authentication
   sessionStore: session.Store;
@@ -196,6 +205,7 @@ export class MemStorage implements IStorage {
     this.confirmationTokens = new Map();
     this.medicalHistories = new Map();
     this.debtPayments = new Map();
+    this.patientRelationships = new Map();
     
     this.userCurrentId = 1;
     this.patientCurrentId = 1;
@@ -209,6 +219,7 @@ export class MemStorage implements IStorage {
     this.confirmationTokenCurrentId = 1;
     this.medicalHistoryCurrentId = 1;
     this.debtPaymentCurrentId = 1;
+    this.patientRelationshipCurrentId = 1;
     
     // Initialize session store
     this.sessionStore = new MemoryStore({
@@ -909,6 +920,73 @@ export class MemStorage implements IStorage {
     
     this.medicalHistories.delete(id);
     return true;
+  }
+  
+  // Patient Relationships methods
+  async getPatientsByPhoneNumber(phoneNumber: string): Promise<Patient[]> {
+    return Array.from(this.patients.values())
+      .filter(patient => patient.phoneNumber === phoneNumber);
+  }
+  
+  async getRelatedPatients(patientId: number): Promise<Patient[]> {
+    const patient = this.patients.get(patientId);
+    if (!patient) {
+      return [];
+    }
+    
+    return Array.from(this.patients.values())
+      .filter(p => p.phoneNumber === patient.phoneNumber && p.id !== patientId);
+  }
+  
+  // Helper method to get next ID
+  private getNextId<T extends { id: number }>(collection: Map<number, T>): number {
+    if (collection.size === 0) {
+      return 1;
+    }
+    return Math.max(...Array.from(collection.keys())) + 1;
+  }
+  
+  async createPatientRelationship(relationship: InsertPatientRelationship): Promise<PatientRelationship> {
+    const id = this.getNextId(this.patientRelationships);
+    const now = new Date();
+    
+    const newRelationship: PatientRelationship = {
+      id,
+      patientId: relationship.patientId,
+      relatedPatientId: relationship.relatedPatientId,
+      relationshipType: relationship.relationshipType || "phone_number_shared",
+      createdAt: now
+    };
+    
+    this.patientRelationships.set(id, newRelationship);
+    return newRelationship;
+  }
+  
+  async getPatientRelationships(patientId: number): Promise<PatientRelationship[]> {
+    return Array.from(this.patientRelationships.values())
+      .filter(rel => rel.patientId === patientId || rel.relatedPatientId === patientId);
+  }
+  
+  async getMedicalHistoriesByPhoneNumber(phoneNumber: string): Promise<MedicalHistory[]> {
+    // Get all patients with this phone number
+    const patientsWithSamePhone = Array.from(this.patients.values())
+      .filter(patient => patient.phoneNumber === phoneNumber);
+    
+    if (patientsWithSamePhone.length === 0) {
+      return [];
+    }
+    
+    // Get patient IDs
+    const patientIds = patientsWithSamePhone.map(p => p.id);
+    
+    // Get medical histories for all these patients
+    return Array.from(this.medicalHistories.values())
+      .filter(history => patientIds.includes(history.patientId))
+      .sort((a, b) => {
+        const dateA = new Date(a.treatmentDate || a.createdAt);
+        const dateB = new Date(b.treatmentDate || b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+      });
   }
   
   async createTherapySlot(insertSlot: InsertTherapySlot): Promise<TherapySlot> {

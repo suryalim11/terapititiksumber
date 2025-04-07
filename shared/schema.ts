@@ -396,3 +396,21 @@ export type InsertConfirmationToken = z.infer<typeof insertConfirmationTokenSche
 
 export type MedicalHistory = typeof medicalHistories.$inferSelect;
 export type InsertMedicalHistory = z.infer<typeof insertMedicalHistorySchema>;
+
+// Patient Relationships Schema - untuk mengaitkan pasien yang memiliki nomor telepon yang sama
+export const patientRelationships = pgTable("patient_relationships", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull(),
+  relatedPatientId: integer("related_patient_id").notNull(),
+  relationshipType: text("relationship_type").default("phone_number_shared").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPatientRelationshipSchema = createInsertSchema(patientRelationships).pick({
+  patientId: true,
+  relatedPatientId: true,
+  relationshipType: true,
+});
+
+export type PatientRelationship = typeof patientRelationships.$inferSelect;
+export type InsertPatientRelationship = z.infer<typeof insertPatientRelationshipSchema>;

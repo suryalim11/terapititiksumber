@@ -14,6 +14,7 @@ import {
   insertConfirmationTokenSchema,
   insertRegistrationLinkSchema,
   insertMedicalHistorySchema,
+  insertPatientRelationshipSchema,
   User
 } from "@shared/schema";
 import { handleDateTest } from "./test-route";
@@ -36,6 +37,14 @@ import {
   restoreData,
   uploadBackup
 } from "./backup";
+import {
+  getPatientsByPhoneNumber,
+  getRelatedPatients,
+  createPatientRelationship,
+  getPatientRelationships,
+  getMedicalHistoriesByPhoneNumber,
+  findAllRelatedPatientIds
+} from "./patient-relationships";
 
 // Tipe data untuk verifikasi link pendaftaran
 interface VerifyRegistrationLinkBody {
@@ -269,6 +278,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Patient relationships endpoints
+  app.get("/api/patients/:id/related", async (req: Request, res: Response) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const relatedPatients = await getRelatedPatients(patientId);
+      
+      return res.status(200).json({
+        success: true,
+        relatedPatients
+      });
+    } catch (error) {
+      console.error("Error getting related patients:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mengambil data pasien terkait"
+      });
+    }
+  });
+  
+  app.get("/api/patients/phone/:phoneNumber", async (req: Request, res: Response) => {
+    try {
+      const phoneNumber = req.params.phoneNumber;
+      if (!phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "Nomor telepon diperlukan"
+        });
+      }
+      
+      const patients = await getPatientsByPhoneNumber(phoneNumber);
+      return res.status(200).json({
+        success: true,
+        patients
+      });
+    } catch (error) {
+      console.error("Error getting patients by phone number:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mengambil data pasien"
+      });
+    }
+  });
+  
+  app.get("/api/patients/:id/medical-histories-by-phone", async (req: Request, res: Response) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      
+      // Dapatkan pasien terlebih dahulu untuk mendapatkan nomor telepon
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({
+          success: false,
+          message: "Pasien tidak ditemukan"
+        });
+      }
+      
+      // Dapatkan riwayat medis berdasarkan nomor telepon
+      const histories = await getMedicalHistoriesByPhoneNumber(patient.phoneNumber);
+      
+      return res.status(200).json({
+        success: true,
+        medicalHistories: histories
+      });
+    } catch (error) {
+      console.error("Error getting medical histories by phone number:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mengambil riwayat medis"
+      });
+    }
+  });
+  
+  app.post("/api/patient-relationships", async (req: Request, res: Response) => {
+    try {
+      const { patientId, relatedPatientId, relationshipType } = req.body;
+      
+      if (!patientId || !relatedPatientId) {
+        return res.status(400).json({
+          success: false,
+          message: "ID pasien dan ID pasien terkait diperlukan"
+        });
+      }
+      
+      const validatedData = insertPatientRelationshipSchema.parse({
+        patientId,
+        relatedPatientId,
+        relationshipType: relationshipType || "phone_number_shared"
+      });
+      
+      const relationship = await createPatientRelationship(validatedData);
+      
+      return res.status(201).json({
+        success: true,
+        relationship
+      });
+    } catch (error) {
+      console.error("Error creating patient relationship:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat membuat relasi pasien"
+      });
+    }
+  });
+  
   app.post("/api/patients", async (req: Request, res: Response) => {
     try {
       console.log("Menerima permintaan POST /api/patients dengan data:", JSON.stringify(req.body, null, 2));

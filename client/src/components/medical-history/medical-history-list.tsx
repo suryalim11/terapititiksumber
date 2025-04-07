@@ -60,82 +60,31 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   
-  // Fetch medical history for the current patient
+  // Fetch medical history for the current patient - only for backward compatibility
   const { data: currentPatientMedicalHistories, isLoading: isLoadingCurrent, isError: isErrorCurrent, refetch: refetchCurrent } = useQuery<MedicalHistory[]>({
     queryKey: [`/api/medical-histories/patient/${patientId}`],
     enabled: !!patientId,
   });
   
-  // Fetch medical history for Agus Isrofin (ID 86) - selalu diambil karena diketahui ada riwayat medis
-  const { data: agusIsrofinMedicalHistories, isLoading: isLoadingAgus, isError: isErrorAgus } = useQuery<MedicalHistory[]>({
-    queryKey: [`/api/medical-histories/patient/86`],
-    enabled: true,
+  // Fetch medical histories by phone number - this is the new comprehensive API
+  const { data: medicalHistoriesResponse, isLoading: isLoadingByPhone, isError: isErrorByPhone, refetch: refetchByPhone } = useQuery<{ success: boolean, medicalHistories: MedicalHistory[] }>({
+    queryKey: [`/api/patients/${patientId}/medical-histories-by-phone`],
+    enabled: !!patientId,
   });
-  
-  // Fetch medical history for Genapul (ID 88) - selalu diambil karena diketahui ada riwayat medis
-  const { data: genapulMedicalHistories, isLoading: isLoadingGenapul, isError: isErrorGenapul } = useQuery<MedicalHistory[]>({
-    queryKey: [`/api/medical-histories/patient/88`],
-    enabled: true,
-  });
-  
-  // Fetch medical history for Erlinawati (ID 85) - selalu diambil karena diketahui baru ditambahkan
-  const { data: erlinawatiMedicalHistories, isLoading: isLoadingErlinawati, isError: isErrorErlinawati } = useQuery<MedicalHistory[]>({
-    queryKey: [`/api/medical-histories/patient/85`],
-    enabled: true,
-  });
-  
-  // Determine if this patient is Agus Isrofin or Genapul based on name or phone number
-  const isAgusIsrofin = (currentPatientMedicalHistories && currentPatientMedicalHistories[0]?.patientId === 86) || false;
-  const isGenapul = (currentPatientMedicalHistories && currentPatientMedicalHistories[0]?.patientId === 88) || false;
-  const isErlinawati = (currentPatientMedicalHistories && currentPatientMedicalHistories[0]?.patientId === 85) || false;
   
   // Combine all medical histories
   const medicalHistories = useMemo(() => {
     let allHistories: MedicalHistory[] = [];
     
-    // Add current patient's medical histories
-    if (Array.isArray(currentPatientMedicalHistories)) {
-      console.log(`MedicalHistoryList: Found ${currentPatientMedicalHistories.length} medical histories for patient ${patientId}`);
-      allHistories = [...allHistories, ...currentPatientMedicalHistories];
-    }
-    
-    // Add Agus Isrofin's (ID 86) medical histories if relevant
-    if (Array.isArray(agusIsrofinMedicalHistories) && patientId !== 86) {
-      // Menentukan apakah ini Agus Isrofin berdasarkan phone number
-      // Pola yang lebih aman: buat request ke API untuk memeriksa
-      // Sementara, kita hardcode ID pasien Agus Isrofin
-      const isAgusId = [93, 92].includes(patientId);
-      
-      if (isAgusId) {
-        console.log(`MedicalHistoryList: Adding ${agusIsrofinMedicalHistories.length} medical histories from Agus Isrofin (ID 86)`);
-        allHistories = [...allHistories, ...agusIsrofinMedicalHistories];
-      }
-    }
-    
-    // Add Genapul's (ID 88) medical histories if relevant
-    if (Array.isArray(genapulMedicalHistories) && patientId !== 88) {
-      // Menentukan apakah ini Genapul berdasarkan phone number
-      // Pola yang lebih aman: buat request ke API untuk memeriksa
-      // Sementara, kita hardcode ID pasien Genapul
-      const isGenapulId = [91, 90, 89].includes(patientId);
-      
-      if (isGenapulId) {
-        console.log(`MedicalHistoryList: Adding ${genapulMedicalHistories.length} medical histories from Genapul (ID 88)`);
-        allHistories = [...allHistories, ...genapulMedicalHistories];
-      }
-    }
-    
-    // Add Erlinawati's (ID 85) medical histories if relevant
-    if (Array.isArray(erlinawatiMedicalHistories) && patientId !== 85) {
-      // Menentukan apakah ini Erlinawati berdasarkan phone number (082287438247)
-      // Pola yang lebih aman: buat request ke API untuk memeriksa
-      // Sementara, kita hardcode ID pasien Erlinawati
-      const isErlinawatiId = [95].includes(patientId);
-      
-      if (isErlinawatiId) {
-        console.log(`MedicalHistoryList: Adding ${erlinawatiMedicalHistories.length} medical histories from Erlinawati (ID 85)`);
-        allHistories = [...allHistories, ...erlinawatiMedicalHistories];
-      }
+    // Priority 1: Use the new comprehensive API if available
+    if (medicalHistoriesResponse?.success && Array.isArray(medicalHistoriesResponse.medicalHistories)) {
+      console.log(`MedicalHistoryList: Found ${medicalHistoriesResponse.medicalHistories.length} medical histories by phone number for patient ${patientId}`);
+      allHistories = [...medicalHistoriesResponse.medicalHistories];
+    } 
+    // Fallback: Use the current patient's medical histories if comprehensive API fails
+    else if (Array.isArray(currentPatientMedicalHistories)) {
+      console.log(`MedicalHistoryList: Fallback - Using ${currentPatientMedicalHistories.length} direct medical histories for patient ${patientId}`);
+      allHistories = [...currentPatientMedicalHistories];
     }
     
     console.log(`MedicalHistoryList: Total ${allHistories.length} medical histories to display`);
@@ -144,15 +93,16 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
     return allHistories.sort((a, b) => 
       new Date(b.treatmentDate).getTime() - new Date(a.treatmentDate).getTime()
     );
-  }, [currentPatientMedicalHistories, agusIsrofinMedicalHistories, genapulMedicalHistories, erlinawatiMedicalHistories, patientId]);
+  }, [currentPatientMedicalHistories, medicalHistoriesResponse, patientId]);
   
   // Combine loading and error states
-  const isLoading = isLoadingCurrent || isLoadingAgus || isLoadingGenapul || isLoadingErlinawati;
-  const isError = isErrorCurrent || isErrorAgus || isErrorGenapul || isErrorErlinawati;
+  const isLoading = isLoadingCurrent || isLoadingByPhone;
+  const isError = isErrorCurrent && isErrorByPhone; // Consider error only if both methods fail
   
   // Combine refetch functions
   const refetch = () => {
     refetchCurrent();
+    refetchByPhone();
   };
   
   const handleEditClick = (history: MedicalHistory) => {
