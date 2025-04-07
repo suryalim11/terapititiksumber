@@ -448,11 +448,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`- Total riwayat medis tambahan: ${additionalHistories.length}`);
       
-      // 6. Jika masih tidak ada riwayat medis, tampilkan array kosong saja
-      // PERUBAHAN: TIDAK mengambil contoh data dari pasien lain lagi, biar ditampilkan kosong saja
+      // 6. Jika masih tidak ada riwayat medis, coba gunakan keluhan pasien dari data profil sebagai sumber "riwayat medis"
       if (currentPatientHistories.length === 0 && phoneNumberHistories.length === 0 && additionalHistories.length === 0) {
-        console.log(`- Tidak ada riwayat medis ditemukan untuk pasien ${patient.name} (ID: ${patientId}). Menampilkan daftar kosong.`);
-        // Tidak lagi mengambil data contoh dari pasien lain
+        console.log(`- Tidak ada riwayat medis ditemukan untuk pasien ${patient.name} (ID: ${patientId}).`);
+        
+        // Jika pasien memiliki keluhan di profil, buat riwayat medis "virtual" dari keluhan tersebut
+        if (patient.complaints && patient.complaints.trim() !== '') {
+          console.log(`- Menggunakan data keluhan dari profil pasien: "${patient.complaints}"`);
+          
+          // Buat riwayat medis virtual dari keluhan pasien
+          const virtualHistory: Partial<schema.MedicalHistory> = {
+            id: -patientId, // ID negatif untuk menandakan ini data virtual
+            patientId: patientId,
+            complaint: patient.complaints,
+            beforeBloodPressure: null,
+            afterBloodPressure: null,
+            notes: "Data ini diambil dari keluhan pasien pada saat pendaftaran",
+            treatmentDate: patient.createdAt ? new Date(patient.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            createdAt: patient.createdAt || new Date().toISOString(),
+            appointmentId: null,
+            heartRate: null,
+            pulseRate: null,
+            weight: null
+          };
+          
+          console.log(`- Membuat riwayat medis virtual dari keluhan pasien`);
+          additionalHistories.push(virtualHistory as schema.MedicalHistory);
+        } else {
+          console.log(`- Pasien tidak memiliki keluhan di profil. Menampilkan daftar kosong.`);
+        }
       }
       
       // Gabungkan semua riwayat medis

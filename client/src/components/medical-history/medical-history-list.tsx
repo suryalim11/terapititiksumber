@@ -222,10 +222,31 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
     return patientMap[id]?.name || `Pasien #${id}`;
   };
   
-  const renderSourceBadge = (historyPatientId: number) => {
-    if (historyPatientId === patientId) return null;
+  const renderSourceBadge = (history: MedicalHistory) => {
+    // Deteksi apakah ini adalah riwayat medis virtual dari keluhan pasien (ID negatif)
+    if (history.id < 0) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="ml-2 text-xs px-1.5 py-0.5 border bg-amber-100 border-amber-300 text-amber-700 rounded-md cursor-help inline-flex items-center">
+                <FileText className="h-3 w-3 mr-1" />
+                Dari keluhan awal
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Data ini diambil dari keluhan saat pendaftaran pasien, bukan catatan medis sebenarnya</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
     
-    const sourceName = getPatientName(historyPatientId);
+    // Jika bukan virtual dan dari pasien saat ini, tidak perlu badge
+    if (history.patientId === patientId) return null;
+    
+    // Untuk riwayat dari pasien lain
+    const sourceName = getPatientName(history.patientId);
     if (!sourceName) return null;
     
     return (
@@ -352,7 +373,7 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                                 : "Tanggal tidak tersedia"
                               }
                             </div>
-                            {renderSourceBadge(history.patientId)}
+                            {renderSourceBadge(history)}
                           </div>
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate">
@@ -431,7 +452,12 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                               : "Tanggal tidak tersedia"
                             }
                           </CardTitle>
-                          {sourceName && (
+                          {history.id < 0 ? (
+                            <div className="text-xs bg-amber-100 text-amber-700 mt-1 flex items-center px-1.5 py-0.5 rounded-sm inline-block">
+                              <FileText className="h-3 w-3 mr-1" />
+                              Dari keluhan awal
+                            </div>
+                          ) : sourceName && (
                             <div className="text-xs text-muted-foreground mt-1 flex items-center">
                               <UserRound className="h-3 w-3 mr-1" />
                               Data dari pasien: {sourceName}
