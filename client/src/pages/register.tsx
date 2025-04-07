@@ -216,7 +216,7 @@ export default function RegisterPage() {
     staleTime: 10000 // Data dianggap stale setelah 10 detik
   });
 
-  // Parse the URL for registration code - untuk link permanen
+  // Parse the URL for registration code and patientId - untuk link permanen dan navigasi dari halaman detail pasien
   useEffect(() => {
     // Perhatikan: Pada halaman pertama load, window.location.search mungkin belum tersedia
     console.log("Full URL saat akses halaman register:", window.location.href);
@@ -239,6 +239,15 @@ export default function RegisterPage() {
       }
     }
     
+    // Mendapatkan patientId dari URL jika ada (navigasi dari halaman detail pasien)
+    const patientIdParam = params.get("patientId");
+    if (patientIdParam) {
+      console.log("PatientId yang ditemukan di URL:", patientIdParam);
+      
+      // Cari data pasien menggunakan ID yang diberikan
+      searchPatientById(parseInt(patientIdParam));
+    }
+    
     console.log("Kode yang ditemukan di URL:", code);
     
     // Jika tidak ada kode di URL, coba dapatkan secara otomatis link pendaftaran permanen
@@ -255,6 +264,65 @@ export default function RegisterPage() {
       getActivePermanentLink();
     }
   }, []);
+
+  // Fungsi pencarian pasien berdasarkan ID
+  const searchPatientById = async (patientId: number) => {
+    try {
+      console.log("Mencari pasien dengan ID:", patientId);
+      const response = await fetch(`/api/patients/${patientId}`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        console.error("Gagal mendapatkan data pasien:", response.status);
+        toast({
+          variant: "destructive",
+          title: "Pasien Tidak Ditemukan",
+          description: "Tidak dapat menemukan data pasien dengan ID yang diberikan.",
+        });
+        return;
+      }
+      
+      const patient = await response.json();
+      
+      if (patient) {
+        console.log("Pasien ditemukan:", patient);
+        setPatientFound(true);
+        setFoundPatient(patient);
+        
+        // Isi formulir dengan data pasien dari tab appointment di halaman detail pasien
+        form.setValue("name", patient.name);
+        form.setValue("phoneNumber", patient.phoneNumber);
+        form.setValue("email", patient.email || "");
+        form.setValue("birthDate", patient.birthDate);
+        form.setValue("gender", patient.gender as "Laki-laki" | "Perempuan");
+        form.setValue("address", patient.address);
+        if (patient.complaints) {
+          form.setValue("complaints", patient.complaints);
+        }
+        
+        toast({
+          title: "Data Pasien Ditemukan",
+          description: `Data ${patient.name} telah diisi otomatis pada formulir.`,
+          className: "bg-green-50 border-green-200 text-green-800",
+        });
+      } else {
+        console.error("Pasien tidak ditemukan dengan ID:", patientId);
+        toast({
+          variant: "destructive",
+          title: "Pasien Tidak Ditemukan",
+          description: "Tidak dapat menemukan data pasien. Silakan coba lagi nanti.",
+        });
+      }
+    } catch (error) {
+      console.error("Error mendapatkan data pasien:", error);
+      toast({
+        variant: "destructive",
+        title: "Koneksi Gagal",
+        description: "Terjadi kesalahan saat mendapatkan data pasien. Silakan coba lagi nanti.",
+      });
+    }
+  };
 
   // State untuk mode pendaftaran walk-in (dari admin)
   const [isWalkInMode, setIsWalkInMode] = useState<boolean>(false);
