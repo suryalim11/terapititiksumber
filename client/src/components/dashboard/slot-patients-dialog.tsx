@@ -417,10 +417,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-4 md:p-6">
+          <DialogHeader className="px-0">
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <CalendarIcon className="h-5 w-5 text-primary" />
               Detail Slot Terapi
             </DialogTitle>
             <DialogDescription>
@@ -441,10 +441,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
               <p>Data slot tidak tersedia</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 mt-2">
               {/* Slot Information */}
-              <div className="rounded-lg bg-muted p-3">
-                <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="rounded-lg bg-muted/50 p-3 border">
+                <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="text-muted-foreground">Tanggal:</div>
                   <div className="font-medium">{formatDate(data.slot.date)}</div>
                   
@@ -478,7 +478,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                     <Button 
                       size="sm" 
                       variant="outline"
-                      className="h-8 px-2 text-xs bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100"
+                      className="h-8 px-2 text-xs bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
                       onClick={() => {
                         // Simpan ID slot ke sessionStorage
                         sessionStorage.setItem('selectedSlotId', String(slotId));
@@ -500,7 +500,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                     {activeAppointments.map((appointment: any) => (
                       <div 
                         key={appointment.id} 
-                        className="p-3 text-sm hover:bg-teal-50 transition-colors cursor-pointer"
+                        className="p-3 text-sm hover:bg-muted/50 transition-colors cursor-pointer"
                         onClick={() => navigateToPatientDetail(appointment.patient)}
                       >
                         <div className="font-medium flex items-center justify-between">
@@ -509,51 +509,56 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                             {appointment.status || 'Unknown'}
                           </Badge>
                         </div>
-                        <div className="flex justify-between text-muted-foreground text-xs mt-1">
-                          <span>{appointment.patient?.phoneNumber || '-'}</span>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-6 px-2 text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation(); // Mencegah event bubbling ke parent div
-                                navigateToPatientDetail(appointment.patient);
-                              }}
-                            >
-                              <User className="h-3 w-3 mr-1" />
-                              Detail
-                            </Button>
-                            <AppointmentStatusChanger
-                              appointment={appointment}
-                              updateStatus={(status) => updateStatusMutation.mutate({ id: appointment.id, status })}
-                              isUpdating={updateStatusMutation.isPending}
-                              stopPropagation={true}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation(); // Mencegah event bubbling ke parent div
-                                navigateToTransaction(appointment.patient);
-                              }}
-                            >
-                              <ShoppingCart className="h-3 w-3 mr-1" />
-                              Transaksi
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={(e) => sendAppointmentReminder(appointment, e)}
-                              disabled={!appointment.patient?.phoneNumber}
-                              title={appointment.patient?.phoneNumber ? "Kirim pengingat via WhatsApp" : "Nomor telepon tidak tersedia"}
-                            >
-                              <MessageSquare className="h-3 w-3 mr-1" />
-                              Pengingat
-                            </Button>
-                          </div>
+                        <div className="text-muted-foreground text-xs mt-1 mb-2">
+                          {appointment.patient?.phoneNumber || '-'}
+                        </div>
+                        
+                        {/* Action buttons - mobile friendly layout */}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs flex-none"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Mencegah event bubbling ke parent div
+                              navigateToPatientDetail(appointment.patient);
+                            }}
+                          >
+                            <User className="h-3 w-3 mr-1" />
+                            Detail
+                          </Button>
+                          
+                          <AppointmentStatusChanger
+                            appointment={appointment}
+                            updateStatus={(status) => updateStatusMutation.mutate({ id: appointment.id, status })}
+                            isUpdating={updateStatusMutation.isPending}
+                            stopPropagation={true}
+                          />
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs flex-none"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Mencegah event bubbling ke parent div
+                              navigateToTransaction(appointment.patient);
+                            }}
+                          >
+                            <ShoppingCart className="h-3 w-3 mr-1" />
+                            Transaksi
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50 flex-none"
+                            onClick={(e) => sendAppointmentReminder(appointment, e)}
+                            disabled={!appointment.patient?.phoneNumber}
+                            title={appointment.patient?.phoneNumber ? "Kirim pengingat via WhatsApp" : "Nomor telepon tidak tersedia"}
+                          >
+                            <MessageSquare className="h-3 w-3 mr-1" />
+                            Pengingat
+                          </Button>
                         </div>
                       </div>
                     ))}
