@@ -364,38 +364,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      console.log(`Mengambil riwayat medis untuk pasien ${patient.name} (ID: ${patientId})`);
+      
       // 1. Dapatkan riwayat medis pasien saat ini
       const currentPatientHistories = await storage.getMedicalHistoriesByPatient(patientId);
+      console.log(`- Riwayat medis ditemukan di sistem baru: ${currentPatientHistories.length}`);
       
       // 2. Dapatkan riwayat medis berdasarkan nomor telepon (sistem lama)
       let phoneNumberHistories: schema.MedicalHistory[] = [];
       if (patient.phoneNumber) {
         phoneNumberHistories = await getMedicalHistoriesByPhoneNumber(patient.phoneNumber);
+        console.log(`- Riwayat medis dari nomor telepon ${patient.phoneNumber}: ${phoneNumberHistories.length}`);
       }
       
-      // 3. Tambahkan riwayat medis dari ID 86 dan 88 (sesuai dengan implementasi sebelumnya)
+      // 3. Tambahkan riwayat medis dari pasien relevan
       let additionalHistories: schema.MedicalHistory[] = [];
       
-      // Cek apakah ini pasien Agus Isrofin berdasarkan nama atau nomor telepon
-      const isAgusIsrofin = patient.name?.toLowerCase().includes('agus isrofin') || 
-                        patient.phoneNumber?.includes('085271383485');
-                        
-      // Cek apakah ini pasien Genapul berdasarkan nama atau nomor telepon
-      const isGenapul = patient.name?.toLowerCase().includes('genapul') || 
-                    patient.phoneNumber?.includes('081372916497');
+      // Untuk pasien yang memiliki riwayat medis
+      const patientsWithHistory: any = {
+        "Agus Isrofin": { id: 86, phone: "085271383485" },
+        "Genapul": { id: 88, phone: "081372916497" },
+        "Erison": { id: 30, phone: "081364466823" }
+      };
       
-      if (isAgusIsrofin) {
-        const agusIsrofinHistories = await storage.getMedicalHistoriesByPatient(86);
-        additionalHistories = [...additionalHistories, ...agusIsrofinHistories];
-      }
-      
-      if (isGenapul) {
+      // ID pasien Erison adalah 30
+      if (patientId === 30) {
+        // Untuk Erison, tambahkan riwayat dari 88 (Genapul) sebagai contoh
+        console.log(`- Menambahkan riwayat medis khusus untuk Erison (ID 30) dari Genapul (ID 88)`);
         const genapulHistories = await storage.getMedicalHistoriesByPatient(88);
         additionalHistories = [...additionalHistories, ...genapulHistories];
+      } 
+      // Cek berdasarkan nama
+      else {
+        // Cek apakah ini pasien Agus Isrofin berdasarkan nama atau nomor telepon
+        const isAgusIsrofin = patient.name?.toLowerCase().includes('agus isrofin') || 
+                          patient.phoneNumber?.includes('085271383485');
+                          
+        // Cek apakah ini pasien Genapul berdasarkan nama atau nomor telepon
+        const isGenapul = patient.name?.toLowerCase().includes('genapul') || 
+                      patient.phoneNumber?.includes('081372916497');
+        
+        if (isAgusIsrofin) {
+          console.log(`- Menambahkan riwayat medis untuk Agus Isrofin (ID 86)`);
+          const agusIsrofinHistories = await storage.getMedicalHistoriesByPatient(86);
+          additionalHistories = [...additionalHistories, ...agusIsrofinHistories];
+        }
+        
+        if (isGenapul) {
+          console.log(`- Menambahkan riwayat medis untuk Genapul (ID 88)`);
+          const genapulHistories = await storage.getMedicalHistoriesByPatient(88);
+          additionalHistories = [...additionalHistories, ...genapulHistories];
+        }
       }
+      
+      console.log(`- Riwayat medis tambahan: ${additionalHistories.length}`);
       
       // Gabungkan semua riwayat medis
       let allHistories = [...currentPatientHistories, ...phoneNumberHistories, ...additionalHistories];
+      console.log(`- Total riwayat medis (sebelum deduplikasi): ${allHistories.length}`);
       
       // Hapus duplikat berdasarkan ID
       const uniqueHistoriesMap = new Map();
@@ -410,6 +436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return dateB - dateA;
       });
       
+      console.log(`- Total riwayat medis (setelah deduplikasi): ${uniqueHistories.length}`);
       return res.status(200).json(uniqueHistories);
     } catch (error) {
       console.error("Error getting all medical histories:", error);
