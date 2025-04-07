@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, CalendarIcon, ShoppingCart, X, Ban, CheckCircle, ChevronDown, User } from "lucide-react";
+import { Loader2, CalendarIcon, ShoppingCart, X, Ban, CheckCircle, ChevronDown, User, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -15,6 +15,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { formatWhatsAppNumber, generateWhatsAppLink } from "@/lib/utils";
 
 interface SlotPatientsDialogProps {
   slotId: number | null;
@@ -356,6 +357,52 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }
   
+  // Handler untuk mengirim pengingat janji temu melalui WhatsApp
+  function sendAppointmentReminder(appointment: any, event: React.MouseEvent) {
+    try {
+      event.stopPropagation(); // Mencegah event bubbling ke parent div
+      
+      if (!appointment || !appointment.patient || !appointment.patient.phoneNumber) {
+        toast({
+          title: "Terjadi kesalahan",
+          description: "Nomor telepon pasien tidak tersedia.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Format tanggal dan waktu slot terapi
+      const slotDate = data?.slot?.date ? formatDate(data.slot.date) : 'yang telah dijadwalkan';
+      const slotTime = data?.slot?.timeSlot || '';
+      
+      // Membuat template pesan untuk pengingat
+      const message = 
+        `Halo ${appointment.patient.name || 'Pasien Terhormat'},\n\n` +
+        `*Pengingat Janji Terapi*\n` +
+        `Kami ingin mengingatkan Anda tentang jadwal terapi Anda:\n\n` +
+        `Tanggal: ${slotDate}\n` +
+        `Waktu: ${slotTime}\n\n` +
+        `Mohon konfirmasi kehadiran Anda dengan membalas pesan ini. Terima kasih.\n\n` +
+        `Salam,\nTim Terapi Titik Sumber`;
+      
+      // Buka link WhatsApp dengan pesan yang sudah disiapkan
+      const whatsappLink = generateWhatsAppLink(appointment.patient.phoneNumber, message);
+      window.open(whatsappLink, '_blank');
+      
+      toast({
+        title: "Pengingat dikirim",
+        description: `WhatsApp untuk ${appointment.patient.name || 'pasien'} telah dibuka`,
+      });
+    } catch (error) {
+      console.error("Error sending appointment reminder:", error);
+      toast({
+        title: "Terjadi kesalahan",
+        description: "Gagal mengirim pengingat. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    }
+  }
+  
   // Prepare data
   const activeAppointments = data?.appointments ? filterActiveAppointments(data.appointments) : [];
   
@@ -494,6 +541,17 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                             >
                               <ShoppingCart className="h-3 w-3 mr-1" />
                               Transaksi
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={(e) => sendAppointmentReminder(appointment, e)}
+                              disabled={!appointment.patient?.phoneNumber}
+                              title={appointment.patient?.phoneNumber ? "Kirim pengingat via WhatsApp" : "Nomor telepon tidak tersedia"}
+                            >
+                              <MessageSquare className="h-3 w-3 mr-1" />
+                              Pengingat
                             </Button>
                           </div>
                         </div>

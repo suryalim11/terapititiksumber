@@ -351,3 +351,45 @@ export function fixTimezone(dateValue: Date | string): string {
     return `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
   }
 }
+
+/**
+ * Format nomor telepon untuk WhatsApp
+ * 
+ * Membersihkan nomor telepon dari karakter non-numerik,
+ * dan mengubah format awalan 0 menjadi 62
+ * 
+ * @param phoneNumber - Nomor telepon yang akan diformat
+ * @returns string - Nomor telepon yang sudah diformat untuk WhatsApp
+ */
+export function formatWhatsAppNumber(phoneNumber: string): string {
+  if (!phoneNumber) return '';
+  
+  // Hapus semua karakter non-numerik
+  let cleanNumber = phoneNumber.replace(/\D/g, '');
+  
+  // Jika dimulai dengan 0, ganti dengan 62
+  if (cleanNumber.startsWith('0')) {
+    cleanNumber = '62' + cleanNumber.substring(1);
+  }
+  
+  // Jika belum memiliki kode negara, tambahkan 62
+  if (cleanNumber.length > 8 && !cleanNumber.startsWith('62')) {
+    cleanNumber = '62' + cleanNumber;
+  }
+  
+  return cleanNumber;
+}
+
+/**
+ * Membuat link WhatsApp dengan nomor dan pesan opsional
+ * 
+ * @param phoneNumber - Nomor telepon yang akan dihubungi
+ * @param message - Pesan opsional yang akan dikirim (default: kosong)
+ * @returns string - URL WhatsApp yang valid
+ */
+export function generateWhatsAppLink(phoneNumber: string, message: string = ''): string {
+  const formattedNumber = formatWhatsAppNumber(phoneNumber);
+  const encodedMessage = message ? encodeURIComponent(message) : '';
+  
+  return `https://wa.me/${formattedNumber}${encodedMessage ? `?text=${encodedMessage}` : ''}`;
+}
