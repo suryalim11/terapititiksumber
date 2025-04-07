@@ -377,10 +377,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`- Riwayat medis dari nomor telepon ${patient.phoneNumber}: ${phoneNumberHistories.length}`);
       }
       
-      // 3. Tambahkan riwayat medis dari pasien dengan data yang ada di sistem
+      // 3. Perubahan: Tidak lagi mengambil riwayat medis dari pasien lain
       let additionalHistories: schema.MedicalHistory[] = [];
       
-      // Pasien-pasien yang memiliki riwayat medis (ditambahkan secara manual di sini)
+      // Pasien-pasien yang memiliki riwayat medis (hanya untuk referensi)
       const patientsWithHistory: {[id: number]: {name: string, phone: string}} = {
         86: { name: "Agus Isrofin", phone: "085271383485" },
         88: { name: "Genapul", phone: "081372916497" },
@@ -388,63 +388,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         29: { name: "Lia Apianti", phone: "08117752313" }
       };
       
-      // Pasien-pasien yang perlu mendapatkan akses ke riwayat medis dari sistem lama
-      const patientsNeedingHistory: {[id: number]: number[]} = {
-        // Erison TIDAK mendapatkan riwayat dari siapapun - dia harus memiliki data sendiri
-        33: [97, 88], // Novaleo Putra mendapatkan riwayat dari Gustanil (ID 97) dan Genapul (ID 88)
-        40: [86], // Pasien contoh lain mendapat riwayat dari Agus Isrofin (ID 86)
-        41: [29], // Pasien contoh lain mendapat riwayat dari Lia Apianti (ID 29)
-        // Tambahkan pasien lain sesuai kebutuhan
-      };
+      // Daftar dahulu pernah memetakan pasien untuk mendapatkan riwayat medis dari pasien lain
+      // tetapi sekarang ini dihapus sesuai kebijakan baru
+      console.log(`- Pasien ${patient.name} (ID: ${patientId}) hanya menggunakan data riwayat medisnya sendiri`);
       
-      // 4. Cek apakah pasien ini memerlukan riwayat medis tambahan dari ID lain
-      if (patientsNeedingHistory[patientId]) {
-        const sourcesIds = patientsNeedingHistory[patientId];
-        console.log(`- Pasien ${patient.name} (ID: ${patientId}) memerlukan riwayat medis dari ${sourcesIds.length} pasien lain`);
-        
-        // Ambil riwayat medis dari setiap pasien sumber
-        for (const sourceId of sourcesIds) {
-          const sourceName = patientsWithHistory[sourceId]?.name || `ID ${sourceId}`;
-          console.log(`  - Mengambil riwayat medis dari pasien ${sourceName} (ID: ${sourceId})`);
-          
-          const sourceHistories = await storage.getMedicalHistoriesByPatient(sourceId);
-          console.log(`    Ditemukan ${sourceHistories.length} riwayat medis`);
-          
-          additionalHistories = [...additionalHistories, ...sourceHistories];
-        }
-      } 
-      // 5. Cek berdasarkan nama atau nomor telepon
-      else {
-        // Periksa apakah ini pasien yang memiliki data riwayat medis
-        const patientIds = Object.keys(patientsWithHistory).map(Number);
-        
-        if (patientIds.includes(patientId)) {
-          console.log(`- Pasien ${patient.name} (ID: ${patientId}) sudah memiliki data riwayat medis langsung`);
-        } else {
-          // Cek apakah ada kecocokan nama atau nomor telepon dengan pasien yang memiliki riwayat
-          for (const [id, info] of Object.entries(patientsWithHistory)) {
-            const sourceId = Number(id);
-            
-            // Skip jika ini adalah pasien yang sedang dicek
-            if (sourceId === patientId) continue;
-            
-            // Cek kecocokan berdasarkan nama (case insensitive)
-            const nameLower = patient.name?.toLowerCase() || '';
-            const sourceName = info.name.toLowerCase();
-            const phoneMatch = patient.phoneNumber === info.phone;
-            const namePartialMatch = nameLower.includes(sourceName) || sourceName.includes(nameLower);
-            
-            if (phoneMatch || namePartialMatch) {
-              console.log(`- Menemukan kecocokan pasien berdasarkan ${phoneMatch ? 'nomor telepon' : 'nama'} dengan ${info.name} (ID: ${sourceId})`);
-              
-              const sourceHistories = await storage.getMedicalHistoriesByPatient(sourceId);
-              console.log(`  Menambahkan ${sourceHistories.length} riwayat medis`);
-              
-              additionalHistories = [...additionalHistories, ...sourceHistories];
-            }
-          }
-        }
-      }
+      // Tidak lagi mengambil data riwayat medis dari pasien lain
+      // Setiap pasien hanya akan melihat riwayat medisnya sendiri
       
       console.log(`- Total riwayat medis tambahan: ${additionalHistories.length}`);
       
