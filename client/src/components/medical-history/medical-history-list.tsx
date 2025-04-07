@@ -277,7 +277,7 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                     <div className="grid grid-cols-1 gap-1 text-sm">
                       <div>
                         <span className="font-medium">Keluhan:</span>{" "}
-                        {history.complaint}
+                        <span className="line-clamp-2">{history.complaint}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
@@ -306,7 +306,7 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                       {history.notes && (
                         <div className="mt-2">
                           <span className="font-medium">Catatan:</span>{" "}
-                          {history.notes}
+                          <span className="line-clamp-3">{history.notes}</span>
                         </div>
                       )}
                     </div>

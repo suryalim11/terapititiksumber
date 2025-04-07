@@ -442,7 +442,7 @@ export default function PatientDetail() {
               </div>
               <div className="bg-muted/30 p-2 rounded col-span-2">
                 <p className="text-muted-foreground mb-1">Alamat</p>
-                <p className="font-medium">{patient.address || "-"}</p>
+                <p className="font-medium text-xs md:text-sm line-clamp-2">{patient.address || "-"}</p>
               </div>
               <div className="bg-muted/30 p-2 rounded">
                 <p className="text-muted-foreground mb-1">Terdaftar</p>
@@ -527,7 +527,7 @@ export default function PatientDetail() {
                             {appointment.timeSlot && ` · ${appointment.timeSlot}`}
                           </div>
                           {appointment.registrationNumber && (
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground truncate max-w-[150px]">
                               No. Reg: {appointment.registrationNumber}
                             </div>
                           )}
@@ -538,7 +538,7 @@ export default function PatientDetail() {
                       </div>
                       {appointment.notes && (
                         <div className="mt-2 text-sm bg-muted/20 p-2 rounded">
-                          <span className="text-muted-foreground">Catatan:</span> {appointment.notes}
+                          <span className="text-muted-foreground">Catatan:</span> <span className="line-clamp-2">{appointment.notes}</span>
                         </div>
                       )}
                     </div>
@@ -728,14 +728,14 @@ export default function PatientDetail() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">No. Registrasi</p>
-                  <p className="font-medium">{selectedAppointment.registrationNumber || '-'}</p>
+                  <p className="font-medium truncate">{selectedAppointment.registrationNumber || '-'}</p>
                 </div>
               </div>
               
               {selectedAppointment.notes && (
                 <div>
                   <p className="text-muted-foreground">Catatan</p>
-                  <p className="p-2 bg-muted/20 rounded">{selectedAppointment.notes}</p>
+                  <p className="p-2 bg-muted/20 rounded text-sm">{selectedAppointment.notes}</p>
                 </div>
               )}
             </div>
