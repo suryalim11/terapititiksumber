@@ -500,9 +500,9 @@ export default function PatientDetail() {
                   onClick={() => {
                     toast({
                       title: "Membuat janji temu baru",
-                      description: `Mengarahkan ke form transaksi dengan paket terapi untuk pasien ini`
+                      description: `Mengarahkan ke form pendaftaran pasien`
                     });
-                    navigate(`/transactions/new?patientId=${patientId}`);
+                    navigate(`/register?patientId=${patientId}`);
                   }}
                 >
                   + Tambah
@@ -703,9 +703,9 @@ export default function PatientDetail() {
                   onClick={() => {
                     toast({
                       title: "Menambah riwayat medis",
-                      description: "Mengarahkan ke form transaksi untuk pasien ini"
+                      description: "Mengarahkan ke form catatan medis baru"
                     });
-                    navigate(`/transactions/new?patientId=${patientId}`);
+                    navigate(`/medical-history/new?patientId=${patientId}`);
                   }}
                 >
                   + Tambah
