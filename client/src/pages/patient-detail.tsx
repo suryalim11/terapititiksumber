@@ -1,6 +1,20 @@
 import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, ChevronDown, Loader2, RefreshCcw, User, Package, Calendar, Receipt, AlertTriangle, Activity, Eye } from "lucide-react";
+import { 
+  ArrowLeft, 
+  ChevronDown, 
+  Loader2, 
+  RefreshCcw, 
+  User, 
+  Package, 
+  Calendar, 
+  Receipt, 
+  AlertTriangle, 
+  Activity, 
+  Eye, 
+  Phone,
+  Mail as MailIcon
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,6 +50,8 @@ interface Transaction {
   transactionId: string;
   patientId: number;
   totalAmount: string;
+  subtotal?: string;
+  discount?: string;
   paymentMethod: string;
   items: any[];
   createdAt: string;
