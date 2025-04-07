@@ -701,11 +701,11 @@ export default function PatientDetail() {
                   size="sm" 
                   className="h-8 text-xs"
                   onClick={() => {
-                    // Medical history modal is handled by MedicalHistoryList component with AddMedicalHistoryDialog
                     toast({
-                      title: "Fitur Riwayat Medis",
-                      description: "Gunakan tombol + di dalam daftar riwayat medis untuk menambahkan data baru."
+                      title: "Menambah riwayat medis",
+                      description: "Mengarahkan ke form transaksi untuk pasien ini"
                     });
+                    navigate(`/transactions/new?patientId=${patientId}`);
                   }}
                 >
                   + Tambah
