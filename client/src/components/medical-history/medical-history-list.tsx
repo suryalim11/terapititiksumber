@@ -137,11 +137,15 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
     
     // Debugging informasi lengkap
     historiesArray.forEach((history, index) => {
-      console.log(`Medical history ${index + 1}:`, {
+      console.log(`Medical history ${index + 1} DETAIL:`, history);
+      console.log(`Medical history ${index + 1} SUMMARY:`, {
         id: history.id,
         patientId: history.patientId,
         complaint: history.complaint?.substring(0, 20) + '...',
-        treatmentDate: history.treatmentDate
+        treatmentDate: history.treatmentDate,
+        heartRate: history.heartRate,
+        pulseRate: history.pulseRate,
+        weight: history.weight
       });
     });
     
