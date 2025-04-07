@@ -9,7 +9,7 @@ import {
   sessions, appointments, therapySlots, registrationLinks, confirmationTokens
 } from "@shared/schema";
 import { db, sql } from "./db";
-import { eq, gt, lt, gte, lte, and, desc, asc, not, inArray } from "drizzle-orm";
+import { eq, gt, lt, gte, lte, and, desc, asc, not, inArray, ne, or } from "drizzle-orm";
 import * as schema from "../shared/schema";
 import { format } from "date-fns";
 import { IStorage } from "./storage";
@@ -2015,13 +2015,20 @@ export class DatabaseStorage implements IStorage {
     const endOfDay = new Date(wibNow);
     endOfDay.setHours(23, 59, 59, 999);
     
-    // Count patients registered today
-    const patientsToday = await db.query.patients.findMany({
+    // Count patients with appointments today (using distinct patient IDs)
+    const appointmentsToday = await db.query.appointments.findMany({
       where: and(
-        gte(schema.patients.createdAt, startOfDay),
-        lte(schema.patients.createdAt, endOfDay)
-      )
+        eq(schema.appointments.date, startOfDay.toISOString().split('T')[0]),
+        ne(schema.appointments.status, 'Cancelled')
+      ),
+      columns: {
+        patientId: true
+      }
     });
+    
+    // Gunakan Set untuk menghitung jumlah pasien unik yang memiliki appointment hari ini
+    const uniquePatientIds = new Set(appointmentsToday.map(a => a.patientId));
+    const patientsToday = uniquePatientIds.size;
     
     // Calculate income from today's transactions
     const todayTransactions = await db.query.transactions.findMany({
@@ -2060,7 +2067,7 @@ export class DatabaseStorage implements IStorage {
     });
     
     return {
-      patientsToday: patientsToday.length,
+      patientsToday: patientsToday,
       incomeToday,
       productsSold,
       activePackages: activePackages.length
