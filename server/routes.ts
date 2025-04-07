@@ -43,7 +43,8 @@ import {
   createPatientRelationship,
   getPatientRelationships,
   getMedicalHistoriesByPhoneNumber,
-  findAllRelatedPatientIds
+  findAllRelatedPatientIds,
+  findRelatedPatientsByPhone
 } from "./patient-relationships";
 
 // Tipe data untuk verifikasi link pendaftaran
@@ -373,47 +374,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentPatientHistories = await storage.getMedicalHistoriesByPatient(patientId);
       console.log(`- Riwayat medis ditemukan di sistem baru: ${currentPatientHistories.length}`);
       
-      // 2. Tidak lagi menggunakan pencarian riwayat medis berdasarkan nomor telepon (sistem lama)
+      // 2. Tidak lagi menggunakan pencarian riwayat medis berdasarkan nomor telepon secara langsung
       let phoneNumberHistories: schema.MedicalHistory[] = [];
-      if (patient.phoneNumber) {
-        // Kode ini dinonaktifkan untuk menjaga integritas data
-        // phoneNumberHistories = await getMedicalHistoriesByPhoneNumber(patient.phoneNumber);
-        console.log(`- Riwayat medis dari nomor telepon ${patient.phoneNumber}: 0 (fitur dinonaktifkan)`);
-      }
+      console.log(`- Riwayat medis dari nomor telepon ${patient.phoneNumber}: 0 (fitur dinonaktifkan)`);
       
-      // 3. Perubahan: Secara default tidak mengambil riwayat medis dari pasien lain
+      // 3. Penambahan: Ambil riwayat medis dari pasien dengan nomor telepon yang sama
       let additionalHistories: schema.MedicalHistory[] = [];
       
-      // KASUS KHUSUS: Enny Kusrini memiliki dua ID pasien (65 dan 98)
-      // Pastikan kita menampilkan riwayat medis dari kedua ID jika pasien adalah Enny Kusrini
-      if (patientId === 98 || patientId === 65) {
-        // Jika kita melihat salah satu ID Enny Kusrini, ambil data dari ID lainnya juga
-        const otherEnnyId = patientId === 98 ? 65 : 98;
-        const otherEnnyHistories = await storage.getMedicalHistoriesByPatient(otherEnnyId);
+      // Cari pasien lain dengan nomor telepon yang sama
+      const relatedPatients = await findRelatedPatientsByPhone(patientId);
+      
+      if (relatedPatients.length > 0) {
+        console.log(`- Ditemukan ${relatedPatients.length} pasien terkait dengan nomor telepon yang sama: ${patient.phoneNumber}`);
         
-        if (otherEnnyHistories.length > 0) {
-          console.log(`- Ini adalah kasus khusus: Enny Kusrini memiliki dua ID pasien (65 dan 98)`);
-          console.log(`- Menambahkan ${otherEnnyHistories.length} riwayat medis dari ID Enny Kusrini yang lain: ${otherEnnyId}`);
-          additionalHistories = [...otherEnnyHistories];
+        // Ambil data riwayat medis dari pasien-pasien terkait
+        const relatedPatientIds = relatedPatients.map(p => p.id);
+        
+        // Tampilkan informasi pasien terkait
+        for (const relatedPatient of relatedPatients) {
+          console.log(`  * Pasien terkait: ${relatedPatient.name} (ID: ${relatedPatient.id})`);
+          
+          // Ambil riwayat medis untuk setiap pasien terkait
+          const histories = await storage.getMedicalHistoriesByPatient(relatedPatient.id);
+          if (histories.length > 0) {
+            console.log(`    - Menambahkan ${histories.length} riwayat medis dari pasien ${relatedPatient.name} (ID: ${relatedPatient.id})`);
+            additionalHistories = [...additionalHistories, ...histories];
+          }
         }
       } else {
-        // Pasien-pasien yang memiliki riwayat medis (hanya untuk referensi)
-        const patientsWithHistory: {[id: number]: {name: string, phone: string}} = {
-          86: { name: "Agus Isrofin", phone: "085271383485" },
-          88: { name: "Genapul", phone: "081372916497" },
-          97: { name: "Gustanil Pawe", phone: "081377667485" },
-          29: { name: "Lia Apianti", phone: "08117752313" }
-        };
-        
-        // Daftar dahulu pernah memetakan pasien untuk mendapatkan riwayat medis dari pasien lain
-        // tetapi sekarang ini dihapus sesuai kebijakan baru
-        console.log(`- Pasien ${patient.name} (ID: ${patientId}) hanya menggunakan data riwayat medisnya sendiri`);
+        console.log(`- Tidak ditemukan pasien lain dengan nomor telepon yang sama: ${patient.phoneNumber}`);
       }
       
       console.log(`- Total riwayat medis tambahan: ${additionalHistories.length}`);
       
-      // 6. Jika masih tidak ada riwayat medis, tampilkan apa adanya (tidak membuat data virtual dari keluhan)
-      if (currentPatientHistories.length === 0 && phoneNumberHistories.length === 0 && additionalHistories.length === 0) {
+      // 4. Jika masih tidak ada riwayat medis, tampilkan apa adanya (tidak membuat data virtual dari keluhan)
+      if (currentPatientHistories.length === 0 && additionalHistories.length === 0) {
         console.log(`- Tidak ada riwayat medis ditemukan untuk pasien ${patient.name} (ID: ${patientId}).`);
         
         // Tidak membuat riwayat medis virtual - tampilkan apa adanya
@@ -421,7 +416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Gabungkan semua riwayat medis
-      let allHistories = [...currentPatientHistories, ...phoneNumberHistories, ...additionalHistories];
+      let allHistories = [...currentPatientHistories, ...additionalHistories];
       console.log(`- Total riwayat medis (sebelum deduplikasi): ${allHistories.length}`);
       
       // Hapus duplikat berdasarkan ID

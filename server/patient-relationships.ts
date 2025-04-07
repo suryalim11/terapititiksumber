@@ -20,6 +20,35 @@ export async function getPatientsByPhoneNumber(phoneNumber: string): Promise<Pat
   }
 }
 
+// Fungsi untuk mendapatkan pasien terkait berdasarkan nomor telepon yang sama
+export async function findRelatedPatientsByPhone(patientId: number): Promise<Patient[]> {
+  try {
+    // Dapatkan pasien
+    const [patient] = await db.select()
+      .from(schema.patients)
+      .where(eq(schema.patients.id, patientId));
+    
+    if (!patient || !patient.phoneNumber) {
+      return [];
+    }
+    
+    // Cari pasien lain dengan nomor telepon yang sama
+    const relatedPatients = await db.select()
+      .from(schema.patients)
+      .where(
+        and(
+          eq(schema.patients.phoneNumber, patient.phoneNumber),
+          ne(schema.patients.id, patientId)
+        )
+      );
+    
+    return relatedPatients;
+  } catch (error) {
+    console.error('[DB] Error finding related patients by phone:', error);
+    return [];
+  }
+}
+
 // Fungsi untuk mendapatkan pasien yang terkait (berdasarkan nomor telepon yang sama)
 export async function getRelatedPatients(patientId: number): Promise<Patient[]> {
   try {
