@@ -697,19 +697,6 @@ export default function PatientDetail() {
             <div className="space-y-4">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-lg font-semibold">Riwayat Medis</h3>
-                <Button 
-                  size="sm" 
-                  className="h-8 text-xs"
-                  onClick={() => {
-                    toast({
-                      title: "Menambah riwayat medis",
-                      description: "Mengarahkan ke form catatan medis baru"
-                    });
-                    navigate(`/medical-history/new?patientId=${patientId}`);
-                  }}
-                >
-                  + Tambah
-                </Button>
               </div>
 
               {isLoadingMedicalHistories ? (
