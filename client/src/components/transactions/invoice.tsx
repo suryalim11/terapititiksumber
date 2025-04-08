@@ -7,6 +7,13 @@ import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import { InvoiceSettings, defaultInvoiceSettings, INVOICE_SETTINGS_KEY } from "@/components/settings/invoice-settings";
 
+// Fungsi helper untuk pengelolaan angka yang aman
+const safeParseFloat = (value: any): number => {
+  if (value === undefined || value === null) return 0;
+  const num = parseFloat(String(value));
+  return isNaN(num) ? 0 : num;
+};
+
 type InvoiceProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -209,43 +216,57 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         doc.setFont("helvetica", "normal");
         let y = tableTop + 10;
         
-        // Debug item data untuk memahami struktur items
-        console.log("Item data dari transaksi:", data.items);
+        // Debug item data untuk memahami struktur yang benar
+        console.log("Item data dari transaksi:", JSON.stringify(data.items));
         
         // Pastikan items adalah array dan setiap item memiliki properti yang diperlukan
-        if (Array.isArray(data.items)) {
+        if (Array.isArray(data.items) && data.items.length > 0) {
           data.items.forEach((item, index) => {
-            console.log(`Item #${index}:`, item);
+            console.log(`Item #${index} diproses:`, JSON.stringify(item));
             
-            // Simpan nama asli item, jangan gunakan fallback kecuali benar-benar kosong
-            // Gunakan properti name dan fallback jika kosong
-            const itemName = item.name || `Item #${index+1}`;
-            
-            // Pastikan quantity dan price ada
-            const itemQuantity = (item.quantity !== undefined && item.quantity !== null) ? item.quantity.toString() : '1';
-            const itemPrice = item.price || '0';
-            
-            // Gunakan try-catch untuk menangkap error pada konversi harga
             try {
-              const totalPrice = (parseFloat(itemPrice) * parseInt(itemQuantity, 10)).toString();
+              // Dapatkan nama produk/paket
+              // Gunakan String() untuk memastikan nilai tidak undefined bahkan jika null
+              const itemName = String(item.name || `Item #${index+1}`);
+              console.log(`Item name untuk #${index}:`, itemName);
               
+              // Pastikan quantity dan price ada dan valid
+              const itemQuantity = item.quantity !== undefined && item.quantity !== null 
+                ? String(item.quantity) 
+                : '1';
+              
+              const itemPrice = item.price !== undefined && item.price !== null 
+                ? String(item.price) 
+                : '0';
+              
+              // Hitung total harga dengan aman
+              const itemTotalPrice = safeParseFloat(itemPrice) * safeParseFloat(itemQuantity);
+              
+              // Tampilkan item ke PDF
               doc.text(itemName, 14, y);
               doc.text(itemQuantity, 100, y, { align: 'right' });
               doc.text(formatPrice(itemPrice), 140, y, { align: 'right' });
-              doc.text(formatPrice(totalPrice), 195, y, { align: 'right' });
+              doc.text(formatPrice(itemTotalPrice.toString()), 195, y, { align: 'right' });
             } catch (err) {
               console.error(`Error processing item ${index}:`, err);
-              // Fallback untuk item yang bermasalah
-              doc.text(itemName, 14, y);
-              doc.text(itemQuantity, 100, y, { align: 'right' });
-              doc.text(formatPrice(itemPrice), 140, y, { align: 'right' });
-              doc.text(formatPrice(itemPrice), 195, y, { align: 'right' });
+              // Fallback jika terjadi error
+              doc.text(`Item #${index+1}`, 14, y);
+              doc.text("1", 100, y, { align: 'right' });
+              doc.text(formatPrice("0"), 140, y, { align: 'right' });
+              doc.text(formatPrice("0"), 195, y, { align: 'right' });
             }
             
             y += 8;
           });
         } else {
-          console.error("data.items bukan array:", data.items);
+          console.error("data.items kosong atau bukan array:", JSON.stringify(data.items));
+          
+          // Fallback jika items tidak ada, tambahkan pesan "Tidak ada item"
+          doc.text("Tidak ada item", 14, y);
+          doc.text("-", 100, y, { align: 'right' });
+          doc.text("-", 140, y, { align: 'right' });
+          doc.text("-", 195, y, { align: 'right' });
+          y += 8;
         }
         
         // Garis sebelum total
@@ -254,13 +275,6 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         
         // Subtotal, Discount, and Total
         doc.setFont("helvetica", "normal");
-        
-        // Gunakan fungsi helper untuk pengelolaan angka yang aman
-        const safeParseFloat = (value: any): number => {
-          if (value === undefined || value === null) return 0;
-          const num = parseFloat(String(value));
-          return isNaN(num) ? 0 : num;
-        };
         
         // Tambahkan subtotal jika tersedia
         // Jika subtotal adalah 0, gunakan totalAmount + discount sebagai subtotal
@@ -435,8 +449,16 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         itemDetails = '\n*Detail Item:*';
         data.items.forEach(item => {
           // Gunakan properti name atau fallback jika tidak ada
-          const itemName = item.name || `Item`;
-          itemDetails += `\n${item.quantity} x ${itemName} - ${formatPrice(item.price)}`;
+          // String() untuk memastikan nilai tidak undefined
+          const itemName = String(item.name || `Item`);
+          const itemQuantity = item.quantity !== undefined && item.quantity !== null 
+            ? String(item.quantity) 
+            : '1';
+          const itemPrice = item.price !== undefined && item.price !== null 
+            ? String(item.price) 
+            : '0';
+            
+          itemDetails += `\n${itemQuantity} x ${itemName} - ${formatPrice(itemPrice)}`;
         });
       }
       
@@ -450,9 +472,10 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         
         // Buat informasi kredit jika transaksi menggunakan kredit
         let creditInfo = '';
-        if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0) {
-          const creditAmount = parseFloat(data.transaction.creditAmount.toString());
-          const totalAmountValue = parseFloat(totalAmount);
+        const creditAmount = safeParseFloat(data.transaction.creditAmount);
+        
+        if (creditAmount > 0) {
+          const totalAmountValue = safeParseFloat(totalAmount);
           const paidAmount = totalAmountValue - creditAmount;
           
           creditInfo = `*Informasi Kredit:*\nTotal Belanja: ${formatPrice(totalAmount)}\nJumlah Dibayar: ${formatPrice(paidAmount.toString())}\nSisa Kredit: ${formatPrice(creditAmount.toString())}`;
@@ -492,9 +515,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         message += `\nTotal Pembayaran: ${formatPrice(data.transaction.totalAmount.toString())}`;
         
         // Tambahkan informasi kredit jika ada
-        if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0) {
-          const creditAmount = parseFloat(data.transaction.creditAmount.toString());
-          const totalAmountValue = parseFloat(data.transaction.totalAmount.toString());
+        const creditAmount = safeParseFloat(data.transaction.creditAmount);
+        if (creditAmount > 0) {
+          const totalAmountValue = safeParseFloat(data.transaction.totalAmount);
           const paidAmount = totalAmountValue - creditAmount;
           
           message += `\n\n*Informasi Kredit:*`;
@@ -619,7 +642,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                 </p>
                 <p className="text-gray-600">
                   <strong>Status:</strong> {" "}
-                  {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0
+                  {data.transaction.creditAmount && safeParseFloat(data.transaction.creditAmount) > 0
                     ? <span className="text-yellow-600">Kredit</span>
                     : data.transaction.isPaid === undefined || data.transaction.isPaid 
                       ? <span className="text-green-600">Lunas</span> 
