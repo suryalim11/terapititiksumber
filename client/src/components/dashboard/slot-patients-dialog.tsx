@@ -292,44 +292,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }
   
-  function navigateToTransaction(patient: any) {
-    if (!patient || !patient.id) {
-      toast({
-        title: "Error",
-        description: "Data pasien tidak lengkap atau tidak ditemukan.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      // Tambahkan debugging
-      console.log("navigateToTransaction - patient data:", {
-        id: patient.id,
-        name: patient.name,
-        patientData: patient
-      });
-      
-      // Tutup dialog terlebih dahulu
-      onClose();
-      
-      // Navigasi langsung dengan parameter URL (lebih andal)
-      navigate(`/transactions?patientId=${patient.id}`);
-      
-      // Tambahkan notifikasi untuk feedback
-      toast({
-        title: "Membuat transaksi baru",
-        description: `Form transaksi untuk ${patient.name || 'pasien terpilih'} akan segera dibuka`,
-      });
-    } catch (error) {
-      console.error("Error navigating to transaction:", error);
-      toast({
-        title: "Terjadi kesalahan",
-        description: "Gagal membuka form transaksi. Silakan coba lagi.",
-        variant: "destructive",
-      });
-    }
-  }
+  // Fungsi navigateToTransaction dengan event parameter didefinisikan di bawah
+  // Versi simpel ini akan diganti dengan yang memiliki parameter event
+  function dummyNavigate() {}
   
   function navigateToPatientDetail(patient: any) {
     if (!patient || !patient.id) {
@@ -358,6 +323,45 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       toast({
         title: "Terjadi kesalahan",
         description: "Gagal membuka detail pasien. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    }
+  }
+  
+  // Fungsi untuk mengarahkan ke halaman transaksi dengan pasien yang dipilih
+  function navigateToTransaction(patient: any, event: React.MouseEvent) {
+    if (!patient || !patient.id) {
+      toast({
+        title: "Error",
+        description: "Data pasien tidak lengkap atau tidak ditemukan.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Hindari event bubbling
+      event.stopPropagation();
+      
+      // Tutup dialog terlebih dahulu
+      onClose();
+      
+      // Arahkan ke halaman transaksi dengan ID pasien
+      // Gunakan delay dalam URL untuk memberikan waktu loading komponen
+      navigate(`/transactions?patientId=${patient.id}&delay=500`);
+      
+      // Tambahkan notifikasi untuk feedback
+      toast({
+        title: "Membuat transaksi baru",
+        description: `Form transaksi untuk ${patient.name || 'pasien terpilih'} akan segera dibuka`,
+      });
+      
+      console.log("Navigating to transaction with patientId:", patient.id);
+    } catch (error) {
+      console.error("Error navigating to transaction:", error);
+      toast({
+        title: "Terjadi kesalahan",
+        description: "Gagal membuka form transaksi. Silakan coba lagi.",
         variant: "destructive",
       });
     }
@@ -544,11 +548,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-xs flex-none"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Mencegah event bubbling ke parent div
-                              navigateToTransaction(appointment.patient);
-                            }}
+                            className="h-7 px-2 text-xs flex-none text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={(e) => navigateToTransaction(appointment.patient, e)}
                           >
                             <ShoppingCart className="h-3 w-3 mr-1" />
                             Transaksi

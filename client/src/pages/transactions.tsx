@@ -104,6 +104,9 @@ export default function Transactions() {
   // Buat ref untuk melacak apakah form sudah pernah dibuka untuk patientId ini
   const hasOpenedFormRef = useRef(false);
   
+  // Dapatkan parameter delay dari URL jika ada
+  const delayParamFromUrl = urlParams.get("delay");
+  
   useEffect(() => {
     if (patientIdFromUrl) {
       const patientIdNumber = parseInt(patientIdFromUrl);
@@ -139,6 +142,16 @@ export default function Transactions() {
         // Set selected patient ID
         setSelectedPatientId(patientIdNumber);
         
+        // Buka form transaksi dengan delay yang didapat dari URL atau default 500ms
+        const delayTime = delayParamFromUrl ? parseInt(delayParamFromUrl) : 500;
+        console.log(`Membuka form transaksi dalam ${delayTime}ms...`);
+        
+        // Tampilkan toast untuk memberitahu pengguna
+        toast({
+          title: "Menyiapkan transaksi",
+          description: `Form transaksi akan dibuka dalam ${delayTime}ms`,
+        });
+        
         // Buka form transaksi dengan delay untuk memastikan komponen sudah siap
         setTimeout(() => {
           setIsTransactionFormOpen(true);
@@ -149,7 +162,7 @@ export default function Transactions() {
             title: "Form transaksi dibuka",
             description: `Silahkan lengkapi data transaksi untuk pasien ini`,
           });
-        }, 500);
+        }, delayTime);
       } else {
         toast({
           title: "Pasien tidak ditemukan",
@@ -158,7 +171,7 @@ export default function Transactions() {
         });
       }
     }
-  }, [patientIdFromUrl, patients, toast]);
+  }, [patientIdFromUrl, patients, toast, delayParamFromUrl]);
   
   // Custom Event Listener untuk menerima notifikasi dari sidebar
   useEffect(() => {
