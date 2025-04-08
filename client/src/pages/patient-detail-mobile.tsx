@@ -16,7 +16,9 @@ import {
   Mail as MailIcon,
   Trash,
   Share2,
-  ExternalLink
+  ExternalLink,
+  Check,
+  CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -164,13 +166,15 @@ export default function PatientDetail() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isAppointmentDetailOpen, setIsAppointmentDetailOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
   const patientId = params?.id ? parseInt(params.id) : null;
 
   // Fetch patient data
   const { data: patient, isLoading: isLoadingPatient, refetch: refetchPatient } = useQuery({
     queryKey: [`/api/patients/${patientId}`],
     queryFn: async () => {
-      return await apiRequest(`/api/patients/${patientId}`);
+      return await apiRequest(`/api/patients/${patientId}`) as Patient;
     },
     enabled: !!patientId,
   });
@@ -179,7 +183,7 @@ export default function PatientDetail() {
   const { data: transactions, isLoading: isLoadingTransactions, refetch: refetchTransactions } = useQuery({
     queryKey: [`/api/transactions?patientId=${patientId}&includeRelated=true`],
     queryFn: async () => {
-      return await apiRequest(`/api/transactions?patientId=${patientId}&includeRelated=true`);
+      return await apiRequest(`/api/transactions?patientId=${patientId}&includeRelated=true`) as Transaction[];
     },
     enabled: !!patientId,
   });
@@ -188,7 +192,7 @@ export default function PatientDetail() {
   const { data: activeSessions, isLoading: isLoadingSessions, refetch: refetchSessions } = useQuery({
     queryKey: [`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`],
     queryFn: async () => {
-      return await apiRequest(`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`);
+      return await apiRequest(`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`) as Session[];
     },
     enabled: !!patientId,
   });
@@ -197,7 +201,7 @@ export default function PatientDetail() {
   const { data: appointments, isLoading: isLoadingAppointments, refetch: refetchAppointments } = useQuery({
     queryKey: [`/api/appointments?patientId=${patientId}&includeRelated=true`],
     queryFn: async () => {
-      return await apiRequest(`/api/appointments?patientId=${patientId}&includeRelated=true`);
+      return await apiRequest(`/api/appointments?patientId=${patientId}&includeRelated=true`) as Appointment[];
     },
     enabled: !!patientId,
   });
@@ -206,7 +210,7 @@ export default function PatientDetail() {
   const { data: medicalHistories, isLoading: isLoadingMedicalHistories, refetch: refetchMedicalHistories } = useQuery({
     queryKey: [`/api/medical-histories/patient/${patientId}`],
     queryFn: async () => {
-      return await apiRequest(`/api/medical-histories/patient/${patientId}`);
+      return await apiRequest(`/api/medical-histories/patient/${patientId}`) as MedicalHistory[];
     },
     enabled: !!patientId,
   });
@@ -225,8 +229,47 @@ export default function PatientDetail() {
   
   const openAppointmentDetail = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
+    setSelectedStatus(appointment.status);
     setIsAppointmentDetailOpen(true);
   };
+  
+  // Mutation for updating appointment status
+  const queryClient = useQueryClient();
+  const updateAppointmentStatusMutation = useMutation({
+    mutationFn: async ({ appointmentId, status }: { appointmentId: number, status: string }) => {
+      setUpdatingStatus(true);
+      return await apiRequest(`/api/appointments/${appointmentId}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Status diperbarui",
+        description: `Status janji temu berhasil diubah menjadi "${data.status}"`,
+      });
+      
+      // Refresh the data
+      queryClient.invalidateQueries({ queryKey: [`/api/appointments?patientId=${patientId}&includeRelated=true`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      
+      // Close the dialog
+      setIsAppointmentDetailOpen(false);
+      setUpdatingStatus(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Gagal mengubah status",
+        description: error.message || "Terjadi kesalahan saat mengubah status",
+        variant: "destructive",
+      });
+      setUpdatingStatus(false);
+    }
+  });
   
   const deletePatient = async () => {
     try {
@@ -517,7 +560,7 @@ export default function PatientDetail() {
                   className="h-8 text-xs"
                   onClick={() => {
                     // Pastikan patientId diteruskan sebagai string di URL
-                    navigate(`/register?patientId=${patientId.toString()}`);
+                    navigate(`/register?patientId=${patientId ? String(patientId) : ''}`);
                     
                     toast({
                       title: "Membuat janji temu baru",
@@ -594,7 +637,7 @@ export default function PatientDetail() {
                     // Gunakan event custom untuk membuka form transaksi dengan pasien yang dipilih
                     setTimeout(() => {
                       const event = new CustomEvent('openTransactionForm', { 
-                        detail: { patientId: patientId.toString() } 
+                        detail: { patientId: patientId ? String(patientId) : '' } 
                       });
                       
                       window.dispatchEvent(event);
@@ -693,7 +736,7 @@ export default function PatientDetail() {
                     // Gunakan event custom untuk membuka form transaksi dengan pasien yang dipilih
                     setTimeout(() => {
                       const event = new CustomEvent('openTransactionForm', { 
-                        detail: { patientId: patientId.toString() } 
+                        detail: { patientId: patientId ? String(patientId) : '' } 
                       });
                       
                       window.dispatchEvent(event);
@@ -730,7 +773,7 @@ export default function PatientDetail() {
                         <div className="font-medium">
                           {transaction.transactionId}
                           {/* Show indicator for transactions from related patients */}
-                          {transaction.patient && transaction.patient.id !== parseInt(patientId as string) && (
+                          {transaction.patient && transaction.patient.id !== patientId && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                               <Share2 className="h-3 w-3" />
                               <span>Dari: {transaction.patient.name}</span>
@@ -806,8 +849,51 @@ export default function PatientDetail() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Status</p>
-                  <div className={`${getStatusColor(selectedAppointment.status)} px-2 py-1 rounded text-xs inline-block`}>
-                    {selectedAppointment.status}
+                  <div className="flex items-center gap-2">
+                    <div className={`${getStatusColor(selectedAppointment.status)} px-2 py-1 rounded text-xs inline-block`}>
+                      {selectedAppointment.status}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-6 px-2 text-xs"
+                          disabled={updatingStatus}
+                        >
+                          {updatingStatus ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <>
+                              <span>Ubah</span>
+                              <ChevronDown className="h-3 w-3 ml-1" />
+                            </>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-32">
+                        {["Scheduled", "Active", "Completed", "Cancelled"].map((status) => (
+                          <DropdownMenuItem
+                            key={status}
+                            onClick={() => {
+                              if (!updatingStatus && selectedAppointment) {
+                                updateAppointmentStatusMutation.mutate({
+                                  appointmentId: selectedAppointment.id,
+                                  status
+                                });
+                              }
+                            }}
+                            disabled={updatingStatus || status === selectedAppointment.status}
+                            className={status === selectedAppointment.status ? "bg-muted font-medium" : ""}
+                          >
+                            {status === selectedAppointment.status && (
+                              <CheckCircle className="h-3 w-3 mr-1 text-primary" />
+                            )}
+                            {status}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
                 <div>
