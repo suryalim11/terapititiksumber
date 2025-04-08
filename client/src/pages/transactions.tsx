@@ -173,7 +173,7 @@ export default function Transactions() {
     }
   }, [patientIdFromUrl, patients, toast, delayParamFromUrl]);
   
-  // Custom Event Listener untuk menerima notifikasi dari sidebar
+  // Custom Event Listener untuk menerima notifikasi dari sidebar atau komponen lain
   useEffect(() => {
     const handleOpenTransactionForm = (event: CustomEvent) => {
       const patientId = event.detail?.patientId;
@@ -181,22 +181,57 @@ export default function Transactions() {
       if (patientId) {
         // Parse patientId ke number untuk memastikan tipe data
         const patientIdNumber = typeof patientId === 'string' ? parseInt(patientId) : patientId;
-        setSelectedPatientId(patientIdNumber);
         
-        console.log("Membuka form transaksi dengan patient ID:", patientIdNumber);
+        console.log("Event openTransactionForm diterima dengan patientId:", patientIdNumber);
+        
+        // Verifikasi pasien ada dalam data
+        const patientExists = patients.some((p: any) => p.id === patientIdNumber);
+        
+        if (patientExists) {
+          // Set selected patient ID
+          setSelectedPatientId(patientIdNumber);
+          
+          // Segera buka form transaksi
+          console.log("Segera membuka form transaksi untuk pasien ID:", patientIdNumber);
+          
+          // Gunakan setTimeout untuk memastikan bahwa state selectedPatientId sudah terupdate
+          setTimeout(() => {
+            setIsTransactionFormOpen(true);
+            
+            // Log debugging
+            console.log("Form transaksi seharusnya sudah terbuka sekarang");
+            
+            // Tampilkan toast untuk konfirmasi
+            toast({
+              title: "Form transaksi dibuka",
+              description: `Silahkan lengkapi data transaksi untuk pasien ini`,
+            });
+          }, 100);
+        } else {
+          toast({
+            title: "Pasien tidak ditemukan",
+            description: `Tidak dapat menemukan pasien dengan ID ${patientIdNumber}`,
+            variant: "destructive"
+          });
+        }
       } else {
+        // Jika tidak ada patientId, buka form kosong
         setSelectedPatientId(null);
+        setIsTransactionFormOpen(true);
       }
-      
-      setIsTransactionFormOpen(true);
     };
     
+    // Debugging
+    console.log("Memasang event listener untuk openTransactionForm");
+    
+    // Pasang event listener
     window.addEventListener('openTransactionForm' as any, handleOpenTransactionForm);
     
     return () => {
+      // Cabut event listener saat komponen unmount
       window.removeEventListener('openTransactionForm' as any, handleOpenTransactionForm);
     };
-  }, []);
+  }, [patients, toast]); // Tambahkan dependensi yang diperlukan
   
   // Fetch data transactions
   const { 
