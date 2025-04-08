@@ -94,14 +94,31 @@ export default function Transactions() {
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
   
+  // Fetch patients
+  const { data: patients = [] } = useQuery<any[]>({
+    queryKey: ["/api/patients"],
+    staleTime: 30000,
+  });
+  
   // Effect untuk auto-show form jika ada patientId di URL
   useEffect(() => {
     if (patientIdFromUrl) {
       const patientIdNumber = parseInt(patientIdFromUrl);
       console.log("Ditemukan patientId di URL:", patientIdNumber);
       
-      // Tunggu sebentar untuk memastikan data pasien sudah tersedia
-      setTimeout(() => {
+      // Jangan lakukan apa-apa sampai patients sudah terload
+      if (!patients || patients.length === 0) {
+        console.log("Menunggu data pasien tersedia...");
+        return;
+      }
+      
+      console.log("Data pasien tersedia, jumlah:", patients.length);
+      
+      // Verifikasi pasien ada dalam data
+      const patientExists = patients.some((p: any) => p.id === patientIdNumber);
+      console.log("Pasien ditemukan:", patientExists);
+      
+      if (patientExists) {
         // Set selected patient ID
         setSelectedPatientId(patientIdNumber);
         
@@ -111,11 +128,17 @@ export default function Transactions() {
         // Tampilkan toast notifikasi untuk membantu pengguna
         toast({
           title: "Membuat transaksi baru",
-          description: "Form transaksi akan segera dibuka dengan data pasien"
+          description: "Form transaksi dibuka dengan data pasien"
         });
-      }, 200);
+      } else {
+        toast({
+          title: "Pasien tidak ditemukan",
+          description: `Tidak dapat menemukan pasien dengan ID ${patientIdNumber}`,
+          variant: "destructive"
+        });
+      }
     }
-  }, [patientIdFromUrl, toast]);
+  }, [patientIdFromUrl, patients, toast]);
   
   // Custom Event Listener untuk menerima notifikasi dari sidebar
   useEffect(() => {
@@ -167,12 +190,7 @@ export default function Transactions() {
     }
   });
   
-  // Fetch patients
-  const { data: patients = [] } = useQuery<any[]>({
-    queryKey: ["/api/patients"],
-    staleTime: 30000,
-  });
-  
+  // Fetch packages & products
   const { data: packages = [] } = useQuery<any[]>({
     queryKey: ["/api/packages"],
     staleTime: 30000,
@@ -433,541 +451,340 @@ export default function Transactions() {
           }
         })
     : [];
-
+  
   // Fungsi untuk melihat detail transaksi dan membuka invoice
   const handleViewTransaction = (transaction: any) => {
     try {
       // Cari data pasien untuk transaksi ini
       const patient = patients?.find((p: any) => p.id === transaction.patientId);
       
-      if (!patient) {
-        toast({
-          title: "Data tidak lengkap",
-          description: "Data pasien tidak ditemukan",
-          variant: "destructive"
-        });
-        return;
-      }
+      // Set invoice data dengan data transaksi yang lengkap
+      const invoiceData = {
+        ...transaction,
+        patient: patient || { name: "Pasien tidak ditemukan", patientId: "-" }
+      };
       
-      // Siapkan data item untuk invoice
-      const items = (transaction.items || []).map((item: any) => ({
-        id: item.id,
-        type: item.type,
-        name: item.type === 'package' ? 
-          (packages?.find((p: any) => p.id === item.id)?.name || 'Paket Terapi') :
-          (products?.find((p: any) => p.id === item.id)?.name || 'Produk'),
-        price: item.price,
-        quantity: item.quantity
-      }));
-      
-      // Dapatkan subtotal dan diskon dari transaksi
-      const subtotalValue = parseFloat(transaction.subtotal?.toString() || "0");
-      const subtotal = subtotalValue > 0 ? subtotalValue : parseFloat(transaction.totalAmount.toString());
-      const discount = parseFloat(transaction.discount?.toString() || "0");
-      
-      // Set data untuk invoice
-      setInvoiceData({
-        transaction,
-        patient,
-        items,
-        paymentMethod: transaction.paymentMethod,
-        subtotal: subtotal,
-        discount: discount,
-        isPaid: transaction.isPaid,
-        creditAmount: transaction.creditAmount,
-        paidAmount: transaction.paidAmount
-      });
-      
-      // Buka dialog invoice
+      setInvoiceData(invoiceData);
       setIsInvoiceOpen(true);
     } catch (error) {
       console.error("Error viewing transaction:", error);
       toast({
-        title: "Gagal melihat invoice",
-        description: "Terjadi kesalahan saat menyiapkan data invoice",
+        title: "Gagal melihat detail transaksi",
+        description: "Terjadi kesalahan. Silakan coba lagi.",
         variant: "destructive"
       });
     }
   };
   
+  // Fungsi untuk menghapus transaksi
   const handleDeleteTransaction = (transaction: Transaction) => {
-    setTransactionToDelete(transaction.id);
+    setSelectedTransaction(transaction.id);
     setIsDeleteDialogOpen(true);
   };
-
-  const handlePrintTransaction = (transaction: any) => {
+  
+  // Fungsi untuk mencetak invoice
+  const handlePrintTransaction = (transaction: Transaction) => {
     try {
       // Cari data pasien untuk transaksi ini
       const patient = patients?.find((p: any) => p.id === transaction.patientId);
       
-      if (!patient) {
-        toast({
-          title: "Data tidak lengkap",
-          description: "Data pasien tidak ditemukan",
-          variant: "destructive"
-        });
-        return;
-      }
+      // Set invoice data dengan data transaksi yang lengkap
+      const invoiceData = {
+        ...transaction,
+        patient: patient || { name: "Pasien tidak ditemukan", patientId: "-" }
+      };
       
-      // Siapkan data item untuk invoice
-      const items = (transaction.items || []).map((item: any) => ({
-        id: item.id,
-        type: item.type,
-        name: item.type === 'package' ? 
-          (packages?.find((p: any) => p.id === item.id)?.name || 'Paket Terapi') :
-          (products?.find((p: any) => p.id === item.id)?.name || 'Produk'),
-        price: item.price,
-        quantity: item.quantity
-      }));
+      setInvoiceData(invoiceData);
+      setIsInvoiceOpen(true);
       
-      // Dapatkan subtotal dan diskon dari transaksi
-      // Jika subtotal adalah 0 atau null, gunakan totalAmount sebagai subtotal
-      const subtotalValue = parseFloat(transaction.subtotal?.toString() || "0");
-      const subtotal = subtotalValue > 0 ? subtotalValue : parseFloat(transaction.totalAmount.toString());
-      const discount = parseFloat(transaction.discount?.toString() || "0");
-      
-      console.log("Print Invoice data preparation:", {
-        subtotalValue,
-        subtotal,
-        discount,
-        totalInTransaction: transaction.totalAmount,
-        subtotalInTransaction: transaction.subtotal
-      });
-      
-      // Set data untuk invoice
-      setInvoiceData({
-        transaction,
-        patient,
-        items,
-        paymentMethod: transaction.paymentMethod,
-        subtotal: subtotal,
-        discount: discount,
-        isPaid: transaction.isPaid,
-        creditAmount: transaction.creditAmount,
-        paidAmount: transaction.paidAmount
-      });
-      
-      // Buka dialog invoice dengan flag untuk langsung print
+      // Print setelah invoice terbuka
       setTimeout(() => {
-        // Buka dialog invoice terlebih dahulu
-        setIsInvoiceOpen(true);
-      }, 100);
+        window.print();
+      }, 500);
     } catch (error) {
       console.error("Error printing transaction:", error);
       toast({
-        title: "Gagal mencetak invoice",
-        description: "Terjadi kesalahan saat menyiapkan data invoice",
+        title: "Gagal mencetak transaksi",
+        description: "Terjadi kesalahan. Silakan coba lagi.",
         variant: "destructive"
       });
     }
   };
   
+  // Render
   return (
-    <div className="space-y-4 p-4 pt-0">
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center pb-4">
-          <div>
-            <CardTitle>Transaksi</CardTitle>
-            <CardDescription>
-              {patientFromUrl 
-                ? `Transaksi untuk pasien: ${patientFromUrl.name}`
-                : "Daftar transaksi pasien, pembayaran, dan piutang"}
-            </CardDescription>
-          </div>
-          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
-            <div className="relative w-full sm:w-60">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Cari transaksi..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Button 
-              className="w-full sm:w-auto"
-              onClick={() => {
-                setSelectedPatientId(null);
-                setIsTransactionFormOpen(true);
-              }}
-            >
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Transaksi Baru
-            </Button>
-            
-            <Select
-              value={periodFilter}
-              onValueChange={(value) => setPeriodFilter(value)}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Filter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Transaksi</SelectItem>
-                <SelectItem value="today">Hari Ini</SelectItem>
-                <SelectItem value="week">Minggu Ini</SelectItem>
-                <SelectItem value="month">Bulan Ini</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="container mx-auto py-6 px-4 md:px-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Transaksi</h1>
+          <p className="text-muted-foreground">Kelola semua transaksi pasien</p>
+        </div>
+        <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2">
+          <Button onClick={() => {
+            setSelectedPatientId(null);
+            setIsTransactionFormOpen(true);
+          }}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Transaksi Baru
+          </Button>
+        </div>
+      </div>
+      
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Filter & Pencarian</CardTitle>
+          <CardDescription>
+            Cari transaksi berdasarkan nama pasien atau ID transaksi
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-            </div>
-          ) : !filteredTransactions || filteredTransactions.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              {searchTerm ? "Tidak ada transaksi yang sesuai dengan pencarian." : "Belum ada transaksi."}
-            </div>
-          ) : (
-            <>
-              {/* Desktop view with table (hidden on mobile) */}
-              <div className="hidden md:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead 
-                        className="cursor-pointer"
-                        onClick={() => requestSort('transactionId')}
-                      >
-                        <div className="flex items-center">
-                          ID Transaksi
-                          {getSortIcon('transactionId')}
-                        </div>
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer"
-                        onClick={() => requestSort('patient')}
-                      >
-                        <div className="flex items-center">
-                          Pasien
-                          {getSortIcon('patient')}
-                        </div>
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer"
-                        onClick={() => requestSort('date')}
-                      >
-                        <div className="flex items-center">
-                          Tanggal
-                          {getSortIcon('date')}
-                        </div>
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer"
-                        onClick={() => requestSort('paymentMethod')}
-                      >
-                        <div className="flex items-center">
-                          Metode Pembayaran
-                          {getSortIcon('paymentMethod')}
-                        </div>
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer"
-                        onClick={() => requestSort('subtotal')}
-                      >
-                        <div className="flex items-center">
-                          Subtotal
-                          {getSortIcon('subtotal')}
-                        </div>
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer"
-                        onClick={() => requestSort('discount')}
-                      >
-                        <div className="flex items-center">
-                          Diskon
-                          {getSortIcon('discount')}
-                        </div>
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer"
-                        onClick={() => requestSort('total')}
-                      >
-                        <div className="flex items-center">
-                          Total
-                          {getSortIcon('total')}
-                        </div>
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer"
-                        onClick={() => requestSort('credit')}
-                      >
-                        <div className="flex items-center">
-                          Kredit
-                          {getSortIcon('credit')}
-                        </div>
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer"
-                        onClick={() => requestSort('status')}
-                      >
-                        <div className="flex items-center">
-                          Status
-                          {getSortIcon('status')}
-                        </div>
-                      </TableHead>
-                      <TableHead>Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTransactions.map((transaction: Transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell className="font-medium">{transaction.transactionId}</TableCell>
-                        <TableCell>{getPatientName(transaction.patientId)}</TableCell>
-                        <TableCell>{formatDate(transaction.createdAt)}</TableCell>
-                        <TableCell>{formatPaymentMethod(transaction.paymentMethod)}</TableCell>
-                        <TableCell>
-                          {formatPrice(
-                            parseFloat(transaction.subtotal?.toString() || "0") > 0 
-                              ? transaction.subtotal?.toString() || "0" 
-                              : transaction.totalAmount.toString()
-                          )}
-                        </TableCell>
-                        <TableCell className="text-red-500">
-                          {transaction.discount && parseFloat(transaction.discount.toString()) > 0 
-                            ? formatPrice(transaction.discount.toString())
-                            : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {formatPrice(
-                            transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
-                              ? (parseFloat(transaction.totalAmount.toString()) - parseFloat(transaction.creditAmount.toString())).toString()
-                              : transaction.totalAmount.toString()
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
-                            <span className="text-red-600 font-medium">{formatPrice(transaction.creditAmount.toString())}</span>
-                          ) : (
-                            <span>-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              Kredit
-                            </span>
-                          ) : transaction.isPaid ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Lunas
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                              Belum Lunas
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleViewTransaction(transaction)}
-                              title="Lihat Invoice"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-8 w-8 p-0"
-                              onClick={() => handlePrintTransaction(transaction)}
-                              title="Cetak Invoice"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                              </svg>
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-100"
-                              onClick={() => handleDeleteTransaction(transaction)}
-                              title="Hapus Transaksi"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cari nama pasien atau ID transaksi..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
-
-              {/* Mobile view with cards */}
-              <div className="md:hidden space-y-4 mt-4">
-                {filteredTransactions.map((transaction: Transaction) => (
-                  <div key={transaction.id} className="bg-card rounded-lg border shadow-sm p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="font-medium text-sm">{transaction.transactionId}</div>
-                        <div className="text-base font-semibold">{getPatientName(transaction.patientId)}</div>
-                        <div className="text-sm text-muted-foreground">{formatDate(transaction.createdAt)}</div>
-                      </div>
-                      <div className={`text-xs inline-flex items-center font-semibold px-2.5 py-1 rounded-full ${
-                        transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : transaction.isPaid 
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                      }`}>
-                        {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0
-                          ? 'Kredit'
-                          : transaction.isPaid 
-                            ? 'Lunas'
-                            : 'Belum Lunas'}
-                      </div>
+            </div>
+            <div className="w-full md:w-[200px]">
+              <Select
+                value={periodFilter}
+                onValueChange={(value) => setPeriodFilter(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih periode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Waktu</SelectItem>
+                  <SelectItem value="today">Hari Ini</SelectItem>
+                  <SelectItem value="week">Minggu Ini</SelectItem>
+                  <SelectItem value="month">Bulan Ini</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {isLoading ? (
+        <div className="w-full flex justify-center items-center py-8">
+          <p>Memuat data transaksi...</p>
+        </div>
+      ) : transactionsError ? (
+        <div className="w-full flex justify-center items-center py-8">
+          <p className="text-red-500">Gagal memuat data transaksi. Silakan refresh halaman.</p>
+        </div>
+      ) : (
+        <>
+          {/* Tampilan Desktop */}
+          <div className="hidden md:block overflow-hidden rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]" onClick={() => requestSort('transactionId')}>
+                    <div className="flex items-center cursor-pointer">
+                      ID Transaksi
+                      {getSortIcon('transactionId')}
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                      <div>
-                        <div className="text-muted-foreground">Metode</div>
-                        <div>{formatPaymentMethod(transaction.paymentMethod)}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Total</div>
-                        <div className="font-medium">{formatPrice(transaction.totalAmount.toString())}</div>
-                      </div>
-                      
-                      {(transaction.subtotal && parseFloat(transaction.subtotal.toString()) > 0) && (
-                        <div>
-                          <div className="text-muted-foreground">Subtotal</div>
-                          <div>{formatPrice(transaction.subtotal.toString())}</div>
-                        </div>
+                  </TableHead>
+                  <TableHead onClick={() => requestSort('patient')}>
+                    <div className="flex items-center cursor-pointer">
+                      Pasien
+                      {getSortIcon('patient')}
+                    </div>
+                  </TableHead>
+                  <TableHead onClick={() => requestSort('date')}>
+                    <div className="flex items-center cursor-pointer">
+                      Tanggal
+                      {getSortIcon('date')}
+                    </div>
+                  </TableHead>
+                  <TableHead onClick={() => requestSort('paymentMethod')}>
+                    <div className="flex items-center cursor-pointer">
+                      Metode Pembayaran
+                      {getSortIcon('paymentMethod')}
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right" onClick={() => requestSort('total')}>
+                    <div className="flex items-center justify-end cursor-pointer">
+                      Total
+                      {getSortIcon('total')}
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right" onClick={() => requestSort('credit')}>
+                    <div className="flex items-center justify-end cursor-pointer">
+                      Kredit
+                      {getSortIcon('credit')}
+                    </div>
+                  </TableHead>
+                  <TableHead onClick={() => requestSort('status')}>
+                    <div className="flex items-center cursor-pointer">
+                      Status
+                      {getSortIcon('status')}
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTransactions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-4">
+                      Tidak ada transaksi yang ditemukan
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredTransactions.map((transaction: Transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell className="font-medium">
+                        {transaction.transactionId}
+                      </TableCell>
+                      <TableCell>{getPatientName(transaction.patientId)}</TableCell>
+                      <TableCell>{formatDate(transaction.createdAt)}</TableCell>
+                      <TableCell>{formatPaymentMethod(transaction.paymentMethod)}</TableCell>
+                      <TableCell className="text-right">{formatPrice(transaction.totalAmount)}</TableCell>
+                      <TableCell className="text-right">
+                        {transaction.creditAmount ? formatPrice(transaction.creditAmount.toString()) : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {transaction.isPaid ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Lunas
+                          </span>
+                        ) : transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            Kredit
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Lunas
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewTransaction(transaction)}
+                        >
+                          Detail
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteTransaction(transaction)}
+                        >
+                          Hapus
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          
+          {/* Tampilan Mobile */}
+          <div className="md:hidden space-y-4">
+            {filteredTransactions.length === 0 ? (
+              <div className="text-center py-4 border rounded-md">
+                Tidak ada transaksi yang ditemukan
+              </div>
+            ) : (
+              filteredTransactions.map((transaction: Transaction) => (
+                <Card key={transaction.id} className="overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-md flex justify-between">
+                      <span>{transaction.transactionId}</span>
+                      {transaction.isPaid ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Lunas
+                        </span>
+                      ) : transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                          Kredit
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Lunas
+                        </span>
                       )}
+                    </CardTitle>
+                    <CardDescription>{formatDate(transaction.createdAt)}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pb-2">
+                    <div className="grid grid-cols-2 gap-1">
+                      <div className="text-sm font-medium">Pasien</div>
+                      <div className="text-sm">{getPatientName(transaction.patientId)}</div>
                       
-                      {(transaction.discount && parseFloat(transaction.discount.toString()) > 0) && (
-                        <div>
-                          <div className="text-muted-foreground">Diskon</div>
-                          <div className="text-red-500">{formatPrice(transaction.discount.toString())}</div>
-                        </div>
-                      )}
+                      <div className="text-sm font-medium">Metode</div>
+                      <div className="text-sm">{formatPaymentMethod(transaction.paymentMethod)}</div>
                       
-                      {(transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0) && (
-                        <div>
-                          <div className="text-muted-foreground">Kredit</div>
-                          <div className="text-red-600 font-medium">{formatPrice(transaction.creditAmount.toString())}</div>
-                        </div>
+                      <div className="text-sm font-medium">Total</div>
+                      <div className="text-sm font-semibold">{formatPrice(transaction.totalAmount)}</div>
+                      
+                      {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 && (
+                        <>
+                          <div className="text-sm font-medium">Kredit</div>
+                          <div className="text-sm">{formatPrice(transaction.creditAmount.toString())}</div>
+                        </>
                       )}
                     </div>
-                    
-                    <div className="flex justify-end gap-2">
+                    <div className="mt-4 flex justify-between">
                       <Button
-                        size="sm" 
+                        size="sm"
                         variant="outline"
                         onClick={() => handleViewTransaction(transaction)}
-                        className="h-10 px-3"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        Lihat
+                        Detail
                       </Button>
                       <Button
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handlePrintTransaction(transaction)}
-                        className="h-10 px-3"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                        </svg>
-                        Cetak
-                      </Button>
-                      <Button
-                        size="sm" 
-                        variant="outline"
+                        size="sm"
+                        variant="destructive"
                         onClick={() => handleDeleteTransaction(transaction)}
-                        className="h-10 px-3 text-red-500 border-red-200 hover:text-red-600 hover:bg-red-50"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
                         Hapus
                       </Button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <TransactionForm
-        isOpen={isTransactionFormOpen}
-        onClose={() => {
-          setIsTransactionFormOpen(false);
-          setSelectedPatientId(null);
-        }}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </>
+      )}
+      
+      {/* Form transaksi */}
+      <TransactionForm 
+        isOpen={isTransactionFormOpen} 
+        onClose={() => setIsTransactionFormOpen(false)} 
         selectedPatientId={selectedPatientId}
       />
       
-      {/* Tambahkan Invoice component */}
-      {invoiceData && (
-        <Invoice 
-          isOpen={isInvoiceOpen}
-          onClose={() => setIsInvoiceOpen(false)}
-          data={invoiceData}
-        />
-      )}
+      {/* Invoice modal */}
+      <Invoice
+        isOpen={isInvoiceOpen}
+        onClose={() => setIsInvoiceOpen(false)}
+        data={invoiceData}
+      />
       
-      {/* Dialog konfirmasi hapus transaksi */}
+      {/* Dialog konfirmasi hapus */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Konfirmasi Hapus Transaksi</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus transaksi ini? Tindakan ini akan menghapus data transaksi, sesi terapi yang terkait, dan mengembalikan stok produk.
-              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-400 rounded text-sm">
-                <p className="font-semibold">Peringatan:</p>
-                <p>Jika transaksi terkait dengan paket terapi yang sedang aktif, semua data sesi terapi juga akan dihapus.</p>
-              </div>
+              Anda yakin ingin menghapus transaksi ini? Tindakan ini tidak dapat dibatalkan
+              dan akan menghapus semua data terkait transaksi ini.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setIsDeleteDialogOpen(false);
-                setSelectedTransaction(null);
-              }}
-            >
-              Batal
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteTransaction}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={deleteTransactionMutation.isPending}
-            >
-              {deleteTransactionMutation.isPending ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Menghapus...
-                </div>
-              ) : "Hapus Transaksi"}
-            </AlertDialogAction>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteTransaction}>Hapus</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

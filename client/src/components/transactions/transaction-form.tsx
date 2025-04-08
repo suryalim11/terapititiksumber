@@ -312,13 +312,26 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     }
   }, [isOpen, form, refetchActiveSessions, refetchUnpaidTransactions]);
   
+  // Fetch patients di level lokal untuk memastikan data selalu tersedia
+  const { 
+    data: patientsLocal = [],
+    isLoading: isLoadingPatients,
+    isSuccess: isPatientsSuccess 
+  } = useQuery<Patient[]>({
+    queryKey: ["/api/patients"],
+    staleTime: 5000, // Cached for 5 seconds
+  });
+  
   // Atur pasien otomatis jika selectedPatientId diberikan
   useEffect(() => {
+    // Gabungkan data pasien dari props dan fetch lokal
+    const allAvailablePatients = allPatients && allPatients.length > 0 ? allPatients : patientsLocal;
+    
     if (isOpen && selectedPatientId !== null && selectedPatientId !== undefined) {
       console.log("TransactionForm - selectedPatientId:", selectedPatientId, "type:", typeof selectedPatientId);
       
       // Tunggu data pasien tersedia terlebih dahulu
-      if (!allPatients || allPatients.length === 0) {
+      if (!allAvailablePatients || allAvailablePatients.length === 0) {
         console.log("Data pasien belum tersedia, menunggu...");
         return;
       }
@@ -334,9 +347,9 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       }
       
       console.log("Mencari pasien dengan ID:", patientIdToSearch);
-      console.log("Dari total", allPatients.length, "pasien yang tersedia");
+      console.log("Dari total", allAvailablePatients.length, "pasien yang tersedia");
       
-      const patient = allPatients.find((p: Patient) => p.id === patientIdToSearch);
+      const patient = allAvailablePatients.find((p: Patient) => p.id === patientIdToSearch);
       
       if (patient) {
         console.log("Found patient:", patient.name, "with ID:", patient.id);
@@ -351,10 +364,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         setUseExistingPackage(false);
         
         // Auto refetch active sessions untuk pasien yang dipilih
-        setTimeout(() => {
-          refetchActiveSessions();
-          refetchUnpaidTransactions();
-        }, 100);
+        refetchActiveSessions();
+        refetchUnpaidTransactions();
         
         // Tampilkan toast notifikasi
         toast({
@@ -365,7 +376,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         console.error("Patient not found with ID:", patientIdToSearch);
         
         // Log available patient IDs for debugging
-        const availableIds = allPatients.map(p => p.id);
+        const availableIds = allAvailablePatients.map(p => p.id);
         console.log("Available patient IDs:", availableIds);
         
         toast({
@@ -375,7 +386,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         });
       }
     }
-  }, [isOpen, selectedPatientId, allPatients, form, refetchActiveSessions, refetchUnpaidTransactions, toast, setCartItems, setSelectedPackage, setSelectedSession, setUseExistingPackage]);
+  }, [isOpen, selectedPatientId, allPatients, patientsLocal, form, refetchActiveSessions, refetchUnpaidTransactions, toast, setCartItems, setSelectedPackage, setSelectedSession, setUseExistingPackage]);
 
   // Function to calculate total amount (subtotal - discount)
   const calculateTotal = () => {
