@@ -458,10 +458,18 @@ export default function Transactions() {
       // Cari data pasien untuk transaksi ini
       const patient = patients?.find((p: any) => p.id === transaction.patientId);
       
-      // Set invoice data dengan data transaksi yang lengkap
+      // Pastikan struktur data sesuai dengan yang diharapkan di komponen Invoice
+      // Membuat objek dengan properti yang tepat sesuai InvoiceProps
       const invoiceData = {
-        ...transaction,
-        patient: patient || { name: "Pasien tidak ditemukan", patientId: "-" }
+        transaction: transaction, // Tambahkan properti transaction
+        patient: patient || { name: "Pasien tidak ditemukan", patientId: "-" },
+        items: transaction.items || [],
+        paymentMethod: transaction.paymentMethod || 'cash',
+        discount: transaction.discount || 0,
+        subtotal: transaction.subtotal || 0,
+        isPaid: transaction.isPaid,
+        creditAmount: transaction.creditAmount || 0,
+        paidAmount: transaction.paidAmount || 0
       };
       
       setInvoiceData(invoiceData);
@@ -488,10 +496,17 @@ export default function Transactions() {
       // Cari data pasien untuk transaksi ini
       const patient = patients?.find((p: any) => p.id === transaction.patientId);
       
-      // Set invoice data dengan data transaksi yang lengkap
+      // Gunakan format data yang sama dengan handleViewTransaction
       const invoiceData = {
-        ...transaction,
-        patient: patient || { name: "Pasien tidak ditemukan", patientId: "-" }
+        transaction: transaction,
+        patient: patient || { name: "Pasien tidak ditemukan", patientId: "-" },
+        items: transaction.items || [],
+        paymentMethod: transaction.paymentMethod || 'cash',
+        discount: transaction.discount || 0,
+        subtotal: transaction.subtotal || 0,
+        isPaid: transaction.isPaid,
+        creditAmount: transaction.creditAmount || 0,
+        paidAmount: transaction.paidAmount || 0
       };
       
       setInvoiceData(invoiceData);

@@ -34,6 +34,11 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
   const { toast } = useToast();
   const [settings, setSettings] = useState<InvoiceSettings>(defaultInvoiceSettings);
   
+  // Handle case when data is null or undefined
+  if (!data) {
+    return null; // Tidak render apa-apa jika data tidak ada
+  }
+  
   // Load saved invoice settings from localStorage
   useEffect(() => {
     try {
