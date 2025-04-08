@@ -661,16 +661,30 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                 </tr>
               </thead>
               <tbody>
-                {data.items.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-200">
-                    <td className="px-4 py-2 text-gray-700">{item.name}</td>
-                    <td className="px-4 py-2 text-right text-gray-700">{item.quantity}</td>
-                    <td className="px-4 py-2 text-right text-gray-700">{formatPrice(item.price)}</td>
-                    <td className="px-4 py-2 text-right text-gray-700">
-                      {formatPrice((parseFloat(item.price) * item.quantity).toString())}
+                {Array.isArray(data.items) && data.items.length > 0 ? (
+                  data.items.map((item, index) => (
+                    <tr key={index} className="border-b border-gray-200">
+                      <td className="px-4 py-2 text-gray-700">
+                        {item.name || `Item #${index+1}`}
+                      </td>
+                      <td className="px-4 py-2 text-right text-gray-700">
+                        {item.quantity || 1}
+                      </td>
+                      <td className="px-4 py-2 text-right text-gray-700">
+                        {formatPrice(item.price || '0')}
+                      </td>
+                      <td className="px-4 py-2 text-right text-gray-700">
+                        {formatPrice(((parseFloat(item.price || '0') * (item.quantity || 1)).toString()))}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="border-b border-gray-200">
+                    <td className="px-4 py-2 text-gray-700 text-center" colSpan={4}>
+                      Tidak ada item dalam transaksi ini
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
               <tfoot>
                 {data.subtotal && (

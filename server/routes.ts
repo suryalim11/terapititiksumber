@@ -1221,14 +1221,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/transactions/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      console.log(`Getting transaction details for ID: ${id}`);
+      
       const transaction = await storage.getTransaction(id);
       
       if (!transaction) {
+        console.log(`Transaction not found for ID: ${id}`);
         return res.status(404).json({ message: "Transaction not found" });
       }
       
+      // Pastikan items berbentuk array, bukan string
+      if (transaction.items && typeof transaction.items === 'string') {
+        try {
+          transaction.items = JSON.parse(transaction.items);
+          console.log(`Successfully parsed items for transaction ${id} from string to array`);
+        } catch (parseError) {
+          console.error(`Error parsing items for transaction ${id}:`, parseError);
+          // Jika error saat parsing, inisialisasi sebagai array kosong
+          transaction.items = [];
+        }
+      }
+      
+      // Validasi hasil parsing, pastikan array
+      if (!Array.isArray(transaction.items)) {
+        console.log(`Items for transaction ${id} is not an array, initializing as empty array`);
+        transaction.items = [];
+      }
+      
+      console.log(`Transaction found for ID ${id} with items data:`, Array.isArray(transaction.items) ? `${transaction.items.length} items` : 'NO valid items');
+      
       return res.status(200).json(transaction);
     } catch (error) {
+      console.error(`Error getting transaction ${req.params.id}:`, error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });
