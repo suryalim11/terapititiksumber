@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format, addHours, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { id } from "date-fns/locale";
@@ -101,6 +101,9 @@ export default function Transactions() {
   });
   
   // Effect untuk auto-show form jika ada patientId di URL
+  // Buat ref untuk melacak apakah form sudah pernah dibuka untuk patientId ini
+  const hasOpenedFormRef = useRef(false);
+  
   useEffect(() => {
     if (patientIdFromUrl) {
       const patientIdNumber = parseInt(patientIdFromUrl);
@@ -109,27 +112,44 @@ export default function Transactions() {
       // Jangan lakukan apa-apa sampai patients sudah terload
       if (!patients || patients.length === 0) {
         console.log("Menunggu data pasien tersedia...");
+        // Kirim toast untuk memberitahu pengguna
+        toast({
+          title: "Membuat transaksi baru",
+          description: `Form transaksi untuk ${patientIdFromUrl ? "pasien ini" : ""} akan segera dibuka`
+        });
         return;
       }
       
-      console.log("Data pasien tersedia, jumlah:", patients.length);
+      // Jika form sudah pernah dibuka untuk patientId ini, jangan buka lagi
+      if (hasOpenedFormRef.current) {
+        console.log("Form sudah pernah dibuka untuk patientId ini");
+        return;
+      }
+      
+      console.log("Data pasien tersedia:", patients.length);
       
       // Verifikasi pasien ada dalam data
       const patientExists = patients.some((p: any) => p.id === patientIdNumber);
       console.log("Pasien ditemukan:", patientExists);
       
       if (patientExists) {
+        // Set flag bahwa form sudah pernah dibuka
+        hasOpenedFormRef.current = true;
+        
         // Set selected patient ID
         setSelectedPatientId(patientIdNumber);
         
-        // Buka form transaksi
-        setIsTransactionFormOpen(true);
-        
-        // Tampilkan toast notifikasi untuk membantu pengguna
-        toast({
-          title: "Membuat transaksi baru",
-          description: "Form transaksi dibuka dengan data pasien"
-        });
+        // Buka form transaksi dengan delay untuk memastikan komponen sudah siap
+        setTimeout(() => {
+          setIsTransactionFormOpen(true);
+          console.log("Form transaksi dibuka untuk pasien ID:", patientIdNumber);
+          
+          // Tampilkan toast notifikasi untuk membantu pengguna
+          toast({
+            title: "Form transaksi dibuka",
+            description: `Silahkan lengkapi data transaksi untuk pasien ini`,
+          });
+        }, 500);
       } else {
         toast({
           title: "Pasien tidak ditemukan",
@@ -774,11 +794,21 @@ export default function Transactions() {
       )}
       
       {/* Form transaksi */}
-      <TransactionForm 
-        isOpen={isTransactionFormOpen} 
-        onClose={() => setIsTransactionFormOpen(false)} 
-        selectedPatientId={selectedPatientId}
-      />
+      {isTransactionFormOpen && (
+        <TransactionForm 
+          isOpen={true} 
+          onClose={() => {
+            setIsTransactionFormOpen(false);
+            console.log("Form transaksi ditutup");
+            // Reset form setelah ditutup
+            if (patientIdFromUrl) {
+              // Jika ada patientId di URL, reset flag agar bisa dibuka lagi
+              hasOpenedFormRef.current = false;
+            }
+          }} 
+          selectedPatientId={selectedPatientId}
+        />
+      )}
       
       {/* Invoice modal */}
       <Invoice

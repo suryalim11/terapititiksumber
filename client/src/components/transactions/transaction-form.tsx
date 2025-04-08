@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,6 +46,17 @@ import { Switch } from "@/components/ui/switch";
 
 import PaymentMethods from "./payment-methods";
 import Invoice from "./invoice";
+
+// Utilitas untuk format harga
+const formatPrice = (price: string) => {
+  const numericPrice = parseFloat(price);
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(numericPrice);
+};
 
 type TransactionFormProps = {
   isOpen: boolean;
@@ -323,9 +334,18 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   });
   
   // Atur pasien otomatis jika selectedPatientId diberikan
+  // Tambahkan log untuk debugging
+  useEffect(() => {
+    console.log("TransactionForm render - isOpen:", isOpen, "selectedPatientId:", selectedPatientId);
+  }, []);
+
   useEffect(() => {
     // Gabungkan data pasien dari props dan fetch lokal
     const allAvailablePatients = allPatients && allPatients.length > 0 ? allPatients : patientsLocal;
+    
+    // Log untuk debugging
+    console.log("TransactionForm effect running - isOpen:", isOpen, "selectedPatientId:", selectedPatientId);
+    console.log("Patients available:", allAvailablePatients?.length || 0);
     
     if (isOpen && selectedPatientId !== null && selectedPatientId !== undefined) {
       console.log("TransactionForm - selectedPatientId:", selectedPatientId, "type:", typeof selectedPatientId);
@@ -333,6 +353,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       // Tunggu data pasien tersedia terlebih dahulu
       if (!allAvailablePatients || allAvailablePatients.length === 0) {
         console.log("Data pasien belum tersedia, menunggu...");
+        // Tambahkan toast untuk membantu user mengetahui kendala
+        toast({
+          title: "Memuat data pasien",
+          description: "Menunggu data pasien tersedia..."
+        });
         return;
       }
       
@@ -354,34 +379,33 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       if (patient) {
         console.log("Found patient:", patient.name, "with ID:", patient.id);
         
-        // Set nilai pada form
-        form.setValue("patientId", patientIdToSearch.toString());
-        
-        // Reset form fields that depend on patient
-        setCartItems([]);
-        setSelectedPackage("");
-        setSelectedSession(null);
-        setUseExistingPackage(false);
-        
-        // Auto refetch active sessions untuk pasien yang dipilih
-        refetchActiveSessions();
-        refetchUnpaidTransactions();
-        
-        // Tampilkan toast notifikasi
-        toast({
-          title: "Pasien terpilih",
-          description: `Data ${patient.name} telah diisi otomatis`,
-        });
+        // Set nilai pada form dengan delay untuk memastikan form sudah dimount
+        setTimeout(() => {
+          form.setValue("patientId", patientIdToSearch.toString());
+          console.log("PatientId set to form:", patientIdToSearch.toString());
+          
+          // Reset form fields that depend on patient
+          setCartItems([]);
+          setSelectedPackage("");
+          setSelectedSession(null);
+          setUseExistingPackage(false);
+          
+          // Auto refetch active sessions untuk pasien yang dipilih
+          refetchActiveSessions();
+          refetchUnpaidTransactions();
+          
+          // Tampilkan toast notifikasi sukses
+          toast({
+            title: "Data pasien dimuat",
+            description: `Form transaksi siap untuk ${patient.name}`
+          });
+        }, 200);
       } else {
+        // Pasien tidak ditemukan, tampilkan pesan error
         console.error("Patient not found with ID:", patientIdToSearch);
-        
-        // Log available patient IDs for debugging
-        const availableIds = allAvailablePatients.map(p => p.id);
-        console.log("Available patient IDs:", availableIds);
-        
         toast({
-          title: "Perhatian",
-          description: `Pasien dengan ID ${patientIdToSearch} tidak ditemukan`,
+          title: "Error",
+          description: "Pasien tidak ditemukan. Silakan pilih pasien manual.",
           variant: "destructive"
         });
       }
