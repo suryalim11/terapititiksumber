@@ -67,7 +67,7 @@ export default function Transactions() {
   const { toast } = useToast();
   
   // Extract patient ID from URL if present
-  const urlParams = new URLSearchParams(location.split("?")[1]);
+  const urlParams = new URLSearchParams(location.split("?")[1] || "");
   const patientIdFromUrl = urlParams.get("patientId");
   
   // States
@@ -76,7 +76,15 @@ export default function Transactions() {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
   
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false);
-  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(patientIdFromUrl ? parseInt(patientIdFromUrl) : null);
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
+  
+  // Debug untuk parameter pasien
+  console.log("URL parameters:", {
+    location,
+    params: location.split("?")[1] || "",
+    patientIdFromUrl,
+    patientIdNumber: patientIdFromUrl ? parseInt(patientIdFromUrl) : null
+  });
   
   // State untuk dialog konfirmasi hapus
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -89,6 +97,13 @@ export default function Transactions() {
   // Effect untuk auto-show form jika ada patientId di URL
   useEffect(() => {
     if (patientIdFromUrl) {
+      const patientIdNumber = parseInt(patientIdFromUrl);
+      console.log("Ditemukan patientId di URL:", patientIdNumber);
+      
+      // Set selected patient ID
+      setSelectedPatientId(patientIdNumber);
+      
+      // Buka form transaksi
       setIsTransactionFormOpen(true);
     }
   }, [patientIdFromUrl]);
@@ -144,17 +159,17 @@ export default function Transactions() {
   });
   
   // Fetch patients
-  const { data: patients } = useQuery({
+  const { data: patients = [] } = useQuery<any[]>({
     queryKey: ["/api/patients"],
     staleTime: 30000,
   });
   
-  const { data: packages } = useQuery({
+  const { data: packages = [] } = useQuery<any[]>({
     queryKey: ["/api/packages"],
     staleTime: 30000,
   });
   
-  const { data: products } = useQuery({
+  const { data: products = [] } = useQuery<any[]>({
     queryKey: ["/api/products"],
     staleTime: 30000,
   });

@@ -303,26 +303,24 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
     
     try {
+      // Tambahkan debugging
+      console.log("navigateToTransaction - patient data:", {
+        id: patient.id,
+        name: patient.name,
+        patientData: patient
+      });
+      
       // Tutup dialog terlebih dahulu
       onClose();
       
-      // Arahkan ke halaman transaksi
-      navigate("/transactions");
+      // Navigasi langsung dengan parameter URL (lebih andal)
+      navigate(`/transactions?patientId=${patient.id}`);
       
-      // Tunggu sebentar untuk memastikan komponen transactions sudah di-mount
-      setTimeout(() => {
-        // Gunakan event system untuk berkomunikasi antar komponen
-        const transactionEvent = new CustomEvent('openTransactionForm', {
-          detail: { patientId: patient.id }
-        });
-        window.dispatchEvent(transactionEvent);
-        
-        // Tambahkan notifikasi untuk feedback
-        toast({
-          title: "Membuat transaksi baru",
-          description: `Form transaksi untuk ${patient.name || 'pasien terpilih'} akan segera dibuka`,
-        });
-      }, 500);
+      // Tambahkan notifikasi untuk feedback
+      toast({
+        title: "Membuat transaksi baru",
+        description: `Form transaksi untuk ${patient.name || 'pasien terpilih'} akan segera dibuka`,
+      });
     } catch (error) {
       console.error("Error navigating to transaction:", error);
       toast({
