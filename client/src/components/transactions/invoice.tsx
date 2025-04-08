@@ -156,7 +156,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           : data.transaction.transactionId;
         doc.text(invoiceId, 180, 26, { align: 'right' });
         
-        const formattedDate = format(new Date(data.transaction.createdAt), "d MMMM yyyy", { locale: id });
+        // Pastikan createdAt ada, jika tidak gunakan date atau fallback ke tanggal sekarang
+        const dateToFormat = data.transaction.createdAt || data.transaction.date || new Date();
+        const formattedDate = format(new Date(dateToFormat), "d MMMM yyyy", { locale: id });
         doc.text(formattedDate, 180, 32, { align: 'right' });
         
         // Garis pemisah
@@ -207,13 +209,34 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         doc.setFont("helvetica", "normal");
         let y = tableTop + 10;
         
-        data.items.forEach((item, index) => {
-          doc.text(item.name, 14, y);
-          doc.text(item.quantity.toString(), 100, y, { align: 'right' });
-          doc.text(formatPrice(item.price), 140, y, { align: 'right' });
-          doc.text(formatPrice((parseFloat(item.price) * item.quantity).toString()), 195, y, { align: 'right' });
-          y += 8;
-        });
+        // Pastikan items adalah array dan setiap item memiliki properti yang diperlukan
+        if (Array.isArray(data.items)) {
+          data.items.forEach((item, index) => {
+            // Pastikan setiap nilai yang akan digunakan dalam PDF ada dan valid
+            const itemName = item.name || 'Item tanpa nama';
+            const itemQuantity = (item.quantity !== undefined && item.quantity !== null) ? item.quantity.toString() : '1';
+            const itemPrice = item.price || '0';
+            
+            // Gunakan try-catch untuk menangkap error pada konversi harga
+            try {
+              const totalPrice = (parseFloat(itemPrice) * parseInt(itemQuantity, 10)).toString();
+              
+              doc.text(itemName, 14, y);
+              doc.text(itemQuantity, 100, y, { align: 'right' });
+              doc.text(formatPrice(itemPrice), 140, y, { align: 'right' });
+              doc.text(formatPrice(totalPrice), 195, y, { align: 'right' });
+            } catch (err) {
+              console.error(`Error processing item ${index}:`, err);
+              // Fallback untuk item yang bermasalah
+              doc.text(itemName, 14, y);
+              doc.text(itemQuantity, 100, y, { align: 'right' });
+              doc.text(formatPrice(itemPrice), 140, y, { align: 'right' });
+              doc.text(formatPrice(itemPrice), 195, y, { align: 'right' });
+            }
+            
+            y += 8;
+          });
+        }
         
         // Garis sebelum total
         doc.setLineWidth(0.3);
@@ -222,21 +245,31 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Subtotal, Discount, and Total
         doc.setFont("helvetica", "normal");
         
+        // Gunakan fungsi helper untuk pengelolaan angka yang aman
+        const safeParseFloat = (value: any): number => {
+          if (value === undefined || value === null) return 0;
+          const num = parseFloat(String(value));
+          return isNaN(num) ? 0 : num;
+        };
+        
         // Tambahkan subtotal jika tersedia
         // Jika subtotal adalah 0, gunakan totalAmount + discount sebagai subtotal
-        const subtotalValue = parseFloat(data.subtotal?.toString() || "0");
+        const subtotalValue = safeParseFloat(data.subtotal);
+        const discountValue = safeParseFloat(data.discount);
+        const totalAmountValue = safeParseFloat(data.transaction.totalAmount);
+        
         const subtotalToShow = subtotalValue > 0 
           ? subtotalValue 
-          : parseFloat(data.transaction.totalAmount.toString()) + parseFloat(data.discount?.toString() || "0");
+          : totalAmountValue + discountValue;
         
         doc.text("Subtotal:", 140, y + 10, { align: 'right' });
         doc.text(formatPrice(subtotalToShow.toString()), 195, y + 10, { align: 'right' });
         y += 7;
         
         // Tambahkan diskon jika ada
-        if (data.discount && parseFloat(data.discount.toString()) > 0) {
+        if (discountValue > 0) {
           doc.text("Diskon:", 140, y + 10, { align: 'right' });
-          doc.text(`${formatPrice(data.discount.toString())}`, 195, y + 10, { align: 'right' });
+          doc.text(`${formatPrice(discountValue.toString())}`, 195, y + 10, { align: 'right' });
           y += 7;
         }
         
@@ -249,21 +282,22 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         y += 10;
         
         // Jika ada kredit, tambahkan ke PDF
-        if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0) {
+        const creditAmount = safeParseFloat(data.transaction.creditAmount);
+        
+        if (creditAmount > 0) {
           doc.setFont("helvetica", "normal");
           doc.setTextColor(255, 0, 0); // Red for kredit
           doc.text("Kredit:", 140, y + 10, { align: 'right' });
-          doc.text(formatPrice(data.transaction.creditAmount.toString()), 195, y + 10, { align: 'right' });
+          doc.text(formatPrice(creditAmount.toString()), 195, y + 10, { align: 'right' });
           y += 8;
+          
+          // Hitung jumlah yang dibayar (total - kredit)
+          const paidAmount = totalAmountValue - creditAmount;
           
           doc.setFont("helvetica", "bold");
           doc.setTextColor(0, 128, 0); // Green for amount paid
           doc.text("Dibayar:", 140, y + 10, { align: 'right' });
-          doc.text(
-            formatPrice((parseFloat(data.transaction.totalAmount.toString()) - parseFloat(data.transaction.creditAmount.toString())).toString()), 
-            195, y + 10, 
-            { align: 'right' }
-          );
+          doc.text(formatPrice(paidAmount.toString()), 195, y + 10, { align: 'right' });
           y += 12;
           doc.setTextColor(0, 0, 0); // Reset text color to black
         } else {
