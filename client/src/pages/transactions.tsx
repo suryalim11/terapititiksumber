@@ -559,8 +559,33 @@ export default function Transactions() {
     : [];
   
   // Fungsi untuk melihat detail transaksi dan membuka invoice
-  const handleViewTransaction = (transaction: any) => {
+  const handleViewTransaction = async (transaction: any) => {
     try {
+      console.log("Detail transaksi yang dibuka:", transaction);
+      
+      // Periksa apakah items tersedia, jika tidak, ambil dari API
+      if (!transaction.items || !Array.isArray(transaction.items) || transaction.items.length === 0) {
+        console.log("Items tidak tersedia atau kosong, mencoba mengambil dari API");
+        
+        try {
+          // Ambil detail transaksi lengkap dari API
+          const detailTransaction = await apiRequest<any>(`/api/transactions/${transaction.id}`);
+          if (detailTransaction) {
+            console.log("Detail transaksi dari API:", detailTransaction);
+            // Update transaction dengan data lengkap
+            transaction = detailTransaction;
+          }
+        } catch (fetchError) {
+          console.error("Gagal mengambil detail transaksi dari API:", fetchError);
+        }
+      }
+      
+      // Setelah mencoba fetch, periksa kembali apakah items tersedia
+      console.log("Items pada transaksi:", transaction.items);
+      
+      // Pastikan items adalah array, jika masih undefined atau bukan array, inisialisasi sebagai array kosong
+      const items = Array.isArray(transaction.items) ? transaction.items : [];
+      
       // Cari data pasien untuk transaksi ini
       const patient = patients?.find((p: any) => p.id === transaction.patientId);
       
@@ -569,7 +594,7 @@ export default function Transactions() {
       const invoiceData = {
         transaction: transaction, // Tambahkan properti transaction
         patient: patient || { name: "Pasien tidak ditemukan", patientId: "-" },
-        items: transaction.items || [],
+        items: items,
         paymentMethod: transaction.paymentMethod || 'cash',
         discount: transaction.discount || 0,
         subtotal: transaction.subtotal || 0,
@@ -654,8 +679,28 @@ export default function Transactions() {
   };
   
   // Fungsi untuk mencetak invoice
-  const handlePrintTransaction = (transaction: Transaction) => {
+  const handlePrintTransaction = async (transaction: Transaction) => {
     try {
+      // Periksa apakah items tersedia, jika tidak, ambil dari API
+      if (!transaction.items || !Array.isArray(transaction.items) || transaction.items.length === 0) {
+        console.log("Items tidak tersedia atau kosong, mencoba mengambil dari API untuk print");
+        
+        try {
+          // Ambil detail transaksi lengkap dari API
+          const detailTransaction = await apiRequest<any>(`/api/transactions/${transaction.id}`);
+          if (detailTransaction) {
+            console.log("Detail transaksi dari API untuk print:", detailTransaction);
+            // Update transaction dengan data lengkap
+            transaction = detailTransaction;
+          }
+        } catch (fetchError) {
+          console.error("Gagal mengambil detail transaksi dari API untuk print:", fetchError);
+        }
+      }
+      
+      // Pastikan items adalah array, jika masih undefined atau bukan array, inisialisasi sebagai array kosong
+      const items = Array.isArray(transaction.items) ? transaction.items : [];
+      
       // Cari data pasien untuk transaksi ini
       const patient = patients?.find((p: any) => p.id === transaction.patientId);
       
@@ -663,7 +708,7 @@ export default function Transactions() {
       const invoiceData = {
         transaction: transaction,
         patient: patient || { name: "Pasien tidak ditemukan", patientId: "-" },
-        items: transaction.items || [],
+        items: items,
         paymentMethod: transaction.paymentMethod || 'cash',
         discount: transaction.discount || 0,
         subtotal: transaction.subtotal || 0,

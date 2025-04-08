@@ -598,9 +598,45 @@ export class DatabaseStorage implements IStorage {
   // Transaction methods
   async getTransaction(id: number): Promise<Transaction | undefined> {
     try {
+      console.log(`Getting transaction details for ID: ${id}`);
+      
+      // Secara eksplisit select semua kolom, termasuk JSON columns
       const result = await db.query.transactions.findFirst({
-        where: eq(schema.transactions.id, id)
+        where: eq(schema.transactions.id, id),
+        columns: {
+          id: true,
+          transactionId: true,
+          patientId: true,
+          totalAmount: true,
+          discount: true,
+          subtotal: true,
+          paymentMethod: true,
+          items: true, // Pastikan items (JSON) diambil
+          creditAmount: true,
+          isPaid: true,
+          paidAmount: true,
+          debtAmount: true,
+          createdAt: true
+        }
       });
+      
+      // Log hasil untuk debugging
+      if (result) {
+        console.log(`Transaction found for ID ${id} with ${result.items ? 'items data' : 'NO items data'}`);
+        
+        // Parse items jika berbentuk string
+        if (result.items && typeof result.items === 'string') {
+          try {
+            result.items = JSON.parse(result.items);
+            console.log(`Items parsed from string for transaction ${id}`);
+          } catch (parseError) {
+            console.error(`Error parsing items for transaction ${id}:`, parseError);
+          }
+        }
+      } else {
+        console.log(`No transaction found for ID ${id}`);
+      }
+      
       return result;
     } catch (error) {
       console.error(`Error getting transaction ${id}:`, error);
@@ -610,8 +646,38 @@ export class DatabaseStorage implements IStorage {
 
   async getAllTransactions(): Promise<Transaction[]> {
     try {
-      return db.query.transactions.findMany({
+      // Secara eksplisit select semua kolom, termasuk JSON columns
+      const transactions = await db.query.transactions.findMany({
+        columns: {
+          id: true,
+          transactionId: true,
+          patientId: true,
+          totalAmount: true,
+          discount: true,
+          subtotal: true,
+          paymentMethod: true,
+          items: true, // Pastikan items (JSON) diambil
+          creditAmount: true,
+          isPaid: true,
+          paidAmount: true,
+          debtAmount: true,
+          createdAt: true
+        },
         orderBy: [desc(schema.transactions.createdAt)]
+      });
+      
+      // Proses data items jika perlu
+      return transactions.map(transaction => {
+        // Parse items jika berbentuk string
+        if (transaction.items && typeof transaction.items === 'string') {
+          try {
+            transaction.items = JSON.parse(transaction.items);
+          } catch (parseError) {
+            console.error(`Error parsing items for transaction ${transaction.id}:`, parseError);
+          }
+        }
+        
+        return transaction;
       });
     } catch (error) {
       console.error("Error getting all transactions:", error);
@@ -623,9 +689,39 @@ export class DatabaseStorage implements IStorage {
   async getTransactionsByPatient(patientId: number, includeRelated: boolean = false): Promise<Transaction[]> {
     try {
       if (!includeRelated) {
-        return db.query.transactions.findMany({
+        // Secara eksplisit select semua kolom, termasuk JSON columns
+        const transactions = await db.query.transactions.findMany({
+          columns: {
+            id: true,
+            transactionId: true,
+            patientId: true,
+            totalAmount: true,
+            discount: true,
+            subtotal: true,
+            paymentMethod: true,
+            items: true, // Pastikan items (JSON) diambil
+            creditAmount: true,
+            isPaid: true,
+            paidAmount: true,
+            debtAmount: true,
+            createdAt: true
+          },
           where: eq(schema.transactions.patientId, patientId),
           orderBy: [desc(schema.transactions.createdAt)]
+        });
+        
+        // Proses data items jika perlu
+        return transactions.map(transaction => {
+          // Parse items jika berbentuk string
+          if (transaction.items && typeof transaction.items === 'string') {
+            try {
+              transaction.items = JSON.parse(transaction.items);
+            } catch (parseError) {
+              console.error(`Error parsing items for transaction ${transaction.id}:`, parseError);
+            }
+          }
+          
+          return transaction;
         });
       }
       
@@ -649,15 +745,43 @@ export class DatabaseStorage implements IStorage {
       
       console.log(`Including transactions from related patients: ${relatedPatientIds.join(', ')}`);
       
-      // Get transactions from all these patients
-      const transactions = await db.select()
+      // Get transactions from all these patients including all fields and items
+      const transactions = await db.select({
+          id: schema.transactions.id,
+          transactionId: schema.transactions.transactionId,
+          patientId: schema.transactions.patientId,
+          totalAmount: schema.transactions.totalAmount,
+          discount: schema.transactions.discount,
+          subtotal: schema.transactions.subtotal,
+          paymentMethod: schema.transactions.paymentMethod,
+          items: schema.transactions.items, // Pastikan items (JSON) diambil
+          creditAmount: schema.transactions.creditAmount,
+          isPaid: schema.transactions.isPaid,
+          paidAmount: schema.transactions.paidAmount,
+          debtAmount: schema.transactions.debtAmount,
+          createdAt: schema.transactions.createdAt
+        })
         .from(schema.transactions)
         .where(inArray(schema.transactions.patientId, relatedPatientIds))
         .orderBy(desc(schema.transactions.createdAt));
+      
+      // Process items
+      const processedTransactions = transactions.map(transaction => {
+        // Parse items jika berbentuk string
+        if (transaction.items && typeof transaction.items === 'string') {
+          try {
+            transaction.items = JSON.parse(transaction.items);
+          } catch (parseError) {
+            console.error(`Error parsing items for transaction ${transaction.id}:`, parseError);
+          }
+        }
+        
+        return transaction;
+      });
         
       // Tambahkan informasi pasien secara manual
       const transactionsWithPatientInfo = await Promise.all(
-        transactions.map(async (transaction) => {
+        processedTransactions.map(async (transaction) => {
           const patient = await db.query.patients.findFirst({
             where: eq(schema.patients.id, transaction.patientId)
           });
@@ -729,9 +853,23 @@ export class DatabaseStorage implements IStorage {
   // Fungsi untuk mendapatkan daftar utang semua pasien
   async getUnpaidTransactions(): Promise<Transaction[]> {
     try {
-      // Dapatkan semua transaksi dengan isPaid = false
+      // Dapatkan semua transaksi dengan isPaid = false, secara eksplisit pilih semua kolom
       const unpaidTransactions = await db
-        .select()
+        .select({
+          id: schema.transactions.id,
+          transactionId: schema.transactions.transactionId,
+          patientId: schema.transactions.patientId,
+          totalAmount: schema.transactions.totalAmount,
+          discount: schema.transactions.discount,
+          subtotal: schema.transactions.subtotal,
+          paymentMethod: schema.transactions.paymentMethod,
+          items: schema.transactions.items, // Pastikan items (JSON) diambil
+          creditAmount: schema.transactions.creditAmount,
+          isPaid: schema.transactions.isPaid,
+          paidAmount: schema.transactions.paidAmount,
+          debtAmount: schema.transactions.debtAmount,
+          createdAt: schema.transactions.createdAt
+        })
         .from(schema.transactions)
         .where(eq(schema.transactions.isPaid, false))
         .orderBy(desc(schema.transactions.createdAt));
@@ -741,11 +879,23 @@ export class DatabaseStorage implements IStorage {
         const debtAmount = parseFloat(trans.debtAmount || "0");
         return debtAmount > 0; // Hanya tampilkan jika debtAmount > 0
       });
+      
+      // Proses items jika perlu dan ubah format date
+      return realUnpaidTransactions.map(trans => {
+        // Parse items jika berbentuk string
+        if (trans.items && typeof trans.items === 'string') {
+          try {
+            trans.items = JSON.parse(trans.items);
+          } catch (parseError) {
+            console.error(`Error parsing items for transaction ${trans.id}:`, parseError);
+          }
+        }
         
-      return realUnpaidTransactions.map(trans => ({
-        ...trans,
-        createdAt: getWIBDate(trans.createdAt)
-      }));
+        return {
+          ...trans,
+          createdAt: getWIBDate(trans.createdAt)
+        };
+      });
     } catch (error) {
       console.error('Error getting unpaid transactions:', error);
       throw error;
@@ -755,9 +905,23 @@ export class DatabaseStorage implements IStorage {
   // Fungsi untuk mendapatkan daftar utang pasien tertentu
   async getUnpaidTransactionsByPatient(patientId: number): Promise<Transaction[]> {
     try {
-      // Dapatkan semua transaksi pasien dengan isPaid = false
+      // Dapatkan semua transaksi pasien dengan isPaid = false, secara eksplisit pilih semua kolom
       const unpaidTransactions = await db
-        .select()
+        .select({
+          id: schema.transactions.id,
+          transactionId: schema.transactions.transactionId,
+          patientId: schema.transactions.patientId,
+          totalAmount: schema.transactions.totalAmount,
+          discount: schema.transactions.discount,
+          subtotal: schema.transactions.subtotal,
+          paymentMethod: schema.transactions.paymentMethod,
+          items: schema.transactions.items, // Pastikan items (JSON) diambil
+          creditAmount: schema.transactions.creditAmount,
+          isPaid: schema.transactions.isPaid,
+          paidAmount: schema.transactions.paidAmount,
+          debtAmount: schema.transactions.debtAmount,
+          createdAt: schema.transactions.createdAt
+        })
         .from(schema.transactions)
         .where(
           and(
@@ -772,11 +936,23 @@ export class DatabaseStorage implements IStorage {
         const debtAmount = parseFloat(trans.debtAmount || "0");
         return debtAmount > 0; // Hanya tampilkan jika debtAmount > 0
       });
+      
+      // Proses items jika perlu dan ubah format date
+      return realUnpaidTransactions.map(trans => {
+        // Parse items jika berbentuk string
+        if (trans.items && typeof trans.items === 'string') {
+          try {
+            trans.items = JSON.parse(trans.items);
+          } catch (parseError) {
+            console.error(`Error parsing items for transaction ${trans.id}:`, parseError);
+          }
+        }
         
-      return realUnpaidTransactions.map(trans => ({
-        ...trans,
-        createdAt: getWIBDate(trans.createdAt)
-      }));
+        return {
+          ...trans,
+          createdAt: getWIBDate(trans.createdAt)
+        };
+      });
     } catch (error) {
       console.error(`Error getting unpaid transactions for patient ${patientId}:`, error);
       throw error;
