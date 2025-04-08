@@ -100,13 +100,22 @@ export default function Transactions() {
       const patientIdNumber = parseInt(patientIdFromUrl);
       console.log("Ditemukan patientId di URL:", patientIdNumber);
       
-      // Set selected patient ID
-      setSelectedPatientId(patientIdNumber);
-      
-      // Buka form transaksi
-      setIsTransactionFormOpen(true);
+      // Tunggu sebentar untuk memastikan data pasien sudah tersedia
+      setTimeout(() => {
+        // Set selected patient ID
+        setSelectedPatientId(patientIdNumber);
+        
+        // Buka form transaksi
+        setIsTransactionFormOpen(true);
+        
+        // Tampilkan toast notifikasi untuk membantu pengguna
+        toast({
+          title: "Membuat transaksi baru",
+          description: "Form transaksi akan segera dibuka dengan data pasien"
+        });
+      }, 200);
     }
-  }, [patientIdFromUrl]);
+  }, [patientIdFromUrl, toast]);
   
   // Custom Event Listener untuk menerima notifikasi dari sidebar
   useEffect(() => {

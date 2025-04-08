@@ -631,22 +631,13 @@ export default function PatientDetail() {
                   size="sm" 
                   className="h-8 text-xs"
                   onClick={() => {
-                    // Navigasi ke halaman transaksi
-                    navigate('/transactions');
+                    // Navigasi ke halaman transaksi dengan parameter patientId
+                    navigate(`/transactions?patientId=${patientId}`);
                     
-                    // Gunakan event custom untuk membuka form transaksi dengan pasien yang dipilih
-                    setTimeout(() => {
-                      const event = new CustomEvent('openTransactionForm', { 
-                        detail: { patientId: patientId ? String(patientId) : '' } 
-                      });
-                      
-                      window.dispatchEvent(event);
-                      
-                      toast({
-                        title: "Menambah paket",
-                        description: "Form transaksi untuk pembelian paket dibuka"
-                      });
-                    }, 100);
+                    toast({
+                      title: "Menambah paket",
+                      description: "Form transaksi untuk pembelian paket akan dibuka"
+                    });
                   }}
                 >
                   + Tambah
@@ -730,22 +721,13 @@ export default function PatientDetail() {
                   size="sm" 
                   className="h-8 text-xs"
                   onClick={() => {
-                    // Navigasi ke halaman transaksi
-                    navigate('/transactions');
+                    // Navigasi ke halaman transaksi dengan parameter patientId
+                    navigate(`/transactions?patientId=${patientId}`);
                     
-                    // Gunakan event custom untuk membuka form transaksi dengan pasien yang dipilih
-                    setTimeout(() => {
-                      const event = new CustomEvent('openTransactionForm', { 
-                        detail: { patientId: patientId ? String(patientId) : '' } 
-                      });
-                      
-                      window.dispatchEvent(event);
-                      
-                      toast({
-                        title: "Membuat transaksi baru",
-                        description: "Form pembuatan transaksi dibuka"
-                      });
-                    }, 100);
+                    toast({
+                      title: "Membuat transaksi baru",
+                      description: "Form pembuatan transaksi akan dibuka"
+                    });
                   }}
                 >
                   + Tambah
