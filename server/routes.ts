@@ -1248,6 +1248,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transaction.items = [];
       }
       
+      // Lengkapi informasi item dengan nama produk atau paket
+      const enhancedItems = [];
+      
+      if (Array.isArray(transaction.items)) {
+        for (const item of transaction.items) {
+          let enhancedItem = { ...item };
+          
+          if (item.type === 'product') {
+            try {
+              const product = await storage.getProduct(item.id);
+              if (product) {
+                enhancedItem.name = product.name;
+              } else {
+                enhancedItem.name = `Produk #${item.id}`;
+              }
+            } catch (err) {
+              console.error(`Error fetching product details for ID ${item.id}:`, err);
+              enhancedItem.name = `Produk #${item.id}`;
+            }
+          } else if (item.type === 'package') {
+            try {
+              const package_ = await storage.getPackage(item.id);
+              if (package_) {
+                enhancedItem.name = package_.name;
+              } else {
+                enhancedItem.name = `Paket #${item.id}`;
+              }
+            } catch (err) {
+              console.error(`Error fetching package details for ID ${item.id}:`, err);
+              enhancedItem.name = `Paket #${item.id}`;
+            }
+          } else {
+            enhancedItem.name = item.description || `Item (${item.type})`;
+          }
+          
+          enhancedItems.push(enhancedItem);
+        }
+        
+        // Terapkan items yang sudah dilengkapi informasinya
+        transaction.items = enhancedItems;
+      }
+      
       console.log(`Transaction found for ID ${id} with items data:`, Array.isArray(transaction.items) ? `${transaction.items.length} items` : 'NO valid items');
       
       return res.status(200).json(transaction);
