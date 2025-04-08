@@ -187,8 +187,6 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const { data: allPatients = [] } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
   });
-  
-
 
   // Fetch packages
   const { data: packages = [] } = useQuery<Package[]>({
@@ -348,7 +346,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     console.log("Patients available:", allAvailablePatients?.length || 0);
     
     if (isOpen && selectedPatientId !== null && selectedPatientId !== undefined) {
-      console.log("TransactionForm - selectedPatientId:", selectedPatientId, "type:", typeof selectedPatientId);
+      console.log("TransactionForm - attempt to set patient ID:", selectedPatientId, "type:", typeof selectedPatientId);
+      console.log("Event source: custom event dari halaman slot terapi");
       
       // Tunggu data pasien tersedia terlebih dahulu
       if (!allAvailablePatients || allAvailablePatients.length === 0) {
@@ -371,18 +370,19 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         patientIdToSearch = selectedPatientId;
       }
       
-      console.log("Mencari pasien dengan ID:", patientIdToSearch);
-      console.log("Dari total", allAvailablePatients.length, "pasien yang tersedia");
+      console.log("DEBUG: Mencari pasien dengan ID:", patientIdToSearch);
+      console.log("DEBUG: Dari total", allAvailablePatients.length, "pasien yang tersedia");
+      console.log("DEBUG: Beberapa ID pasien yang ada:", allAvailablePatients.slice(0, 5).map(p => p.id));
       
       const patient = allAvailablePatients.find((p: Patient) => p.id === patientIdToSearch);
       
       if (patient) {
-        console.log("Found patient:", patient.name, "with ID:", patient.id);
+        console.log("DEBUG: Found patient:", patient.name, "with ID:", patient.id);
         
         // Set nilai pada form dengan delay untuk memastikan form sudah dimount
         setTimeout(() => {
           form.setValue("patientId", patientIdToSearch.toString());
-          console.log("PatientId set to form:", patientIdToSearch.toString());
+          console.log("PatientId set to form:", patientIdToSearch.toString(), "for patient name:", patient.name);
           
           // Reset form fields that depend on patient
           setCartItems([]);
@@ -403,6 +403,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       } else {
         // Pasien tidak ditemukan, tampilkan pesan error
         console.error("Patient not found with ID:", patientIdToSearch);
+        console.log("DEBUG: Data pasien yang tersedia:", JSON.stringify(allAvailablePatients.map(p => ({ id: p.id, name: p.name }))));
         toast({
           title: "Error",
           description: "Pasien tidak ditemukan. Silakan pilih pasien manual.",
