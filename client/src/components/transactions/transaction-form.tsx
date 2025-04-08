@@ -163,10 +163,17 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Siapkan default value untuk patientId berdasarkan prop selectedPatientId
+  const initialPatientId = selectedPatientId ? 
+    (typeof selectedPatientId === 'number' ? selectedPatientId.toString() : selectedPatientId) 
+    : '';
+  
+  console.log("Setting up form with initialPatientId:", initialPatientId, "from selectedPatientId:", selectedPatientId);
+  
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: {
-      patientId: "",
+      patientId: initialPatientId,
       paymentMethod: "cash",
       discount: "0",
       items: [],
@@ -363,73 +370,22 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     const allAvailablePatients = allPatients?.length > 0 ? allPatients : patientsLocal;
     
     // Log untuk debugging
-    console.log("TransactionForm effect running with patients:", {
-      isOpen, 
-      selectedPatientId,
-      patientsCount: allAvailablePatients?.length || 0,
-      patientSetRef: patientSetRef.current
-    });
+    console.log("TransactionForm effect running - isOpen:", isOpen, "selectedPatientId:", selectedPatientId);
     
-    // Jika tidak ada selectedPatientId atau pasien sudah diset, keluar dari effect
-    if (!selectedPatientId || patientSetRef.current) {
+    // Jika tidak ada selectedPatientId, keluar dari effect
+    if (!selectedPatientId) {
+      console.log("Tidak ada selectedPatientId, keluar dari effect");
       return;
     }
     
-    // Cek apakah data pasien tersedia
-    if (!allAvailablePatients || allAvailablePatients.length === 0) {
-      console.log("Data pasien belum tersedia, menunggu...");
-      // Tambahkan toast untuk membantu user mengetahui kendala
-      toast({
-        title: "Memuat data pasien",
-        description: "Menunggu data pasien tersedia..."
-      });
-      
-      // Coba ambil data pasien langsung dari API (sebagai fallback)
-      if (typeof selectedPatientId === 'number' || typeof selectedPatientId === 'string') {
-        const patientIdAsNumber = typeof selectedPatientId === 'string' ? parseInt(selectedPatientId) : selectedPatientId;
-        
-        console.log("Mencoba ambil data pasien langsung dari API dengan ID:", patientIdAsNumber);
-        
-        // Langsung ambil data pasien dari API
-        apiRequest<Patient>(`/api/patients/${patientIdAsNumber}`)
-          .then(patient => {
-            if (patient && patient.id) {
-              console.log("Berhasil mendapatkan data pasien dari API langsung:", patient.name);
-              
-              // Set nilai pada form
-              form.setValue("patientId", patient.id.toString());
-              
-              // Reset form fields yang tergantung pada pasien
-              setCartItems([]);
-              setSelectedPackage("");
-              setSelectedSession(null);
-              setUseExistingPackage(false);
-              
-              // Refetch data terkait
-              refetchActiveSessions();
-              refetchUnpaidTransactions();
-              
-              patientSetRef.current = true;
-              
-              // Tampilkan toast notifikasi sukses
-              toast({
-                title: "Data pasien dimuat",
-                description: `Form transaksi siap untuk ${patient.name}`
-              });
-            }
-          })
-          .catch(err => {
-            console.error("Gagal mengambil data pasien dari API:", err);
-          });
-      }
-      
+    // Jika pasien sudah diset sebelumnya, jangan set ulang
+    if (patientSetRef.current) {
+      console.log("Patient sudah diset sebelumnya (patientSetRef=true), tidak melakukan apa-apa");
       return;
     }
-    
-    // Temukan pasien berdasarkan ID
-    let patientIdToSearch: number;
     
     // Pastikan selectedPatientId adalah number
+    let patientIdToSearch: number;
     if (typeof selectedPatientId === 'string') {
       patientIdToSearch = parseInt(selectedPatientId);
     } else {
@@ -437,68 +393,94 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
     }
     
     console.log("Mencari pasien dengan ID:", patientIdToSearch);
-    console.log("Dari total", allAvailablePatients.length, "pasien yang tersedia");
-    if (allAvailablePatients.length > 0) {
-      console.log("Beberapa ID pasien yang ada:", allAvailablePatients.slice(0, 5).map(p => p.id));
-    }
     
-    const patient = allAvailablePatients.find((p: Patient) => p.id === patientIdToSearch);
-    
-    if (patient) {
-      console.log("Pasien ditemukan:", patient.name, "dengan ID:", patient.id);
+    // Periksa data pasien available
+    if (!allAvailablePatients || allAvailablePatients.length === 0) {
+      console.log("Data pasien belum tersedia, mencoba ambil dari API langsung");
       
-      // Set nilai pada form segera (tanpa delay)
-      form.setValue("patientId", patientIdToSearch.toString());
-      console.log("PatientId diatur ke form:", patientIdToSearch.toString(), "untuk pasien:", patient.name);
-      
-      // Reset form fields yang tergantung pada pasien
-      setCartItems([]);
-      setSelectedPackage("");
-      setSelectedSession(null);
-      setUseExistingPackage(false);
-      
-      // Auto refetch active sessions untuk pasien yang dipilih
-      refetchActiveSessions();
-      refetchUnpaidTransactions();
-      
-      // Set flag bahwa pasien sudah diset
-      patientSetRef.current = true;
-      
-      // Tampilkan toast notifikasi sukses
-      toast({
-        title: "Data pasien dimuat",
-        description: `Form transaksi siap untuk ${patient.name}`
-      });
-    } else {
-      // Pasien tidak ditemukan, tampilkan pesan error
-      console.error("Pasien tidak ditemukan dengan ID:", patientIdToSearch);
-      console.log("Data pasien yang tersedia:", JSON.stringify(allAvailablePatients.map(p => ({ id: p.id, name: p.name }))));
-      
-      // Coba ambil data pasien langsung dari API (sebagai fallback)
-      console.log("Mencoba ambil data pasien langsung dari API dengan ID:", patientIdToSearch);
-      
-      // Langsung ambil data pasien dari API
+      // Ambil data pasien langsung dari API
       apiRequest<Patient>(`/api/patients/${patientIdToSearch}`)
         .then(patient => {
           if (patient && patient.id) {
-            console.log("Berhasil mendapatkan data pasien dari API langsung:", patient.name);
+            console.log("Berhasil mendapatkan data pasien dari API:", patient.name);
             
-            // Set nilai pada form
+            // Set nilai form
             form.setValue("patientId", patient.id.toString());
-            
-            // Reset form fields yang tergantung pada pasien
-            setCartItems([]);
-            setSelectedPackage("");
-            setSelectedSession(null);
-            setUseExistingPackage(false);
             
             // Refetch data terkait
             refetchActiveSessions();
             refetchUnpaidTransactions();
             
+            // Set flag
             patientSetRef.current = true;
             
-            // Tampilkan toast notifikasi sukses
+            // Feedback
+            toast({
+              title: "Data pasien dimuat",
+              description: `Form transaksi siap untuk ${patient.name}`
+            });
+          }
+        })
+        .catch(err => {
+          console.error("Gagal mengambil data pasien dari API:", err);
+        });
+      
+      return;
+    }
+    
+    // Cari pasien di data yang ada
+    const patient = allAvailablePatients.find(p => p.id === patientIdToSearch);
+    
+    if (patient) {
+      console.log("Pasien ditemukan:", patient.name, "dengan ID:", patient.id);
+      
+      // Set nilai form
+      form.setValue("patientId", patient.id.toString());
+      
+      // Reset fields terkait
+      setCartItems([]);
+      setSelectedPackage("");
+      setSelectedSession(null);
+      setUseExistingPackage(false);
+      
+      // Refresh data terkait
+      refetchActiveSessions();
+      refetchUnpaidTransactions();
+      
+      // Set flag
+      patientSetRef.current = true;
+      
+      // Feedback
+      toast({
+        title: "Data pasien dimuat",
+        description: `Form transaksi siap untuk ${patient.name}`
+      });
+    } else {
+      // Fallback ke API
+      console.log("Pasien tidak ditemukan di cache, mencoba dari API");
+      
+      apiRequest<Patient>(`/api/patients/${patientIdToSearch}`)
+        .then(patient => {
+          if (patient && patient.id) {
+            console.log("Berhasil mendapatkan data pasien dari API:", patient.name);
+            
+            // Set nilai form
+            form.setValue("patientId", patient.id.toString());
+            
+            // Reset fields terkait
+            setCartItems([]);
+            setSelectedPackage("");
+            setSelectedSession(null);
+            setUseExistingPackage(false);
+            
+            // Refresh data
+            refetchActiveSessions();
+            refetchUnpaidTransactions();
+            
+            // Set flag
+            patientSetRef.current = true;
+            
+            // Feedback
             toast({
               title: "Data pasien dimuat",
               description: `Form transaksi siap untuk ${patient.name}`
@@ -1469,7 +1451,10 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                 // Pastikan patientId dalam bentuk string untuk select component
                 let idAsString = '';
                 if (field.value) {
-                  idAsString = typeof field.value === 'number' ? field.value.toString() : field.value;
+                  // Pastikan kita menangani kasus ketika field.value adalah null atau undefined
+                  idAsString = field.value === null || field.value === undefined 
+                    ? '' 
+                    : (typeof field.value === 'number' ? field.value.toString() : String(field.value));
                 }
                 
                 // Log untuk debugging
@@ -1560,9 +1545,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                         {field.value && (
                           <div className="text-sm p-2 border rounded-md bg-muted/40">
                             {(() => {
-                              const patientIdStr = typeof field.value === 'number' 
-                                ? field.value.toString() 
-                                : field.value;
+                              const patientIdStr = field.value === null || field.value === undefined
+                                ? ''
+                                : (typeof field.value === 'number'
+                                   ? field.value.toString()
+                                   : String(field.value));
                                 
                               console.log("Looking for patient with ID str:", patientIdStr);
                               console.log("Types of patient IDs available:", patients.slice(0, 3).map(p => typeof p.id));
