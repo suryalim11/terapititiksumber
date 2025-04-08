@@ -563,44 +563,75 @@ export default function Transactions() {
     try {
       console.log("Detail transaksi yang dibuka:", transaction);
       
-      // Periksa apakah items tersedia, jika tidak, ambil dari API
-      if (!transaction.items || !Array.isArray(transaction.items) || transaction.items.length === 0) {
-        console.log("Items tidak tersedia atau kosong, mencoba mengambil dari API");
-        
+      // Selalu coba ambil detail transaksi segar dari API untuk memastikan data lengkap
+      console.log(`Mengambil detail terbaru untuk transaksi ID ${transaction.id}`);
+      let updatedTransaction = {...transaction};
+      
+      try {
+        // Ambil detail transaksi lengkap dari API
+        const detailTransaction = await apiRequest<any>(`/api/transactions/${transaction.id}`);
+        if (detailTransaction) {
+          console.log("Detail transaksi dari API:", detailTransaction);
+          updatedTransaction = detailTransaction;
+        }
+      } catch (fetchError) {
+        console.error("Gagal mengambil detail transaksi dari API:", fetchError);
+        // Lanjutkan dengan data yang sudah ada
+      }
+      
+      // Proses items untuk memastikan format yang benar
+      let processedItems = [];
+      
+      // Cek apakah items sudah dalam bentuk array yang valid
+      if (updatedTransaction.items && Array.isArray(updatedTransaction.items)) {
+        console.log("Items sudah dalam bentuk array:", updatedTransaction.items);
+        processedItems = updatedTransaction.items;
+      } 
+      // Jika items adalah string, coba parse sebagai JSON
+      else if (updatedTransaction.items && typeof updatedTransaction.items === 'string') {
         try {
-          // Ambil detail transaksi lengkap dari API
-          const detailTransaction = await apiRequest<any>(`/api/transactions/${transaction.id}`);
-          if (detailTransaction) {
-            console.log("Detail transaksi dari API:", detailTransaction);
-            // Update transaction dengan data lengkap
-            transaction = detailTransaction;
+          console.log("Items dalam bentuk string, mencoba parse:", updatedTransaction.items);
+          processedItems = JSON.parse(updatedTransaction.items);
+          console.log("Hasil parsing items:", processedItems);
+          
+          // Pastikan hasil parsing adalah array
+          if (!Array.isArray(processedItems)) {
+            console.warn("Hasil parsing bukan array, konversi ke array jika mungkin");
+            if (typeof processedItems === 'object') {
+              processedItems = Object.values(processedItems);
+            } else {
+              processedItems = [];
+            }
           }
-        } catch (fetchError) {
-          console.error("Gagal mengambil detail transaksi dari API:", fetchError);
+        } catch (parseError) {
+          console.error("Gagal mem-parsing items:", parseError);
+          processedItems = [];
         }
       }
       
-      // Setelah mencoba fetch, periksa kembali apakah items tersedia
-      console.log("Items pada transaksi:", transaction.items);
+      // Pastikan kembali bahwa items adalah array
+      if (!Array.isArray(processedItems)) {
+        console.warn("Items masih bukan array setelah pemrosesan, set ke array kosong");
+        processedItems = [];
+      }
       
-      // Pastikan items adalah array, jika masih undefined atau bukan array, inisialisasi sebagai array kosong
-      const items = Array.isArray(transaction.items) ? transaction.items : [];
+      console.log("Items final yang akan ditampilkan:", processedItems);
       
       // Cari data pasien untuk transaksi ini
-      const patient = patients?.find((p: any) => p.id === transaction.patientId);
+      const patient = patients?.find((p: any) => p.id === updatedTransaction.patientId);
       
       // Pastikan struktur data sesuai dengan yang diharapkan di komponen Invoice
       // Membuat objek dengan properti yang tepat sesuai InvoiceProps
       const invoiceData = {
-        transaction: transaction, // Tambahkan properti transaction
+        transaction: updatedTransaction, // Gunakan transaksi yang sudah diupdate
         patient: patient || { name: "Pasien tidak ditemukan", patientId: "-" },
-        items: items,
-        paymentMethod: transaction.paymentMethod || 'cash',
-        discount: transaction.discount || 0,
-        subtotal: transaction.subtotal || 0,
-        isPaid: transaction.isPaid,
-        creditAmount: transaction.creditAmount || 0,
-        paidAmount: transaction.paidAmount || 0
+        items: processedItems, // Gunakan items yang sudah diproses
+        paymentMethod: updatedTransaction.paymentMethod || 'cash',
+        discount: updatedTransaction.discount || 0,
+        subtotal: updatedTransaction.subtotal || 0,
+        isPaid: updatedTransaction.isPaid,
+        creditAmount: updatedTransaction.creditAmount || 0,
+        paidAmount: updatedTransaction.paidAmount || 0
       };
       
       setInvoiceData(invoiceData);
@@ -681,49 +712,85 @@ export default function Transactions() {
   // Fungsi untuk mencetak invoice
   const handlePrintTransaction = async (transaction: Transaction) => {
     try {
-      // Periksa apakah items tersedia, jika tidak, ambil dari API
-      if (!transaction.items || !Array.isArray(transaction.items) || transaction.items.length === 0) {
-        console.log("Items tidak tersedia atau kosong, mencoba mengambil dari API untuk print");
-        
+      console.log("Transaksi yang akan dicetak:", transaction);
+      
+      // Selalu coba ambil detail transaksi segar dari API untuk memastikan data lengkap
+      console.log(`Mengambil detail terbaru untuk transaksi ID ${transaction.id} untuk cetak`);
+      let updatedTransaction = {...transaction};
+      
+      try {
+        // Ambil detail transaksi lengkap dari API
+        const detailTransaction = await apiRequest<any>(`/api/transactions/${transaction.id}`);
+        if (detailTransaction) {
+          console.log("Detail transaksi dari API untuk print:", detailTransaction);
+          updatedTransaction = detailTransaction;
+        }
+      } catch (fetchError) {
+        console.error("Gagal mengambil detail transaksi dari API untuk print:", fetchError);
+        // Lanjutkan dengan data yang sudah ada
+      }
+      
+      // Proses items untuk memastikan format yang benar
+      let processedItems = [];
+      
+      // Cek apakah items sudah dalam bentuk array yang valid
+      if (updatedTransaction.items && Array.isArray(updatedTransaction.items)) {
+        console.log("Items untuk print sudah dalam bentuk array:", updatedTransaction.items);
+        processedItems = updatedTransaction.items;
+      } 
+      // Jika items adalah string, coba parse sebagai JSON
+      else if (updatedTransaction.items && typeof updatedTransaction.items === 'string') {
         try {
-          // Ambil detail transaksi lengkap dari API
-          const detailTransaction = await apiRequest<any>(`/api/transactions/${transaction.id}`);
-          if (detailTransaction) {
-            console.log("Detail transaksi dari API untuk print:", detailTransaction);
-            // Update transaction dengan data lengkap
-            transaction = detailTransaction;
+          console.log("Items dalam bentuk string, mencoba parse untuk print:", updatedTransaction.items);
+          processedItems = JSON.parse(updatedTransaction.items);
+          console.log("Hasil parsing items untuk print:", processedItems);
+          
+          // Pastikan hasil parsing adalah array
+          if (!Array.isArray(processedItems)) {
+            console.warn("Hasil parsing bukan array, konversi ke array jika mungkin");
+            if (typeof processedItems === 'object') {
+              processedItems = Object.values(processedItems);
+            } else {
+              processedItems = [];
+            }
           }
-        } catch (fetchError) {
-          console.error("Gagal mengambil detail transaksi dari API untuk print:", fetchError);
+        } catch (parseError) {
+          console.error("Gagal mem-parsing items untuk print:", parseError);
+          processedItems = [];
         }
       }
       
-      // Pastikan items adalah array, jika masih undefined atau bukan array, inisialisasi sebagai array kosong
-      const items = Array.isArray(transaction.items) ? transaction.items : [];
+      // Pastikan kembali bahwa items adalah array
+      if (!Array.isArray(processedItems)) {
+        console.warn("Items masih bukan array setelah pemrosesan untuk print, set ke array kosong");
+        processedItems = [];
+      }
+      
+      console.log("Items final yang akan dicetak:", processedItems);
       
       // Cari data pasien untuk transaksi ini
-      const patient = patients?.find((p: any) => p.id === transaction.patientId);
+      const patient = patients?.find((p: any) => p.id === updatedTransaction.patientId);
       
-      // Gunakan format data yang sama dengan handleViewTransaction
+      // Pastikan struktur data sesuai dengan yang diharapkan di komponen Invoice
       const invoiceData = {
-        transaction: transaction,
+        transaction: updatedTransaction, // Gunakan transaksi yang sudah diupdate
         patient: patient || { name: "Pasien tidak ditemukan", patientId: "-" },
-        items: items,
-        paymentMethod: transaction.paymentMethod || 'cash',
-        discount: transaction.discount || 0,
-        subtotal: transaction.subtotal || 0,
-        isPaid: transaction.isPaid,
-        creditAmount: transaction.creditAmount || 0,
-        paidAmount: transaction.paidAmount || 0
+        items: processedItems, // Gunakan items yang sudah diproses
+        paymentMethod: updatedTransaction.paymentMethod || 'cash',
+        discount: updatedTransaction.discount || 0,
+        subtotal: updatedTransaction.subtotal || 0,
+        isPaid: updatedTransaction.isPaid,
+        creditAmount: updatedTransaction.creditAmount || 0,
+        paidAmount: updatedTransaction.paidAmount || 0
       };
       
       setInvoiceData(invoiceData);
       setIsInvoiceOpen(true);
       
-      // Print setelah invoice terbuka
+      // Print setelah invoice terbuka dengan delay lebih lama untuk memastikan render selesai
       setTimeout(() => {
         window.print();
-      }, 500);
+      }, 800);
     } catch (error) {
       console.error("Error printing transaction:", error);
       toast({
