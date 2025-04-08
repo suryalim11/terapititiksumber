@@ -209,11 +209,19 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         doc.setFont("helvetica", "normal");
         let y = tableTop + 10;
         
+        // Debug item data untuk memahami struktur items
+        console.log("Item data dari transaksi:", data.items);
+        
         // Pastikan items adalah array dan setiap item memiliki properti yang diperlukan
         if (Array.isArray(data.items)) {
           data.items.forEach((item, index) => {
-            // Pastikan setiap nilai yang akan digunakan dalam PDF ada dan valid
-            const itemName = item.name || 'Item tanpa nama';
+            console.log(`Item #${index}:`, item);
+            
+            // Simpan nama asli item, jangan gunakan fallback kecuali benar-benar kosong
+            // Gunakan properti name dan fallback jika kosong
+            const itemName = item.name || `Item #${index+1}`;
+            
+            // Pastikan quantity dan price ada
             const itemQuantity = (item.quantity !== undefined && item.quantity !== null) ? item.quantity.toString() : '1';
             const itemPrice = item.price || '0';
             
@@ -236,6 +244,8 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
             
             y += 8;
           });
+        } else {
+          console.error("data.items bukan array:", data.items);
         }
         
         // Garis sebelum total
@@ -424,7 +434,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       if (settings.includeDetailedItems && data.items && data.items.length > 0) {
         itemDetails = '\n*Detail Item:*';
         data.items.forEach(item => {
-          itemDetails += `\n${item.quantity} x ${item.name} - ${formatPrice(item.price)}`;
+          // Gunakan properti name atau fallback jika tidak ada
+          const itemName = item.name || `Item`;
+          itemDetails += `\n${item.quantity} x ${itemName} - ${formatPrice(item.price)}`;
         });
       }
       
