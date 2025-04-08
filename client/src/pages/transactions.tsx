@@ -177,17 +177,31 @@ export default function Transactions() {
   useEffect(() => {
     const handleOpenTransactionForm = (event: CustomEvent) => {
       const patientId = event.detail?.patientId;
+      const patientName = event.detail?.patientName;
+      
+      console.log("Event openTransactionForm diterima:", {
+        rawPatientId: patientId,
+        patientIdType: typeof patientId,
+        patientName
+      });
       
       if (patientId) {
         // Parse patientId ke number untuk memastikan tipe data
         const patientIdNumber = typeof patientId === 'string' ? parseInt(patientId) : patientId;
         
-        console.log("Event openTransactionForm diterima dengan patientId:", patientIdNumber);
+        console.log("Event openTransactionForm diterima dengan patientId:", patientIdNumber, "type:", typeof patientIdNumber);
         
         // Verifikasi pasien ada dalam data
-        const patientExists = patients.some((p: any) => p.id === patientIdNumber);
+        console.log("Memeriksa data pasien. Total pasien:", patients?.length || 0);
+        if (patients && patients.length > 0) {
+          console.log("Sampel ID pasien yang tersedia:", patients.slice(0, 5).map((p: any) => p.id));
+        }
         
-        if (patientExists) {
+        const patient = patients.find((p: any) => p.id === patientIdNumber);
+        
+        if (patient) {
+          console.log("Pasien ditemukan:", patient.name, "dengan ID:", patient.id);
+          
           // Set selected patient ID
           setSelectedPatientId(patientIdNumber);
           
@@ -204,15 +218,39 @@ export default function Transactions() {
             // Tampilkan toast untuk konfirmasi
             toast({
               title: "Form transaksi dibuka",
-              description: `Silahkan lengkapi data transaksi untuk pasien ini`,
+              description: `Silahkan lengkapi data transaksi untuk ${patient.name}`,
             });
-          }, 100);
+          }, 300);
         } else {
-          toast({
-            title: "Pasien tidak ditemukan",
-            description: `Tidak dapat menemukan pasien dengan ID ${patientIdNumber}`,
-            variant: "destructive"
-          });
+          console.error("Pasien dengan ID", patientIdNumber, "tidak ditemukan dalam data");
+          console.log("Mencoba memuat data pasien secara langsung...");
+          
+          // Coba ambil data pasien secara langsung dari server
+          apiRequest<any>(`/api/patients/${patientIdNumber}`)
+            .then(directPatient => {
+              if (directPatient && directPatient.id) {
+                console.log("Pasien berhasil dimuat langsung dari API:", directPatient.name);
+                setSelectedPatientId(directPatient.id);
+                
+                setTimeout(() => {
+                  setIsTransactionFormOpen(true);
+                  toast({
+                    title: "Form transaksi dibuka",
+                    description: `Silahkan lengkapi data transaksi untuk ${directPatient.name}`,
+                  });
+                }, 300);
+              } else {
+                throw new Error("Pasien tidak ditemukan di API");
+              }
+            })
+            .catch(err => {
+              console.error("Gagal mendapatkan data pasien langsung:", err);
+              toast({
+                title: "Pasien tidak ditemukan",
+                description: `Tidak dapat menemukan pasien dengan ID ${patientIdNumber}`,
+                variant: "destructive"
+              });
+            });
         }
       } else {
         // Jika tidak ada patientId, buka form kosong
@@ -231,7 +269,7 @@ export default function Transactions() {
       // Cabut event listener saat komponen unmount
       window.removeEventListener('openTransactionForm' as any, handleOpenTransactionForm);
     };
-  }, [patients, toast]); // Tambahkan dependensi yang diperlukan
+  }, [patients, toast, apiRequest]); // Tambahkan dependensi yang diperlukan
   
   // Fetch data transactions
   const { 

@@ -352,15 +352,28 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       // Tunggu sebentar untuk memastikan halaman transaksi sudah dimuat
       setTimeout(() => {
         // Buat custom event untuk membuka form transaksi
+        // Konversi patient.id ke number untuk memastikan tipe data konsisten
+        const patientIdNumber = typeof patient.id === 'string' ? parseInt(patient.id) : patient.id;
+        
         const openFormEvent = new CustomEvent('openTransactionForm', {
-          detail: { patientId: patient.id }
+          detail: { 
+            patientId: patientIdNumber,
+            patientName: patient.name 
+          }
+        });
+        
+        // Log untuk debugging
+        console.log("Mengirim event dengan data:", {
+          patientId: patientIdNumber,
+          patientIdType: typeof patientIdNumber,
+          patientName: patient.name
         });
         
         // Dispatch event ke window sehingga halaman transaksi bisa menangkapnya
         window.dispatchEvent(openFormEvent);
         
-        console.log("Dispatched openTransactionForm event with patientId:", patient.id);
-      }, 700); // Delay 700ms
+        console.log("Dispatched openTransactionForm event with patientId:", patientIdNumber);
+      }, 1000); // Delay 1000ms (1 detik) untuk memastikan halaman transaksi sudah benar-benar dimuat
       
       // Tambahkan notifikasi untuk feedback
       toast({
