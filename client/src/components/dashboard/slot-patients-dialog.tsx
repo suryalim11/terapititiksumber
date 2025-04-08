@@ -154,7 +154,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       }
     },
     enabled: !!slotId && isOpen,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: true,
+    refetchInterval: isOpen ? 2000 : false, // Refresh data every 2 seconds when dialog is open
+    staleTime: 0 // Consider data always stale to ensure fresh content
   });
   
   // Mutations
@@ -182,9 +184,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       
       // Refresh data setelah membatalkan janji
       refetch();
-      queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      
+      // Invalidate all related queries to ensure fresh data everywhere
+      queryClient.invalidateQueries();  // Invalidate all queries to force refresh
     },
     onError: (error: Error) => {
       toast({
@@ -221,9 +223,15 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       
       // Refresh data setelah update status
       refetch();
-      queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      
+      // Invalidate all related queries to ensure fresh data everywhere
+      queryClient.invalidateQueries();  // Invalidate all queries to force refresh
+      
+      // Optional: If above is too aggressive, use these specific invalidations instead
+      // queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
+      // queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+      // queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      // queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
     },
     onError: (error: Error) => {
       toast({
