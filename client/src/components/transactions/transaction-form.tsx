@@ -1462,105 +1462,145 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
             <FormField
               control={form.control}
               name="patientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Pilih Pasien</FormLabel>
-                  <FormControl>
-                    <div className="space-y-2">
-                      <div className="mb-2">
-                        <Input 
-                          type="text"
-                          placeholder="Cari nama pasien..."
-                          onChange={(e) => {
-                            // Reset form value when searching
-                            if (e.target.value === '') {
-                              field.onChange('');
-                            }
-                          }}
-                          onKeyUp={(e) => {
-                            const searchTerm = e.currentTarget.value.toLowerCase();
-                            
-                            // Find matching patient
-                            const matchingPatient = patients.find((patient: Patient) => 
-                              patient.name.toLowerCase().includes(searchTerm) || 
-                              patient.patientId.toLowerCase().includes(searchTerm)
-                            );
-                            
-                            // Auto-select if we have a match
-                            if (matchingPatient && searchTerm.length > 2) {
-                              field.onChange(matchingPatient.id.toString());
-                              console.log("Auto-selected patient:", matchingPatient.name);
-                            }
-                          }}
-                        />
-                      </div>
-                      
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <SelectTrigger className="w-full focus:ring-2 focus:ring-primary">
-                          <SelectValue placeholder="Pilih pasien dari daftar..." />
-                        </SelectTrigger>
-                        <SelectContent 
-                          position="popper" 
-                          side="bottom" 
-                          sideOffset={4} 
-                          align="start" 
-                          className="z-[100] overflow-y-auto max-h-[300px] w-full"
-                        >
-                          {patients?.length === 0 ? (
-                            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                              Belum ada data pasien
-                            </div>
-                          ) : (
-                            patients?.map((patient: Patient) => (
-                              <SelectItem 
-                                key={patient.id} 
-                                value={patient.id.toString()}
-                                className={`cursor-pointer hover:bg-primary/10 ${patient.name.includes('(') ? 'border-l-4 border-blue-500 pl-2' : ''}`}
-                              >
-                                <span className="font-medium">
-                                  {patient.name}
-                                </span>
-                                <span className="ml-2 text-xs text-muted-foreground">({patient.patientId})</span>
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      
-                      {/* Show selected patient info */}
-                      {field.value && (
-                        <div className="text-sm p-2 border rounded-md bg-muted/40">
-                          {(() => {
-                            const selectedPatient = patients.find((p: Patient) => p.id.toString() === field.value);
-                            return selectedPatient ? (
-                              <div className="space-y-1">
-                                <p className="font-medium">
-                                  Pasien terpilih: {selectedPatient.name}
-                                </p>
-                                <div className="grid grid-cols-2 gap-1">
-                                  <p className="text-xs text-muted-foreground">ID Pasien:</p>
-                                  <p className="text-xs">{selectedPatient.patientId}</p>
-                                  
-                                  {selectedPatient.phoneNumber && (
-                                    <>
-                                      <p className="text-xs text-muted-foreground">No. WhatsApp:</p>
-                                      <p className="text-xs">{selectedPatient.phoneNumber}</p>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            ) : null;
-                          })()}
+              render={({ field }) => {
+                // Tampilkan nilai patientId dari form untuk debugging
+                console.log("Rendering patient field. Current value:", field.value, "type:", typeof field.value);
+                
+                // Pastikan patientId dalam bentuk string untuk select component
+                let idAsString = '';
+                if (field.value) {
+                  idAsString = typeof field.value === 'number' ? field.value.toString() : field.value;
+                }
+                
+                // Log untuk debugging
+                console.log("Processed ID as string:", idAsString);
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Pilih Pasien</FormLabel>
+                    <FormControl>
+                      <div className="space-y-2">
+                        <div className="mb-2">
+                          <Input 
+                            type="text"
+                            placeholder="Cari nama pasien..."
+                            onChange={(e) => {
+                              // Reset form value when searching
+                              if (e.target.value === '') {
+                                field.onChange('');
+                              }
+                            }}
+                            onKeyUp={(e) => {
+                              const searchTerm = e.currentTarget.value.toLowerCase();
+                              
+                              if (searchTerm.length < 2) return;
+                              
+                              // Find matching patient
+                              const matchingPatient = patients.find((patient: Patient) => 
+                                patient.name.toLowerCase().includes(searchTerm) || 
+                                patient.patientId.toLowerCase().includes(searchTerm)
+                              );
+                              
+                              // Auto-select if we have a match
+                              if (matchingPatient) {
+                                const patientIdStr = matchingPatient.id.toString();
+                                console.log("Auto-selected patient:", matchingPatient.name, "ID:", patientIdStr);
+                                field.onChange(patientIdStr);
+                              }
+                            }}
+                          />
                         </div>
-                      )}
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+                        
+                        <Select
+                          onValueChange={(value) => {
+                            console.log("Select changed to value:", value);
+                            field.onChange(value);
+                            
+                            // Log the patient name for debugging
+                            const selectedPatient = patients.find((p: Patient) => p.id.toString() === value);
+                            if (selectedPatient) {
+                              console.log("Selected patient:", selectedPatient.name);
+                            }
+                          }}
+                          value={idAsString}
+                          defaultValue={idAsString}
+                        >
+                          <SelectTrigger className="w-full focus:ring-2 focus:ring-primary">
+                            <SelectValue placeholder="Pilih pasien dari daftar..." />
+                          </SelectTrigger>
+                          <SelectContent 
+                            position="popper" 
+                            side="bottom" 
+                            sideOffset={4} 
+                            align="start" 
+                            className="z-[100] overflow-y-auto max-h-[300px] w-full"
+                          >
+                            {patients?.length === 0 ? (
+                              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                Belum ada data pasien
+                              </div>
+                            ) : (
+                              patients?.map((patient: Patient) => (
+                                <SelectItem 
+                                  key={patient.id} 
+                                  value={patient.id.toString()}
+                                  className={`cursor-pointer hover:bg-primary/10 ${patient.name.includes('(') ? 'border-l-4 border-blue-500 pl-2' : ''}`}
+                                >
+                                  <span className="font-medium">
+                                    {patient.name}
+                                  </span>
+                                  <span className="ml-2 text-xs text-muted-foreground">({patient.patientId})</span>
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        
+                        {/* Show selected patient info */}
+                        {field.value && (
+                          <div className="text-sm p-2 border rounded-md bg-muted/40">
+                            {(() => {
+                              const patientIdStr = typeof field.value === 'number' 
+                                ? field.value.toString() 
+                                : field.value;
+                                
+                              console.log("Looking for patient with ID str:", patientIdStr);
+                              console.log("Types of patient IDs available:", patients.slice(0, 3).map(p => typeof p.id));
+                              
+                              const selectedPatient = patients.find((p: Patient) => p.id.toString() === patientIdStr);
+                              console.log("Selected patient result:", selectedPatient?.name || "Not found");
+                              
+                              return selectedPatient ? (
+                                <div className="space-y-1">
+                                  <p className="font-medium">
+                                    Pasien terpilih: {selectedPatient.name}
+                                  </p>
+                                  <div className="grid grid-cols-2 gap-1">
+                                    <p className="text-xs text-muted-foreground">ID Pasien:</p>
+                                    <p className="text-xs">{selectedPatient.patientId}</p>
+                                    
+                                    {selectedPatient.phoneNumber && (
+                                      <>
+                                        <p className="text-xs text-muted-foreground">No. WhatsApp:</p>
+                                        <p className="text-xs">{selectedPatient.phoneNumber}</p>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-amber-600">
+                                  Menunggu data pasien...
+                                </p>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             {/* Active Packages Section - Only show for multi-session packages */}
