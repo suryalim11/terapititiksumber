@@ -651,6 +651,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
           isPaid: isPaid,
           creditAmount: creditAmount,
           paidAmount: paidAmount,
+          displayName: values.displayName || 'original', // Include displayName in API request
           items: cartItems.map(item => ({
             id: item.id,
             type: item.type,
@@ -673,6 +674,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
             isPaid: isPaid,
             creditAmount: creditAmount,
             paidAmount: paidAmount,
+            displayName: values.displayName || 'original', // Include the displayName preference
             items: cartItems.map(item => ({
               id: item.id,
               type: item.type,
