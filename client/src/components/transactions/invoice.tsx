@@ -182,11 +182,17 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         
-        // Cek apakah ini pasien Queenzky dan pilihan displayName adalah alias (Syafliana)
+        // Cek apakah ini pasien Queenzky dan pilihan displayName atau metadata.displayName adalah alternative
         let patientName = data.patient?.name || '-';
-        if (data.patient?.name?.includes('Queenzky') && data.displayName === 'alias') {
+        // Periksa dari properti displayName
+        if (data.patient?.name?.includes('Queenzky') && (data.displayName === 'alias' || data.displayName === 'alternative')) {
           patientName = 'Syafliana'; // Gunakan nama alternatif Syafliana
-          console.log("Menggunakan nama alternatif 'Syafliana' pada invoice");
+          console.log("Menggunakan nama alternatif 'Syafliana' pada invoice dari displayName:", data.displayName);
+        } 
+        // Periksa juga dari transaction.metadata
+        else if (data.patient?.name?.includes('Queenzky') && data.transaction?.metadata?.displayName === 'alternative') {
+          patientName = 'Syafliana'; // Gunakan nama alternatif Syafliana
+          console.log("Menggunakan nama alternatif 'Syafliana' pada invoice dari metadata:", data.transaction.metadata.displayName);
         }
         
         doc.text(`Nama: ${patientName}`, 14, 52);
@@ -492,9 +498,15 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         
         // Cek apakah ini pasien Queenzky dan pilihan displayName adalah alias (Syafliana)
         let patientName = data.patient.name;
-        if (data.patient.name.includes('Queenzky') && data.displayName === 'alias') {
+        // Periksa dari properti displayName
+        if (data.patient.name.includes('Queenzky') && (data.displayName === 'alias' || data.displayName === 'alternative')) {
           patientName = 'Syafliana'; // Gunakan nama alternatif Syafliana
-          console.log("Menggunakan nama alternatif 'Syafliana' pada WhatsApp message");
+          console.log("Menggunakan nama alternatif 'Syafliana' pada WhatsApp message dari displayName:", data.displayName);
+        }
+        // Periksa juga dari transaction.metadata
+        else if (data.patient.name.includes('Queenzky') && data.transaction?.metadata?.displayName === 'alternative') {
+          patientName = 'Syafliana'; // Gunakan nama alternatif Syafliana
+          console.log("Menggunakan nama alternatif 'Syafliana' pada WhatsApp message dari metadata:", data.transaction.metadata.displayName);
         }
         
         // Gunakan template kustom dan ganti variabel dengan nilai sebenarnya
@@ -646,7 +658,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                 <h3 className="font-semibold text-gray-700 mb-2">Detail Pasien:</h3>
                 <p className="text-gray-600">
                   <strong>Nama:</strong> {
-                    data.patient?.name?.includes('Queenzky') && data.displayName === 'alias'
+                    data.patient?.name?.includes('Queenzky') && 
+                    ((data.displayName === 'alias' || data.displayName === 'alternative') || 
+                     data.transaction?.metadata?.displayName === 'alternative')
                     ? 'Syafliana'
                     : data.patient?.name
                   }
