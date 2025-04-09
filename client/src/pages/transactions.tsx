@@ -350,9 +350,31 @@ export default function Transactions() {
     setTransactionToDelete(id);
   };
   
-  const getPatientName = (patientId: number) => {
+  const getPatientName = (patientId: number, transaction?: Transaction) => {
     const patient = patients?.find((p: any) => p.id === patientId);
-    return patient ? patient.name : "-";
+    if (!patient) return "-";
+    
+    // Cek jika transaksi memiliki metadata displayName
+    if (transaction?.metadata?.displayName === 'alternative') {
+      // Kita mencoba mencari data pasien alternatif (dengan nomor telepon yang sama)
+      try {
+        // Cari pasien terkait dengan nama berbeda (alternatif)
+        const relatedPatients = patients.filter((p: any) => 
+          p.id !== patientId && p.phoneNumber === patient.phoneNumber
+        );
+        
+        if (relatedPatients.length > 0) {
+          // Gunakan nama dari pasien alternatif pertama yang ditemukan
+          console.log(`Using alternative name for patient ${patientId}: ${relatedPatients[0].name}`);
+          return relatedPatients[0].name;
+        }
+      } catch (err) {
+        console.error("Error finding alternative name:", err);
+      }
+    }
+    
+    // Jika tidak ada pengaturan khusus atau tidak menemukan nama alternatif, gunakan nama asli
+    return patient.name;
   };
   
   const formatDate = (dateString: string) => {
@@ -495,7 +517,7 @@ export default function Transactions() {
         .filter((transaction: Transaction) => {
           // Filter by search term
           if (searchTerm) {
-            const patientName = getPatientName(transaction.patientId).toLowerCase();
+            const patientName = getPatientName(transaction.patientId, transaction).toLowerCase();
             const txId = transaction.transactionId.toLowerCase();
             
             return patientName.includes(searchTerm.toLowerCase()) || 
@@ -516,7 +538,7 @@ export default function Transactions() {
             case 'transactionId':
               return direction * a.transactionId.localeCompare(b.transactionId);
             case 'patient':
-              return direction * getPatientName(a.patientId).localeCompare(getPatientName(b.patientId));
+              return direction * getPatientName(a.patientId, a).localeCompare(getPatientName(b.patientId, b));
             case 'date':
               return direction * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
             case 'paymentMethod':
@@ -933,7 +955,7 @@ export default function Transactions() {
                       <TableCell className="font-medium">
                         {transaction.transactionId}
                       </TableCell>
-                      <TableCell>{getPatientName(transaction.patientId)}</TableCell>
+                      <TableCell>{getPatientName(transaction.patientId, transaction)}</TableCell>
                       <TableCell>{formatDate(transaction.createdAt)}</TableCell>
                       <TableCell>{formatPaymentMethod(transaction.paymentMethod)}</TableCell>
                       <TableCell className="text-right">{formatPrice(transaction.totalAmount)}</TableCell>
@@ -1021,7 +1043,7 @@ export default function Transactions() {
                   <CardContent className="pb-2">
                     <div className="grid grid-cols-2 gap-1">
                       <div className="text-sm font-medium">Pasien</div>
-                      <div className="text-sm">{getPatientName(transaction.patientId)}</div>
+                      <div className="text-sm">{getPatientName(transaction.patientId, transaction)}</div>
                       
                       <div className="text-sm font-medium">Metode</div>
                       <div className="text-sm">{formatPaymentMethod(transaction.paymentMethod)}</div>

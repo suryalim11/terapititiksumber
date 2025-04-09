@@ -1318,7 +1318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/transactions", async (req: Request, res: Response) => {
     try {
       // Parse schema with additional fields
-      const { subtotal, discount, createSession = true, isPaid = true, creditAmount = "0", paidAmount, ...restData } = req.body;
+      const { subtotal, discount, createSession = true, isPaid = true, creditAmount = "0", paidAmount, displayName, ...restData } = req.body;
       
       console.log("Transaction request received:", req.body);
       
@@ -1336,6 +1336,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       console.log("Validated transaction data:", validatedData);
+      
+      // Jika opsi displayName telah diberikan, simpan sebagai info tambahan
+      if (displayName && displayName !== 'original') {
+        // Ubah nama pasien yang ditampilkan sesuai kebutuhan transaksi ini
+        const patient = await storage.getPatient(validatedData.patientId);
+        
+        if (patient) {
+          // Tambahkan metadata ke transaksi untuk tujuan tampilan
+          validatedData.metadata = {
+            ...validatedData.metadata,
+            displayName: displayName
+          };
+        }
+      }
       
       const newTransaction = await storage.createTransaction(validatedData);
       console.log("Transaction created:", newTransaction);
