@@ -146,6 +146,8 @@ const transactionFormSchema = z.object({
   isPaid: z.boolean().default(true),
   creditAmount: z.string().optional().default("0"),
   paidAmount: z.string().optional().default("0"),
+  // Tambahkan field untuk preferensi nama tampilan (khusus untuk Queenzky/Syafliana)
+  displayName: z.enum(["original", "alias"]).optional().default("original"),
 });
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
@@ -711,6 +713,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         paymentMethod: form.getValues().paymentMethod,
         discount: discountAmount,
         subtotal: subtotal,
+        displayName: form.getValues().displayName || 'original', // Pass the display name preference
       });
       
       setShowInvoice(true);
@@ -1393,6 +1396,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
         isPaid: isPaid,
         creditAmount: creditAmount,
         paidAmount: paidAmount,
+        displayName: formValues.displayName || 'original', // Tambahkan preferensi nama tampilan
       };
       
       // Eksekusi onSubmit
@@ -1657,6 +1661,42 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                         <p className="text-xs text-muted-foreground">No. WhatsApp:</p>
                                         <p className="text-xs">{selectedPatient.phoneNumber}</p>
                                       </>
+                                    )}
+                                    
+                                    {/* Opsi khusus untuk Queenzky/Syafliana */}
+                                    {selectedPatient.name.includes('Queenzky') && (
+                                      <div className="col-span-2 mt-1 pt-1 border-t">
+                                        <p className="text-xs text-muted-foreground">Tampilkan nama di invoice sebagai:</p>
+                                        <div className="flex space-x-2 mt-1">
+                                          <label className="flex items-center space-x-1 text-xs">
+                                            <input 
+                                              type="radio" 
+                                              name="displayName" 
+                                              value="original" 
+                                              defaultChecked 
+                                              className="h-3 w-3"
+                                              onChange={() => {
+                                                // Simpan ke state sementara form
+                                                form.setValue("displayName", "original");
+                                              }}
+                                            />
+                                            <span>Queenzky Zahwa</span>
+                                          </label>
+                                          <label className="flex items-center space-x-1 text-xs">
+                                            <input 
+                                              type="radio" 
+                                              name="displayName" 
+                                              value="alias" 
+                                              className="h-3 w-3"
+                                              onChange={() => {
+                                                // Simpan ke state sementara form
+                                                form.setValue("displayName", "alias");
+                                              }}
+                                            />
+                                            <span>Syafliana</span>
+                                          </label>
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
                                 </div>

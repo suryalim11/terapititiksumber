@@ -33,6 +33,7 @@ type InvoiceProps = {
     isPaid?: boolean;
     creditAmount?: number | string; 
     paidAmount?: number | string;
+    displayName?: "original" | "alias"; // Tambahan untuk menampilkan nama Syafliana jika dipilih
   };
 };
 
@@ -180,7 +181,15 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.text(`Nama: ${data.patient?.name || '-'}`, 14, 52);
+        
+        // Cek apakah ini pasien Queenzky dan pilihan displayName adalah alias (Syafliana)
+        let patientName = data.patient?.name || '-';
+        if (data.patient?.name?.includes('Queenzky') && data.displayName === 'alias') {
+          patientName = 'Syafliana'; // Gunakan nama alternatif Syafliana
+          console.log("Menggunakan nama alternatif 'Syafliana' pada invoice");
+        }
+        
+        doc.text(`Nama: ${patientName}`, 14, 52);
         doc.text(`ID Pasien: ${data.patient?.patientId || '-'}`, 14, 58);
         
         doc.text(`Metode: ${getPaymentMethodName(data.paymentMethod)}`, 120, 52);
@@ -481,12 +490,19 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           creditInfo = `*Informasi Kredit:*\nTotal Belanja: ${formatPrice(totalAmount)}\nJumlah Dibayar: ${formatPrice(paidAmount.toString())}\nSisa Kredit: ${formatPrice(creditAmount.toString())}`;
         }
         
+        // Cek apakah ini pasien Queenzky dan pilihan displayName adalah alias (Syafliana)
+        let patientName = data.patient.name;
+        if (data.patient.name.includes('Queenzky') && data.displayName === 'alias') {
+          patientName = 'Syafliana'; // Gunakan nama alternatif Syafliana
+          console.log("Menggunakan nama alternatif 'Syafliana' pada WhatsApp message");
+        }
+        
         // Gunakan template kustom dan ganti variabel dengan nilai sebenarnya
         message = settings.whatsappTemplate
           .replace(/{{companyName}}/g, settings.companyName)
           .replace(/{{invoiceId}}/g, invoiceId)
           .replace(/{{totalAmount}}/g, formatPrice(totalAmount))
-          .replace(/{{patientName}}/g, data.patient.name)
+          .replace(/{{patientName}}/g, patientName)
           .replace(/{{bankInfo}}/g, bankInfo || '')
           .replace(/{{items}}/g, itemDetails || '')
           .replace(/{{creditInfo}}/g, creditInfo || '')
@@ -629,7 +645,11 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               <div>
                 <h3 className="font-semibold text-gray-700 mb-2">Detail Pasien:</h3>
                 <p className="text-gray-600">
-                  <strong>Nama:</strong> {data.patient?.name}
+                  <strong>Nama:</strong> {
+                    data.patient?.name?.includes('Queenzky') && data.displayName === 'alias'
+                    ? 'Syafliana'
+                    : data.patient?.name
+                  }
                 </p>
                 <p className="text-gray-600">
                   <strong>ID Pasien:</strong> {data.patient?.patientId}
