@@ -60,6 +60,9 @@ type Transaction = {
     name: string;
     patientId: string;
   };
+  metadata?: {
+    displayName?: 'original' | 'alternative';
+  };
 };
 
 export default function Transactions() {

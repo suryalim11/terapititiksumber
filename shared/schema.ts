@@ -113,6 +113,7 @@ export const transactions = pgTable("transactions", {
   paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).default("0").notNull(),
   debtAmount: decimal("debt_amount", { precision: 10, scale: 2 }).default("0").notNull(), // Jumlah hutang
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  metadata: json("metadata"), // Untuk menyimpan informasi tambahan seperti displayName
 });
 
 export const insertTransactionSchema = createInsertSchema(transactions).pick({
@@ -126,6 +127,7 @@ export const insertTransactionSchema = createInsertSchema(transactions).pick({
   isPaid: true,
   paidAmount: true,
   debtAmount: true,
+  metadata: true,
 });
 
 // Session Schema (For tracking therapy sessions)
