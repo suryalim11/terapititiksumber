@@ -357,8 +357,14 @@ export default function Transactions() {
     const patient = patients?.find((p: any) => p.id === patientId);
     if (!patient) return "-";
     
-    // Cek jika transaksi memiliki metadata displayName
-    if (transaction?.metadata?.displayName === 'alternative') {
+    // Cek jika transaksi memiliki metadata displayName dengan nilai 'alternative'
+    console.log("Transaction metadata:", transaction?.metadata);
+    
+    // Perbaikan: Cek semua kemungkinan nilai displayName untuk nama alternatif
+    if (transaction?.metadata?.displayName === 'alternative' || 
+        transaction?.metadata && transaction.metadata["displayName"] === 'alternative') {
+      console.log("Using alternative display name for transaction:", transaction.transactionId);
+      
       // Kita mencoba mencari data pasien alternatif (dengan nomor telepon yang sama)
       try {
         // Cari pasien terkait dengan nama berbeda (alternatif)
@@ -368,7 +374,7 @@ export default function Transactions() {
         
         if (relatedPatients.length > 0) {
           // Gunakan nama dari pasien alternatif pertama yang ditemukan
-          console.log(`Using alternative name for patient ${patientId}: ${relatedPatients[0].name}`);
+          console.log(`Found alternative name for patient ${patientId}: ${relatedPatients[0].name}`);
           return relatedPatients[0].name;
         }
       } catch (err) {

@@ -1338,16 +1338,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Validated transaction data:", validatedData);
       
       // Jika opsi displayName telah diberikan, simpan sebagai info tambahan
-      if (displayName && displayName !== 'original') {
+      if (displayName) {
         // Ubah nama pasien yang ditampilkan sesuai kebutuhan transaksi ini
         const patient = await storage.getPatient(validatedData.patientId);
         
         if (patient) {
           // Tambahkan metadata ke transaksi untuk tujuan tampilan
+          validatedData.metadata = validatedData.metadata || {};
           validatedData.metadata = {
-            ...validatedData.metadata,
-            displayName: displayName
+            displayName: displayName  // Sesuaikan dengan nilai yang diharapkan (original/alternative)
           };
+          console.log("Setting display name to:", displayName, "in metadata:", validatedData.metadata);
         }
       }
       
