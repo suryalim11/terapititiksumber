@@ -2408,6 +2408,102 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
               </div>
             )}
 
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-primary">Sesi Tanpa Paket</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Jika pasien datang untuk terapi tanpa membeli paket
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    // Validasi: Pastikan pasien sudah dipilih
+                    const patientId = form.getValues().patientId;
+                    if (!patientId) {
+                      toast({
+                        title: "Pilih pasien terlebih dahulu",
+                        description: "Anda harus memilih pasien sebelum melanjutkan",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    
+                    // Konfirmasi dengan user
+                    if (!confirm("Catat kunjungan terapi tanpa paket untuk pasien ini?")) {
+                      return;
+                    }
+                    
+                    try {
+                      // Cari data pasien untuk catatan
+                      const patient = patients.find((p: Patient) => p.id.toString() === patientId.toString());
+                      if (!patient) {
+                        throw new Error("Data pasien tidak ditemukan");
+                      }
+                      
+                      // Buat appointment langsung (tanpa paket)
+                      const today = new Date();
+                      const formattedDate = today.toISOString().split('T')[0];
+                      
+                      const appointmentResponse = await apiRequest("/api/appointments", {
+                        method: "POST",
+                        headers: {
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          patientId: parseInt(patientId),
+                          date: formattedDate,
+                          status: "Active", // Langsung aktif karena ini untuk kunjungan saat ini
+                          notes: `Terapi tanpa paket untuk ${patient.name} (${patient.patientId})`,
+                          timeSlot: new Date().toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})
+                        })
+                      });
+                      
+                      console.log("Appointment berhasil dibuat:", appointmentResponse);
+                      
+                      // Membuat catatan riwayat medis
+                      await apiRequest("/api/medical-histories", {
+                        method: "POST",
+                        headers: {
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          patientId: parseInt(patientId),
+                          complaint: "Sesi terapi tanpa paket",
+                          treatmentDate: formattedDate, // Gunakan string untuk tanggal
+                          notes: "Terapi individu tanpa paket"
+                        })
+                      });
+                      
+                      // Invalidate queries untuk refresh data
+                      await queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+                      await queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+                      await queryClient.invalidateQueries({ queryKey: ['/api/dashboard/activities'] });
+                      
+                      // Tampilkan notifikasi sukses
+                      toast({
+                        title: "Sesi terapi dicatat",
+                        description: `Kunjungan terapi untuk ${patient.name} berhasil dicatat tanpa paket`,
+                      });
+                      
+                      // Tutup form
+                      onClose();
+                    } catch (error: any) {
+                      console.error("Error mencatat sesi tanpa paket:", error);
+                      toast({
+                        title: "Gagal mencatat sesi",
+                        description: error.message || "Terjadi kesalahan saat mencatat sesi terapi",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  Catat Sesi Terapi
+                </Button>
+              </div>
+            </div>
+            
             <DialogFooter>
               <Button
                 type="button"
