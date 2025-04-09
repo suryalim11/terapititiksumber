@@ -1343,13 +1343,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const patient = await storage.getPatient(validatedData.patientId);
         
         if (patient) {
-          // Tambahkan metadata ke transaksi untuk tujuan tampilan
-          validatedData.metadata = validatedData.metadata || {};
+          // Langsung menyetel metadata ke objek validatedData
           validatedData.metadata = {
             displayName: displayName  // Sesuaikan dengan nilai yang diharapkan (original/alternative)
           };
           console.log("Setting display name to:", displayName, "in metadata:", validatedData.metadata);
         }
+      } else {
+        // Pastikan metadata selalu ada meskipun displayName tidak diberikan
+        validatedData.metadata = { displayName: "original" };
+        console.log("No display name provided, defaulting to 'original'");
       }
       
       const newTransaction = await storage.createTransaction(validatedData);

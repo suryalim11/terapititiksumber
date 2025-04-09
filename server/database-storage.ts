@@ -678,7 +678,8 @@ export class DatabaseStorage implements IStorage {
           isPaid: true,
           paidAmount: true,
           debtAmount: true,
-          createdAt: true
+          createdAt: true,
+          metadata: true // Pastikan metadata (displayName) diambil
         }
       });
       
@@ -723,7 +724,8 @@ export class DatabaseStorage implements IStorage {
           isPaid: true,
           paidAmount: true,
           debtAmount: true,
-          createdAt: true
+          createdAt: true,
+          metadata: true // Pastikan metadata (displayName) diambil
         },
         orderBy: [desc(schema.transactions.createdAt)]
       });
@@ -766,7 +768,8 @@ export class DatabaseStorage implements IStorage {
             isPaid: true,
             paidAmount: true,
             debtAmount: true,
-            createdAt: true
+            createdAt: true,
+            metadata: true // Pastikan metadata (displayName) diambil
           },
           where: eq(schema.transactions.patientId, patientId),
           orderBy: [desc(schema.transactions.createdAt)]
@@ -821,7 +824,8 @@ export class DatabaseStorage implements IStorage {
           isPaid: schema.transactions.isPaid,
           paidAmount: schema.transactions.paidAmount,
           debtAmount: schema.transactions.debtAmount,
-          createdAt: schema.transactions.createdAt
+          createdAt: schema.transactions.createdAt,
+          metadata: schema.transactions.metadata // Pastikan metadata (displayName) diambil
         })
         .from(schema.transactions)
         .where(inArray(schema.transactions.patientId, relatedPatientIds))
