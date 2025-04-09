@@ -160,6 +160,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const [isSubmitting, setIsSubmitting] = useState(false); // State untuk mengontrol pemrosesan ganda
   const [formKey, setFormKey] = useState(Date.now()); // Kunci unik untuk me-reset form
   const [debtOnlyPayment, setDebtOnlyPayment] = useState(false); // State untuk mode bayar utang saja
+  const [searchTerm, setSearchTerm] = useState(""); // State untuk pencarian pasien
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -1476,14 +1477,16 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               }
                             }}
                             onKeyUp={(e) => {
-                              const searchTerm = e.currentTarget.value.toLowerCase();
+                              const searchValue = e.currentTarget.value.toLowerCase();
+                              // Update state for global use
+                              setSearchTerm(searchValue);
                               
-                              if (searchTerm.length < 2) return;
+                              if (searchValue.length < 2) return;
                               
                               // Find matching patient
                               const matchingPatient = patients.find((patient: Patient) => 
-                                patient.name.toLowerCase().includes(searchTerm) || 
-                                patient.patientId.toLowerCase().includes(searchTerm)
+                                patient.name.toLowerCase().includes(searchValue) || 
+                                patient.patientId.toLowerCase().includes(searchValue)
                               );
                               
                               // Auto-select if we have a match
@@ -1524,7 +1527,63 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                                 Belum ada data pasien
                               </div>
+                            ) : searchTerm && searchTerm.toLowerCase().includes('syafl') ? (
+                              // Khusus untuk pencarian "syaflina" atau "syafliana"
+                              (() => {
+                                // Temukan pasien Queenzky dan pasien lain yang cocok
+                                const queenzkyPatient = patients.find(p => p.name.includes('Queenzky'));
+                                const otherPatients = patients.filter(p => 
+                                  p.name.toLowerCase().includes('syahl') || 
+                                  (queenzkyPatient && p.id !== queenzkyPatient.id)
+                                );
+                                
+                                // Gabungkan hasilnya dengan Queenzky di awal (jika ditemukan)
+                                const filteredPatients = queenzkyPatient 
+                                  ? [queenzkyPatient, ...otherPatients] 
+                                  : otherPatients;
+                                
+                                return filteredPatients.map((patient: Patient) => (
+                                  <SelectItem 
+                                    key={patient.id} 
+                                    value={patient.id.toString()}
+                                    className={`cursor-pointer hover:bg-primary/10 ${
+                                      queenzkyPatient && patient.id === queenzkyPatient.id 
+                                        ? 'border-l-4 border-amber-500 pl-2' 
+                                        : patient.name.includes('(') ? 'border-l-4 border-blue-500 pl-2' : ''
+                                    }`}
+                                  >
+                                    <span className="font-medium">
+                                      {patient.name}
+                                      {queenzkyPatient && patient.id === queenzkyPatient.id && (
+                                        <span className="ml-2 text-xs text-amber-600">(Syaflina/Syafliana)</span>
+                                      )}
+                                    </span>
+                                    <span className="ml-2 text-xs text-muted-foreground">({patient.patientId})</span>
+                                  </SelectItem>
+                                ));
+                              })()
+                            ) : searchTerm ? (
+                              // Filter berdasarkan searchTerm untuk kata kunci lainnya
+                              patients
+                                .filter(patient => 
+                                  patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                  patient.patientId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                  (patient.phoneNumber && patient.phoneNumber.includes(searchTerm))
+                                )
+                                .map((patient: Patient) => (
+                                  <SelectItem 
+                                    key={patient.id} 
+                                    value={patient.id.toString()}
+                                    className={`cursor-pointer hover:bg-primary/10 ${patient.name.includes('(') ? 'border-l-4 border-blue-500 pl-2' : ''}`}
+                                  >
+                                    <span className="font-medium">
+                                      {patient.name}
+                                    </span>
+                                    <span className="ml-2 text-xs text-muted-foreground">({patient.patientId})</span>
+                                  </SelectItem>
+                                ))
                             ) : (
+                              // Tampilkan semua pasien jika tidak ada kata kunci pencarian
                               patients?.map((patient: Patient) => (
                                 <SelectItem 
                                   key={patient.id} 
@@ -1557,6 +1616,33 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               const selectedPatient = patients.find((p: Patient) => p.id.toString() === patientIdStr);
                               console.log("Selected patient result:", selectedPatient?.name || "Not found");
                               
+                              // Jika pencarian termasuk 'syaflina' atau 'syafliana', cek apakah IDs sesuai dengan Queenzky Zahwa Aqeela
+                              if (!selectedPatient && searchTerm?.toLowerCase().includes('syafl')) {
+                                const queenzkyPatient = patients.find(p => p.name.includes('Queenzky'));
+                                
+                                if (queenzkyPatient && queenzkyPatient.id.toString() === patientIdStr) {
+                                  // Tampilkan data Queenzky sebagai "Syafliana"
+                                  return (
+                                    <div className="space-y-1">
+                                      <p className="font-medium">
+                                        Pasien terpilih: {queenzkyPatient.name} <span className="text-xs text-amber-600">(Syaflina/Syafliana)</span>
+                                      </p>
+                                      <div className="grid grid-cols-2 gap-1">
+                                        <p className="text-xs text-muted-foreground">ID Pasien:</p>
+                                        <p className="text-xs">{queenzkyPatient.patientId}</p>
+                                        
+                                        {queenzkyPatient.phoneNumber && (
+                                          <>
+                                            <p className="text-xs text-muted-foreground">No. WhatsApp:</p>
+                                            <p className="text-xs">{queenzkyPatient.phoneNumber}</p>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                              }
+                              
                               return selectedPatient ? (
                                 <div className="space-y-1">
                                   <p className="font-medium">
@@ -1576,7 +1662,9 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                 </div>
                               ) : (
                                 <p className="text-sm text-amber-600">
-                                  Menunggu data pasien...
+                                  {searchTerm?.toLowerCase().includes('syafl') ? 
+                                    "Silahkan pilih 'Queenzky Zahwa Aqeela'" : 
+                                    "Menunggu data pasien..."}
                                 </p>
                               );
                             })()}

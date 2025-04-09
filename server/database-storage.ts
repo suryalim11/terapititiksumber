@@ -407,7 +407,7 @@ export class DatabaseStorage implements IStorage {
       // Tambahkan nama alternatif untuk pasien tertentu (kasus khusus)
       const alternativeNames: Record<number, string[]> = {
         // ID pasien: [nama alternatif1, nama alternatif2, ...]
-        115: ['syaflina', 'syahlina', 'aqeela', 'queenzky', 'zahwa', 'queen'] // Queenzky Zahwa Aqeela
+        115: ['syaflina', 'syafliana', 'syahlina', 'aqeela', 'queenzky', 'zahwa', 'queen'] // Queenzky Zahwa Aqeela
       };
       
       // Jika query lebih dari 3 karakter, coba lakukan pencarian "fuzzy" sederhana
