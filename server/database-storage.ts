@@ -404,6 +404,12 @@ export class DatabaseStorage implements IStorage {
         processedName: patient.name.toLowerCase().replace(/\s+/g, ' ').trim()
       }));
       
+      // Tambahkan nama alternatif untuk pasien tertentu (kasus khusus)
+      const alternativeNames: Record<number, string[]> = {
+        // ID pasien: [nama alternatif1, nama alternatif2, ...]
+        115: ['syaflina', 'syahlina', 'aqeela', 'queenzky', 'zahwa', 'queen'] // Queenzky Zahwa Aqeela
+      };
+      
       // Jika query lebih dari 3 karakter, coba lakukan pencarian "fuzzy" sederhana
       // dengan memisahkan query menjadi bagian-bagian dan memeriksa apakah setiap bagian cocok
       const queryParts = queryNoExtraSpaces.split(' ').filter(part => part.length > 0);
@@ -438,6 +444,20 @@ export class DatabaseStorage implements IStorage {
           
         if (patient.processedName.includes(normalizedQuery)) {
           return true;
+        }
+        
+        // 5. Cek nama alternatif untuk pasien tertentu (kasus khusus)
+        const alternativeNamesForPatient = alternativeNames[patient.id];
+        if (alternativeNamesForPatient) {
+          // Cek apakah query cocok dengan salah satu nama alternatif
+          const alternativeMatch = alternativeNamesForPatient.some(altName => {
+            return queryNoExtraSpaces.includes(altName) || altName.includes(queryNoExtraSpaces);
+          });
+          
+          if (alternativeMatch) {
+            console.log(`Matched via alternative name for patient ${patient.id}: ${patient.name}`);
+            return true;
+          }
         }
         
         return false;
