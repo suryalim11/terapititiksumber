@@ -147,7 +147,7 @@ const transactionFormSchema = z.object({
   creditAmount: z.string().optional().default("0"),
   paidAmount: z.string().optional().default("0"),
   // Tambahkan field untuk preferensi nama tampilan (khusus untuk Queenzky/Syafliana)
-  displayName: z.enum(["original", "alias"]).optional().default("original"),
+  displayName: z.enum(["original", "alternative"]).optional().default("original"),
 });
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
@@ -1786,11 +1786,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                             <input 
                                               type="radio" 
                                               name="displayName" 
-                                              value="alias" 
+                                              value="alternative" 
                                               className="h-3 w-3"
                                               onChange={() => {
                                                 // Simpan ke state sementara form
-                                                form.setValue("displayName", "alias");
+                                                form.setValue("displayName", "alternative");
                                               }}
                                             />
                                             <span>Syafliana</span>
