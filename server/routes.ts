@@ -228,6 +228,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mendukung baik parameter 'phone' (untuk kompatibilitas) maupun 'query' (untuk pencarian lebih luas)
       const query = req.query.query || req.query.phone;
       
+      // Parameter 'single' menentukan apakah hanya 1 hasil yang dikembalikan atau semua hasil
+      const returnSingleResult = req.query.single !== 'false';
+      
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ 
           success: false, 
@@ -235,18 +238,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`Mencari pasien dengan kata kunci: ${query}`);
+      console.log(`Mencari pasien dengan kata kunci: ${query}, mode: ${returnSingleResult ? 'single' : 'multiple'}`);
       
       // Gunakan metode untuk mencari berdasarkan nama atau nomor telepon
       const patients = await storage.searchPatientByNameOrPhone(query);
       
       if (patients.length > 0) {
-        console.log(`Pasien ditemukan dengan kata kunci: ${query}`);
-        return res.status(200).json({ 
-          success: true, 
-          found: true, 
-          patient: patients[0] // Kembalikan hasil pertama
-        });
+        console.log(`Pasien ditemukan: ${patients.length} hasil dengan kata kunci: ${query}`);
+        
+        if (returnSingleResult) {
+          // Mode kompatibilitas - kembalikan hanya hasil pertama
+          return res.status(200).json({
+            success: true,
+            found: true,
+            patient: patients[0],
+            count: patients.length // Tambahkan informasi jumlah total hasil
+          });
+        } else {
+          // Mode baru - kembalikan semua hasil pencarian
+          return res.status(200).json({
+            success: true,
+            found: true,
+            patients: patients,
+            count: patients.length
+          });
+        }
       } else {
         console.log(`Tidak ada pasien ditemukan dengan kata kunci: ${query}`);
         return res.status(200).json({ 

@@ -18,7 +18,8 @@ import {
   Share2,
   ExternalLink,
   Check,
-  CheckCircle
+  CheckCircle,
+  ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -813,89 +814,111 @@ export default function PatientDetail() {
         <Dialog open={isAppointmentDetailOpen} onOpenChange={setIsAppointmentDetailOpen}>
           <DialogContent className="max-w-[90%] rounded-lg">
             <DialogHeader>
-              <DialogTitle>Detail Janji Temu</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Detail Janji Temu
+              </DialogTitle>
               <DialogDescription>
                 Informasi lengkap tentang janji temu pasien
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 my-2 py-2">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Tanggal</p>
-                  <p className="font-medium">{formatDate(selectedAppointment.date)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Waktu</p>
-                  <p className="font-medium">{selectedAppointment.timeSlot || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Status</p>
-                  <div className="flex items-center gap-2">
-                    <div className={`${getStatusColor(selectedAppointment.status)} px-2 py-1 rounded text-xs inline-block`}>
-                      {selectedAppointment.status}
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-6 px-2 text-xs"
-                          disabled={updatingStatus}
-                        >
-                          {updatingStatus ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <>
-                              <span>Ubah</span>
-                              <ChevronDown className="h-3 w-3 ml-1" />
-                            </>
-                          )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-32">
-                        {["Scheduled", "Active", "Completed", "Cancelled"].map((status) => (
-                          <DropdownMenuItem
-                            key={status}
-                            onClick={() => {
-                              if (!updatingStatus && selectedAppointment) {
-                                updateAppointmentStatusMutation.mutate({
-                                  appointmentId: selectedAppointment.id,
-                                  status
-                                });
-                              }
-                            }}
-                            disabled={updatingStatus || status === selectedAppointment.status}
-                            className={status === selectedAppointment.status ? "bg-muted font-medium" : ""}
-                          >
-                            {status === selectedAppointment.status && (
-                              <CheckCircle className="h-3 w-3 mr-1 text-primary" />
-                            )}
-                            {status}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {/* Info Section */}
+              <div className="rounded-lg bg-muted p-3">
+                <div className="font-medium mb-2">Informasi Janji Temu</div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Tanggal</p>
+                    <p className="font-medium">{formatDate(selectedAppointment.date)}</p>
                   </div>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">No. Registrasi</p>
-                  <p className="font-medium truncate">{selectedAppointment.registrationNumber || '-'}</p>
+                  <div>
+                    <p className="text-muted-foreground">Waktu</p>
+                    <p className="font-medium">{selectedAppointment.timeSlot || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">No. Registrasi</p>
+                    <p className="font-medium truncate">{selectedAppointment.registrationNumber || '-'}</p>
+                  </div>
+                  {selectedAppointment.patient && selectedAppointment.patient.id !== patient.id && (
+                    <div>
+                      <p className="text-muted-foreground">Pasien Terkait</p>
+                      <p className="font-medium flex items-center">
+                        <User className="h-3 w-3 mr-1" />
+                        {selectedAppointment.patient.name}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
               
+              {/* Status Management Section */}
+              <div className="border rounded-lg p-3">
+                <div className="flex items-center mb-3">
+                  <ClipboardList className="h-4 w-4 mr-2" />
+                  <span className="font-medium">Status Janji Temu</span>
+                </div>
+                
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className={`${getStatusColor(selectedAppointment.status)} px-2 py-1 rounded text-xs inline-block`}>
+                      {selectedAppointment.status}
+                    </div>
+                    <span className="text-sm ml-2 text-muted-foreground">
+                      {selectedAppointment.status === 'Active' && 'Sedang berlangsung'}
+                      {selectedAppointment.status === 'Scheduled' && 'Terjadwal'}
+                      {selectedAppointment.status === 'Completed' && 'Selesai'}
+                      {selectedAppointment.status === 'Cancelled' && 'Dibatalkan'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Pilih status baru:</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["Scheduled", "Active", "Completed", "Cancelled"].map((status) => (
+                      <Button
+                        key={status}
+                        variant={status === selectedAppointment.status ? "default" : "outline"}
+                        size="sm"
+                        className={`text-xs h-8 ${status === selectedAppointment.status ? "border-2" : ""}`}
+                        disabled={updatingStatus || status === selectedAppointment.status}
+                        onClick={() => {
+                          if (!updatingStatus && selectedAppointment) {
+                            updateAppointmentStatusMutation.mutate({
+                              appointmentId: selectedAppointment.id,
+                              status
+                            });
+                          }
+                        }}
+                      >
+                        {status === selectedAppointment.status && (
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                        )}
+                        {status === 'Active' && 'Sedang berlangsung'}
+                        {status === 'Scheduled' && 'Terjadwal'}
+                        {status === 'Completed' && 'Selesai'}
+                        {status === 'Cancelled' && 'Dibatalkan'}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Notes Section */}
               {selectedAppointment.notes && (
-                <div>
-                  <p className="text-muted-foreground">Catatan</p>
+                <div className="border rounded-lg p-3">
+                  <p className="text-muted-foreground text-sm mb-1">Catatan</p>
                   <p className="p-2 bg-muted/20 rounded text-sm">{selectedAppointment.notes}</p>
                 </div>
               )}
             </div>
             
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setIsAppointmentDetailOpen(false)}>
                 Tutup
               </Button>
+              {/* Jika perlu, tambahkan tombol tindakan lain di sini */}
             </DialogFooter>
           </DialogContent>
         </Dialog>

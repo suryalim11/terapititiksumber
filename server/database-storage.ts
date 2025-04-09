@@ -382,37 +382,79 @@ export class DatabaseStorage implements IStorage {
   }
   
   async searchPatientByNameOrPhone(query: string): Promise<Patient[]> {
-    const queryLowerCase = query.toLowerCase();
+    // Ambil original query dan buat lowercase untuk pencarian yang insensitif terhadap case
+    const originalQuery = query.trim();
+    const queryLowerCase = originalQuery.toLowerCase();
+    
+    // Hilangkan karakter spasi berlebih untuk pencarian yang lebih fleksibel
+    const queryNoExtraSpaces = queryLowerCase.replace(/\s+/g, ' ');
     
     // Debug: log apa yang dicari
-    console.log(`Search query: "${query}", lowercase: "${queryLowerCase}"`);
+    console.log(`Search query: "${originalQuery}", processed: "${queryNoExtraSpaces}"`);
     
-    // Menggunakan pendekatan JavaScript sederhana - fetch semua pasien dan filter di memory
-    // Ini lebih reliable meskipun kurang efisien untuk database besar
-    // Tapi untuk kasus klinik dengan ratusan pasien, ini lebih dari cukup
     try {
-      console.log("Using JavaScript filtering approach for optimal search");
+      console.log("Using enhanced JavaScript filtering for flexible search");
       const allPatients = await db.query.patients.findMany({
         orderBy: [desc(schema.patients.createdAt)]
       });
       
-      // Filter pasien berdasarkan nama (case-insensitive) atau nomor telepon (case-sensitive)
-      const filtered = allPatients.filter(patient => 
-        // Cek apakah nama mengandung query (case-insensitive)
-        patient.name.toLowerCase().includes(queryLowerCase) || 
-        // Cek apakah nomor telepon mengandung query (case-sensitive)
-        patient.phoneNumber.includes(query)
-      );
+      // Preprocess semua nama pasien menjadi lowercase dan hilangkan spasi ekstra
+      const processed = allPatients.map(patient => ({
+        ...patient,
+        processedName: patient.name.toLowerCase().replace(/\s+/g, ' ').trim()
+      }));
       
-      console.log(`Search found ${filtered.length} patients matching "${query}"`);
+      // Jika query lebih dari 3 karakter, coba lakukan pencarian "fuzzy" sederhana
+      // dengan memisahkan query menjadi bagian-bagian dan memeriksa apakah setiap bagian cocok
+      const queryParts = queryNoExtraSpaces.split(' ').filter(part => part.length > 0);
+      
+      const filtered = processed.filter(patient => {
+        // 1. Coba exact match pada nama yang sudah diproses
+        if (patient.processedName.includes(queryNoExtraSpaces)) {
+          return true;
+        }
+        
+        // 2. Coba exact match pada nomor telepon (case-sensitive)
+        if (patient.phoneNumber.includes(originalQuery)) {
+          return true;
+        }
+        
+        // 3. Jika query lebih dari 1 kata, periksa apakah nama pasien mengandung semua bagian
+        if (queryParts.length > 0) {
+          // Semua bagian query harus ada dalam nama pasien
+          const allPartsMatch = queryParts.every(part => 
+            patient.processedName.includes(part)
+          );
+          if (allPartsMatch) {
+            return true;
+          }
+        }
+        
+        // 4. Periksa jika ada kesamaan dengan nama pasien setelah normalisasi
+        // (menangani kasus seperti "Syahlina" vs "Syaflina")
+        const normalizedQuery = queryNoExtraSpaces
+          .replace(/hl/gi, 'fl') // hl -> fl
+          .replace(/fl/gi, 'hl'); // fl -> hl
+          
+        if (patient.processedName.includes(normalizedQuery)) {
+          return true;
+        }
+        
+        return false;
+      });
+      
+      console.log(`Search found ${filtered.length} patients matching "${originalQuery}"`);
       if (filtered.length > 0) {
         console.log("Matched patients:", filtered.map(p => `${p.id}: ${p.name} (${p.phoneNumber})`).join(", "));
+      } else {
+        console.log(`Tidak ada pasien ditemukan dengan kata kunci: ${originalQuery}`);
       }
       
-      return filtered;
+      // Hapus properti tambahan yang hanya digunakan untuk pencarian
+      return filtered.map(({ processedName, ...rest }) => rest);
     } catch (error) {
-      console.error("Error searching patients:", error);
-      return []; // Return empty array if there's an error
+      console.error("Error mencari pasien:", error);
+      return [];
     }
   }
   
