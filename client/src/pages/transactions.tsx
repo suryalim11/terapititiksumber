@@ -360,12 +360,10 @@ export default function Transactions() {
     // Cek jika transaksi memiliki metadata displayName dengan nilai 'alternative'
     console.log("Transaction metadata:", transaction?.metadata);
     
-    // Perbaikan: Cek semua kemungkinan nilai displayName untuk nama alternatif
-    if (transaction?.metadata?.displayName === 'alternative' || 
-        transaction?.metadata?.displayName === 'alias' ||
-        transaction?.metadata?.displayName === 'alternative' ||
-        transaction?.metadata?.displayName === 'Syafliana' ||
-        transaction?.metadata?.displayName === 'syafliana') {
+    // Perbaikan: Gunakan pendekatan string comparison untuk semua kemungkinan nilai displayName alternatif
+    const displayName = transaction?.metadata?.displayName;
+    if (displayName && 
+        ['alternative', 'alias', 'Syafliana', 'syafliana'].includes(String(displayName))) {
       console.log("Using alternative display name for transaction:", transaction.transactionId);
       
       // Kita mencoba mencari data pasien alternatif (dengan nomor telepon yang sama)

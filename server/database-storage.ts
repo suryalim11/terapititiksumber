@@ -878,6 +878,23 @@ export class DatabaseStorage implements IStorage {
       // Hitung debtAmount (sisa utang) berdasarkan totalAmount dan paidAmount
       const debtAmount = Math.max(0, totalAmount - paidAmount);
       
+      // Pastikan metadata adalah objek dan memiliki nilai displayName
+      let metadata = transaction.metadata;
+      if (!metadata) {
+        metadata = { displayName: "original" };
+      } else if (typeof metadata === 'string') {
+        try {
+          metadata = JSON.parse(metadata);
+          if (!metadata.displayName) {
+            metadata.displayName = "original";
+          }
+        } catch (e) {
+          metadata = { displayName: "original" };
+        }
+      } else if (typeof metadata === 'object' && !metadata.displayName) {
+        metadata.displayName = "original";
+      }
+      
       const transactionData = {
         ...transaction,
         discount: transaction.discount || "0",
@@ -886,8 +903,7 @@ export class DatabaseStorage implements IStorage {
         isPaid: transaction.isPaid !== undefined ? transaction.isPaid : true,
         paidAmount: paidAmount.toString(),
         debtAmount: debtAmount.toString(),
-        // Pastikan metadata selalu ada, jika tidak diberikan gunakan default
-        metadata: transaction.metadata || { displayName: "original" }
+        metadata: metadata
       };
       
       // Generate transaction ID dengan menggunakan waktu WIB
@@ -906,10 +922,9 @@ export class DatabaseStorage implements IStorage {
         .returning();
     
       // Pastikan data yang dikembalikan juga dalam format waktu WIB
-      const metadata = result[0].metadata || { displayName: "original" };
       const transactionResult = { 
         ...result[0],
-        metadata,
+        metadata: result[0].metadata || { displayName: "original" },
         createdAt: getWIBDate(result[0].createdAt)
       };
       
