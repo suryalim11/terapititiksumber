@@ -906,8 +906,10 @@ export class DatabaseStorage implements IStorage {
         .returning();
     
       // Pastikan data yang dikembalikan juga dalam format waktu WIB
+      const metadata = result[0].metadata || { displayName: "original" };
       const transactionResult = { 
         ...result[0],
+        metadata,
         createdAt: getWIBDate(result[0].createdAt)
       };
       
