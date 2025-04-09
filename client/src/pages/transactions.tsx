@@ -362,7 +362,10 @@ export default function Transactions() {
     
     // Perbaikan: Cek semua kemungkinan nilai displayName untuk nama alternatif
     if (transaction?.metadata?.displayName === 'alternative' || 
-        transaction?.metadata?.displayName === 'alias') {
+        transaction?.metadata?.displayName === 'alias' ||
+        transaction?.metadata?.displayName === 'alternative' ||
+        transaction?.metadata?.displayName === 'Syafliana' ||
+        transaction?.metadata?.displayName === 'syafliana') {
       console.log("Using alternative display name for transaction:", transaction.transactionId);
       
       // Kita mencoba mencari data pasien alternatif (dengan nomor telepon yang sama)

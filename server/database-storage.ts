@@ -885,7 +885,9 @@ export class DatabaseStorage implements IStorage {
         creditAmount: transaction.creditAmount || "0",
         isPaid: transaction.isPaid !== undefined ? transaction.isPaid : true,
         paidAmount: paidAmount.toString(),
-        debtAmount: debtAmount.toString()
+        debtAmount: debtAmount.toString(),
+        // Pastikan metadata selalu ada, jika tidak diberikan gunakan default
+        metadata: transaction.metadata || { displayName: "original" }
       };
       
       // Generate transaction ID dengan menggunakan waktu WIB
@@ -934,7 +936,8 @@ export class DatabaseStorage implements IStorage {
           isPaid: schema.transactions.isPaid,
           paidAmount: schema.transactions.paidAmount,
           debtAmount: schema.transactions.debtAmount,
-          createdAt: schema.transactions.createdAt
+          createdAt: schema.transactions.createdAt,
+          metadata: schema.transactions.metadata // Pastikan metadata (displayName) diambil
         })
         .from(schema.transactions)
         .where(eq(schema.transactions.isPaid, false))
@@ -986,7 +989,8 @@ export class DatabaseStorage implements IStorage {
           isPaid: schema.transactions.isPaid,
           paidAmount: schema.transactions.paidAmount,
           debtAmount: schema.transactions.debtAmount,
-          createdAt: schema.transactions.createdAt
+          createdAt: schema.transactions.createdAt,
+          metadata: schema.transactions.metadata // Pastikan metadata (displayName) diambil
         })
         .from(schema.transactions)
         .where(
