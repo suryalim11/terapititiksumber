@@ -2671,18 +2671,45 @@ export class DatabaseStorage implements IStorage {
       // Sesuaikan nilai total penjualan produk dan layanan agar sesuai dengan total pendapatan
       if (rawTotalProductSales + rawTotalServiceSales > summary.totalIncome) {
         // Jika total penjualan melebihi total pendapatan, sesuaikan secara proporsional
-        const scale = summary.totalIncome / (rawTotalProductSales + rawTotalServiceSales);
-        summary.totalProductSales = Math.round(rawTotalProductSales * scale);
-        summary.totalServiceSales = Math.round(rawTotalServiceSales * scale);
         
-        console.log(`Penyesuaian: Skala ${scale.toFixed(4)} diterapkan ke penjualan produk dan layanan.`);
-        console.log(`Total pendapatan: ${summary.totalIncome}, total produk+layanan sebelum penyesuaian: ${rawTotalProductSales + rawTotalServiceSales}`);
-        console.log(`Produk sebelum: ${rawTotalProductSales}, setelah: ${summary.totalProductSales}`);
-        console.log(`Layanan sebelum: ${rawTotalServiceSales}, setelah: ${summary.totalServiceSales}`);
+        // Pendekatan baru: pembulatan ke bilangan bulat yang lebih tepat
+        // Hitung persentase produk dan layanan terhadap total
+        const totalSales = rawTotalProductSales + rawTotalServiceSales;
+        const productPercentage = rawTotalProductSales / totalSales;
+        
+        // Gunakan persentase untuk alokasi, dengan pembulatan ke ribuan terdekat
+        let adjustedProductSales = Math.round(summary.totalIncome * productPercentage / 1000) * 1000;
+        let adjustedServiceSales = summary.totalIncome - adjustedProductSales;
+        
+        // Jika masih ada selisih (sangat kecil kemungkinannya), sesuaikan
+        if (adjustedProductSales + adjustedServiceSales !== summary.totalIncome) {
+          const diff = summary.totalIncome - (adjustedProductSales + adjustedServiceSales);
+          adjustedProductSales += diff; // Tambahkan selisih ke produk
+        }
+        
+        summary.totalProductSales = adjustedProductSales;
+        summary.totalServiceSales = adjustedServiceSales;
+        
+        console.log(`Penyesuaian: Menggunakan persentase penjualan dan pembulatan ke ribuan terdekat`);
+        console.log(`Total pendapatan: ${summary.totalIncome}, total produk+layanan sebelum penyesuaian: ${totalSales}`);
+        console.log(`Produk sebelum: ${rawTotalProductSales} (${(productPercentage * 100).toFixed(1)}%), setelah: ${summary.totalProductSales}`);
+        console.log(`Layanan sebelum: ${rawTotalServiceSales} (${((1 - productPercentage) * 100).toFixed(1)}%), setelah: ${summary.totalServiceSales}`);
       } else {
         // Jika total penjualan kurang dari atau sama dengan total pendapatan, gunakan nilai asli
-        summary.totalProductSales = rawTotalProductSales;
-        summary.totalServiceSales = rawTotalServiceSales;
+        // Tetap lakukan pembulatan ke ribuan terdekat
+        summary.totalProductSales = Math.round(rawTotalProductSales / 1000) * 1000;
+        summary.totalServiceSales = Math.round(rawTotalServiceSales / 1000) * 1000;
+        
+        // Jika masih ada selisih dengan total pendapatan, sesuaikan
+        const total = summary.totalProductSales + summary.totalServiceSales;
+        if (total !== summary.totalIncome) {
+          const diff = summary.totalIncome - total;
+          if (summary.totalProductSales > summary.totalServiceSales) {
+            summary.totalProductSales += diff;
+          } else {
+            summary.totalServiceSales += diff;
+          }
+        }
       }
       
       // Konversi map ke array untuk respons
