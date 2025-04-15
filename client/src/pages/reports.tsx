@@ -74,6 +74,11 @@ export default function Reports() {
   const { data: transactions, isLoading: isLoadingTransactions } = useQuery({
     queryKey: ["/api/transactions"],
   });
+  
+  // Fetch patients untuk menampilkan nama pasien
+  const { data: patients, isLoading: isLoadingPatients } = useQuery({
+    queryKey: ["/api/patients"],
+  });
 
   // Fetch sessions
   const { data: sessions, isLoading: isLoadingSessions } = useQuery({
@@ -310,6 +315,9 @@ export default function Reports() {
     
     // Format data transaksi untuk ditampilkan di dialog
     const formattedTransactions = filteredTransactions.map((t: any) => {
+      // Cari data pasien berdasarkan ID untuk menampilkan nama pasien
+      const patient = patients?.find((p: any) => p.id === t.patientId);
+      
       // Normalisasi transaksi untuk tampilan di dialog
       return {
         id: t.id,
@@ -321,7 +329,8 @@ export default function Reports() {
         debtAmount: parseFloat(t.debtAmount || "0").toLocaleString('id-ID'),
         paymentMethod: t.paymentMethod,
         items: Array.isArray(t.items) ? t.items : [],
-        patientId: t.patientId
+        patientId: t.patientId,
+        patientName: patient ? patient.name : `Pasien #${t.patientId}`
       };
     });
     
@@ -1002,7 +1011,7 @@ export default function Reports() {
                     <tr key={index} className="border-b">
                       <td className="px-3 py-2">{transaction.transactionId}</td>
                       <td className="px-3 py-2">{transaction.date}</td>
-                      <td className="px-3 py-2">Pasien #{transaction.patientId}</td>
+                      <td className="px-3 py-2">{transaction.patientName || `Pasien #${transaction.patientId}`}</td>
                       <td className="px-3 py-2">
                         {transaction.paymentMethod === "cash" ? "Tunai" : 
                          transaction.paymentMethod === "debit" ? "Debit" : 
