@@ -2239,7 +2239,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                             min="0"
                             step="1000"
                             value={paymentAmount}
-                            onChange={(e) => setPaymentAmount(e.target.value)}
+                            onChange={(e) => {
+                              // Pastikan nilai valid dan positif
+                              const value = Math.max(0, parseFloat(e.target.value) || 0);
+                              setPaymentAmount(value.toString());
+                            }}
                             className="flex-grow"
                           />
                           <Button 
@@ -2417,6 +2421,10 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                         <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-medium border-t border-amber-200 dark:border-amber-800 pt-1 mt-1">
                           <span>Jumlah Dibayar</span>
                           <span>{formatPrice(paymentAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-blue-700 dark:text-blue-400 font-medium border-t border-amber-200 dark:border-amber-800 pt-1 mt-1">
+                          <span>Sisa Hutang Setelah Pembayaran</span>
+                          <span>{formatPrice(Math.max(0, (parseFloat(selectedDebtTransaction.totalAmount) - parseFloat(selectedDebtTransaction.paidAmount) - parseFloat(paymentAmount || "0"))).toString())}</span>
                         </div>
                       </div>
                     </div>
