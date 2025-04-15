@@ -454,6 +454,7 @@ export default function Reports() {
                           <div className="h-64">
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
+                                {/* Filter data untuk hanya menampilkan metode pembayaran dengan nilai > 0 */}
                                 <Pie
                                   data={[
                                     { name: 'Tunai', value: monthlyFinancialReport?.summary?.totalCashTransactions || 0 },
@@ -461,27 +462,29 @@ export default function Reports() {
                                     { name: 'Transfer', value: monthlyFinancialReport?.summary?.totalTransferTransactions || 0 },
                                     { name: 'QRIS', value: monthlyFinancialReport?.summary?.totalQRISTransactions || 0 },
                                     { name: 'Lainnya', value: monthlyFinancialReport?.summary?.totalOtherTransactions || 0 }
-                                  ]}
+                                  ].filter(item => item.value > 0)}
                                   cx="50%"
                                   cy="50%"
-                                  labelLine={false}
+                                  labelLine={true}
                                   outerRadius={80}
                                   fill="#8884d8"
                                   dataKey="value"
                                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                                 >
                                   {[
-                                    { name: 'Tunai', value: monthlyFinancialReport?.summary?.totalCashTransactions || 0 },
-                                    { name: 'Debit', value: monthlyFinancialReport?.summary?.totalDebitTransactions || 0 },
-                                    { name: 'Transfer', value: monthlyFinancialReport?.summary?.totalTransferTransactions || 0 },
-                                    { name: 'QRIS', value: monthlyFinancialReport?.summary?.totalQRISTransactions || 0 },
-                                    { name: 'Lainnya', value: monthlyFinancialReport?.summary?.totalOtherTransactions || 0 }
-                                  ].map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    { name: 'Tunai', value: monthlyFinancialReport?.summary?.totalCashTransactions || 0, color: "#2563EB" }, // Blue
+                                    { name: 'Debit', value: monthlyFinancialReport?.summary?.totalDebitTransactions || 0, color: "#16A34A" }, // Green
+                                    { name: 'Transfer', value: monthlyFinancialReport?.summary?.totalTransferTransactions || 0, color: "#F59E0B" }, // Amber
+                                    { name: 'QRIS', value: monthlyFinancialReport?.summary?.totalQRISTransactions || 0, color: "#F97316" }, // Orange
+                                    { name: 'Lainnya', value: monthlyFinancialReport?.summary?.totalOtherTransactions || 0, color: "#6366F1" } // Indigo
+                                  ]
+                                  .filter(item => item.value > 0) // Hanya tampilkan yang ada nilainya
+                                  .map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
                                   ))}
                                 </Pie>
                                 <Tooltip formatter={(value) => `Rp${(value as number).toLocaleString('id-ID')}`} />
-                                <Legend />
+                                <Legend layout="horizontal" verticalAlign="bottom" align="center" />
                               </PieChart>
                             </ResponsiveContainer>
                           </div>

@@ -2511,21 +2511,22 @@ export class DatabaseStorage implements IStorage {
         summary.totalIncome += totalAmount;
         
         // Update statistik metode pembayaran
-        switch (transaction.paymentMethod) {
-          case "Tunai":
+        switch (transaction.paymentMethod.toLowerCase()) {
+          case "cash":
             summary.totalCashTransactions += totalAmount;
             break;
-          case "Debit":
+          case "debit":
             summary.totalDebitTransactions += totalAmount;
             break;
-          case "Transfer":
+          case "bank_transfer":
             summary.totalTransferTransactions += totalAmount;
             break;
-          case "QRIS":
+          case "qris":
             summary.totalQRISTransactions += totalAmount;
             break;
           default:
             summary.totalOtherTransactions += totalAmount;
+            console.log(`Metode pembayaran tidak dikenal: ${transaction.paymentMethod}`);
         }
         
         // Update statistik kredit
@@ -2568,8 +2569,27 @@ export class DatabaseStorage implements IStorage {
           dailyData.credits += creditAmount;
           
           // Update metode pembayaran
-          if (transaction.paymentMethod in dailyData.paymentMethod) {
-            dailyData.paymentMethod[transaction.paymentMethod] += totalAmount;
+          // Petakan metode pembayaran database ke nama yang ditampilkan
+          let displayPaymentMethod: string;
+          switch (transaction.paymentMethod.toLowerCase()) {
+            case "cash": 
+              displayPaymentMethod = "Tunai"; 
+              break;
+            case "debit": 
+              displayPaymentMethod = "Debit";
+              break;  
+            case "bank_transfer": 
+              displayPaymentMethod = "Transfer";
+              break;
+            case "qris": 
+              displayPaymentMethod = "QRIS"; 
+              break;
+            default: 
+              displayPaymentMethod = "Lainnya";
+          }
+          
+          if (displayPaymentMethod in dailyData.paymentMethod) {
+            dailyData.paymentMethod[displayPaymentMethod] += totalAmount;
           } else {
             dailyData.paymentMethod["Lainnya"] += totalAmount;
           }
