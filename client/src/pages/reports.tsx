@@ -959,6 +959,103 @@ export default function Reports() {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Dialog untuk detail transaksi */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl">{dialogTitle}</DialogTitle>
+            <DialogDescription>
+              {dialogType === "debt" && "Detail transaksi dengan hutang pada periode ini"}
+              {dialogType === "debtPayment" && "Detail pembayaran hutang pada periode ini"}
+              {dialogType === "credit" && "Detail transaksi kredit pada periode ini"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {transactionDetails.length === 0 ? (
+            <div className="py-6 text-center text-gray-500">
+              Tidak ada data transaksi untuk ditampilkan
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full mt-2">
+                <thead>
+                  <tr className="border-b">
+                    <th className="px-3 py-2 text-left">ID Transaksi</th>
+                    <th className="px-3 py-2 text-left">Tanggal</th>
+                    <th className="px-3 py-2 text-left">Pasien</th>
+                    <th className="px-3 py-2 text-left">Pembayaran</th>
+                    <th className="px-3 py-2 text-right">Total</th>
+                    {dialogType === "debt" && (
+                      <th className="px-3 py-2 text-right">Hutang</th>
+                    )}
+                    {dialogType === "debtPayment" && (
+                      <th className="px-3 py-2 text-right">Dibayar</th>
+                    )}
+                    {dialogType === "credit" && (
+                      <th className="px-3 py-2 text-right">Kredit</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactionDetails.map((transaction, index) => (
+                    <tr key={index} className="border-b">
+                      <td className="px-3 py-2">{transaction.transactionId}</td>
+                      <td className="px-3 py-2">{transaction.date}</td>
+                      <td className="px-3 py-2">Pasien #{transaction.patientId}</td>
+                      <td className="px-3 py-2">
+                        {transaction.paymentMethod === "cash" ? "Tunai" : 
+                         transaction.paymentMethod === "debit" ? "Debit" : 
+                         transaction.paymentMethod === "bank_transfer" ? "Transfer" : 
+                         transaction.paymentMethod === "qris" ? "QRIS" : transaction.paymentMethod}
+                      </td>
+                      <td className="px-3 py-2 text-right">Rp{transaction.totalAmount}</td>
+                      {dialogType === "debt" && (
+                        <td className="px-3 py-2 text-right text-red-600">Rp{transaction.debtAmount}</td>
+                      )}
+                      {dialogType === "debtPayment" && (
+                        <td className="px-3 py-2 text-right text-green-600">Rp{transaction.paidAmount}</td>
+                      )}
+                      {dialogType === "credit" && (
+                        <td className="px-3 py-2 text-right text-blue-600">Rp{transaction.creditAmount}</td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="font-semibold">
+                    <td colSpan={4} className="px-3 py-3 text-right">Total:</td>
+                    <td className="px-3 py-3 text-right">
+                      Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.totalAmount.replace(/\./g, '')), 0).toLocaleString('id-ID')}
+                    </td>
+                    {dialogType === "debt" && (
+                      <td className="px-3 py-3 text-right text-red-600">
+                        Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.debtAmount.replace(/\./g, '')), 0).toLocaleString('id-ID')}
+                      </td>
+                    )}
+                    {dialogType === "debtPayment" && (
+                      <td className="px-3 py-3 text-right text-green-600">
+                        Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.paidAmount.replace(/\./g, '')), 0).toLocaleString('id-ID')}
+                      </td>
+                    )}
+                    {dialogType === "credit" && (
+                      <td className="px-3 py-3 text-right text-blue-600">
+                        Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.creditAmount.replace(/\./g, '')), 0).toLocaleString('id-ID')}
+                      </td>
+                    )}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
