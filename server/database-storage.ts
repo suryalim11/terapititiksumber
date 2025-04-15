@@ -2411,6 +2411,9 @@ export class DatabaseStorage implements IStorage {
     }[];
   }> {
     try {
+      console.log(`========= MEMULAI PERHITUNGAN LAPORAN KEUANGAN BULANAN =========`);
+      console.log(`Debugging untuk mendiagnosis masalah penjualan layanan yang bernilai 0`);
+      console.log(`===============================================================`);
       // Menggunakan tahun dan bulan saat ini jika tidak ada yang ditentukan
       const currentDate = getWIBDate(new Date());
       const reportYear = year || currentDate.getFullYear();
@@ -2549,16 +2552,22 @@ export class DatabaseStorage implements IStorage {
             const itemPrice = Number(item.price) * (item.quantity || 1);
             console.log(`  Item: type=${item.type}, price=${item.price}, quantity=${item.quantity || 1}, calculated=${itemPrice}`);
             
-            if (item.type === 'product') {
+            const itemType = typeof item.type === 'string' ? item.type.toLowerCase() : '';
+            console.log(`    Item type after normalization: "${itemType}"`);
+            
+            if (itemType === 'product') {
               productSalesInTransaction += itemPrice;
               summary.totalProductSales += itemPrice;
               console.log(`    Added ${itemPrice} to product sales (now: ${summary.totalProductSales})`);
-            } else if (item.type === 'package') {
+            } else if (itemType === 'package') {
               serviceSalesInTransaction += itemPrice;
               summary.totalServiceSales += itemPrice;
               console.log(`    Added ${itemPrice} to service sales (now: ${summary.totalServiceSales})`);
             } else {
-              console.log(`    Unknown item type: ${item.type}, not counted as product or service`);
+              // Fallback untuk item tanpa tipe yang valid - asumsikan sebagai produk
+              console.log(`    Unknown item type: ${item.type}, assuming as product`);
+              productSalesInTransaction += itemPrice;
+              summary.totalProductSales += itemPrice;
             }
           }
         }
