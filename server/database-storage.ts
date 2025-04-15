@@ -2380,6 +2380,237 @@ export class DatabaseStorage implements IStorage {
       activePackages: activePackages.length
     };
   }
+  
+  /**
+   * Mendapatkan data laporan keuangan bulanan
+   * @param year Tahun untuk laporan (default: tahun saat ini)
+   * @param month Bulan untuk laporan (1-12, undefined untuk seluruh tahun)
+   */
+  async getMonthlyFinancialReport(year?: number, month?: number): Promise<{
+    summary: {
+      totalIncome: number;
+      totalProductSales: number;
+      totalServiceSales: number;
+      totalCashTransactions: number;
+      totalDebitTransactions: number;
+      totalTransferTransactions: number;
+      totalQRISTransactions: number;
+      totalOtherTransactions: number;
+      totalCredits: number;
+      totalDebtPayments: number;
+      transactionCount: number;
+    },
+    dailyData: {
+      date: string;
+      totalAmount: number;
+      paymentMethod: Record<string, number>;
+      productSales: number;
+      serviceSales: number;
+      credits: number;
+      debtPayments: number;
+    }[];
+  }> {
+    try {
+      // Menggunakan tahun dan bulan saat ini jika tidak ada yang ditentukan
+      const currentDate = getWIBDate(new Date());
+      const reportYear = year || currentDate.getFullYear();
+      let startDate: Date, endDate: Date;
+      
+      if (month) {
+        // Jika bulan ditentukan, buat rentang untuk bulan tersebut
+        startDate = new Date(reportYear, month - 1, 1);
+        // Tanggal akhir adalah tanggal 0 bulan berikutnya (hari terakhir bulan ini)
+        endDate = new Date(reportYear, month, 0);
+        endDate.setHours(23, 59, 59, 999);
+      } else {
+        // Jika hanya tahun yang ditentukan, buat rentang untuk seluruh tahun
+        startDate = new Date(reportYear, 0, 1);
+        endDate = new Date(reportYear, 11, 31);
+        endDate.setHours(23, 59, 59, 999);
+      }
+      
+      console.log(`Generating report from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      
+      // Ambil semua transaksi dalam periode laporan
+      const transactions = await db.query.transactions.findMany({
+        where: and(
+          gte(schema.transactions.createdAt, startDate),
+          lte(schema.transactions.createdAt, endDate)
+        ),
+        orderBy: [asc(schema.transactions.createdAt)]
+      });
+      
+      console.log(`Found ${transactions.length} transactions in the period`);
+      
+      // Ambil pembayaran hutang dalam periode laporan
+      const debtPayments = await db.select().from(schema.debtPayments).where(
+        and(
+          gte(schema.debtPayments.paymentDate, startDate),
+          lte(schema.debtPayments.paymentDate, endDate)
+        )
+      );
+      
+      console.log(`Found ${debtPayments.length} debt payments in the period`);
+      
+      // Inisialisasi ringkasan
+      const summary = {
+        totalIncome: 0,
+        totalProductSales: 0,
+        totalServiceSales: 0,
+        totalCashTransactions: 0,
+        totalDebitTransactions: 0,
+        totalTransferTransactions: 0,
+        totalQRISTransactions: 0,
+        totalOtherTransactions: 0,
+        totalCredits: 0,
+        totalDebtPayments: 0,
+        transactionCount: transactions.length
+      };
+      
+      // Buat map untuk menyimpan data harian
+      const dailyDataMap = new Map<string, {
+        date: string;
+        totalAmount: number;
+        paymentMethod: Record<string, number>;
+        productSales: number;
+        serviceSales: number;
+        credits: number;
+        debtPayments: number;
+      }>();
+      
+      // Inisialisasi data harian untuk setiap tanggal dalam rentang
+      let currentDate2 = new Date(startDate);
+      while (currentDate2 <= endDate) {
+        const dateStr = format(currentDate2, 'yyyy-MM-dd');
+        dailyDataMap.set(dateStr, {
+          date: dateStr,
+          totalAmount: 0,
+          paymentMethod: {
+            "Tunai": 0,
+            "Debit": 0, 
+            "Transfer": 0,
+            "QRIS": 0,
+            "Lainnya": 0
+          },
+          productSales: 0,
+          serviceSales: 0,
+          credits: 0,
+          debtPayments: 0
+        });
+        
+        // Pindah ke hari berikutnya
+        currentDate2.setDate(currentDate2.getDate() + 1);
+      }
+      
+      // Proses transaksi
+      for (const transaction of transactions) {
+        // Jumlah total transaksi
+        const totalAmount = Number(transaction.totalAmount);
+        
+        // Update ringkasan
+        summary.totalIncome += totalAmount;
+        
+        // Update statistik metode pembayaran
+        switch (transaction.paymentMethod) {
+          case "Tunai":
+            summary.totalCashTransactions += totalAmount;
+            break;
+          case "Debit":
+            summary.totalDebitTransactions += totalAmount;
+            break;
+          case "Transfer":
+            summary.totalTransferTransactions += totalAmount;
+            break;
+          case "QRIS":
+            summary.totalQRISTransactions += totalAmount;
+            break;
+          default:
+            summary.totalOtherTransactions += totalAmount;
+        }
+        
+        // Update statistik kredit
+        const creditAmount = Number(transaction.creditAmount) || 0;
+        summary.totalCredits += creditAmount;
+        
+        // Hitung penjualan produk dan layanan
+        let productSalesInTransaction = 0;
+        let serviceSalesInTransaction = 0;
+        
+        // Parse items untuk menghitung penjualan produk dan layanan
+        const items = typeof transaction.items === 'string' 
+          ? JSON.parse(transaction.items) 
+          : transaction.items;
+          
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            const itemPrice = Number(item.price) * (item.quantity || 1);
+            
+            if (item.type === 'product') {
+              productSalesInTransaction += itemPrice;
+              summary.totalProductSales += itemPrice;
+            } else if (item.type === 'package') {
+              serviceSalesInTransaction += itemPrice;
+              summary.totalServiceSales += itemPrice;
+            }
+          }
+        }
+        
+        // Format tanggal untuk pengelompokan data harian
+        const tranDate = new Date(transaction.createdAt);
+        const dateStr = format(tranDate, 'yyyy-MM-dd');
+        
+        // Update data harian
+        const dailyData = dailyDataMap.get(dateStr);
+        if (dailyData) {
+          dailyData.totalAmount += totalAmount;
+          dailyData.productSales += productSalesInTransaction;
+          dailyData.serviceSales += serviceSalesInTransaction;
+          dailyData.credits += creditAmount;
+          
+          // Update metode pembayaran
+          if (transaction.paymentMethod in dailyData.paymentMethod) {
+            dailyData.paymentMethod[transaction.paymentMethod] += totalAmount;
+          } else {
+            dailyData.paymentMethod["Lainnya"] += totalAmount;
+          }
+        }
+      }
+      
+      // Proses pembayaran hutang
+      for (const payment of debtPayments) {
+        const amount = Number(payment.amount);
+        summary.totalDebtPayments += amount;
+        
+        // Format tanggal untuk pengelompokan data harian
+        const paymentDate = new Date(payment.paymentDate);
+        const dateStr = format(paymentDate, 'yyyy-MM-dd');
+        
+        // Update data harian
+        const dailyData = dailyDataMap.get(dateStr);
+        if (dailyData) {
+          dailyData.debtPayments += amount;
+          
+          // Update metode pembayaran untuk pembayaran hutang
+          if (payment.paymentMethod in dailyData.paymentMethod) {
+            dailyData.paymentMethod[payment.paymentMethod] += amount;
+          } else {
+            dailyData.paymentMethod["Lainnya"] += amount;
+          }
+        }
+      }
+      
+      // Konversi map ke array untuk respons
+      const dailyData = Array.from(dailyDataMap.values());
+      
+      return {
+        summary,
+        dailyData
+      };
+    } catch (error) {
+      console.error("Error generating monthly financial report:", error);
+      throw error;
+    }
+  }
 
   async getRecentActivities(limit: number = 10): Promise<any[]> {
     // Mengambil berbagai jenis aktivitas dan menggabungkannya

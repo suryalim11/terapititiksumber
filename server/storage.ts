@@ -56,6 +56,32 @@ export interface IStorage {
   getConfirmationTokenByToken(token: string): Promise<ConfirmationToken | undefined>;
   markTokenAsUsed(token: string): Promise<ConfirmationToken | undefined>;
   
+  // Reports
+  getMonthlyFinancialReport(year?: number, month?: number): Promise<{
+    summary: {
+      totalIncome: number;
+      totalProductSales: number;
+      totalServiceSales: number;
+      totalCashTransactions: number;
+      totalDebitTransactions: number;
+      totalTransferTransactions: number;
+      totalQRISTransactions: number;
+      totalOtherTransactions: number;
+      totalCredits: number;
+      totalDebtPayments: number;
+      transactionCount: number;
+    },
+    dailyData: {
+      date: string;
+      totalAmount: number;
+      paymentMethod: Record<string, number>;
+      productSales: number;
+      serviceSales: number;
+      credits: number;
+      debtPayments: number;
+    }[];
+  }>;
+  
   // Products
   getProduct(id: number): Promise<Product | undefined>;
   getAllProducts(): Promise<Product[]>;
