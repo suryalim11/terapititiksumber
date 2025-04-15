@@ -2558,21 +2558,32 @@ export class DatabaseStorage implements IStorage {
         const creditAmount = Number(transaction.creditAmount) || 0;
         summary.totalCredits += creditAmount;
         
+        // Cetak detail semua transaksi kredit untuk debugging
+        if (creditAmount > 0) {
+            console.log(`DETAIL TRANSAKSI KREDIT: ID=${transaction.id}, transactionId=${transaction.transactionId}`);
+            console.log(`  creditAmount=${creditAmount}, paidAmount=${transaction.paidAmount}, debtAmount=${transaction.debtAmount}`);
+            console.log(`  isPaid=${transaction.isPaid}, status=${typeof transaction.isPaid}`);
+            
+            // Coba temukan transaksi atas nama Feriska
+            const items = typeof transaction.items === 'string' 
+                ? JSON.parse(transaction.items) 
+                : transaction.items;
+            
+            if (items) {
+                console.log(`  Items: ${JSON.stringify(items)}`);
+            }
+        }
+        
         // Update statistik hutang
         // Lakukan pengecekan apakah transaksi ini memiliki hutang yang belum dibayar
-        // Jika isPaid = false dan creditAmount > 0, maka ini harus dihitung sebagai hutang
         const isPaid = transaction.isPaid === true || transaction.isPaid === 1;
         const paidAmount = Number(transaction.paidAmount) || 0;
         let debtAmount = Number(transaction.debtAmount) || 0;
         
-        // Jika ada kredit tetapi belum dibayar penuh, maka ini adalah hutang
-        if (creditAmount > 0 && !isPaid) {
-            // Hitung hutang yang sebenarnya berdasarkan jumlah kredit dan pembayaran
-            const actualDebt = creditAmount - paidAmount;
-            // Gunakan nilai hutang yang sebenarnya jika lebih besar
-            if (actualDebt > debtAmount) {
-                debtAmount = actualDebt;
-            }
+        // Anggap SEMUA transaksi kredit sebagai hutang untuk sementara, tanpa memperhatikan isPaid
+        if (creditAmount > 0) {
+            debtAmount = creditAmount;
+            console.log(`  HUTANG KREDIT TERDETEKSI: ${creditAmount}`);
         }
         
         if (debtAmount > 0) {
