@@ -117,9 +117,10 @@ export default function Reports() {
       return data;
     },
     enabled: activeTab === "financial" && reportPeriod === "monthly" && detailedView,
-    // Jangan gunakan cache dan selalu ambil data baru
-    cacheTime: 0,
-    staleTime: 0
+    // Gunakan refetchInterval untuk memastikan data selalu segar
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true
   });
 
   // Generate daily financial data for chart
@@ -306,9 +307,16 @@ export default function Reports() {
     
     if (type === "debt") {
       title = "Detail Hutang";
-      // Transaksi dengan hutang > 0
-      filteredTransactions = monthlyTransactions.filter((t: any) => 
-        parseFloat(t.debtAmount || "0") > 0);
+      // Transaksi dengan hutang > 0 ATAU transaksi kredit (karena kredit = hutang)
+      filteredTransactions = monthlyTransactions.filter((t: any) => {
+        // Cek apakah transaksi memiliki hutang lebih dari 0
+        const hasDebt = parseFloat(t.debtAmount || "0") > 0;
+        // Cek apakah transaksi adalah kredit (credit > 0)
+        const isCredit = parseFloat(t.creditAmount || "0") > 0;
+        // Pertimbangkan kedua kondisi
+        return hasDebt || isCredit;
+      });
+      console.log("Filtered debt transactions:", filteredTransactions.length);
     } else if (type === "debtPayment") {
       title = "Detail Pembayaran Hutang";
       // Ambil transaksi yang memiliki pembayaran hutang
