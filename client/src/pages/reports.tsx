@@ -1084,7 +1084,13 @@ export default function Reports() {
                       </td>
                       <td className="px-2 py-2 text-right">Rp{transaction.totalAmount}</td>
                       {dialogType === "debt" && (
-                        <td className="px-2 py-2 text-right font-medium text-red-600">Rp{transaction.debtAmount}</td>
+                        <td className="px-2 py-2 text-right font-medium text-red-600">
+                          {parseFloat(transaction.debtAmount.replace(/\./g, '').replace(',', '.')) > 0 
+                            ? `Rp${transaction.debtAmount}` 
+                            : parseFloat(transaction.creditAmount.replace(/\./g, '').replace(',', '.')) > 0
+                              ? `Rp${transaction.creditAmount}`
+                              : "Rp0"}
+                        </td>
                       )}
                       {dialogType === "debtPayment" && (
                         <td className="px-2 py-2 text-right font-medium text-green-600">Rp{transaction.paidAmount}</td>
@@ -1103,7 +1109,16 @@ export default function Reports() {
                     </td>
                     {dialogType === "debt" && (
                       <td className="px-2 py-3 text-right text-red-600">
-                        Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.debtAmount.replace(/\./g, '')), 0).toLocaleString('id-ID')}
+                        Rp{transactionDetails.reduce((sum, t) => {
+                          // Jika ada hutang, gunakan nilai hutang
+                          const debtValue = parseFloat(t.debtAmount.replace(/\./g, '').replace(',', '.'));
+                          // Jika ada kredit, gunakan nilai kredit
+                          const creditValue = parseFloat(t.creditAmount.replace(/\./g, '').replace(',', '.'));
+                          
+                          // Prioritaskan hutang, jika tidak ada gunakan kredit
+                          const totalDebt = debtValue > 0 ? debtValue : (creditValue > 0 ? creditValue : 0);
+                          return sum + totalDebt;
+                        }, 0).toLocaleString('id-ID')}
                       </td>
                     )}
                     {dialogType === "debtPayment" && (
