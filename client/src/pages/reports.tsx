@@ -59,7 +59,7 @@ export default function Reports() {
   
   // State untuk dialog dan detail transaksi
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<"debt" | "debtPayment" | "credit">("debt");
+  const [dialogType, setDialogType] = useState<"debt" | "debtPayment" | "credit" | "product" | "service">("debt");
   const [dialogTitle, setDialogTitle] = useState("");
   const [transactionDetails, setTransactionDetails] = useState<any[]>([]);
   const [currentReport, setCurrentReport] = useState<Report>({
@@ -269,7 +269,7 @@ export default function Reports() {
   };
 
   // Fungsi untuk menampilkan dialog dengan detail transaksi berdasarkan tipe
-  const showTransactionDetails = (type: "debt" | "debtPayment" | "credit") => {
+  const showTransactionDetails = (type: "debt" | "debtPayment" | "credit" | "product" | "service") => {
     if (!transactions || !Array.isArray(transactions)) {
       toast({
         title: "Tidak dapat memuat detail",
@@ -311,6 +311,32 @@ export default function Reports() {
       // Transaksi dengan kredit > 0
       filteredTransactions = monthlyTransactions.filter((t: any) => 
         parseFloat(t.creditAmount || "0") > 0);
+    } else if (type === "product") {
+      title = "Detail Penjualan Produk";
+      // Transaksi yang memiliki item produk
+      filteredTransactions = monthlyTransactions.filter((t: any) => {
+        if (!t.items) return false;
+        try {
+          const items = typeof t.items === 'string' ? JSON.parse(t.items) : t.items;
+          return Array.isArray(items) && items.some((item: any) => item.type === 'product');
+        } catch (e) {
+          return false;
+        }
+      });
+    } else if (type === "service") {
+      title = "Detail Penjualan Layanan";
+      // Transaksi yang memiliki item layanan (service) atau paket (package)
+      filteredTransactions = monthlyTransactions.filter((t: any) => {
+        if (!t.items) return false;
+        try {
+          const items = typeof t.items === 'string' ? JSON.parse(t.items) : t.items;
+          return Array.isArray(items) && items.some((item: any) => 
+            item.type === 'service' || item.type === 'package'
+          );
+        } catch (e) {
+          return false;
+        }
+      });
     }
     
     // Format data transaksi untuk ditampilkan di dialog
@@ -529,7 +555,10 @@ export default function Reports() {
                             </p>
                           </div>
                           
-                          <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                          <div 
+                            className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => showTransactionDetails("product")}
+                          >
                             <h3 className="text-lg font-semibold mb-2">Penjualan Produk</h3>
                             <p className="text-2xl md:text-3xl font-bold text-green-700 dark:text-green-300">
                               Rp{(monthlyFinancialReport?.summary?.totalProductSales || 0).toLocaleString('id-ID')}
@@ -539,9 +568,18 @@ export default function Reports() {
                                 ? Math.round((monthlyFinancialReport.summary.totalProductSales / monthlyFinancialReport.summary.totalIncome) * 100)
                                 : 0}% dari total
                             </p>
+                            <p className="text-xs text-blue-500 mt-2 flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Klik untuk melihat detail
+                            </p>
                           </div>
                           
-                          <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                          <div 
+                            className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => showTransactionDetails("service")}
+                          >
                             <h3 className="text-lg font-semibold mb-2">Penjualan Layanan</h3>
                             <p className="text-2xl md:text-3xl font-bold text-purple-700 dark:text-purple-300">
                               Rp{(monthlyFinancialReport?.summary?.totalServiceSales || 0).toLocaleString('id-ID')}
@@ -550,6 +588,12 @@ export default function Reports() {
                               {monthlyFinancialReport?.summary?.totalIncome
                                 ? Math.round((monthlyFinancialReport.summary.totalServiceSales / monthlyFinancialReport.summary.totalIncome) * 100)
                                 : 0}% dari total
+                            </p>
+                            <p className="text-xs text-blue-500 mt-2 flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Klik untuk melihat detail
                             </p>
                           </div>
                         </div>
