@@ -192,6 +192,26 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const [payDebt, setPayDebt] = useState(false);
   const [selectedDebtTransaction, setSelectedDebtTransaction] = useState<any>(null);
   const [paymentAmount, setPaymentAmount] = useState<string>("0");
+  
+  // Effect untuk memantau perubahan pada useCredit
+  useEffect(() => {
+    if (useCredit) {
+      // Jika credit diaktifkan, hitung default values
+      const subtotal = cartItems.reduce(
+        (sum, item) => sum + parseFloat(item.price) * item.quantity, 0
+      );
+      const discount = parseFloat(form.getValues().discount || "0");
+      const totalAmount = Math.max(0, subtotal - discount);
+      
+      // Set default paidAmount ke 0 dan creditAmount ke totalAmount
+      form.setValue("paidAmount", "0");
+      form.setValue("creditAmount", totalAmount.toString());
+    } else {
+      // Jika credit dinonaktifkan, reset nilai
+      form.setValue("paidAmount", "0");
+      form.setValue("creditAmount", "0");
+    }
+  }, [useCredit, cartItems, form]);
 
   // Fetch all patients
   const { data: allPatients = [] } = useQuery<Patient[]>({
@@ -2242,7 +2262,19 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                             onChange={(e) => {
                               // Pastikan nilai valid dan positif
                               const value = Math.max(0, parseFloat(e.target.value) || 0);
-                              setPaymentAmount(value.toString());
+                              
+                              // Pastikan nilai tidak melebihi sisa hutang
+                              if (selectedDebtTransaction) {
+                                const totalAmount = parseFloat(selectedDebtTransaction.totalAmount);
+                                const paidAmount = parseFloat(selectedDebtTransaction.paidAmount);
+                                const remainingDebt = totalAmount - paidAmount;
+                                
+                                // Batasi nilai maksimum pembayaran sesuai sisa hutang
+                                const validValue = Math.min(value, remainingDebt);
+                                setPaymentAmount(validValue.toString());
+                              } else {
+                                setPaymentAmount(value.toString());
+                              }
                             }}
                             className="flex-grow"
                           />
