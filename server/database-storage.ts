@@ -2459,7 +2459,7 @@ export class DatabaseStorage implements IStorage {
       const summary = {
         totalIncome: 0,
         totalProductSales: 0,
-        totalServiceSales: 0,
+        totalServiceSales: 0, // Inisialisasi dengan 0, bukan null
         totalCashTransactions: 0,
         totalDebitTransactions: 0,
         totalTransferTransactions: 0,
@@ -2469,6 +2469,8 @@ export class DatabaseStorage implements IStorage {
         totalDebtPayments: 0,
         transactionCount: transactions.length
       };
+      
+      console.log("Ringkasan awal:", JSON.stringify(summary));
       
       // Buat map untuk menyimpan data harian
       const dailyDataMap = new Map<string, {
@@ -2637,6 +2639,20 @@ export class DatabaseStorage implements IStorage {
       
       // Konversi map ke array untuk respons
       const dailyData = Array.from(dailyDataMap.values());
+      
+      // Log ringkasan akhir untuk debugging
+      console.log("========= RINGKASAN LAPORAN AKHIR =========");
+      console.log(`Total pendapatan: ${summary.totalIncome}`);
+      console.log(`Total penjualan produk: ${summary.totalProductSales}`);
+      console.log(`Total penjualan layanan: ${summary.totalServiceSales}`);
+      console.log(`Total transaksi: ${summary.transactionCount}`);
+      console.log("==========================================");
+      
+      // Pastikan nilai totalServiceSales bukan null
+      if (summary.totalServiceSales === null || summary.totalServiceSales === undefined) {
+        console.log("WARNING: totalServiceSales adalah null/undefined, menetapkan ke 0");
+        summary.totalServiceSales = 0;
+      }
       
       return {
         summary,
