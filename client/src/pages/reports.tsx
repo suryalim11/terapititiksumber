@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, addHours } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, addHours, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
 import { 
   Card, 
@@ -26,7 +26,15 @@ import {
   PieChart,
   Pie,
   Cell,
+  ComposedChart,
 } from "recharts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Report = {
   type: "daily" | "monthly";
@@ -37,6 +45,9 @@ type Report = {
 export default function Reports() {
   const [activeTab, setActiveTab] = useState("financial");
   const [reportPeriod, setReportPeriod] = useState<"daily" | "monthly">("daily");
+  const [detailedView, setDetailedView] = useState<boolean>(false);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1); // 1-12
   const [currentReport, setCurrentReport] = useState<Report>({
     type: "daily",
     startDate: format(subDays(new Date(), 7), "yyyy-MM-dd"),
@@ -60,6 +71,20 @@ export default function Reports() {
       }
       return response.json();
     }
+  });
+  
+  // Fetch monthly financial report
+  const { data: monthlyFinancialReport, isLoading: isLoadingMonthlyReport } = useQuery({
+    queryKey: ["/api/reports/monthly-financial", selectedYear, selectedMonth],
+    queryFn: async () => {
+      const response = await fetch(`/api/reports/monthly-financial?year=${selectedYear}&month=${selectedMonth}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch monthly financial report");
+      }
+      console.log("Fetched monthly financial report");
+      return response.json();
+    },
+    enabled: activeTab === "financial" && reportPeriod === "monthly" && detailedView
   });
 
   // Generate daily financial data for chart
@@ -299,11 +324,14 @@ export default function Reports() {
                 <CardDescription>
                   Grafik pendapatan dari transaksi terapi dan produk
                 </CardDescription>
-                <div className="flex space-x-2 mt-2">
+                <div className="flex flex-wrap gap-2 mt-2">
                   <Button 
                     variant={reportPeriod === "daily" ? "default" : "outline"} 
                     size="sm"
-                    onClick={() => setReportPeriod("daily")}
+                    onClick={() => {
+                      setReportPeriod("daily");
+                      setDetailedView(false);
+                    }}
                   >
                     Harian
                   </Button>
@@ -314,14 +342,192 @@ export default function Reports() {
                   >
                     Bulanan
                   </Button>
+                  
+                  {reportPeriod === "monthly" && (
+                    <Button
+                      variant={detailedView ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setDetailedView(!detailedView)}
+                      className="ml-auto"
+                    >
+                      {detailedView ? "Tampilan Sederhana" : "Tampilan Detail"}
+                    </Button>
+                  )}
                 </div>
+                
+                {reportPeriod === "monthly" && detailedView && (
+                  <div className="flex flex-wrap items-center gap-2 mt-4">
+                    <div className="flex items-center">
+                      <span className="mr-2">Tahun:</span>
+                      <Select
+                        value={selectedYear.toString()}
+                        onValueChange={(value) => setSelectedYear(parseInt(value))}
+                      >
+                        <SelectTrigger className="w-36">
+                          <SelectValue placeholder="Pilih Tahun" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[2024, 2025, 2026].map((year) => (
+                            <SelectItem key={year} value={year.toString()}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <span className="mr-2">Bulan:</span>
+                      <Select
+                        value={selectedMonth.toString()}
+                        onValueChange={(value) => setSelectedMonth(parseInt(value))}
+                      >
+                        <SelectTrigger className="w-36">
+                          <SelectValue placeholder="Pilih Bulan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 12 }, (_, i) => {
+                            const monthNumber = i + 1;
+                            const monthName = format(new Date(2025, i, 1), "MMMM", { locale: id });
+                            return (
+                              <SelectItem key={monthNumber} value={monthNumber.toString()}>
+                                {monthName}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
-                {isLoadingTransactions ? (
+                {isLoadingTransactions || (detailedView && isLoadingMonthlyReport) ? (
                   <div className="flex justify-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
                   </div>
+                ) : detailedView && reportPeriod === "monthly" ? (
+                  // Tampilan detail laporan keuangan bulanan
+                  <div className="space-y-6">
+                    {monthlyFinancialReport ? (
+                      <>
+                        {/* Ringkasan Finansial */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                            <h3 className="text-lg font-semibold mb-2">Total Pendapatan</h3>
+                            <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                              Rp{monthlyFinancialReport.summary.totalIncome.toLocaleString('id-ID')}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              Dari {monthlyFinancialReport.summary.transactionCount} transaksi
+                            </p>
+                          </div>
+                          
+                          <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
+                            <h3 className="text-lg font-semibold mb-2">Penjualan Produk</h3>
+                            <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+                              Rp{monthlyFinancialReport.summary.totalProductSales.toLocaleString('id-ID')}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              {Math.round((monthlyFinancialReport.summary.totalProductSales / monthlyFinancialReport.summary.totalIncome) * 100)}% dari total
+                            </p>
+                          </div>
+                          
+                          <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg">
+                            <h3 className="text-lg font-semibold mb-2">Penjualan Layanan</h3>
+                            <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                              Rp{monthlyFinancialReport.summary.totalServiceSales.toLocaleString('id-ID')}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              {Math.round((monthlyFinancialReport.summary.totalServiceSales / monthlyFinancialReport.summary.totalIncome) * 100)}% dari total
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Grafik Distribusi Metode Pembayaran */}
+                        <div className="mt-6">
+                          <h3 className="text-lg font-semibold mb-4">Distribusi Metode Pembayaran</h3>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={[
+                                    { name: 'Tunai', value: monthlyFinancialReport.summary.totalCashTransactions },
+                                    { name: 'Debit', value: monthlyFinancialReport.summary.totalDebitTransactions },
+                                    { name: 'Transfer', value: monthlyFinancialReport.summary.totalTransferTransactions },
+                                    { name: 'QRIS', value: monthlyFinancialReport.summary.totalQRISTransactions },
+                                    { name: 'Lainnya', value: monthlyFinancialReport.summary.totalOtherTransactions }
+                                  ]}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  outerRadius={80}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                >
+                                  {[
+                                    { name: 'Tunai', value: monthlyFinancialReport.summary.totalCashTransactions },
+                                    { name: 'Debit', value: monthlyFinancialReport.summary.totalDebitTransactions },
+                                    { name: 'Transfer', value: monthlyFinancialReport.summary.totalTransferTransactions },
+                                    { name: 'QRIS', value: monthlyFinancialReport.summary.totalQRISTransactions },
+                                    { name: 'Lainnya', value: monthlyFinancialReport.summary.totalOtherTransactions }
+                                  ].map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip formatter={(value) => `Rp${(value as number).toLocaleString('id-ID')}`} />
+                                <Legend />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                        
+                        {/* Grafik Pendapatan Harian */}
+                        {monthlyFinancialReport.dailyData.length > 0 && (
+                          <div className="mt-6">
+                            <h3 className="text-lg font-semibold mb-4">Pendapatan Harian Bulan {format(new Date(selectedYear, selectedMonth-1, 1), 'MMMM yyyy', { locale: id })}</h3>
+                            <div className="h-64">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart
+                                  data={monthlyFinancialReport.dailyData.map(day => ({
+                                    ...day,
+                                    formattedDate: format(parseISO(day.date), 'dd'),
+                                    total: day.totalAmount
+                                  }))}
+                                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                >
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="formattedDate" />
+                                  <YAxis tickFormatter={(value) => `Rp${(value/1000)}k`} />
+                                  <Tooltip 
+                                    formatter={(value, name) => {
+                                      const formattedValue = `Rp${(value as number).toLocaleString('id-ID')}`;
+                                      const formattedName = name === 'total' ? 'Total' : 
+                                                           name === 'productSales' ? 'Produk' : 
+                                                           name === 'serviceSales' ? 'Layanan' : name;
+                                      return [formattedValue, formattedName];
+                                    }}
+                                    labelFormatter={(label) => `Tanggal ${label}`}
+                                  />
+                                  <Legend />
+                                  <Bar dataKey="productSales" name="Produk" fill="#82ca9d" />
+                                  <Bar dataKey="serviceSales" name="Layanan" fill="#8884d8" />
+                                  <Line type="monotone" dataKey="total" name="Total" stroke="#ff7300" strokeWidth={2} />
+                                </ComposedChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+                        Tidak ada data untuk periode yang dipilih
+                      </div>
+                    )}
+                  </div>
                 ) : (
+                  // Tampilan grafik standar
                   <div className="h-96">
                     <ResponsiveContainer width="100%" height="100%">
                       {reportPeriod === "daily" ? (
