@@ -518,10 +518,10 @@ export default function Reports() {
                     {monthlyFinancialReport ? (
                       <>
                         {/* Ringkasan Finansial */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                          <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
                             <h3 className="text-lg font-semibold mb-2">Total Pendapatan</h3>
-                            <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                            <p className="text-2xl md:text-3xl font-bold text-blue-700 dark:text-blue-300">
                               Rp{(monthlyFinancialReport?.summary?.totalIncome || 0).toLocaleString('id-ID')}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -529,9 +529,9 @@ export default function Reports() {
                             </p>
                           </div>
                           
-                          <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
+                          <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
                             <h3 className="text-lg font-semibold mb-2">Penjualan Produk</h3>
-                            <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+                            <p className="text-2xl md:text-3xl font-bold text-green-700 dark:text-green-300">
                               Rp{(monthlyFinancialReport?.summary?.totalProductSales || 0).toLocaleString('id-ID')}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -541,9 +541,9 @@ export default function Reports() {
                             </p>
                           </div>
                           
-                          <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg">
+                          <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
                             <h3 className="text-lg font-semibold mb-2">Penjualan Layanan</h3>
-                            <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                            <p className="text-2xl md:text-3xl font-bold text-purple-700 dark:text-purple-300">
                               Rp{(monthlyFinancialReport?.summary?.totalServiceSales || 0).toLocaleString('id-ID')}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -555,13 +555,13 @@ export default function Reports() {
                         </div>
 
                         {/* Ringkasan Hutang & Kredit */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                           <div 
                             className="bg-red-50 dark:bg-red-900/30 p-4 rounded-lg cursor-pointer hover:shadow-md transition-shadow"
                             onClick={() => showTransactionDetails("debt")}
                           >
                             <h3 className="text-lg font-semibold mb-2">Total Hutang</h3>
-                            <p className="text-2xl font-bold text-red-700 dark:text-red-400">
+                            <p className="text-2xl md:text-3xl font-bold text-red-700 dark:text-red-400">
                               Rp{(monthlyFinancialReport?.summary?.totalDebt || 0).toLocaleString('id-ID')}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -580,7 +580,7 @@ export default function Reports() {
                             onClick={() => showTransactionDetails("debtPayment")}
                           >
                             <h3 className="text-lg font-semibold mb-2">Pembayaran Hutang</h3>
-                            <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                            <p className="text-2xl md:text-3xl font-bold text-amber-700 dark:text-amber-400">
                               Rp{(monthlyFinancialReport?.summary?.totalDebtPayments || 0).toLocaleString('id-ID')}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -599,7 +599,7 @@ export default function Reports() {
                             onClick={() => showTransactionDetails("credit")}
                           >
                             <h3 className="text-lg font-semibold mb-2">Total Kredit</h3>
-                            <p className="text-2xl font-bold text-sky-700 dark:text-sky-400">
+                            <p className="text-2xl md:text-3xl font-bold text-sky-700 dark:text-sky-400">
                               Rp{(monthlyFinancialReport?.summary?.totalCredits || 0).toLocaleString('id-ID')}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
