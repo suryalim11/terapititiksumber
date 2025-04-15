@@ -81,8 +81,12 @@ export default function Reports() {
       if (!response.ok) {
         throw new Error("Failed to fetch monthly financial report");
       }
-      console.log("Fetched monthly financial report");
-      return response.json();
+      const data = await response.json();
+      console.log("Fetched monthly financial report", data);
+      console.log("Service sales:", data.summary.totalServiceSales);
+      console.log("Product sales:", data.summary.totalProductSales);
+      console.log("Total income:", data.summary.totalIncome);
+      return data;
     },
     enabled: activeTab === "financial" && reportPeriod === "monthly" && detailedView
   });
