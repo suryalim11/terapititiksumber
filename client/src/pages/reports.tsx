@@ -93,10 +93,18 @@ export default function Reports() {
   });
   
   // Fetch monthly financial report
-  const { data: monthlyFinancialReport, isLoading: isLoadingMonthlyReport } = useQuery({
+  const { data: monthlyFinancialReport, isLoading: isLoadingMonthlyReport, refetch: refetchMonthlyReport } = useQuery({
     queryKey: ["/api/reports/monthly-financial", selectedYear, selectedMonth],
     queryFn: async () => {
-      const response = await fetch(`/api/reports/monthly-financial?year=${selectedYear}&month=${selectedMonth}`);
+      // Tambahkan timestamp untuk menghindari cache browser
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/reports/monthly-financial?year=${selectedYear}&month=${selectedMonth}&_=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch monthly financial report");
       }
@@ -105,9 +113,13 @@ export default function Reports() {
       console.log("Service sales:", data.summary.totalServiceSales);
       console.log("Product sales:", data.summary.totalProductSales);
       console.log("Total income:", data.summary.totalIncome);
+      console.log("Total hutang:", data.summary.totalDebt);
       return data;
     },
-    enabled: activeTab === "financial" && reportPeriod === "monthly" && detailedView
+    enabled: activeTab === "financial" && reportPeriod === "monthly" && detailedView,
+    // Jangan gunakan cache dan selalu ambil data baru
+    cacheTime: 0,
+    staleTime: 0
   });
 
   // Generate daily financial data for chart
