@@ -2559,7 +2559,25 @@ export class DatabaseStorage implements IStorage {
         summary.totalCredits += creditAmount;
         
         // Update statistik hutang
-        const debtAmount = Number(transaction.debtAmount) || 0;
+        // Lakukan pengecekan apakah transaksi ini memiliki hutang yang belum dibayar
+        // Jika isPaid = false dan creditAmount > 0, maka ini harus dihitung sebagai hutang
+        const isPaid = transaction.isPaid === true || transaction.isPaid === 1;
+        const paidAmount = Number(transaction.paidAmount) || 0;
+        let debtAmount = Number(transaction.debtAmount) || 0;
+        
+        // Jika ada kredit tetapi belum dibayar penuh, maka ini adalah hutang
+        if (creditAmount > 0 && !isPaid) {
+            // Hitung hutang yang sebenarnya berdasarkan jumlah kredit dan pembayaran
+            const actualDebt = creditAmount - paidAmount;
+            // Gunakan nilai hutang yang sebenarnya jika lebih besar
+            if (actualDebt > debtAmount) {
+                debtAmount = actualDebt;
+            }
+        }
+        
+        if (debtAmount > 0) {
+            console.log(`Transaksi hutang terdeteksi: ID=${transaction.id}, hutang=${debtAmount}`);
+        }
         summary.totalDebt += debtAmount;
         
         // Hitung penjualan produk dan layanan
