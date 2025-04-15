@@ -2444,15 +2444,20 @@ export class DatabaseStorage implements IStorage {
       
       console.log(`Found ${transactions.length} transactions in the period`);
       
-      // Ambil pembayaran hutang dalam periode laporan
+      // Dapatkan ID semua transaksi yang masih ada di database
+      const existingTransactionIds = transactions.map(t => t.id);
+      console.log(`Existing transaction IDs: ${existingTransactionIds.length} transactions`);
+      
+      // Ambil pembayaran hutang dalam periode laporan HANYA untuk transaksi yang masih ada
       const debtPayments = await db.select().from(schema.debtPayments).where(
         and(
           gte(schema.debtPayments.paymentDate, startDate),
-          lte(schema.debtPayments.paymentDate, endDate)
+          lte(schema.debtPayments.paymentDate, endDate),
+          inArray(schema.debtPayments.transactionId, existingTransactionIds)
         )
       );
       
-      console.log(`Found ${debtPayments.length} debt payments in the period`);
+      console.log(`Found ${debtPayments.length} debt payments in the period for existing transactions only`);
       
       // Inisialisasi ringkasan
       const summary = {
