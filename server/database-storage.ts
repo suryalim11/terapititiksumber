@@ -2470,6 +2470,17 @@ export class DatabaseStorage implements IStorage {
         transactionCount: transactions.length
       };
       
+      // Log for debugging
+      Object.keys(summary).forEach(key => {
+        if (typeof summary[key] !== 'number') {
+          console.log(`WARNING: Summary key ${key} is not a number, actual value: ${summary[key]}, type: ${typeof summary[key]}`);
+          // Force initialize to 0 if not a number
+          if (key !== 'transactionCount') {
+            summary[key] = 0;
+          }
+        }
+      });
+      
       console.log("Ringkasan awal:", JSON.stringify(summary));
       
       // Buat map untuk menyimpan data harian
@@ -2563,6 +2574,11 @@ export class DatabaseStorage implements IStorage {
               console.log(`    Added ${itemPrice} to product sales (now: ${summary.totalProductSales})`);
             } else if (itemType === 'package') {
               serviceSalesInTransaction += itemPrice;
+              // Pastikan totalServiceSales adalah angka sebelum menambahkan
+              if (isNaN(summary.totalServiceSales)) {
+                console.log(`    WARNING: totalServiceSales adalah NaN, mereset ke 0`);
+                summary.totalServiceSales = 0;
+              }
               summary.totalServiceSales += itemPrice;
               console.log(`    Added ${itemPrice} to service sales (now: ${summary.totalServiceSales})`);
             } else {
