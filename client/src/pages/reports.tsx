@@ -165,13 +165,15 @@ export default function Reports() {
       "Paket 12 Sesi": 0,
     };
 
-    sessions.forEach((session: any) => {
-      if (session.totalSessions === 1) {
-        packageCounts["Sesi Tunggal"]++;
-      } else if (session.totalSessions === 12) {
-        packageCounts["Paket 12 Sesi"]++;
-      }
-    });
+    if (sessions && Array.isArray(sessions)) {
+      sessions.forEach((session: any) => {
+        if (session.totalSessions === 1) {
+          packageCounts["Sesi Tunggal"]++;
+        } else if (session.totalSessions === 12) {
+          packageCounts["Paket 12 Sesi"]++;
+        }
+      });
+    }
 
     return Object.entries(packageCounts).map(([name, value]) => ({
       name,
@@ -199,31 +201,35 @@ export default function Reports() {
       csvContent = "Tanggal,ID Transaksi,Pasien,Metode Pembayaran,Total\n";
       
       // Data rows
-      transactions.forEach((transaction: any) => {
-        const row = [
-          format(addHours(new Date(transaction.createdAt), -7), "yyyy-MM-dd"),
-          transaction.transactionId,
-          "Pasien ID: " + transaction.patientId, // In real app, get patient name
-          transaction.paymentMethod,
-          parseFloat(transaction.totalAmount.toString()).toString(),
-        ].join(",");
-        csvContent += row + "\n";
-      });
+      if (transactions && Array.isArray(transactions)) {
+        transactions.forEach((transaction: any) => {
+          const row = [
+            format(addHours(new Date(transaction.createdAt), -7), "yyyy-MM-dd"),
+            transaction.transactionId,
+            "Pasien ID: " + transaction.patientId, // In real app, get patient name
+            transaction.paymentMethod,
+            parseFloat(transaction.totalAmount.toString()).toString(),
+          ].join(",");
+          csvContent += row + "\n";
+        });
+      }
     } else {
       csvContent = "ID Sesi,Pasien,Paket,Total Sesi,Sesi Terpakai,Status\n";
       
       // Data rows
-      sessions.forEach((session: any) => {
-        const row = [
-          session.id,
-          "Pasien ID: " + session.patientId, // In real app, get patient name
-          session.totalSessions === 1 ? "Sesi Tunggal" : "Paket 12 Sesi",
-          session.totalSessions,
-          session.sessionsUsed,
-          session.status,
-        ].join(",");
-        csvContent += row + "\n";
-      });
+      if (sessions && Array.isArray(sessions)) {
+        sessions.forEach((session: any) => {
+          const row = [
+            session.id,
+            "Pasien ID: " + session.patientId, // In real app, get patient name
+            session.totalSessions === 1 ? "Sesi Tunggal" : "Paket 12 Sesi",
+            session.totalSessions,
+            session.sessionsUsed,
+            session.status,
+          ].join(",");
+          csvContent += row + "\n";
+        });
+      }
     }
     
     // Create download link
