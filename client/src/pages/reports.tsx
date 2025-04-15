@@ -35,6 +35,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 type Report = {
   type: "daily" | "monthly";
@@ -48,6 +56,12 @@ export default function Reports() {
   const [detailedView, setDetailedView] = useState<boolean>(false);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1); // 1-12
+  
+  // State untuk dialog dan detail transaksi
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<"debt" | "debtPayment" | "credit">("debt");
+  const [dialogTitle, setDialogTitle] = useState("");
+  const [transactionDetails, setTransactionDetails] = useState<any[]>([]);
   const [currentReport, setCurrentReport] = useState<Report>({
     type: "daily",
     startDate: format(subDays(new Date(), 7), "yyyy-MM-dd"),
@@ -247,6 +261,75 @@ export default function Reports() {
       title: "Laporan diunduh",
       description: "File CSV berhasil diunduh",
     });
+  };
+
+  // Fungsi untuk menampilkan dialog dengan detail transaksi berdasarkan tipe
+  const showTransactionDetails = (type: "debt" | "debtPayment" | "credit") => {
+    if (!transactions || !Array.isArray(transactions)) {
+      toast({
+        title: "Tidak dapat memuat detail",
+        description: "Data transaksi tidak tersedia",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Inisialisasi judul dialog dan filter transaksi sesuai tipe
+    let filteredTransactions: any[] = [];
+    let title = "";
+    
+    const startDate = new Date(selectedYear, selectedMonth - 1, 1);
+    const endDate = new Date(selectedYear, selectedMonth, 0); // Hari terakhir bulan ini
+    
+    // Filter berdasarkan bulan yang dipilih
+    const monthlyTransactions = transactions.filter((transaction: any) => {
+      const transactionDate = addHours(new Date(transaction.createdAt), -7); // -7 untuk timezone WIB
+      return transactionDate >= startDate && transactionDate <= endDate;
+    });
+    
+    if (type === "debt") {
+      title = "Detail Hutang";
+      // Transaksi dengan hutang > 0
+      filteredTransactions = monthlyTransactions.filter((t: any) => 
+        parseFloat(t.debtAmount || "0") > 0);
+    } else if (type === "debtPayment") {
+      title = "Detail Pembayaran Hutang";
+      // Ambil transaksi yang memiliki pembayaran hutang
+      filteredTransactions = monthlyTransactions.filter((t: any) => {
+        // Transaksi kredit yang sudah dibayar sebagian
+        const isPaidPartially = parseFloat(t.paidAmount || "0") > 0 && 
+                              parseFloat(t.debtAmount || "0") > 0;
+        return isPaidPartially;
+      });
+    } else if (type === "credit") {
+      title = "Detail Kredit";
+      // Transaksi dengan kredit > 0
+      filteredTransactions = monthlyTransactions.filter((t: any) => 
+        parseFloat(t.creditAmount || "0") > 0);
+    }
+    
+    // Format data transaksi untuk ditampilkan di dialog
+    const formattedTransactions = filteredTransactions.map((t: any) => {
+      // Normalisasi transaksi untuk tampilan di dialog
+      return {
+        id: t.id,
+        transactionId: t.transactionId,
+        date: format(addHours(new Date(t.createdAt), -7), "dd MMM yyyy HH:mm", { locale: id }),
+        totalAmount: parseFloat(t.totalAmount || "0").toLocaleString('id-ID'),
+        paidAmount: parseFloat(t.paidAmount || "0").toLocaleString('id-ID'),
+        creditAmount: parseFloat(t.creditAmount || "0").toLocaleString('id-ID'),
+        debtAmount: parseFloat(t.debtAmount || "0").toLocaleString('id-ID'),
+        paymentMethod: t.paymentMethod,
+        items: Array.isArray(t.items) ? t.items : [],
+        patientId: t.patientId
+      };
+    });
+    
+    // Buka dialog dengan detail transaksi
+    setDialogType(type);
+    setDialogTitle(title);
+    setTransactionDetails(formattedTransactions);
+    setIsDialogOpen(true);
   };
 
   // Handle print report
@@ -464,7 +547,10 @@ export default function Reports() {
 
                         {/* Ringkasan Hutang & Kredit */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                          <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-lg">
+                          <div 
+                            className="bg-red-50 dark:bg-red-900/30 p-4 rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => showTransactionDetails("debt")}
+                          >
                             <h3 className="text-lg font-semibold mb-2">Total Hutang</h3>
                             <p className="text-2xl font-bold text-red-700 dark:text-red-400">
                               Rp{(monthlyFinancialReport?.summary?.totalDebt || 0).toLocaleString('id-ID')}
@@ -472,9 +558,18 @@ export default function Reports() {
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                               Hutang periode saat ini
                             </p>
+                            <p className="text-xs text-blue-500 mt-2 flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Klik untuk melihat detail
+                            </p>
                           </div>
                           
-                          <div className="bg-amber-50 dark:bg-amber-900/30 p-4 rounded-lg">
+                          <div 
+                            className="bg-amber-50 dark:bg-amber-900/30 p-4 rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => showTransactionDetails("debtPayment")}
+                          >
                             <h3 className="text-lg font-semibold mb-2">Pembayaran Hutang</h3>
                             <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
                               Rp{(monthlyFinancialReport?.summary?.totalDebtPayments || 0).toLocaleString('id-ID')}
@@ -482,15 +577,30 @@ export default function Reports() {
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                               Pelunasan hutang periode ini
                             </p>
+                            <p className="text-xs text-blue-500 mt-2 flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Klik untuk melihat detail
+                            </p>
                           </div>
                           
-                          <div className="bg-sky-50 dark:bg-sky-900/30 p-4 rounded-lg">
+                          <div 
+                            className="bg-sky-50 dark:bg-sky-900/30 p-4 rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => showTransactionDetails("credit")}
+                          >
                             <h3 className="text-lg font-semibold mb-2">Total Kredit</h3>
                             <p className="text-2xl font-bold text-sky-700 dark:text-sky-400">
                               Rp{(monthlyFinancialReport?.summary?.totalCredits || 0).toLocaleString('id-ID')}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                               Dari transaksi kredit periode ini
+                            </p>
+                            <p className="text-xs text-blue-500 mt-2 flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Klik untuk melihat detail
                             </p>
                           </div>
                         </div>
