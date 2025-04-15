@@ -2317,15 +2317,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               // Update paid amount
                               field.onChange(validValue.toString());
                               
-                              // Update credit amount automatically - nilai kredit adalah input user
+                              // Update credit amount automatically - sisa hutang selalu otomatis diupdate
                               // Jika DP = 0, maka seluruh total menjadi kredit
-                              const creditAmount = form.getValues("creditAmount") || totalAmount.toString();
-                              
-                              // Hanya update nilai kredit jika user belum mengisinya secara manual
-                              if (parseFloat(creditAmount) === 0 || parseFloat(creditAmount) === totalAmount) {
-                                const calculatedCredit = Math.max(0, totalAmount - validValue);
-                                form.setValue("creditAmount", calculatedCredit.toString());
-                              }
+                              // Selalu recalculate sisa hutang berdasarkan pembayaran dimuka
+                              const calculatedCredit = Math.max(0, totalAmount - validValue);
+                              form.setValue("creditAmount", calculatedCredit.toString());
                             }}
                           />
                         </FormControl>
@@ -2367,7 +2363,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               // Update credit amount
                               field.onChange(validValue.toString());
                               
-                              // Update paid amount automatically
+                              // Update paid amount automatically - selalu update nilai pembayaran
                               const paidAmount = Math.max(0, totalAmount - validValue);
                               form.setValue("paidAmount", paidAmount.toString());
                             }}
