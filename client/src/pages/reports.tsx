@@ -461,6 +461,39 @@ export default function Reports() {
                             </p>
                           </div>
                         </div>
+
+                        {/* Ringkasan Hutang & Kredit */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                          <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-lg">
+                            <h3 className="text-lg font-semibold mb-2">Total Hutang</h3>
+                            <p className="text-2xl font-bold text-red-700 dark:text-red-400">
+                              Rp{(monthlyFinancialReport?.summary?.totalDebt || 0).toLocaleString('id-ID')}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              Hutang periode saat ini
+                            </p>
+                          </div>
+                          
+                          <div className="bg-amber-50 dark:bg-amber-900/30 p-4 rounded-lg">
+                            <h3 className="text-lg font-semibold mb-2">Pembayaran Hutang</h3>
+                            <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                              Rp{(monthlyFinancialReport?.summary?.totalDebtPayments || 0).toLocaleString('id-ID')}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              Pelunasan hutang periode ini
+                            </p>
+                          </div>
+                          
+                          <div className="bg-sky-50 dark:bg-sky-900/30 p-4 rounded-lg">
+                            <h3 className="text-lg font-semibold mb-2">Total Kredit</h3>
+                            <p className="text-2xl font-bold text-sky-700 dark:text-sky-400">
+                              Rp{(monthlyFinancialReport?.summary?.totalCredits || 0).toLocaleString('id-ID')}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              Dari transaksi kredit periode ini
+                            </p>
+                          </div>
+                        </div>
                         
                         {/* Grafik Distribusi Metode Pembayaran */}
                         <div className="mt-6">

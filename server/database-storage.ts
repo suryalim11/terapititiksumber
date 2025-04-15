@@ -2398,6 +2398,7 @@ export class DatabaseStorage implements IStorage {
       totalOtherTransactions: number;
       totalCredits: number;
       totalDebtPayments: number;
+      totalDebt: number;
       transactionCount: number;
     },
     dailyData: {
@@ -2465,6 +2466,7 @@ export class DatabaseStorage implements IStorage {
         totalOtherTransactions: 0,
         totalCredits: 0,
         totalDebtPayments: 0,
+        totalDebt: 0, // Total hutang dalam periode
         transactionCount: transactions.length
       };
       
@@ -2550,6 +2552,10 @@ export class DatabaseStorage implements IStorage {
         // Update statistik kredit
         const creditAmount = Number(transaction.creditAmount) || 0;
         summary.totalCredits += creditAmount;
+        
+        // Update statistik hutang
+        const debtAmount = Number(transaction.debtAmount) || 0;
+        summary.totalDebt += debtAmount;
         
         // Hitung penjualan produk dan layanan
         let productSalesInTransaction = 0;
@@ -2682,6 +2688,9 @@ export class DatabaseStorage implements IStorage {
       console.log(`Total pendapatan: ${summary.totalIncome}`);
       console.log(`Total penjualan produk: ${summary.totalProductSales}`);
       console.log(`Total penjualan layanan: ${summary.totalServiceSales}`);
+      console.log(`Total kredit: ${summary.totalCredits}`);
+      console.log(`Total hutang: ${summary.totalDebt}`);
+      console.log(`Total pembayaran hutang: ${summary.totalDebtPayments}`);
       console.log(`Total transaksi: ${summary.transactionCount}`);
       console.log("==========================================");
       
