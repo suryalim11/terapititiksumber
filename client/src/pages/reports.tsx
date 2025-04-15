@@ -108,18 +108,20 @@ export default function Reports() {
     }));
 
     // Fill in actual data
-    transactions.forEach((transaction: any) => {
-      // Menggunakan addHours(-7) untuk menyesuaikan ke zona waktu WIB (UTC+7)
-      const adjustedDate = addHours(new Date(transaction.createdAt), -7);
-      const transactionDate = format(adjustedDate, "yyyy-MM-dd");
-      const dataPoint = dailyData.find(d => d.date === transactionDate);
-      if (dataPoint) {
-        // Hanya gunakan totalAmount yang sebenarnya, jangan kurangi dengan discount karena
-        // discount sudah termasuk dalam totalAmount
-        const total = parseFloat(transaction.totalAmount.toString());
-        dataPoint.amount += total;
-      }
-    });
+    if (transactions && Array.isArray(transactions)) {
+      transactions.forEach((transaction: any) => {
+        // Menggunakan addHours(-7) untuk menyesuaikan ke zona waktu WIB (UTC+7)
+        const adjustedDate = addHours(new Date(transaction.createdAt), -7);
+        const transactionDate = format(adjustedDate, "yyyy-MM-dd");
+        const dataPoint = dailyData.find(d => d.date === transactionDate);
+        if (dataPoint) {
+          // Hanya gunakan totalAmount yang sebenarnya, jangan kurangi dengan discount karena
+          // discount sudah termasuk dalam totalAmount
+          const total = parseFloat(transaction.totalAmount.toString());
+          dataPoint.amount += total;
+        }
+      });
+    }
 
     return dailyData;
   };
@@ -139,15 +141,17 @@ export default function Reports() {
     }));
 
     // Fill in actual data
-    transactions.forEach((transaction: any) => {
-      // Menggunakan addHours(-7) untuk menyesuaikan ke zona waktu WIB (UTC+7)
-      const adjustedDate = addHours(new Date(transaction.createdAt), -7);
-      const monthIndex = adjustedDate.getMonth();
-      // Hanya gunakan totalAmount yang sebenarnya, jangan kurangi dengan discount 
-      // karena discount sudah termasuk dalam totalAmount
-      const total = parseFloat(transaction.totalAmount.toString());
-      monthlyData[monthIndex].amount += total;
-    });
+    if (transactions && Array.isArray(transactions)) {
+      transactions.forEach((transaction: any) => {
+        // Menggunakan addHours(-7) untuk menyesuaikan ke zona waktu WIB (UTC+7)
+        const adjustedDate = addHours(new Date(transaction.createdAt), -7);
+        const monthIndex = adjustedDate.getMonth();
+        // Hanya gunakan totalAmount yang sebenarnya, jangan kurangi dengan discount 
+        // karena discount sudah termasuk dalam totalAmount
+        const total = parseFloat(transaction.totalAmount.toString());
+        monthlyData[monthIndex].amount += total;
+      });
+    }
 
     return monthlyData;
   };

@@ -2472,11 +2472,12 @@ export class DatabaseStorage implements IStorage {
       
       // Log for debugging
       Object.keys(summary).forEach(key => {
-        if (typeof summary[key] !== 'number') {
-          console.log(`WARNING: Summary key ${key} is not a number, actual value: ${summary[key]}, type: ${typeof summary[key]}`);
+        const summaryKey = key as keyof typeof summary;
+        if (typeof summary[summaryKey] !== 'number') {
+          console.log(`WARNING: Summary key ${summaryKey} is not a number, actual value: ${summary[summaryKey]}, type: ${typeof summary[summaryKey]}`);
           // Force initialize to 0 if not a number
-          if (key !== 'transactionCount') {
-            summary[key] = 0;
+          if (summaryKey !== 'transactionCount') {
+            summary[summaryKey] = 0;
           }
         }
       });
@@ -2562,7 +2563,14 @@ export class DatabaseStorage implements IStorage {
           
         if (Array.isArray(items)) {
           for (const item of items) {
-            const itemPrice = Number(item.price) * (item.quantity || 1);
+            // Pastikan price bukan undefined dan dapat dikonversi ke angka
+            const itemPriceValue = item.price !== undefined ? Number(item.price) : 0;
+            if (isNaN(itemPriceValue)) {
+              console.log(`    WARNING: Item price ${item.price} tidak valid, menggunakan 0`);
+            }
+            
+            // Gunakan nilai 0 jika price adalah NaN
+            const itemPrice = !isNaN(itemPriceValue) ? itemPriceValue * (item.quantity || 1) : 0;
             console.log(`  Item: type=${item.type}, price=${item.price}, quantity=${item.quantity || 1}, calculated=${itemPrice}`);
             
             const itemType = typeof item.type === 'string' ? item.type.toLowerCase() : '';
