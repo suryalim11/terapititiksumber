@@ -2412,8 +2412,6 @@ export class DatabaseStorage implements IStorage {
   }> {
     try {
       console.log(`========= MEMULAI PERHITUNGAN LAPORAN KEUANGAN BULANAN =========`);
-      console.log(`Debugging untuk mendiagnosis masalah penjualan layanan yang bernilai 0`);
-      console.log(`===============================================================`);
       // Menggunakan tahun dan bulan saat ini jika tidak ada yang ditentukan
       const currentDate = getWIBDate(new Date());
       const reportYear = year || currentDate.getFullYear();
@@ -2520,6 +2518,9 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Proses transaksi
+      let rawTotalProductSales = 0;
+      let rawTotalServiceSales = 0;
+      
       for (const transaction of transactions) {
         // Jumlah total transaksi
         const totalAmount = Number(transaction.totalAmount);
@@ -2578,22 +2579,17 @@ export class DatabaseStorage implements IStorage {
             
             if (itemType === 'product') {
               productSalesInTransaction += itemPrice;
-              summary.totalProductSales += itemPrice;
-              console.log(`    Added ${itemPrice} to product sales (now: ${summary.totalProductSales})`);
+              rawTotalProductSales += itemPrice;
+              console.log(`    Added ${itemPrice} to product sales (now: ${rawTotalProductSales})`);
             } else if (itemType === 'package') {
               serviceSalesInTransaction += itemPrice;
-              // Pastikan totalServiceSales adalah angka sebelum menambahkan
-              if (isNaN(summary.totalServiceSales)) {
-                console.log(`    WARNING: totalServiceSales adalah NaN, mereset ke 0`);
-                summary.totalServiceSales = 0;
-              }
-              summary.totalServiceSales += itemPrice;
-              console.log(`    Added ${itemPrice} to service sales (now: ${summary.totalServiceSales})`);
+              rawTotalServiceSales += itemPrice;
+              console.log(`    Added ${itemPrice} to service sales (now: ${rawTotalServiceSales})`);
             } else {
               // Fallback untuk item tanpa tipe yang valid - asumsikan sebagai produk
               console.log(`    Unknown item type: ${item.type}, assuming as product`);
               productSalesInTransaction += itemPrice;
-              summary.totalProductSales += itemPrice;
+              rawTotalProductSales += itemPrice;
             }
           }
         }
@@ -2661,6 +2657,23 @@ export class DatabaseStorage implements IStorage {
         }
       }
       
+      // Sesuaikan nilai total penjualan produk dan layanan agar sesuai dengan total pendapatan
+      if (rawTotalProductSales + rawTotalServiceSales > summary.totalIncome) {
+        // Jika total penjualan melebihi total pendapatan, sesuaikan secara proporsional
+        const scale = summary.totalIncome / (rawTotalProductSales + rawTotalServiceSales);
+        summary.totalProductSales = Math.round(rawTotalProductSales * scale);
+        summary.totalServiceSales = Math.round(rawTotalServiceSales * scale);
+        
+        console.log(`Penyesuaian: Skala ${scale.toFixed(4)} diterapkan ke penjualan produk dan layanan.`);
+        console.log(`Total pendapatan: ${summary.totalIncome}, total produk+layanan sebelum penyesuaian: ${rawTotalProductSales + rawTotalServiceSales}`);
+        console.log(`Produk sebelum: ${rawTotalProductSales}, setelah: ${summary.totalProductSales}`);
+        console.log(`Layanan sebelum: ${rawTotalServiceSales}, setelah: ${summary.totalServiceSales}`);
+      } else {
+        // Jika total penjualan kurang dari atau sama dengan total pendapatan, gunakan nilai asli
+        summary.totalProductSales = rawTotalProductSales;
+        summary.totalServiceSales = rawTotalServiceSales;
+      }
+      
       // Konversi map ke array untuk respons
       const dailyData = Array.from(dailyDataMap.values());
       
@@ -2676,6 +2689,13 @@ export class DatabaseStorage implements IStorage {
       if (summary.totalServiceSales === null || summary.totalServiceSales === undefined) {
         console.log("WARNING: totalServiceSales adalah null/undefined, menetapkan ke 0");
         summary.totalServiceSales = 0;
+      }
+      
+      // Pastikan jumlah total produk + layanan sama dengan total pendapatan
+      const productServiceSum = summary.totalProductSales + summary.totalServiceSales;
+      if (productServiceSum !== summary.totalIncome) {
+        console.log(`PERHATIAN: Jumlah penjualan (${productServiceSum}) tidak sama dengan total pendapatan (${summary.totalIncome})`);
+        console.log(`Selisih: ${productServiceSum - summary.totalIncome}`);
       }
       
       return {
