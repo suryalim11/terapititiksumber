@@ -2744,13 +2744,17 @@ export class DatabaseStorage implements IStorage {
       // Konversi map ke array untuk respons
       const dailyData = Array.from(dailyDataMap.values());
       
+      // Perbaikan: Hutang seharusnya sama dengan kredit untuk bulan ini
+      // Ini karena semua transaksi kredit belum dibayar, sehingga menjadi hutang
+      summary.totalDebt = summary.totalCredits;
+      
       // Log ringkasan akhir untuk debugging
       console.log("========= RINGKASAN LAPORAN AKHIR =========");
       console.log(`Total pendapatan: ${summary.totalIncome}`);
       console.log(`Total penjualan produk: ${summary.totalProductSales}`);
       console.log(`Total penjualan layanan: ${summary.totalServiceSales}`);
       console.log(`Total kredit: ${summary.totalCredits}`);
-      console.log(`Total hutang: ${summary.totalDebt}`);
+      console.log(`Total hutang (setelah penyesuaian): ${summary.totalDebt}`);
       console.log(`Total pembayaran hutang: ${summary.totalDebtPayments}`);
       console.log(`Total transaksi: ${summary.transactionCount}`);
       console.log("==========================================");
