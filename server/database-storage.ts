@@ -2399,6 +2399,7 @@ export class DatabaseStorage implements IStorage {
       totalCredits: number;
       totalDebtPayments: number;
       totalDebt: number;
+      totalDiscount: number;
       transactionCount: number;
     },
     dailyData: {
@@ -2472,6 +2473,7 @@ export class DatabaseStorage implements IStorage {
         totalCredits: 0,
         totalDebtPayments: 0,
         totalDebt: 0, // Total hutang dalam periode
+        totalDiscount: 0, // Total diskon yang diberikan
         transactionCount: transactions.length
       };
       
