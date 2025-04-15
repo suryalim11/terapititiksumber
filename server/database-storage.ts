@@ -2541,17 +2541,24 @@ export class DatabaseStorage implements IStorage {
         const items = typeof transaction.items === 'string' 
           ? JSON.parse(transaction.items) 
           : transaction.items;
+        
+        console.log(`Transaction ${transaction.id} (${transaction.transactionId}): items=`, typeof items, Array.isArray(items) ? `array[${items.length}]` : 'not array');
           
         if (Array.isArray(items)) {
           for (const item of items) {
             const itemPrice = Number(item.price) * (item.quantity || 1);
+            console.log(`  Item: type=${item.type}, price=${item.price}, quantity=${item.quantity || 1}, calculated=${itemPrice}`);
             
             if (item.type === 'product') {
               productSalesInTransaction += itemPrice;
               summary.totalProductSales += itemPrice;
+              console.log(`    Added ${itemPrice} to product sales (now: ${summary.totalProductSales})`);
             } else if (item.type === 'package') {
               serviceSalesInTransaction += itemPrice;
               summary.totalServiceSales += itemPrice;
+              console.log(`    Added ${itemPrice} to service sales (now: ${summary.totalServiceSales})`);
+            } else {
+              console.log(`    Unknown item type: ${item.type}, not counted as product or service`);
             }
           }
         }
