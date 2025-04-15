@@ -2092,6 +2092,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Internal server error" });
     }
   });
+  
+  // Laporan Keuangan Bulanan
+  app.get("/api/reports/monthly-financial", async (req: Request, res: Response) => {
+    try {
+      // Ambil tahun dan bulan dari query parameters
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+      
+      console.log(`Mendapatkan laporan keuangan bulanan untuk tahun=${year}, bulan=${month}`);
+      
+      // Panggil metode dari storage untuk mendapatkan laporan
+      const report = await storage.getMonthlyFinancialReport(year, month);
+      
+      return res.status(200).json(report);
+    } catch (error) {
+      console.error("Error fetching monthly financial report:", error);
+      return res.status(500).json({ 
+        message: "Internal server error", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
 
   app.get("/api/dashboard/activities", async (req: Request, res: Response) => {
     try {
