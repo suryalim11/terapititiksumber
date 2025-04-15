@@ -380,7 +380,7 @@ export default function Reports() {
         paidAmount: parseFloat(t.paidAmount || "0").toLocaleString('id-ID'),
         creditAmount: parseFloat(t.creditAmount || "0").toLocaleString('id-ID'),
         debtAmount: parseFloat(t.debtAmount || "0").toLocaleString('id-ID'),
-        discount: parseFloat(t.discount || "0").toLocaleString('id-ID'),
+        discount: (parseFloat(t.discount || "0") * 1000).toLocaleString('id-ID'),
         paymentMethod: t.paymentMethod,
         items: Array.isArray(t.items) ? t.items : [],
         patientId: t.patientId,
@@ -1152,7 +1152,7 @@ export default function Reports() {
                       )}
                       {dialogType === "discount" && (
                         <td className="px-2 py-2 text-right font-medium text-emerald-600">
-                          Rp{parseInt(transaction.discount || "0").toLocaleString('id-ID')}
+                          Rp{transaction.discount}
                         </td>
                       )}
                     </tr>
@@ -1190,7 +1190,7 @@ export default function Reports() {
                     )}
                     {dialogType === "discount" && (
                       <td className="px-2 py-3 text-right text-emerald-600">
-                        Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.discount || "0"), 0).toLocaleString('id-ID')}
+                        Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.discount.replace(/\./g, '')), 0).toLocaleString('id-ID')}
                       </td>
                     )}
                   </tr>
