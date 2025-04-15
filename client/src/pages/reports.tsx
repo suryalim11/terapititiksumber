@@ -282,7 +282,7 @@ export default function Reports() {
   };
 
   // Fungsi untuk menampilkan dialog dengan detail transaksi berdasarkan tipe
-  const showTransactionDetails = (type: "debt" | "debtPayment" | "credit" | "product" | "service") => {
+  const showTransactionDetails = (type: "debt" | "debtPayment" | "credit" | "product" | "service" | "discount") => {
     if (!transactions || !Array.isArray(transactions)) {
       toast({
         title: "Tidak dapat memuat detail",
@@ -356,6 +356,13 @@ export default function Reports() {
         } catch (e) {
           return false;
         }
+      });
+    } else if (type === "discount") {
+      title = "Detail Diskon";
+      // Transaksi yang memiliki diskon
+      filteredTransactions = monthlyTransactions.filter((t: any) => {
+        const discountAmount = parseFloat(t.discount || "0");
+        return discountAmount > 0;
       });
     }
     
@@ -668,6 +675,28 @@ export default function Reports() {
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                               Dari transaksi kredit periode ini
+                            </p>
+                            <p className="text-xs text-blue-500 mt-2 flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Klik untuk melihat detail
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Kartu Diskon */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                          <div 
+                            className="bg-emerald-50 dark:bg-emerald-900/30 p-4 rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => showTransactionDetails("discount")}
+                          >
+                            <h3 className="text-lg font-semibold mb-2">Total Diskon</h3>
+                            <p className="text-2xl md:text-3xl font-bold text-emerald-700 dark:text-emerald-400">
+                              Rp{(monthlyFinancialReport?.summary?.totalDiscount || 0).toLocaleString('id-ID')}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              Total diskon yang diberikan dalam periode ini
                             </p>
                             <p className="text-xs text-blue-500 mt-2 flex items-center">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

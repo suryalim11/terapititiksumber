@@ -2534,6 +2534,10 @@ export class DatabaseStorage implements IStorage {
         // Jumlah total transaksi
         const totalAmount = Number(transaction.totalAmount);
         
+        // Hitung diskon (jika ada)
+        const discountAmount = Number(transaction.discount) || 0;
+        summary.totalDiscount += discountAmount;
+        
         // Update ringkasan
         summary.totalIncome += totalAmount;
         
