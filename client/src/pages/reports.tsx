@@ -416,30 +416,34 @@ export default function Reports() {
                           <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
                             <h3 className="text-lg font-semibold mb-2">Total Pendapatan</h3>
                             <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-                              Rp{monthlyFinancialReport.summary.totalIncome.toLocaleString('id-ID')}
+                              Rp{(monthlyFinancialReport?.summary?.totalIncome || 0).toLocaleString('id-ID')}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                              Dari {monthlyFinancialReport.summary.transactionCount} transaksi
+                              Dari {monthlyFinancialReport?.summary?.transactionCount || 0} transaksi
                             </p>
                           </div>
                           
                           <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
                             <h3 className="text-lg font-semibold mb-2">Penjualan Produk</h3>
                             <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-                              Rp{monthlyFinancialReport.summary.totalProductSales.toLocaleString('id-ID')}
+                              Rp{(monthlyFinancialReport?.summary?.totalProductSales || 0).toLocaleString('id-ID')}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                              {Math.round((monthlyFinancialReport.summary.totalProductSales / monthlyFinancialReport.summary.totalIncome) * 100)}% dari total
+                              {monthlyFinancialReport?.summary?.totalIncome
+                                ? Math.round((monthlyFinancialReport.summary.totalProductSales / monthlyFinancialReport.summary.totalIncome) * 100)
+                                : 0}% dari total
                             </p>
                           </div>
                           
                           <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg">
                             <h3 className="text-lg font-semibold mb-2">Penjualan Layanan</h3>
                             <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
-                              Rp{monthlyFinancialReport.summary.totalServiceSales.toLocaleString('id-ID')}
+                              Rp{(monthlyFinancialReport?.summary?.totalServiceSales || 0).toLocaleString('id-ID')}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                              {Math.round((monthlyFinancialReport.summary.totalServiceSales / monthlyFinancialReport.summary.totalIncome) * 100)}% dari total
+                              {monthlyFinancialReport?.summary?.totalIncome
+                                ? Math.round((monthlyFinancialReport.summary.totalServiceSales / monthlyFinancialReport.summary.totalIncome) * 100)
+                                : 0}% dari total
                             </p>
                           </div>
                         </div>
@@ -452,11 +456,11 @@ export default function Reports() {
                               <PieChart>
                                 <Pie
                                   data={[
-                                    { name: 'Tunai', value: monthlyFinancialReport.summary.totalCashTransactions },
-                                    { name: 'Debit', value: monthlyFinancialReport.summary.totalDebitTransactions },
-                                    { name: 'Transfer', value: monthlyFinancialReport.summary.totalTransferTransactions },
-                                    { name: 'QRIS', value: monthlyFinancialReport.summary.totalQRISTransactions },
-                                    { name: 'Lainnya', value: monthlyFinancialReport.summary.totalOtherTransactions }
+                                    { name: 'Tunai', value: monthlyFinancialReport?.summary?.totalCashTransactions || 0 },
+                                    { name: 'Debit', value: monthlyFinancialReport?.summary?.totalDebitTransactions || 0 },
+                                    { name: 'Transfer', value: monthlyFinancialReport?.summary?.totalTransferTransactions || 0 },
+                                    { name: 'QRIS', value: monthlyFinancialReport?.summary?.totalQRISTransactions || 0 },
+                                    { name: 'Lainnya', value: monthlyFinancialReport?.summary?.totalOtherTransactions || 0 }
                                   ]}
                                   cx="50%"
                                   cy="50%"
@@ -467,11 +471,11 @@ export default function Reports() {
                                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                                 >
                                   {[
-                                    { name: 'Tunai', value: monthlyFinancialReport.summary.totalCashTransactions },
-                                    { name: 'Debit', value: monthlyFinancialReport.summary.totalDebitTransactions },
-                                    { name: 'Transfer', value: monthlyFinancialReport.summary.totalTransferTransactions },
-                                    { name: 'QRIS', value: monthlyFinancialReport.summary.totalQRISTransactions },
-                                    { name: 'Lainnya', value: monthlyFinancialReport.summary.totalOtherTransactions }
+                                    { name: 'Tunai', value: monthlyFinancialReport?.summary?.totalCashTransactions || 0 },
+                                    { name: 'Debit', value: monthlyFinancialReport?.summary?.totalDebitTransactions || 0 },
+                                    { name: 'Transfer', value: monthlyFinancialReport?.summary?.totalTransferTransactions || 0 },
+                                    { name: 'QRIS', value: monthlyFinancialReport?.summary?.totalQRISTransactions || 0 },
+                                    { name: 'Lainnya', value: monthlyFinancialReport?.summary?.totalOtherTransactions || 0 }
                                   ].map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                   ))}
@@ -484,13 +488,13 @@ export default function Reports() {
                         </div>
                         
                         {/* Grafik Pendapatan Harian */}
-                        {monthlyFinancialReport.dailyData.length > 0 && (
+                        {monthlyFinancialReport?.dailyData?.length > 0 && (
                           <div className="mt-6">
                             <h3 className="text-lg font-semibold mb-4">Pendapatan Harian Bulan {format(new Date(selectedYear, selectedMonth-1, 1), 'MMMM yyyy', { locale: id })}</h3>
                             <div className="h-64">
                               <ResponsiveContainer width="100%" height="100%">
                                 <ComposedChart
-                                  data={monthlyFinancialReport.dailyData.map(day => ({
+                                  data={monthlyFinancialReport.dailyData.map((day: any) => ({
                                     ...day,
                                     formattedDate: format(parseISO(day.date), 'dd'),
                                     total: day.totalAmount
@@ -605,7 +609,7 @@ export default function Reports() {
                   <div className="flex justify-center py-6">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
                   </div>
-                ) : !transactions || transactions.length === 0 ? (
+                ) : !transactions || (Array.isArray(transactions) && transactions.length === 0) ? (
                   <div className="text-center py-6 text-gray-500 dark:text-gray-400">
                     Belum ada data transaksi
                   </div>
@@ -621,7 +625,7 @@ export default function Reports() {
                         </tr>
                       </thead>
                       <tbody>
-                        {transactions.slice(0, 5).map((transaction: any) => (
+                        {Array.isArray(transactions) && transactions.slice(0, 5).map((transaction: any) => (
                           <tr key={transaction.id} className="border-b">
                             <td className="px-4 py-2">{transaction.transactionId}</td>
                             <td className="px-4 py-2">
@@ -698,7 +702,7 @@ export default function Reports() {
                     <div className="flex justify-center py-12">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
                     </div>
-                  ) : !sessions || sessions.length === 0 ? (
+                  ) : !sessions || (Array.isArray(sessions) && sessions.length === 0) ? (
                     <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                       Belum ada data sesi terapi
                     </div>
@@ -706,13 +710,13 @@ export default function Reports() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 p-6 rounded-lg text-center">
                         <div className="text-blue-600 dark:text-blue-400 text-4xl font-bold mb-2">
-                          {sessions.filter((s: any) => s.status === "active").length}
+                          {Array.isArray(sessions) ? sessions.filter((s: any) => s.status === "active").length : 0}
                         </div>
                         <div className="text-gray-700 dark:text-gray-300">Paket Aktif</div>
                       </div>
                       <div className="bg-green-50 dark:bg-green-900 dark:bg-opacity-20 p-6 rounded-lg text-center">
                         <div className="text-green-600 dark:text-green-400 text-4xl font-bold mb-2">
-                          {sessions.filter((s: any) => s.status === "completed").length}
+                          {Array.isArray(sessions) ? sessions.filter((s: any) => s.status === "completed").length : 0}
                         </div>
                         <div className="text-gray-700 dark:text-gray-300">Paket Selesai</div>
                       </div>
@@ -734,7 +738,7 @@ export default function Reports() {
                   <div className="flex justify-center py-6">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
                   </div>
-                ) : !sessions || sessions.length === 0 ? (
+                ) : !sessions || (Array.isArray(sessions) && sessions.length === 0) ? (
                   <div className="text-center py-6 text-gray-500 dark:text-gray-400">
                     Belum ada data sesi terapi
                   </div>
@@ -751,7 +755,7 @@ export default function Reports() {
                         </tr>
                       </thead>
                       <tbody>
-                        {sessions.slice(0, 5).map((session: any) => (
+                        {Array.isArray(sessions) && sessions.slice(0, 5).map((session: any) => (
                           <tr key={session.id} className="border-b">
                             <td className="px-4 py-2">{session.patientId}</td>
                             <td className="px-4 py-2">
