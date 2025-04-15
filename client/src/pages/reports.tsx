@@ -971,7 +971,7 @@ export default function Reports() {
       
       {/* Dialog untuk detail transaksi */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-xl">{dialogTitle}</DialogTitle>
             <DialogDescription>
@@ -986,69 +986,69 @@ export default function Reports() {
               Tidak ada data transaksi untuk ditampilkan
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full mt-2">
-                <thead>
+            <div className="overflow-x-auto max-h-[50vh] md:max-h-96 border rounded">
+              <table className="w-full mt-2 text-sm md:text-base">
+                <thead className="sticky top-0 bg-white dark:bg-gray-900">
                   <tr className="border-b">
-                    <th className="px-3 py-2 text-left">ID Transaksi</th>
-                    <th className="px-3 py-2 text-left">Tanggal</th>
-                    <th className="px-3 py-2 text-left">Pasien</th>
-                    <th className="px-3 py-2 text-left">Pembayaran</th>
-                    <th className="px-3 py-2 text-right">Total</th>
+                    <th className="px-2 py-2 text-left">ID Transaksi</th>
+                    <th className="px-2 py-2 text-left">Tanggal</th>
+                    <th className="px-2 py-2 text-left">Pasien</th>
+                    <th className="px-2 py-2 text-left">Pembayaran</th>
+                    <th className="px-2 py-2 text-right">Total</th>
                     {dialogType === "debt" && (
-                      <th className="px-3 py-2 text-right">Hutang</th>
+                      <th className="px-2 py-2 text-right">Hutang</th>
                     )}
                     {dialogType === "debtPayment" && (
-                      <th className="px-3 py-2 text-right">Dibayar</th>
+                      <th className="px-2 py-2 text-right">Dibayar</th>
                     )}
                     {dialogType === "credit" && (
-                      <th className="px-3 py-2 text-right">Kredit</th>
+                      <th className="px-2 py-2 text-right">Kredit</th>
                     )}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y">
                   {transactionDetails.map((transaction, index) => (
-                    <tr key={index} className="border-b">
-                      <td className="px-3 py-2">{transaction.transactionId}</td>
-                      <td className="px-3 py-2">{transaction.date}</td>
-                      <td className="px-3 py-2">{transaction.patientName || `Pasien #${transaction.patientId}`}</td>
-                      <td className="px-3 py-2">
+                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <td className="px-2 py-2">{transaction.transactionId}</td>
+                      <td className="px-2 py-2">{transaction.date}</td>
+                      <td className="px-2 py-2 font-medium">{transaction.patientName || `Pasien #${transaction.patientId}`}</td>
+                      <td className="px-2 py-2">
                         {transaction.paymentMethod === "cash" ? "Tunai" : 
                          transaction.paymentMethod === "debit" ? "Debit" : 
                          transaction.paymentMethod === "bank_transfer" ? "Transfer" : 
                          transaction.paymentMethod === "qris" ? "QRIS" : transaction.paymentMethod}
                       </td>
-                      <td className="px-3 py-2 text-right">Rp{transaction.totalAmount}</td>
+                      <td className="px-2 py-2 text-right">Rp{transaction.totalAmount}</td>
                       {dialogType === "debt" && (
-                        <td className="px-3 py-2 text-right text-red-600">Rp{transaction.debtAmount}</td>
+                        <td className="px-2 py-2 text-right font-medium text-red-600">Rp{transaction.debtAmount}</td>
                       )}
                       {dialogType === "debtPayment" && (
-                        <td className="px-3 py-2 text-right text-green-600">Rp{transaction.paidAmount}</td>
+                        <td className="px-2 py-2 text-right font-medium text-green-600">Rp{transaction.paidAmount}</td>
                       )}
                       {dialogType === "credit" && (
-                        <td className="px-3 py-2 text-right text-blue-600">Rp{transaction.creditAmount}</td>
+                        <td className="px-2 py-2 text-right font-medium text-blue-600">Rp{transaction.creditAmount}</td>
                       )}
                     </tr>
                   ))}
                 </tbody>
-                <tfoot>
+                <tfoot className="sticky bottom-0 bg-gray-50 dark:bg-gray-800">
                   <tr className="font-semibold">
-                    <td colSpan={4} className="px-3 py-3 text-right">Total:</td>
-                    <td className="px-3 py-3 text-right">
+                    <td colSpan={4} className="px-2 py-3 text-right">Total:</td>
+                    <td className="px-2 py-3 text-right">
                       Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.totalAmount.replace(/\./g, '')), 0).toLocaleString('id-ID')}
                     </td>
                     {dialogType === "debt" && (
-                      <td className="px-3 py-3 text-right text-red-600">
+                      <td className="px-2 py-3 text-right text-red-600">
                         Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.debtAmount.replace(/\./g, '')), 0).toLocaleString('id-ID')}
                       </td>
                     )}
                     {dialogType === "debtPayment" && (
-                      <td className="px-3 py-3 text-right text-green-600">
+                      <td className="px-2 py-3 text-right text-green-600">
                         Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.paidAmount.replace(/\./g, '')), 0).toLocaleString('id-ID')}
                       </td>
                     )}
                     {dialogType === "credit" && (
-                      <td className="px-3 py-3 text-right text-blue-600">
+                      <td className="px-2 py-3 text-right text-blue-600">
                         Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.creditAmount.replace(/\./g, '')), 0).toLocaleString('id-ID')}
                       </td>
                     )}
