@@ -1152,7 +1152,7 @@ export default function Reports() {
                       )}
                       {dialogType === "discount" && (
                         <td className="px-2 py-2 text-right font-medium text-emerald-600">
-                          Rp{parseFloat(transaction.discount || "0").toLocaleString('id-ID')}
+                          Rp{parseInt(transaction.discount || "0").toLocaleString('id-ID')}
                         </td>
                       )}
                     </tr>
@@ -1190,7 +1190,7 @@ export default function Reports() {
                     )}
                     {dialogType === "discount" && (
                       <td className="px-2 py-3 text-right text-emerald-600">
-                        Rp{transactionDetails.reduce((sum, t) => sum + parseFloat(t.discount || "0"), 0).toLocaleString('id-ID')}
+                        Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.discount || "0"), 0).toLocaleString('id-ID')}
                       </td>
                     )}
                   </tr>
