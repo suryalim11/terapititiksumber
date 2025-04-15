@@ -59,7 +59,7 @@ export default function Reports() {
   
   // State untuk dialog dan detail transaksi
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<"debt" | "debtPayment" | "credit" | "product" | "service">("debt");
+  const [dialogType, setDialogType] = useState<"debt" | "debtPayment" | "credit" | "product" | "service" | "discount">("debt");
   const [dialogTitle, setDialogTitle] = useState("");
   const [transactionDetails, setTransactionDetails] = useState<any[]>([]);
   const [currentReport, setCurrentReport] = useState<Report>({
@@ -380,6 +380,7 @@ export default function Reports() {
         paidAmount: parseFloat(t.paidAmount || "0").toLocaleString('id-ID'),
         creditAmount: parseFloat(t.creditAmount || "0").toLocaleString('id-ID'),
         debtAmount: parseFloat(t.debtAmount || "0").toLocaleString('id-ID'),
+        discount: parseFloat(t.discount || "0").toLocaleString('id-ID'),
         paymentMethod: t.paymentMethod,
         items: Array.isArray(t.items) ? t.items : [],
         patientId: t.patientId,
@@ -1127,6 +1128,11 @@ export default function Reports() {
                       {dialogType === "credit" && (
                         <td className="px-2 py-2 text-right font-medium text-blue-600">Rp{transaction.creditAmount}</td>
                       )}
+                      {dialogType === "discount" && (
+                        <td className="px-2 py-2 text-right font-medium text-emerald-600">
+                          Rp{parseFloat(transaction.discount || "0").toLocaleString('id-ID')}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -1158,6 +1164,11 @@ export default function Reports() {
                     {dialogType === "credit" && (
                       <td className="px-2 py-3 text-right text-blue-600">
                         Rp{transactionDetails.reduce((sum, t) => sum + parseInt(t.creditAmount.replace(/\./g, '')), 0).toLocaleString('id-ID')}
+                      </td>
+                    )}
+                    {dialogType === "discount" && (
+                      <td className="px-2 py-3 text-right text-emerald-600">
+                        Rp{transactionDetails.reduce((sum, t) => sum + parseFloat(t.discount || "0"), 0).toLocaleString('id-ID')}
                       </td>
                     )}
                   </tr>
