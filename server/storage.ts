@@ -181,6 +181,17 @@ export interface IStorage {
   
   // Fungsi sinkronisasi kuota therapy slot
   syncTherapySlotQuota(): Promise<{ updatedSlots: number, results: any[] }>;
+  
+  // System Logs
+  createSystemLog(logData: InsertSystemLog): Promise<SystemLog>;
+  getSystemLogs(limit?: number, offset?: number, filters?: {
+    action?: string,
+    entityType?: string,
+    userId?: number,
+    fromDate?: Date,
+    toDate?: Date
+  }): Promise<SystemLog[]>;
+  purgeOldSystemLogs(daysToKeep?: number): Promise<number>;
 }
 
 // Import Database Storage
@@ -1890,6 +1901,41 @@ export class MemStorage implements IStorage {
     }
     
     return { updatedSlots: updatedCount, results };
+  }
+  
+  // System Logs
+  async createSystemLog(logData: InsertSystemLog): Promise<SystemLog> {
+    // Untuk implementasi memory storage, tidak perlu menyimpan log
+    // Hanya mencatat ke console dan mengembalikan objek kosong
+    console.log("System Log:", logData);
+    
+    return {
+      id: 0,
+      createdAt: new Date(),
+      userId: logData.userId,
+      action: logData.action,
+      entityType: logData.entityType,
+      entityId: logData.entityId,
+      details: logData.details,
+      ipAddress: logData.ipAddress || null,
+      userAgent: logData.userAgent || null
+    };
+  }
+  
+  async getSystemLogs(limit: number = 100, offset: number = 0, filters?: {
+    action?: string,
+    entityType?: string,
+    userId?: number,
+    fromDate?: Date,
+    toDate?: Date
+  }): Promise<SystemLog[]> {
+    // Untuk implementasi memory storage, tidak ada log yang disimpan
+    return [];
+  }
+  
+  async purgeOldSystemLogs(daysToKeep: number = 90): Promise<number> {
+    // Untuk implementasi memory storage, tidak ada log yang disimpan
+    return 0;
   }
 }
 

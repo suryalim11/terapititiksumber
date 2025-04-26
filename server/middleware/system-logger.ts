@@ -42,7 +42,7 @@ export const logLoginActivity = async (req: Request, res: Response, next: NextFu
           },
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'],
-        }).catch(err => console.error('Error logging login activity:', err));
+        }).catch((err: Error) => console.error('Error logging login activity:', err));
       } else if (!success && username) {
         // Login gagal, catat ke log
         storage.createSystemLog({
@@ -59,7 +59,7 @@ export const logLoginActivity = async (req: Request, res: Response, next: NextFu
           },
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'],
-        }).catch(err => console.error('Error logging failed login activity:', err));
+        }).catch((err: Error) => console.error('Error logging failed login activity:', err));
       }
     } catch (error) {
       console.error('Error processing login log:', error);
@@ -75,7 +75,8 @@ export const logLoginActivity = async (req: Request, res: Response, next: NextFu
 // Middleware untuk mencatat aktivitas logout
 export const logLogoutActivity = async (req: Request, res: Response, next: NextFunction) => {
   // Periksa apakah ada user dalam sesi
-  const user = req.session?.user;
+  const sessionWithUser = req.session as SessionWithUser;
+  const user = sessionWithUser?.user;
   
   if (user) {
     // Catat aktivitas logout
@@ -92,7 +93,7 @@ export const logLogoutActivity = async (req: Request, res: Response, next: NextF
       },
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
-    }).catch(err => console.error('Error logging logout activity:', err));
+    }).catch((err: Error) => console.error('Error logging logout activity:', err));
   }
   
   next();
@@ -107,7 +108,8 @@ export const logDataActivity = async (
   details?: any
 ) => {
   try {
-    const user = req.session?.user;
+    const sessionWithUser = req.session as SessionWithUser;
+    const user = sessionWithUser?.user;
     
     await storage.createSystemLog({
       userId: user?.id || null,
