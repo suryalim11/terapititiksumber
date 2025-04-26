@@ -3217,4 +3217,85 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+  
+  // System Logs Methods
+  
+  /**
+   * Menambahkan log sistem untuk melacak aktivitas pengguna dan perubahan data
+   */
+  async createSystemLog(logData: InsertSystemLog): Promise<SystemLog> {
+    const result = await db.insert(systemLogs)
+      .values(logData)
+      .returning();
+    return result[0];
+  }
+  
+  /**
+   * Mendapatkan log sistem berdasarkan filter tertentu
+   */
+  async getSystemLogs(limit: number = 100, offset: number = 0, filters?: {
+    userId?: number,
+    action?: string,
+    entityType?: string,
+    fromDate?: Date,
+    toDate?: Date
+  }): Promise<SystemLog[]> {
+    let query = db.select().from(systemLogs);
+    
+    // Tambahkan filter jika ada
+    if (filters) {
+      const conditions = [];
+      
+      if (filters.userId !== undefined) {
+        conditions.push(eq(systemLogs.userId, filters.userId));
+      }
+      
+      if (filters.action) {
+        conditions.push(eq(systemLogs.action, filters.action));
+      }
+      
+      if (filters.entityType) {
+        conditions.push(eq(systemLogs.entityType, filters.entityType));
+      }
+      
+      if (filters.fromDate) {
+        conditions.push(gte(systemLogs.createdAt, filters.fromDate));
+      }
+      
+      if (filters.toDate) {
+        conditions.push(lte(systemLogs.createdAt, filters.toDate));
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+    }
+    
+    // Tambahkan pengurutan dan paginasi
+    const logs = await query
+      .orderBy(desc(systemLogs.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    return logs;
+  }
+  
+  /**
+   * Menghapus log sistem yang lama (hanya simpan 90 hari terakhir)
+   */
+  async purgeOldSystemLogs(daysToKeep: number = 90): Promise<number> {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+      
+      const result = await db
+        .delete(systemLogs)
+        .where(lt(systemLogs.createdAt, cutoffDate));
+      
+      return result.rowCount || 0;
+    } catch (error) {
+      console.error("Error purging old system logs:", error);
+      return 0;
+    }
+  }
 }
