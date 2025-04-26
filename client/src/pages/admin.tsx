@@ -1,114 +1,78 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { DuplicatePatients } from "@/components/admin/duplicate-patients";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/lib/auth-context";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import DuplicatePatients from "@/components/admin/duplicate-patients";
+import { useAuth } from "@/lib/auth"; // Usando o hook de auth que já existe
 
 export default function AdminPage() {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user, isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState("duplicate-patients");
+  const [location, setLocation] = useLocation();
+  const { user } = useAuth();
 
-  // Verificar se o usuário está autenticado e é um administrador
-  useEffect(() => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Acesso restrito",
-        description: "Você precisa fazer login para acessar esta página.",
-        variant: "destructive",
-      });
-      navigate("/login");
-      return;
-    }
-
-    if (user?.role !== "admin") {
-      toast({
-        title: "Acesso restrito",
-        description: "Esta página é restrita a administradores.",
-        variant: "destructive",
-      });
-      navigate("/");
-      return;
-    }
-  }, [isAuthenticated, user, navigate, toast]);
-
-  if (!isAuthenticated || user?.role !== "admin") {
-    return null;
+  // Verificar se o usuário é admin
+  if (user?.role !== 'admin') {
+    return (
+      <div className="container mx-auto p-4">
+        <h1 className="text-2xl font-bold text-red-600">Acesso Negado</h1>
+        <p className="mt-2">Você não tem permissão para acessar esta página.</p>
+        <Button onClick={() => setLocation("/")} className="mt-4">
+          Voltar ao Dashboard
+        </Button>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex flex-col space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Administração do Sistema</h1>
-          <Button onClick={() => navigate("/")} variant="outline">
-            Voltar ao Dashboard
-          </Button>
-        </div>
-
-        <Tabs
-          defaultValue="duplicate-patients"
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="w-full"
-        >
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="duplicate-patients">Pacientes Duplicados</TabsTrigger>
-            <TabsTrigger value="system-maintenance">Manutenção do Sistema</TabsTrigger>
-            <TabsTrigger value="data-consistency">Consistência de Dados</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="duplicate-patients" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gerenciamento de Pacientes Duplicados</CardTitle>
-                <CardDescription>
-                  Identifique e mescle registros duplicados de pacientes para manter a integridade dos dados.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DuplicatePatients />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="system-maintenance" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Manutenção do Sistema</CardTitle>
-                <CardDescription>
-                  Ferramenta de manutenção do sistema, backup e restauração de dados.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-center text-muted-foreground py-12">
-                  Funcionalidade em desenvolvimento. Estará disponível em breve.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="data-consistency" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Verificação de Consistência de Dados</CardTitle>
-                <CardDescription>
-                  Ferramentas para verificar e corrigir inconsistências nos dados do sistema.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-center text-muted-foreground py-12">
-                  Funcionalidade em desenvolvimento. Estará disponível em breve.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Administração do Sistema</h1>
+        <Button onClick={() => setLocation("/")} variant="outline">
+          Voltar ao Dashboard
+        </Button>
       </div>
+
+      <Tabs defaultValue="duplicates" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="duplicates">Pacientes Duplicados</TabsTrigger>
+          <TabsTrigger value="database">Integridade do Banco de Dados</TabsTrigger>
+          <TabsTrigger value="logs">Logs do Sistema</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="duplicates" className="space-y-4">
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-semibold mb-4">Gerenciamento de Pacientes Duplicados</h2>
+            <DuplicatePatients />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="database" className="space-y-4">
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-semibold mb-4">Ferramentas de Banco de Dados</h2>
+            <p className="text-gray-600 mb-4">Esta seção contém ferramentas para verificar e corrigir a integridade do banco de dados.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button variant="outline" className="justify-start">
+                Verificar Integridade de Sessões
+              </Button>
+              <Button variant="outline" className="justify-start">
+                Sincronizar Slots de Terapia
+              </Button>
+              <Button variant="outline" className="justify-start">
+                Reparar Inconsistências de Datas
+              </Button>
+              <Button variant="outline" className="justify-start">
+                Verificar Transações Pendentes
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="logs" className="space-y-4">
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-semibold mb-4">Logs do Sistema</h2>
+            <p className="text-gray-600">Ainda não implementado.</p>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
