@@ -43,8 +43,8 @@ interface SystemLog {
 
 const SystemLogs: React.FC = () => {
   const [limit, setLimit] = useState<number>(50);
-  const [actionFilter, setActionFilter] = useState<string>("");
-  const [entityFilter, setEntityFilter] = useState<string>("");
+  const [actionFilter, setActionFilter] = useState<string>("all");
+  const [entityFilter, setEntityFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
@@ -60,8 +60,8 @@ const SystemLogs: React.FC = () => {
     queryFn: () => {
       const params = new URLSearchParams();
       params.append("limit", limit.toString());
-      if (actionFilter) params.append("action", actionFilter);
-      if (entityFilter) params.append("entityType", entityFilter);
+      if (actionFilter && actionFilter !== "all") params.append("action", actionFilter);
+      if (entityFilter && entityFilter !== "all") params.append("entityType", entityFilter);
       if (startDate) params.append("fromDate", startDate.toISOString());
       if (endDate) params.append("toDate", endDate.toISOString());
 
@@ -147,8 +147,8 @@ const SystemLogs: React.FC = () => {
   };
 
   const handleReset = () => {
-    setActionFilter("");
-    setEntityFilter("");
+    setActionFilter("all");
+    setEntityFilter("all");
     setStartDate(undefined);
     setEndDate(undefined);
     setLimit(50);
@@ -156,7 +156,7 @@ const SystemLogs: React.FC = () => {
   };
 
   const actionOptions = [
-    { value: "", label: "Semua Aksi" },
+    { value: "all", label: "Semua Aksi" },
     { value: "login", label: "Login" },
     { value: "login_failed", label: "Login Gagal" },
     { value: "logout", label: "Logout" },
@@ -166,7 +166,7 @@ const SystemLogs: React.FC = () => {
   ];
 
   const entityOptions = [
-    { value: "", label: "Semua Entitas" },
+    { value: "all", label: "Semua Entitas" },
     { value: "user", label: "Pengguna" },
     { value: "patient", label: "Pasien" },
     { value: "appointment", label: "Janji Temu" },
@@ -195,7 +195,7 @@ const SystemLogs: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 {actionOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
+                  <SelectItem key={option.value || "empty"} value={option.value || " "}>
                     {option.label}
                   </SelectItem>
                 ))}
@@ -211,7 +211,7 @@ const SystemLogs: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 {entityOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
+                  <SelectItem key={option.value || "empty"} value={option.value || " "}>
                     {option.label}
                   </SelectItem>
                 ))}
