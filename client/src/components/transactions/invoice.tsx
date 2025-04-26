@@ -546,7 +546,8 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
     }
   };
 
-  const handleShareWhatsApp = async () => {
+  // Fungsi untuk membuka WhatsApp dengan format sederhana
+  const handleShareWhatsApp = () => {
     try {
       if (!data.patient || !data.transaction) {
         toast({
@@ -557,77 +558,8 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         return;
       }
       
-      // Menampilkan toast loading saat mempersiapkan pesan
-      const loadingToast = toast({
-        title: "Menyiapkan pesan WhatsApp",
-        description: "Sedang menyiapkan pesan...",
-      });
-      
-      // Gunakan pendekatan lebih sederhana dengan pesan yang sudah diketahui format & panjangnya
-      // Buat pesan dasar terlebih dahulu
-      
-      // Format ID invoice
-      const invoiceId = settings.invoicePrefix 
-        ? `${settings.invoicePrefix}${data.transaction.transactionId}` 
-        : data.transaction.transactionId;
-      
-      // Format tanggal
-      const invoiceDate = format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id });
-      
-      // Format nama pasien (gunakan alias jika diperlukan)
-      let patientName = data.patient.name;
-      if (data.patient.name.includes('Queenzky') && 
-          (data.displayName === 'alias' || data.displayName === 'alternative' || 
-           (data.transaction?.metadata?.displayName === 'alternative'))) {
-        patientName = 'Syafliana';
-      }
-      
-      // Format total
-      const totalAmount = formatPrice(data.transaction.totalAmount.toString());
-      
-      // Format status pembayaran
-      let paymentStatus = 'Lunas';
-      const creditAmount = safeParseFloat(data.transaction.creditAmount);
-      if (creditAmount > 0) {
-        paymentStatus = `Kredit (${formatPrice(creditAmount.toString())})`;
-      } else if (data.transaction.isPaid === false) {
-        paymentStatus = 'Belum Lunas';
-      }
-      
-      // Ambil data paket aktif dari server - fitur opsional
-      let activePackagesInfo = '';
-      try {
-        // Fetch active sessions
-        const response = await fetch(`/api/sessions?patientId=${data.patient.id}&active=true&includeRelated=true&_=${new Date().getTime()}`);
-        if (response.ok) {
-          const sessions = await response.json();
-          
-          // Filter hanya paket aktif yang masih punya sesi tersisa
-          const activePackages = sessions.filter((s: any) => s.package && s.remainingSessions > 0);
-          
-          if (activePackages.length > 0) {
-            activePackagesInfo = '\n\n*Paket Aktif:*';
-            activePackages.forEach((session: any) => {
-              activePackagesInfo += `\n• ${session.package?.name}: ${session.remainingSessions} dari ${session.totalSessions} sesi tersisa`;
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching active sessions:", error);
-        // Jika gagal fetch, lanjutkan tanpa info paket aktif
-      }
-      
-      // Buat pesan dengan format standar sederhana
-      const message = `*INVOICE - ${invoiceId}*
-Tanggal: ${invoiceDate}
-Pasien: ${patientName}
-Total: ${totalAmount}
-Status: ${paymentStatus}${activePackagesInfo}
-
-Silahkan kunjungi klinik kami untuk informasi lebih lanjut.`;
-      
-      // Log pesan untuk debugging
-      console.log("Pesan WhatsApp yang akan dikirim:", message);
+      // Format invoice id
+      const invoiceId = data.transaction.transactionId;
       
       // Dapatkan nomor telepon pasien dan format
       let phoneNumber = data.patient.phoneNumber.replace(/\D/g, '');
@@ -635,22 +567,32 @@ Silahkan kunjungi klinik kami untuk informasi lebih lanjut.`;
         phoneNumber = '62' + phoneNumber.substring(1);
       }
       
-      // Encode pesan
-      const encodedMessage = encodeURIComponent(message);
+      // Format tanggal
+      const invoiceDate = format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id });
       
-      // Hapus toast loading
-      loadingToast.dismiss?.();
+      // Format status pembayaran
+      let paymentStatus = data.transaction.isPaid ? 'Lunas' : 'Belum Lunas';
+      
+      // Buat pesan sangat sederhana
+      const simpleMessage = "*INVOICE - " + invoiceId + "*\n" +
+                          "Tanggal: " + invoiceDate + "\n" +
+                          "Pasien: " + data.patient.name + "\n" +
+                          "Total: " + formatPrice(data.transaction.totalAmount.toString()) + "\n" +
+                          "Status: " + paymentStatus + "\n\n" +
+                          "Silahkan kunjungi klinik kami untuk informasi lebih lanjut.";
+      
+      // Encode pesan untuk URL
+      const encodedMessage = encodeURIComponent(simpleMessage);
       
       // Buat URL WhatsApp
       const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
-      console.log("WhatsApp URL:", whatsappUrl);
       
       // Buka WhatsApp dalam tab baru
       window.open(whatsappUrl, '_blank');
       
       toast({
         title: "WhatsApp terbuka",
-        description: "Invoice telah disiapkan untuk dikirim melalui WhatsApp",
+        description: "Invoice telah disiapkan untuk dikirim",
       });
     } catch (error) {
       console.error("Error sending WhatsApp message:", error);
