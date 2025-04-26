@@ -557,6 +557,12 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         return;
       }
       
+      // Menampilkan toast loading saat mempersiapkan pesan
+      const loadingToast = toast({
+        title: "Menyiapkan pesan WhatsApp",
+        description: "Sedang mengambil data paket aktif...",
+      });
+      
       // Format pesan WhatsApp dengan menggunakan pengaturan yang disimpan
       const invoiceId = settings.invoicePrefix 
         ? `${settings.invoicePrefix}${data.transaction.transactionId}` 
@@ -574,20 +580,35 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       
       // Ambil data sesi aktif langsung dari API untuk memastikan data terbaru
       let fetchedActiveSessions: ActiveSession[] = [];
-      try {
-        if (data?.patient?.id) {
+      
+      // Pastikan kita mendapatkan data sesi aktif
+      if (data?.patient?.id) {
+        try {
           console.log("Fetching active sessions for WhatsApp share...");
-          const response = await fetch(`/api/sessions?patientId=${data.patient.id}&active=true&includeRelated=true`);
+          // Tambahkan timestamp untuk mencegah cache
+          const timestamp = new Date().getTime();
+          const response = await fetch(`/api/sessions?patientId=${data.patient.id}&active=true&includeRelated=true&_=${timestamp}`);
+          
           if (response.ok) {
             fetchedActiveSessions = await response.json();
             console.log("Fetched active sessions for WhatsApp:", fetchedActiveSessions);
           } else {
-            console.error("Failed to fetch active sessions for WhatsApp");
+            console.error("Failed to fetch active sessions for WhatsApp", await response.text());
+            // Coba lagi dengan delay
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const retryResponse = await fetch(`/api/sessions?patientId=${data.patient.id}&active=true&includeRelated=true&_=${new Date().getTime()}`);
+            if (retryResponse.ok) {
+              fetchedActiveSessions = await retryResponse.json();
+              console.log("Retry successful, fetched active sessions:", fetchedActiveSessions);
+            }
           }
+        } catch (error) {
+          console.error("Error fetching active sessions for WhatsApp:", error);
         }
-      } catch (error) {
-        console.error("Error fetching active sessions for WhatsApp:", error);
       }
+      
+      // Hapus toast loading
+      loadingToast.dismiss?.();
       
       // Gunakan data active sessions yang baru di-fetch atau fallback ke data dari useQuery
       const sessionsToUse = fetchedActiveSessions.length > 0 ? fetchedActiveSessions : activeSessions;
@@ -773,7 +794,38 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         }
       }
 
-      // Batasi panjang pesan jika terlalu panjang
+      // Modifikasi template sederhana khusus untuk WhatsApp jika pesan template terlalu panjang
+      if (message.length > 2000) {
+        console.log("Pesan terlalu panjang, menggunakan template sederhana...");
+        // Buat template sederhana dengan informasi penting saja
+        let simplifiedMessage = `*INVOICE ${invoiceId}*\n`;
+        simplifiedMessage += `Tanggal: ${format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id })}\n`;
+        simplifiedMessage += `Pasien: ${data.patient.name}\n`;
+        simplifiedMessage += `Total: ${formatPrice(data.transaction.totalAmount.toString())}\n`;
+        
+        // Tambahkan status pembayaran
+        const creditAmount = safeParseFloat(data.transaction.creditAmount);
+        if (creditAmount > 0) {
+          simplifiedMessage += `Status: Kredit (${formatPrice(creditAmount.toString())})\n`;
+        } else {
+          simplifiedMessage += `Status: ${data.transaction.isPaid === false ? 'Belum Lunas' : 'Lunas'}\n`;
+        }
+        
+        // Tambahkan informasi paket aktif jika ada (lebih singkat)
+        if (activePackages.length > 0) {
+          simplifiedMessage += `\n*Paket Aktif:*\n`;
+          activePackages.forEach(session => {
+            simplifiedMessage += `• ${session.package?.name}: ${session.remainingSessions} sesi tersisa\n`;
+          });
+        }
+        
+        // Tambahkan footer
+        simplifiedMessage += `\nSilahkan buka aplikasi untuk melihat invoice lengkap.`;
+        
+        message = simplifiedMessage;
+      }
+      
+      // Batasi panjang pesan jika masih terlalu panjang
       const MAX_MESSAGE_LENGTH = 4000; // WhatsApp memiliki batasan karakter
       const trimmedMessage = message.length > MAX_MESSAGE_LENGTH 
         ? message.substring(0, MAX_MESSAGE_LENGTH - 100) + "\n\n[Pesan terpotong karena terlalu panjang]" 
@@ -799,7 +851,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       // Buka WhatsApp Business API dengan pesan yang sudah disiapkan
       const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
       console.log("URL WhatsApp:", whatsappUrl.substring(0, 100) + "...");
-      window.open(whatsappUrl, '_blank');
+      
+      // Buka WhatsApp dalam tab baru
+      const whatsappWindow = window.open(whatsappUrl, '_blank');
       
       toast({
         title: "WhatsApp terbuka",
