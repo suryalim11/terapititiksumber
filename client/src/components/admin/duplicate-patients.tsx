@@ -179,17 +179,17 @@ export default function DuplicatePatients() {
                             </div>
                             <div className="flex items-center">
                               <Calendar className="w-3 h-3 mr-1" />
-                              <span className="font-medium mr-1">Criado em:</span> 
+                              <span className="font-medium mr-1">Dibuat pada:</span> 
                               {new Date(patient.createdAt).toLocaleDateString()}
                             </div>
                             <div className="flex items-center">
                               <Package className="w-3 h-3 mr-1" />
-                              <span className="font-medium mr-1">Sessões:</span> 
+                              <span className="font-medium mr-1">Sesi:</span> 
                               {patient.sessions?.length || 0}
                             </div>
                             <div className="flex items-center">
                               <CreditCard className="w-3 h-3 mr-1" />
-                              <span className="font-medium mr-1">Transações:</span> 
+                              <span className="font-medium mr-1">Transaksi:</span> 
                               {patient.transactions?.length || 0}
                             </div>
                           </div>
@@ -201,7 +201,7 @@ export default function DuplicatePatients() {
                 {selectedPatient && (
                   <div className="mt-4">
                     <Separator className="my-4" />
-                    <h3 className="font-medium text-lg mb-3">Detalhes do Paciente: {selectedPatient.name}</h3>
+                    <h3 className="font-medium text-lg mb-3">Detail Pasien: {selectedPatient.name}</h3>
                     
                     <Accordion type="single" collapsible className="w-full">
                       {selectedPatient.sessions && selectedPatient.sessions.length > 0 && (
@@ -209,7 +209,7 @@ export default function DuplicatePatients() {
                           <AccordionTrigger className="py-2">
                             <span className="flex items-center">
                               <Package className="w-4 h-4 mr-2" />
-                              Pacotes e Sessões ({selectedPatient.sessions.length})
+                              Paket dan Sesi ({selectedPatient.sessions.length})
                             </span>
                           </AccordionTrigger>
                           <AccordionContent>
@@ -217,8 +217,8 @@ export default function DuplicatePatients() {
                               <TableHeader>
                                 <TableRow>
                                   <TableHead>ID</TableHead>
-                                  <TableHead>Pacote</TableHead>
-                                  <TableHead>Progresso</TableHead>
+                                  <TableHead>Paket</TableHead>
+                                  <TableHead>Progres</TableHead>
                                   <TableHead>Status</TableHead>
                                 </TableRow>
                               </TableHeader>
@@ -252,7 +252,7 @@ export default function DuplicatePatients() {
                           <AccordionTrigger className="py-2">
                             <span className="flex items-center">
                               <CreditCard className="w-4 h-4 mr-2" />
-                              Transações ({selectedPatient.transactions.length})
+                              Transaksi ({selectedPatient.transactions.length})
                             </span>
                           </AccordionTrigger>
                           <AccordionContent>
@@ -260,9 +260,9 @@ export default function DuplicatePatients() {
                               <TableHeader>
                                 <TableRow>
                                   <TableHead>ID</TableHead>
-                                  <TableHead>Data</TableHead>
-                                  <TableHead>Valor</TableHead>
-                                  <TableHead>Método</TableHead>
+                                  <TableHead>Tanggal</TableHead>
+                                  <TableHead>Jumlah</TableHead>
+                                  <TableHead>Metode</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -293,9 +293,9 @@ export default function DuplicatePatients() {
             <div className="flex flex-col items-center justify-center h-full bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8">
               <div className="text-center">
                 <Phone className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <h3 className="font-medium text-lg text-gray-700">Selecione um grupo</h3>
+                <h3 className="font-medium text-lg text-gray-700">Pilih grup</h3>
                 <p className="text-gray-500 mt-2">
-                  Clique em um dos grupos de pacientes à esquerda para visualizar os detalhes
+                  Klik salah satu grup pasien di sebelah kiri untuk melihat detail
                 </p>
               </div>
             </div>
