@@ -53,7 +53,7 @@ export const defaultInvoiceSettings: InvoiceSettings = {
   invoiceThankYouMessage: "Terima kasih telah mengunjungi Klinik Terapi Titik Sumber.",
   
   // Pengaturan WhatsApp default
-  whatsappTemplate: "Terima kasih telah mengunjungi *{{companyName}}*.\n\nBerikut adalah detail invoice Anda:\nNo. Invoice: *{{invoiceId}}*\nTotal: *{{totalAmount}}*\n\n{{bankInfo}}\n\n{{items}}\n\n{{creditInfo}}\n\nSemoga sehat selalu!",
+  whatsappTemplate: "Terima kasih telah mengunjungi *{{companyName}}*.\n\nBerikut adalah detail invoice Anda:\nNo. Invoice: *{{invoiceId}}*\nTotal: *{{totalAmount}}*\n\n{{bankInfo}}\n\n{{items}}\n\n{{creditInfo}}\n\n{{activePackages}}\n\nSemoga sehat selalu!",
   whatsappGreeting: "Yth. {{patientName}},",
   whatsappSignature: "Salam,\nTim {{companyName}}",
   includeDetailedItems: true,
@@ -384,7 +384,7 @@ export function InvoiceSettings() {
                       />
                     </FormControl>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Gunakan variabel: &#123;&#123;companyName&#125;&#125;, &#123;&#123;invoiceId&#125;&#125;, &#123;&#123;totalAmount&#125;&#125;, &#123;&#123;bankInfo&#125;&#125;, &#123;&#123;items&#125;&#125;, &#123;&#123;patientName&#125;&#125;, &#123;&#123;creditInfo&#125;&#125;
+                      Gunakan variabel: &#123;&#123;companyName&#125;&#125;, &#123;&#123;invoiceId&#125;&#125;, &#123;&#123;totalAmount&#125;&#125;, &#123;&#123;bankInfo&#125;&#125;, &#123;&#123;items&#125;&#125;, &#123;&#123;patientName&#125;&#125;, &#123;&#123;creditInfo&#125;&#125;, &#123;&#123;activePackages&#125;&#125;
                     </p>
                     <FormMessage />
                   </FormItem>
@@ -473,6 +473,12 @@ export function InvoiceSettings() {
                   <div className="mt-2">
                     <p>Detail Item:</p>
                     <p>1 x Paket 5 Sesi - Rp500.000</p>
+                  </div>
+                  <div className="mt-2">
+                    <p>Informasi Paket Aktif:</p>
+                    <p>• Paket 5 Sesi<br />
+                    3/5 Sesi (60%)<br />
+                    2 sesi tersisa</p>
                   </div>
                   <p className="mt-2">Semoga sehat selalu!</p>
                   <p className="mt-2">Salam,<br />Tim Klinik Terapi Titik Sumber</p>
