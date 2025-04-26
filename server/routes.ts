@@ -4247,6 +4247,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Endpoint untuk memperbaiki sinkronisasi paket terapi yang hilang atau tidak konsisten
+  app.post("/api/sessions/fix-missing-sessions", async (req: Request, res: Response) => {
+    try {
+      // Pastikan hanya admin yang bisa mengakses endpoint ini
+      if (!req.isAuthenticated() || req.user.role !== 'admin') {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Akses tidak diizinkan, dibutuhkan hak akses admin" 
+        });
+      }
+      
+      console.log("Memulai perbaikan sinkronisasi paket terapi...");
+      
+      // Jalankan fungsi perbaikan yang telah dibuat
+      const result = await fixMissingPackageSessions();
+      
+      console.log(`Perbaikan sinkronisasi paket terapi selesai dengan hasil: 
+        ${result.processed} transaksi diproses, 
+        ${result.created} sesi dibuat, 
+        ${result.skipped} transaksi dilewati,
+        ${result.errors?.length || 0} error ditemukan`);
+      
+      return res.status(200).json({
+        success: true,
+        message: `Perbaikan sinkronisasi paket terapi berhasil: ${result.created} sesi baru telah dibuat`,
+        ...result
+      });
+    } catch (error) {
+      console.error("Error dalam memperbaiki sinkronisasi paket terapi:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan dalam memperbaiki sinkronisasi paket terapi", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
 
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);
