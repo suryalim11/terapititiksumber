@@ -786,19 +786,27 @@ export default function Transactions() {
       
       // Tambahkan informasi paket aktif jika ada
       if (activeSessions && activeSessions.length > 0) {
-        message += `\nInformasi Paket Aktif:\n\n`;
-        
-        activeSessions.forEach((session: any) => {
-          const packageName = session.package?.name || "Paket";
-          const used = session.sessionsUsed || 0;
-          const total = session.totalSessions || 0;
-          const remaining = total - used;
-          const percentUsed = Math.round((used / total) * 100);
-          
-          message += `• ${packageName}\n`;
-          message += `${used}/${total} Sesi (${percentUsed}%)\n`;
-          message += `${remaining} sesi tersisa\n\n`;
+        // Filter hanya paket multi-sesi (lebih dari 1 sesi)
+        const multiSessionsOnly = activeSessions.filter((session: any) => {
+          const totalSessions = session.totalSessions || 0;
+          return totalSessions > 1; // Hanya tampilkan paket dengan lebih dari 1 sesi
         });
+        
+        if (multiSessionsOnly.length > 0) {
+          message += `\nInformasi Paket Aktif:\n\n`;
+          
+          multiSessionsOnly.forEach((session: any) => {
+            const packageName = session.package?.name || "Paket";
+            const used = session.sessionsUsed || 0;
+            const total = session.totalSessions || 0;
+            const remaining = total - used;
+            const percentUsed = Math.round((used / total) * 100);
+            
+            message += `• ${packageName}\n`;
+            message += `${used}/${total} Sesi (${percentUsed}%)\n`;
+            message += `${remaining} sesi tersisa\n\n`;
+          });
+        }
       }
       
       message += `Semoga sehat selalu!\n\n`;
