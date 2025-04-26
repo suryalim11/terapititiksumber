@@ -546,8 +546,8 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
     }
   };
 
-  // Fungsi berbagi WhatsApp dengan teks minimal
-  const handleShareWhatsApp = () => {
+  // Fungsi berbagi WhatsApp dengan detail lengkap
+  const handleShareWhatsApp = async () => {
     try {
       if (!data.patient || !data.transaction) {
         toast({
@@ -558,49 +558,83 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         return;
       }
       
+      // Tampilkan loading toast
+      const loadingToast = toast({
+        title: "Mempersiapkan pesan WhatsApp",
+        description: "Sedang mengambil data paket terapi...",
+      });
+      
       // Dapatkan nomor telepon dan format untuk WhatsApp
       let phoneNumber = data.patient.phoneNumber.replace(/\D/g, '');
       if (phoneNumber.startsWith('0')) {
         phoneNumber = '62' + phoneNumber.substring(1);
       }
       
-      // Teks super-sederhana untuk menghindari masalah encoding
-      // Hanya menggunakan karakter dasar ASCII untuk keamanan
-      const simpleText = "Invoice " + data.transaction.transactionId + 
-                        "\nPasien: " + data.patient.name + 
-                        "\nTotal: " + formatPrice(data.transaction.totalAmount.toString());
+      // Format tanggal dan status pembayaran
+      const invoiceId = data.transaction.transactionId;
+      const invoiceDate = format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id });
+      let paymentStatus = data.transaction.isPaid ? 'Lunas' : 'Belum Lunas';
+      if (data.transaction.creditAmount && safeParseFloat(data.transaction.creditAmount) > 0) {
+        paymentStatus = `Kredit (${formatPrice(data.transaction.creditAmount.toString())})`;
+      }
       
-      // Buka WhatsApp dengan nomor telepon DAN teks sederhana
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(simpleText)}`;
+      // Buat detail item
+      let itemDetail = "";
+      if (Array.isArray(data.items) && data.items.length > 0) {
+        itemDetail = "\n\nItem:";
+        data.items.forEach((item, index) => {
+          const qty = item.quantity || 1;
+          const price = formatPrice(item.price || '0');
+          const total = formatPrice(((parseFloat(item.price || '0') * qty).toString()));
+          itemDetail += `\n${index+1}. ${item.name} (${qty}x) - ${total}`;
+        });
+      }
+      
+      // Ambil detail paket aktif
+      let activePackagesDetail = "";
+      try {
+        const response = await fetch(`/api/sessions?patientId=${data.patient.id}&active=true&includeRelated=true&_=${new Date().getTime()}`);
+        if (response.ok) {
+          const sessions = await response.json();
+          
+          // Filter hanya paket aktif yang masih punya sesi tersisa
+          const activePackages = sessions.filter((s: any) => s.package && s.remainingSessions > 0);
+          
+          if (activePackages.length > 0) {
+            activePackagesDetail = "\n\nPaket Aktif:";
+            activePackages.forEach((session: any, idx: number) => {
+              activePackagesDetail += `\n${idx+1}. ${session.package?.name}: ${session.remainingSessions} dari ${session.totalSessions} sesi tersisa`;
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching active sessions:", error);
+      }
+      
+      // Buat pesan lengkap dengan semua informasi
+      const fullMessage = "*INVOICE - " + invoiceId + "*" +
+                        "\nTanggal: " + invoiceDate +
+                        "\nPasien: " + data.patient.name +
+                        "\nTotal: " + formatPrice(data.transaction.totalAmount.toString()) +
+                        "\nStatus: " + paymentStatus +
+                        itemDetail +
+                        activePackagesDetail +
+                        "\n\nSilahkan kunjungi klinik kami untuk informasi lebih lanjut.";
+      
+      // Tutup loading toast
+      loadingToast.dismiss?.();
+      
+      // Encode dan kirim ke WhatsApp
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(fullMessage)}`;
       window.open(whatsappUrl, '_blank');
       
       toast({
         title: "WhatsApp dibuka",
-        description: "Invoice sederhana telah dikirim via WhatsApp",
+        description: "Invoice lengkap dengan detail item dan paket aktif telah dikirim",
       });
       
-      // Selain itu, salin pesan lengkap ke clipboard sebagai cadangan
-      const invoiceId = data.transaction.transactionId;
-      const invoiceDate = format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id });
-      let paymentStatus = data.transaction.isPaid ? 'Lunas' : 'Belum Lunas';
-      
-      // Pesan lengkap (sebagai cadangan di clipboard)
-      const fullMessage = "*INVOICE - " + invoiceId + "*\n" +
-                        "Tanggal: " + invoiceDate + "\n" +
-                        "Pasien: " + data.patient.name + "\n" +
-                        "Total: " + formatPrice(data.transaction.totalAmount.toString()) + "\n" +
-                        "Status: " + paymentStatus + "\n\n" +
-                        "Silahkan kunjungi klinik kami untuk informasi lebih lanjut.";
-      
-      // Salin pesan lengkap ke clipboard sebagai cadangan
+      // Salin pesan ke clipboard sebagai backup
       navigator.clipboard.writeText(fullMessage)
-        .then(() => {
-          toast({
-            title: "Pesan lengkap disalin",
-            description: "Jika WhatsApp tidak menampilkan semua informasi, Anda dapat menempel (paste) pesan lengkap dari clipboard.",
-            duration: 5000,
-          });
-        })
         .catch(() => {
           // Jika gagal menyalin, abaikan saja
         });
