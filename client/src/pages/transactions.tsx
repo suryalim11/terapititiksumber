@@ -720,9 +720,24 @@ export default function Transactions() {
       const encodedMessage = encodeURIComponent(message);
       
       // Buka WhatsApp dengan pesan yang sudah disiapkan
-      // Jika nomor pasien tersedia, gunakan nomor tersebut
-      const whatsappUrl = patient.phoneNumber 
-        ? `https://wa.me/${patient.phoneNumber.replace(/\D/g, '')}?text=${encodedMessage}`
+      // Jika nomor pasien tersedia, gunakan nomor tersebut dan format dengan benar
+      let phoneNumber = '';
+      if (patient.phoneNumber) {
+        // Hapus semua karakter non-digit
+        phoneNumber = patient.phoneNumber.replace(/\D/g, '');
+        
+        // Pastikan format nomor dimulai dengan kode negara Indonesia (62)
+        if (phoneNumber.startsWith('0')) {
+          // Ganti 0 di awal dengan 62 (kode negara Indonesia)
+          phoneNumber = '62' + phoneNumber.substring(1);
+        } else if (!phoneNumber.startsWith('62')) {
+          // Jika tidak dimulai dengan 0 atau 62, tambahkan 62 di depan
+          phoneNumber = '62' + phoneNumber;
+        }
+      }
+      
+      const whatsappUrl = phoneNumber 
+        ? `https://wa.me/${phoneNumber}?text=${encodedMessage}`
         : `https://wa.me/?text=${encodedMessage}`;
       
       window.open(whatsappUrl, '_blank');
