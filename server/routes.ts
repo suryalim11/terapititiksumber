@@ -21,6 +21,7 @@ import { handleDateTest } from "./test-route";
 import * as schema from "../shared/schema";
 import { handleTherapySlotsBatch } from "./routes/therapy-slots-batch";
 import fixTransactionsTable from "./fix-transactions-schema";
+import { fixMissingPackageSessions } from "./fix-missing-sessions";
 import crypto from "crypto";
 import { setupAuth } from "./auth";
 import multer from "multer";
