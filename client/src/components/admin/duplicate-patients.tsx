@@ -108,7 +108,7 @@ export default function DuplicatePatients() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Lista de grupos de pacientes */}
+        {/* Daftar kelompok pasien */}
         <div className="md:col-span-1">
           <Card>
             <CardHeader className="pb-2">
@@ -138,7 +138,7 @@ export default function DuplicatePatients() {
           </Card>
         </div>
 
-        {/* Pacientes no grupo selecionado */}
+        {/* Pasien dalam kelompok yang dipilih */}
         <div className="md:col-span-2">
           {expandedGroup ? (
             <Card>
@@ -236,7 +236,10 @@ export default function DuplicatePatients() {
                                           'secondary'
                                         }
                                       >
-                                        {session.status}
+                                        {session.status === 'active' ? 'Aktif' :
+                                         session.status === 'completed' ? 'Selesai' :
+                                         session.status === 'inactive' ? 'Tidak Aktif' : 
+                                         session.status}
                                       </Badge>
                                     </TableCell>
                                   </TableRow>
@@ -271,7 +274,12 @@ export default function DuplicatePatients() {
                                     <TableCell>{transaction.transactionId}</TableCell>
                                     <TableCell>{new Date(transaction.createdAt).toLocaleDateString()}</TableCell>
                                     <TableCell>Rp {transaction.totalAmount}</TableCell>
-                                    <TableCell>{transaction.paymentMethod}</TableCell>
+                                    <TableCell>
+                                      {transaction.paymentMethod === 'cash' ? 'Tunai' :
+                                       transaction.paymentMethod === 'transfer' ? 'Transfer' :
+                                       transaction.paymentMethod === 'credit' ? 'Kredit' :
+                                       transaction.paymentMethod}
+                                    </TableCell>
                                   </TableRow>
                                 ))}
                               </TableBody>
@@ -285,7 +293,7 @@ export default function DuplicatePatients() {
               </CardContent>
               <CardFooter className="flex justify-end">
                 <Button variant="outline" onClick={() => setExpandedGroup(null)}>
-                  Fechar
+                  Tutup
                 </Button>
               </CardFooter>
             </Card>
