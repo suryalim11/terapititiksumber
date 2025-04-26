@@ -1,6 +1,6 @@
 import { db } from './db';
 import { sessions, transactions, packages } from '@shared/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { storage } from './storage';
 
 // Fungsi khusus untuk memperbaiki sesi Agus Isrofin
@@ -11,10 +11,11 @@ export async function fixAgusIsrofinSessions() {
     const patientId = 261; // Agus Isrofin
     
     // 1. Cari transaksi terbaru
-    const lastTransaction = await db.query.transactions.findFirst({
-      where: eq(transactions.patientId, patientId),
-      orderBy: [desc(transactions.createdAt)]
-    });
+    const lastTransaction = await db.select().from(transactions)
+      .where(eq(transactions.patientId, patientId))
+      .orderBy(transactions.createdAt, 'desc')
+      .limit(1)
+      .then(rows => rows[0]);
     
     if (!lastTransaction) {
       return {
@@ -27,7 +28,9 @@ export async function fixAgusIsrofinSessions() {
     
     // 2. Periksa apakah transaksi memiliki paket
     const items = lastTransaction.items as any[];
+    console.log("Transaksi items:", JSON.stringify(items));
     const packageItems = items.filter(item => item.type === 'package');
+    console.log("Package items:", JSON.stringify(packageItems));
     
     if (packageItems.length === 0) {
       return {
