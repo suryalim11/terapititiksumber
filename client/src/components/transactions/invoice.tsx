@@ -558,57 +558,82 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         return;
       }
       
-      // Siapkan nomor telepon
-      let phoneNumber = data.patient.phoneNumber.replace(/\D/g, '');
-      if (phoneNumber.startsWith('0')) {
-        phoneNumber = '62' + phoneNumber.substring(1);
-      }
+      // Buat pesan WhatsApp dengan format yang baru
+      let message = `Yth. ${data.patient.name},\n\n`;
+      message += `Terima kasih telah mengunjungi Klinik Terapi Titik Sumber.\n\n`;
+      message += `Berikut adalah detail invoice Anda:\n`;
+      message += `No. Invoice: ${data.transaction.transactionId}\n`;
+      message += `Total: ${formatPrice(data.transaction.totalAmount)}\n\n`;
       
-      // Generate teks invoice dasar
-      const invoiceId = data.transaction.transactionId;
-      const invoiceDate = format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id });
-      const paymentStatus = data.transaction.isPaid ? 'Lunas' : 'Belum Lunas';
+      // Tambahkan informasi pembayaran
+      message += `Informasi Pembayaran:\n\n`;
+      message += `Bank: ${settings.bankName || 'BCA'}\n`;
+      message += `No. Rekening: ${settings.bankAccountNumber || '1234567890'}\n`;
+      message += `Atas Nama: ${settings.bankAccountName || 'Klinik TTS'}\n\n`;
       
-      // Buat informasi item dengan cara sederhana
-      let itemsText = "";
+      // Tambahkan detail item
+      message += `Detail Item:\n\n`;
       if (Array.isArray(data.items) && data.items.length > 0) {
-        itemsText = " - Item:";
-        data.items.forEach((item, index) => {
+        data.items.forEach(item => {
           const qty = item.quantity || 1;
-          const itemName = item.name || `Item #${index+1}`;
-          itemsText += ` ${itemName} (${qty}),`;
+          const itemName = item.name || "Item"; // Gunakan nilai default jika name tidak ada
+          message += `${qty} x ${itemName} - ${formatPrice(item.price)}\n`;
         });
-        // Hapus koma di akhir
-        itemsText = itemsText.slice(0, -1);
       }
       
-      // Buat pesan minimal untuk WhatsApp
-      // Gunakan format super simple tanpa terlalu banyak newline dan karakter khusus
-      const simpleMessage = 
-        `INVOICE ${invoiceId} - ${invoiceDate} - Pasien: ${data.patient.name} - Total: ${formatPrice(data.transaction.totalAmount.toString())} - Status: ${paymentStatus}${itemsText}`;
+      // Tambahkan informasi paket aktif jika ada
+      if (activeSessions && activeSessions.length > 0) {
+        // Filter hanya paket multi-sesi (lebih dari 1 sesi)
+        const multiSessionsOnly = activeSessions.filter(session => {
+          const totalSessions = session.totalSessions || 0;
+          return totalSessions > 1; // Hanya tampilkan paket dengan lebih dari 1 sesi
+        });
+        
+        if (multiSessionsOnly.length > 0) {
+          message += `\nInformasi Paket Aktif:\n\n`;
+          
+          multiSessionsOnly.forEach(session => {
+            const packageName = session.package?.name || "Paket";
+            const used = session.sessionsUsed || 0;
+            const total = session.totalSessions || 0;
+            const remaining = total - used;
+            const percentUsed = Math.round((used / total) * 100);
+            
+            message += `• ${packageName}\n`;
+            message += `${used}/${total} Sesi (${percentUsed}%)\n`;
+            message += `${remaining} sesi tersisa\n\n`;
+          });
+        }
+      }
       
-      // Buka WhatsApp dengan pesan minimal
-      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(simpleMessage)}`;
+      message += `Semoga sehat selalu!\n\n`;
+      message += `Salam,\nTim Klinik Terapi Titik Sumber`;
+      
+      // Siapkan nomor telepon jika tersedia
+      let phoneNumber = '';
+      if (data.patient.phoneNumber) {
+        // Hapus semua karakter non-digit
+        phoneNumber = data.patient.phoneNumber.replace(/\D/g, '');
+        
+        // Pastikan format nomor dimulai dengan kode negara Indonesia (62)
+        if (phoneNumber.startsWith('0')) {
+          // Ganti 0 di awal dengan 62 (kode negara Indonesia)
+          phoneNumber = '62' + phoneNumber.substring(1);
+        } else if (!phoneNumber.startsWith('62')) {
+          // Jika tidak dimulai dengan 0 atau 62, tambahkan 62 di depan
+          phoneNumber = '62' + phoneNumber;
+        }
+      }
+      
+      const whatsappUrl = phoneNumber 
+        ? `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
+        : `https://wa.me/?text=${encodeURIComponent(message)}`;
+      
       window.open(whatsappUrl, '_blank');
       
-      // Buat pesan lengkap untuk clipboard
-      const fullMessage = 
-        "*INVOICE " + invoiceId + "*" +
-        "\nTanggal: " + invoiceDate +
-        "\nPasien: " + data.patient.name +
-        "\nTotal: " + formatPrice(data.transaction.totalAmount.toString()) +
-        "\nStatus: " + paymentStatus;
-      
-      // Beri tahu user
       toast({
-        title: "WhatsApp dibuka",
-        description: "Invoice sederhana telah dikirim. Pesan lengkap ada di clipboard.",
-        duration: 4000,
-      });
-      
-      // Salin pesan ke clipboard sebagai backup
-      navigator.clipboard.writeText(fullMessage).catch(err => {
-        console.log("Clipboard write failed, but ignoring:", err);
+        title: "WhatsApp terbuka",
+        description: "Invoice telah disiapkan untuk dikirim melalui WhatsApp",
       });
     } catch (error) {
       console.error("Error sharing invoice:", error);
@@ -862,7 +887,8 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                     {activeSessions
                       .filter(session => 
                         session.package && 
-                        session.remainingSessions > 0
+                        session.remainingSessions > 0 &&
+                        session.totalSessions > 1 // Hanya tampilkan paket multi-sesi
                       )
                       .map(session => {
                         const progressPercent = Math.round((session.sessionsUsed / session.totalSessions) * 100);
