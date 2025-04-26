@@ -11,7 +11,9 @@ import {
   Users,
   AlertCircle,
   RefreshCw,
-  Loader2
+  Loader2,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { 
   cn, 
@@ -66,6 +68,7 @@ export default function Dashboard() {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
+  const [showBalance, setShowBalance] = useState(true);
   const queryClient = useQueryClient();
   
   // Format today's date to YYYY-MM-DD for API query with WIB timezone
@@ -309,7 +312,31 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent className="pb-3 px-3 md:px-4">
-              <div className="text-xl md:text-2xl font-bold">{card.value}</div>
+              {/* Special rendering for Today's Income with hide/show feature */}
+              {card.title === "Today's Income" ? (
+                <div className="flex justify-between items-center">
+                  <div className="text-xl md:text-2xl font-bold">
+                    {showBalance ? card.value : "Rp ***.**"}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowBalance(!showBalance)}
+                    className="h-7 w-7 p-0 rounded-full ml-2"
+                  >
+                    {showBalance ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="sr-only">
+                      {showBalance ? "Hide balance" : "Show balance"}
+                    </span>
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-xl md:text-2xl font-bold">{card.value}</div>
+              )}
             </CardContent>
           </Card>
         ))}
