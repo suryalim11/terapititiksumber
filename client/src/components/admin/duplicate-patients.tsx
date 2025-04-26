@@ -68,7 +68,7 @@ export default function DuplicatePatients() {
     return (
       <div className="flex justify-center items-center h-40">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="ml-2">Carregando pacientes duplicados...</span>
+        <span className="ml-2">Memuat data pasien duplikat...</span>
       </div>
     );
   }
@@ -78,10 +78,10 @@ export default function DuplicatePatients() {
       <div className="bg-red-50 p-4 rounded-lg text-red-800">
         <h3 className="font-bold flex items-center">
           <AlertCircle className="mr-2" />
-          Erro ao carregar dados
+          Error saat memuat data
         </h3>
-        <p className="mt-2">Não foi possível carregar a lista de pacientes duplicados.</p>
-        <p className="text-sm mt-1">{error instanceof Error ? error.message : "Erro desconhecido"}</p>
+        <p className="mt-2">Tidak dapat memuat daftar pasien duplikat.</p>
+        <p className="text-sm mt-1">{error instanceof Error ? error.message : "Error tidak diketahui"}</p>
       </div>
     );
   }
@@ -91,9 +91,9 @@ export default function DuplicatePatients() {
       <div className="bg-blue-50 p-4 rounded-lg text-blue-800">
         <h3 className="font-bold flex items-center">
           <CheckCircle2 className="mr-2" />
-          Nenhum duplicado encontrado
+          Tidak ditemukan duplikat
         </h3>
-        <p className="mt-2">Não foram encontrados pacientes com números de telefone duplicados no sistema.</p>
+        <p className="mt-2">Tidak ditemukan pasien dengan nomor telepon duplikat dalam sistem.</p>
       </div>
     );
   }
@@ -102,8 +102,8 @@ export default function DuplicatePatients() {
     <div>
       <div className="mb-4">
         <p className="text-sm text-gray-600">
-          Encontramos {data.length} grupos de pacientes com números de telefone duplicados.
-          Estes pacientes podem representar registros duplicados que necessitam de atenção.
+          Kami menemukan {data.length} kelompok pasien dengan nomor telepon duplikat.
+          Pasien-pasien ini mungkin merupakan data duplikat yang memerlukan perhatian.
         </p>
       </div>
 
@@ -112,8 +112,8 @@ export default function DuplicatePatients() {
         <div className="md:col-span-1">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Grupos Duplicados</CardTitle>
-              <CardDescription>Agrupados por número de telefone</CardDescription>
+              <CardTitle className="text-lg">Kelompok Duplikat</CardTitle>
+              <CardDescription>Dikelompokkan berdasarkan nomor telepon</CardDescription>
             </CardHeader>
             <CardContent className="max-h-[500px] overflow-y-auto">
               {data.map((group) => (
@@ -129,7 +129,7 @@ export default function DuplicatePatients() {
                     <span className="font-medium">{group.phoneNumber}</span>
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-gray-600">
-                    <span>{group.totalPatients} registros</span>
+                    <span>{group.totalPatients} data</span>
                     <Badge variant="outline">{group.patients[0]?.name}</Badge>
                   </div>
                 </div>
@@ -146,10 +146,10 @@ export default function DuplicatePatients() {
                 <div className="flex justify-between items-center">
                   <div>
                     <CardTitle className="text-lg">
-                      Detalhes do Grupo: {expandedGroup}
+                      Detail Kelompok: {expandedGroup}
                     </CardTitle>
                     <CardDescription>
-                      {data.find(g => g.phoneNumber === expandedGroup)?.totalPatients || 0} registros
+                      {data.find(g => g.phoneNumber === expandedGroup)?.totalPatients || 0} data
                     </CardDescription>
                   </div>
                 </div>

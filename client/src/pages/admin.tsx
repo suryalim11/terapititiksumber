@@ -33,34 +33,34 @@ export default function AdminPage() {
 
       <Tabs defaultValue="duplicates" className="w-full">
         <TabsList className="mb-4">
-          <TabsTrigger value="duplicates">Pacientes Duplicados</TabsTrigger>
-          <TabsTrigger value="database">Integridade do Banco de Dados</TabsTrigger>
-          <TabsTrigger value="logs">Logs do Sistema</TabsTrigger>
+          <TabsTrigger value="duplicates">Pasien Duplikat</TabsTrigger>
+          <TabsTrigger value="database">Integritas Database</TabsTrigger>
+          <TabsTrigger value="logs">Log Sistem</TabsTrigger>
         </TabsList>
 
         <TabsContent value="duplicates" className="space-y-4">
           <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-lg font-semibold mb-4">Gerenciamento de Pacientes Duplicados</h2>
+            <h2 className="text-lg font-semibold mb-4">Manajemen Pasien Duplikat</h2>
             <DuplicatePatients />
           </div>
         </TabsContent>
 
         <TabsContent value="database" className="space-y-4">
           <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-lg font-semibold mb-4">Ferramentas de Banco de Dados</h2>
-            <p className="text-gray-600 mb-4">Esta seção contém ferramentas para verificar e corrigir a integridade do banco de dados.</p>
+            <h2 className="text-lg font-semibold mb-4">Alat Database</h2>
+            <p className="text-gray-600 mb-4">Bagian ini berisi alat untuk memeriksa dan memperbaiki integritas database.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Button variant="outline" className="justify-start">
-                Verificar Integridade de Sessões
+                Periksa Integritas Sesi
               </Button>
               <Button variant="outline" className="justify-start">
-                Sincronizar Slots de Terapia
+                Sinkronkan Slot Terapi
               </Button>
               <Button variant="outline" className="justify-start">
-                Reparar Inconsistências de Datas
+                Perbaiki Inkonsistensi Tanggal
               </Button>
               <Button variant="outline" className="justify-start">
-                Verificar Transações Pendentes
+                Periksa Transaksi Tertunda
               </Button>
             </div>
           </div>
@@ -68,8 +68,8 @@ export default function AdminPage() {
 
         <TabsContent value="logs" className="space-y-4">
           <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-lg font-semibold mb-4">Logs do Sistema</h2>
-            <p className="text-gray-600">Ainda não implementado.</p>
+            <h2 className="text-lg font-semibold mb-4">Log Sistem</h2>
+            <p className="text-gray-600">Belum diimplementasikan.</p>
           </div>
         </TabsContent>
       </Tabs>
