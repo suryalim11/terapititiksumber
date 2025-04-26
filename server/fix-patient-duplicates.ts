@@ -2,7 +2,22 @@ import express from 'express';
 import { db } from './db';
 import { sessions, patientRelationships } from '@shared/schema';
 import { eq, and, inArray } from 'drizzle-orm';
-import { formatDateToWIB } from './utils';
+
+// Função auxiliar para formatar uma data para o timezone WIB (UTC+7)
+function formatDateToWIB(date: Date): string {
+  // Adiciona 7 horas para converter para WIB (UTC+7)
+  const wibDate = new Date(date.getTime() + (7 * 60 * 60 * 1000));
+  
+  // Formata a data no formato YYYY-MM-DD HH:MM:SS
+  const year = wibDate.getUTCFullYear();
+  const month = String(wibDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(wibDate.getUTCDate()).padStart(2, '0');
+  const hours = String(wibDate.getUTCHours()).padStart(2, '0');
+  const minutes = String(wibDate.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(wibDate.getUTCSeconds()).padStart(2, '0');
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds} WIB`;
+}
 
 // Esta função adiciona endpoints de API para corrigir pacientes duplicados
 export function addFixPatientDuplicatesEndpoint(app: express.Express) {
@@ -10,7 +25,8 @@ export function addFixPatientDuplicatesEndpoint(app: express.Express) {
   // Endpoint para listar pacientes duplicados com base no mesmo telefone
   app.get('/api/admin/detect-duplicate-patients', async (req, res) => {
     try {
-      if (!req.session.user || req.session.user.role !== 'admin') {
+      // Verificar autenticação usando Express
+      if (!req.isAuthenticated || !req.isAuthenticated() || (req.user as any)?.role !== 'admin') {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
@@ -33,7 +49,8 @@ export function addFixPatientDuplicatesEndpoint(app: express.Express) {
   // Endpoint para relacionar pacientes duplicados
   app.post('/api/admin/link-duplicate-patients', async (req, res) => {
     try {
-      if (!req.session.user || req.session.user.role !== 'admin') {
+      // Verificar autenticação usando Express
+      if (!req.isAuthenticated || !req.isAuthenticated() || (req.user as any)?.role !== 'admin') {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
@@ -83,7 +100,8 @@ export function addFixPatientDuplicatesEndpoint(app: express.Express) {
   // Endpoint para o caso específico de Agus Isrofin
   app.post('/api/admin/merge-agus-isrofin', async (req, res) => {
     try {
-      if (!req.session.user || req.session.user.role !== 'admin') {
+      // Verificar autenticação usando Express
+      if (!req.isAuthenticated || !req.isAuthenticated() || (req.user as any)?.role !== 'admin') {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
@@ -143,7 +161,7 @@ export function addFixPatientDuplicatesEndpoint(app: express.Express) {
       }
 
       // Passo 5: Atualizar os agendamentos do paciente duplicado para o paciente primário
-      const updateAppointmentsResult = await db.execute(
+      await db.execute(
         `UPDATE appointments 
          SET patient_id = $1
          WHERE patient_id = $2 AND status = 'Active'`,
