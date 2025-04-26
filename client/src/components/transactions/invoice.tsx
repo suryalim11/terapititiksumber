@@ -546,7 +546,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
     }
   };
 
-  // Fungsi untuk membuka WhatsApp dengan format sederhana
+  // Fungsi alternatif berbagi menggunakan Web Share API
   const handleShareWhatsApp = () => {
     try {
       if (!data.patient || !data.transaction) {
@@ -561,44 +561,68 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       // Format invoice id
       const invoiceId = data.transaction.transactionId;
       
-      // Dapatkan nomor telepon pasien dan format
-      let phoneNumber = data.patient.phoneNumber.replace(/\D/g, '');
-      if (phoneNumber.startsWith('0')) {
-        phoneNumber = '62' + phoneNumber.substring(1);
-      }
-      
       // Format tanggal
       const invoiceDate = format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id });
       
       // Format status pembayaran
       let paymentStatus = data.transaction.isPaid ? 'Lunas' : 'Belum Lunas';
       
-      // Buat pesan sangat sederhana
-      const simpleMessage = "*INVOICE - " + invoiceId + "*\n" +
-                          "Tanggal: " + invoiceDate + "\n" +
-                          "Pasien: " + data.patient.name + "\n" +
-                          "Total: " + formatPrice(data.transaction.totalAmount.toString()) + "\n" +
-                          "Status: " + paymentStatus + "\n\n" +
-                          "Silahkan kunjungi klinik kami untuk informasi lebih lanjut.";
+      // Buat teks sederhana
+      const invoiceText = "*INVOICE - " + invoiceId + "*\n" +
+                        "Tanggal: " + invoiceDate + "\n" +
+                        "Pasien: " + data.patient.name + "\n" +
+                        "Total: " + formatPrice(data.transaction.totalAmount.toString()) + "\n" +
+                        "Status: " + paymentStatus + "\n\n" +
+                        "Silahkan kunjungi klinik kami untuk informasi lebih lanjut.";
       
-      // Encode pesan untuk URL
-      const encodedMessage = encodeURIComponent(simpleMessage);
+      // Dapatkan nomor telepon dan format untuk WhatsApp
+      let phoneNumber = data.patient.phoneNumber.replace(/\D/g, '');
+      if (phoneNumber.startsWith('0')) {
+        phoneNumber = '62' + phoneNumber.substring(1);
+      }
       
-      // Buat URL WhatsApp
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
-      
-      // Buka WhatsApp dalam tab baru
-      window.open(whatsappUrl, '_blank');
-      
-      toast({
-        title: "WhatsApp terbuka",
-        description: "Invoice telah disiapkan untuk dikirim",
-      });
+      // Alternatif 1: Gunakan navigator.share jika tersedia (untuk perangkat mobile)
+      if (navigator.share) {
+        // Gunakan Web Share API untuk berbagi
+        navigator.share({
+          title: `Invoice ${invoiceId}`,
+          text: invoiceText
+        })
+        .then(() => {
+          toast({
+            title: "Berbagi berhasil",
+            description: "Invoice telah dibagikan",
+          });
+        })
+        .catch((error) => {
+          console.error("Error using Web Share API:", error);
+          
+          // Fallback ke WhatsApp URL
+          const encodedMessage = encodeURIComponent(invoiceText);
+          const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
+          window.open(whatsappUrl, '_blank');
+          
+          toast({
+            title: "WhatsApp terbuka",
+            description: "Invoice telah disiapkan untuk dikirim",
+          });
+        });
+      } else {
+        // Alternatif 2: Langsung buka WhatsApp jika Web Share API tidak tersedia
+        const encodedMessage = encodeURIComponent(invoiceText);
+        const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
+        window.open(whatsappUrl, '_blank');
+        
+        toast({
+          title: "WhatsApp terbuka",
+          description: "Invoice telah disiapkan untuk dikirim",
+        });
+      }
     } catch (error) {
-      console.error("Error sending WhatsApp message:", error);
+      console.error("Error sharing invoice:", error);
       toast({
         title: "Gagal membagikan invoice",
-        description: "Terjadi kesalahan saat mengirim pesan WhatsApp",
+        description: "Terjadi kesalahan saat berbagi invoice",
         variant: "destructive"
       });
     }
