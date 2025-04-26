@@ -657,15 +657,26 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Cek apakah ini pasien Queenzky dan pilihan displayName adalah alias (Syafliana)
         let patientName = data.patient.name;
         // Periksa dari properti displayName
-        if (data.patient.name.includes('Queenzky') && (data.displayName === 'alias' || data.displayName === 'alternative')) {
+        if (data.patient.name.includes('Queenzky') && 
+            (data.displayName === 'alias' || 
+             data.displayName === 'alternative' || 
+             String(data.displayName).toLowerCase() === 'alternative')) {
           patientName = 'Syafliana'; // Gunakan nama alternatif Syafliana
           console.log("Menggunakan nama alternatif 'Syafliana' pada WhatsApp message dari displayName:", data.displayName);
         }
         // Periksa juga dari transaction.metadata
-        else if (data.patient.name.includes('Queenzky') && data.transaction?.metadata?.displayName === 'alternative') {
+        else if (data.patient.name.includes('Queenzky') && 
+                 data.transaction?.metadata?.displayName && 
+                 String(data.transaction.metadata.displayName).toLowerCase() === 'alternative') {
           patientName = 'Syafliana'; // Gunakan nama alternatif Syafliana
           console.log("Menggunakan nama alternatif 'Syafliana' pada WhatsApp message dari metadata:", data.transaction.metadata.displayName);
         }
+        
+        console.log("Informasi pasien:", {
+          name: patientName,
+          id: data.patient.id,
+          phone: data.patient.phoneNumber
+        });
         
         // Gunakan template kustom dan ganti variabel dengan nilai sebenarnya
         message = settings.whatsappTemplate
@@ -683,11 +694,23 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Gunakan format default jika tidak ada template kustom
         message = `*INVOICE ${invoiceId}*`;
         
+        // Gunakan nama pasien yang sudah diperiksa (alias Syafliana jika diperlukan)
+        let displayPatientName = data.patient.name;
+        // Periksa apakah ini pasien Queenzky dan gunakan nama alias jika sesuai
+        if (data.patient.name.includes('Queenzky') && 
+            (data.displayName === 'alias' || 
+             data.displayName === 'alternative' || 
+             String(data.displayName).toLowerCase() === 'alternative' ||
+             (data.transaction?.metadata?.displayName && String(data.transaction.metadata.displayName).toLowerCase() === 'alternative'))) {
+          displayPatientName = 'Syafliana';
+          console.log("Menggunakan nama alternatif 'Syafliana' untuk salam default");
+        }
+        
         // Tambahkan salam pembuka jika tersedia
         if (settings.whatsappGreeting) {
-          message += `\n${settings.whatsappGreeting.replace(/{{patientName}}/g, data.patient.name)}`;
+          message += `\n${settings.whatsappGreeting.replace(/{{patientName}}/g, displayPatientName)}`;
         } else {
-          message += `\nYth. ${data.patient.name},`;
+          message += `\nYth. ${displayPatientName},`;
         }
         
         message += `\n\nTerima kasih telah mengunjungi ${settings.companyName}.`;
@@ -750,8 +773,18 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         }
       }
 
+      // Batasi panjang pesan jika terlalu panjang
+      const MAX_MESSAGE_LENGTH = 4000; // WhatsApp memiliki batasan karakter
+      const trimmedMessage = message.length > MAX_MESSAGE_LENGTH 
+        ? message.substring(0, MAX_MESSAGE_LENGTH - 100) + "\n\n[Pesan terpotong karena terlalu panjang]" 
+        : message;
+      
+      // Log pesan sebelum encoding untuk debugging
+      console.log("Pesan WhatsApp sebelum encoding:", trimmedMessage);
+      console.log("Panjang pesan:", trimmedMessage.length, "karakter");
+      
       // Encode pesan untuk URL WhatsApp
-      const encodedMessage = encodeURIComponent(message);
+      const encodedMessage = encodeURIComponent(trimmedMessage);
       
       // Dapatkan nomor telepon pasien dan hapus karakter non-numerik
       let phoneNumber = data.patient.phoneNumber.replace(/\D/g, '');
@@ -761,8 +794,11 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         phoneNumber = '62' + phoneNumber.substring(1);
       }
       
+      console.log("Nomor telepon yang digunakan:", phoneNumber);
+      
       // Buka WhatsApp Business API dengan pesan yang sudah disiapkan
       const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
+      console.log("URL WhatsApp:", whatsappUrl.substring(0, 100) + "...");
       window.open(whatsappUrl, '_blank');
       
       toast({
