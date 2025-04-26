@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { requireAuth, requireAdminRole } from "./middleware/auth";
 import { z } from "zod";
 import { 
   insertPatientSchema, 
@@ -4322,6 +4323,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Registrar os endpoints para detecção e correção de pacientes duplicados
   addFixPatientDuplicatesEndpoint(app);
+  
+  // Endpoint untuk mengambil log sistem
+  app.get("/api/admin/system-logs", requireAuth, requireAdminRole, async (req: Request, res: Response) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const action = req.query.action as string;
+      const entityType = req.query.entityType as string;
+      const fromDate = req.query.fromDate as string;
+      const toDate = req.query.toDate as string;
+      
+      // Build query filters
+      const filters: any = {};
+      if (action) filters.action = action;
+      if (entityType) filters.entityType = entityType;
+      
+      // Date range filtering
+      if (fromDate || toDate) {
+        filters.createdAt = {};
+        if (fromDate) filters.createdAt.gte = new Date(fromDate);
+        if (toDate) {
+          // Set toDate to end of day
+          const endDate = new Date(toDate);
+          endDate.setHours(23, 59, 59, 999);
+          filters.createdAt.lte = endDate;
+        }
+      }
+      
+      console.log("Fetching system logs with filters:", filters);
+      
+      const logs = await storage.getSystemLogs(limit, filters);
+      
+      return res.status(200).json({
+        success: true,
+        logs
+      });
+    } catch (error) {
+      console.error("Error fetching system logs:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil log sistem",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
 
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);

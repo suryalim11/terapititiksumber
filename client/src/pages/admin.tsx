@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DuplicatePatients from "@/components/admin/duplicate-patients";
+import SystemLogs from "@/components/admin/system-logs";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -243,7 +244,7 @@ export default function AdminPage() {
         <TabsContent value="logs" className="space-y-4">
           <div className="bg-white rounded-lg shadow p-4">
             <h2 className="text-lg font-semibold mb-4">Log Sistem</h2>
-            <p className="text-gray-600">Belum diimplementasikan.</p>
+            <SystemLogs />
           </div>
         </TabsContent>
       </Tabs>
