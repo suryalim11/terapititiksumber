@@ -560,300 +560,93 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       // Menampilkan toast loading saat mempersiapkan pesan
       const loadingToast = toast({
         title: "Menyiapkan pesan WhatsApp",
-        description: "Sedang mengambil data paket aktif...",
+        description: "Sedang menyiapkan pesan...",
       });
       
-      // Format pesan WhatsApp dengan menggunakan pengaturan yang disimpan
+      // Gunakan pendekatan lebih sederhana dengan pesan yang sudah diketahui format & panjangnya
+      // Buat pesan dasar terlebih dahulu
+      
+      // Format ID invoice
       const invoiceId = settings.invoicePrefix 
         ? `${settings.invoicePrefix}${data.transaction.transactionId}` 
         : data.transaction.transactionId;
-        
-      // Tambahkan info rekening bank jika tersedia
-      let bankInfo = '';
-      if ((data.paymentMethod === 'bank_transfer' || data.paymentMethod === 'qris') &&
-          (settings.bankName || settings.bankAccountNumber || settings.bankAccountName)) {
-        bankInfo = `*Informasi Pembayaran:*`;
-        if (settings.bankName) bankInfo += `\nBank: ${settings.bankName}`;
-        if (settings.bankAccountNumber) bankInfo += `\nNo. Rekening: ${settings.bankAccountNumber}`;
-        if (settings.bankAccountName) bankInfo += `\nAtas Nama: ${settings.bankAccountName}`;
+      
+      // Format tanggal
+      const invoiceDate = format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id });
+      
+      // Format nama pasien (gunakan alias jika diperlukan)
+      let patientName = data.patient.name;
+      if (data.patient.name.includes('Queenzky') && 
+          (data.displayName === 'alias' || data.displayName === 'alternative' || 
+           (data.transaction?.metadata?.displayName === 'alternative'))) {
+        patientName = 'Syafliana';
       }
       
-      // Ambil data sesi aktif langsung dari API untuk memastikan data terbaru
-      let fetchedActiveSessions: ActiveSession[] = [];
+      // Format total
+      const totalAmount = formatPrice(data.transaction.totalAmount.toString());
       
-      // Pastikan kita mendapatkan data sesi aktif
-      if (data?.patient?.id) {
-        try {
-          console.log("Fetching active sessions for WhatsApp share...");
-          // Tambahkan timestamp untuk mencegah cache
-          const timestamp = new Date().getTime();
-          const response = await fetch(`/api/sessions?patientId=${data.patient.id}&active=true&includeRelated=true&_=${timestamp}`);
-          
-          if (response.ok) {
-            fetchedActiveSessions = await response.json();
-            console.log("Fetched active sessions for WhatsApp:", fetchedActiveSessions);
-          } else {
-            console.error("Failed to fetch active sessions for WhatsApp", await response.text());
-            // Coba lagi dengan delay
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const retryResponse = await fetch(`/api/sessions?patientId=${data.patient.id}&active=true&includeRelated=true&_=${new Date().getTime()}`);
-            if (retryResponse.ok) {
-              fetchedActiveSessions = await retryResponse.json();
-              console.log("Retry successful, fetched active sessions:", fetchedActiveSessions);
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching active sessions for WhatsApp:", error);
-        }
+      // Format status pembayaran
+      let paymentStatus = 'Lunas';
+      const creditAmount = safeParseFloat(data.transaction.creditAmount);
+      if (creditAmount > 0) {
+        paymentStatus = `Kredit (${formatPrice(creditAmount.toString())})`;
+      } else if (data.transaction.isPaid === false) {
+        paymentStatus = 'Belum Lunas';
       }
       
-      // Hapus toast loading
-      loadingToast.dismiss?.();
-      
-      // Gunakan data active sessions yang baru di-fetch atau fallback ke data dari useQuery
-      const sessionsToUse = fetchedActiveSessions.length > 0 ? fetchedActiveSessions : activeSessions;
-      console.log("Sessions to use for WhatsApp:", sessionsToUse);
-      
-      // Tambahkan informasi paket aktif jika ada
+      // Ambil data paket aktif dari server - fitur opsional
       let activePackagesInfo = '';
-      const activePackages = sessionsToUse && sessionsToUse.length > 0 ? 
-        sessionsToUse.filter(session => session.package && session.remainingSessions > 0) : [];
-        
-      if (activePackages.length > 0) {
-        activePackagesInfo = '\n\n*Informasi Paket Aktif:*';
-        activePackages.forEach(session => {
-          const progressPercent = Math.round((session.sessionsUsed / session.totalSessions) * 100);
-          let packageInfo = `\n• ${session.package?.name || `Paket Terapi #${session.packageId}`}`;
+      try {
+        // Fetch active sessions
+        const response = await fetch(`/api/sessions?patientId=${data.patient.id}&active=true&includeRelated=true&_=${new Date().getTime()}`);
+        if (response.ok) {
+          const sessions = await response.json();
           
-          // Jika paket dibagikan antar anggota keluarga
-          if (!session.isDirectOwner && session.owner) {
-            packageInfo += ` (Paket bersama ${session.owner.name})`;
+          // Filter hanya paket aktif yang masih punya sesi tersisa
+          const activePackages = sessions.filter((s: any) => s.package && s.remainingSessions > 0);
+          
+          if (activePackages.length > 0) {
+            activePackagesInfo = '\n\n*Paket Aktif:*';
+            activePackages.forEach((session: any) => {
+              activePackagesInfo += `\n• ${session.package?.name}: ${session.remainingSessions} dari ${session.totalSessions} sesi tersisa`;
+            });
           }
-          
-          packageInfo += `\n  ${session.sessionsUsed}/${session.totalSessions} Sesi (${progressPercent}%)`;
-          packageInfo += `\n  ${session.remainingSessions} sesi tersisa`;
-          
-          activePackagesInfo += packageInfo;
-        });
+        }
+      } catch (error) {
+        console.error("Error fetching active sessions:", error);
+        // Jika gagal fetch, lanjutkan tanpa info paket aktif
       }
       
-      // Format detail item jika opsi includeDetailedItems diaktifkan
-      let itemDetails = '';
-      if (settings.includeDetailedItems && data.items && data.items.length > 0) {
-        itemDetails = '\n*Detail Item:*';
-        data.items.forEach(item => {
-          // Gunakan properti name atau fallback jika tidak ada
-          // String() untuk memastikan nilai tidak undefined
-          const itemName = String(item.name || `Item`);
-          const itemQuantity = item.quantity !== undefined && item.quantity !== null 
-            ? String(item.quantity) 
-            : '1';
-          const itemPrice = item.price !== undefined && item.price !== null 
-            ? String(item.price) 
-            : '0';
-            
-          itemDetails += `\n${itemQuantity} x ${itemName} - ${formatPrice(itemPrice)}`;
-        });
-      }
-      
-      // Buat pesan berdasarkan template atau gunakan template default
-      let message = '';
-      
-      if (settings.whatsappTemplate) {
-        // Gunakan totalAmount dari transaksi sebagai total akhir
-        // untuk mencegah perbedaan perhitungan dan memastikan konsistensi
-        const totalAmount = data.transaction.totalAmount.toString();
-        
-        // Buat informasi kredit jika transaksi menggunakan kredit
-        let creditInfo = '';
-        const creditAmount = safeParseFloat(data.transaction.creditAmount);
-        
-        if (creditAmount > 0) {
-          const totalAmountValue = safeParseFloat(totalAmount);
-          const paidAmount = totalAmountValue - creditAmount;
-          
-          creditInfo = `*Informasi Kredit:*\nTotal Belanja: ${formatPrice(totalAmount)}\nJumlah Dibayar: ${formatPrice(paidAmount.toString())}\nSisa Kredit: ${formatPrice(creditAmount.toString())}`;
-        }
-        
-        // Cek apakah ini pasien Queenzky dan pilihan displayName adalah alias (Syafliana)
-        let patientName = data.patient.name;
-        // Periksa dari properti displayName
-        if (data.patient.name.includes('Queenzky') && 
-            (data.displayName === 'alias' || 
-             data.displayName === 'alternative' || 
-             String(data.displayName).toLowerCase() === 'alternative')) {
-          patientName = 'Syafliana'; // Gunakan nama alternatif Syafliana
-          console.log("Menggunakan nama alternatif 'Syafliana' pada WhatsApp message dari displayName:", data.displayName);
-        }
-        // Periksa juga dari transaction.metadata
-        else if (data.patient.name.includes('Queenzky') && 
-                 data.transaction?.metadata?.displayName && 
-                 String(data.transaction.metadata.displayName).toLowerCase() === 'alternative') {
-          patientName = 'Syafliana'; // Gunakan nama alternatif Syafliana
-          console.log("Menggunakan nama alternatif 'Syafliana' pada WhatsApp message dari metadata:", data.transaction.metadata.displayName);
-        }
-        
-        console.log("Informasi pasien:", {
-          name: patientName,
-          id: data.patient.id,
-          phone: data.patient.phoneNumber
-        });
-        
-        // Gunakan template kustom dan ganti variabel dengan nilai sebenarnya
-        message = settings.whatsappTemplate
-          .replace(/{{companyName}}/g, settings.companyName)
-          .replace(/{{invoiceId}}/g, invoiceId)
-          .replace(/{{totalAmount}}/g, formatPrice(totalAmount))
-          .replace(/{{patientName}}/g, patientName)
-          .replace(/{{bankInfo}}/g, bankInfo || '')
-          .replace(/{{items}}/g, itemDetails || '')
-          .replace(/{{creditInfo}}/g, creditInfo || '')
-          .replace(/{{activePackages}}/g, activePackagesInfo || '')
-          .replace(/{{subtotal}}/g, data.subtotal ? formatPrice(data.subtotal.toString()) : formatPrice(totalAmount))
-          .replace(/{{discount}}/g, data.discount && parseFloat(data.discount.toString()) > 0 ? formatPrice(data.discount.toString()) : '0');
-      } else {
-        // Gunakan format default jika tidak ada template kustom
-        message = `*INVOICE ${invoiceId}*`;
-        
-        // Gunakan nama pasien yang sudah diperiksa (alias Syafliana jika diperlukan)
-        let displayPatientName = data.patient.name;
-        // Periksa apakah ini pasien Queenzky dan gunakan nama alias jika sesuai
-        if (data.patient.name.includes('Queenzky') && 
-            (data.displayName === 'alias' || 
-             data.displayName === 'alternative' || 
-             String(data.displayName).toLowerCase() === 'alternative' ||
-             (data.transaction?.metadata?.displayName && String(data.transaction.metadata.displayName).toLowerCase() === 'alternative'))) {
-          displayPatientName = 'Syafliana';
-          console.log("Menggunakan nama alternatif 'Syafliana' untuk salam default");
-        }
-        
-        // Tambahkan salam pembuka jika tersedia
-        if (settings.whatsappGreeting) {
-          message += `\n${settings.whatsappGreeting.replace(/{{patientName}}/g, displayPatientName)}`;
-        } else {
-          message += `\nYth. ${displayPatientName},`;
-        }
-        
-        message += `\n\nTerima kasih telah mengunjungi ${settings.companyName}.`;
-        
-        // Tambahkan informasi subtotal dan diskon jika tersedia
-        if (data.subtotal && data.discount && data.discount > 0) {
-          message += `\nSubtotal: ${formatPrice(data.subtotal.toString())}`;
-          message += `\nDiskon: ${formatPrice(data.discount.toString())}`;
-        }
-        
-        // Gunakan nilai totalAmount dari transaksi
-        message += `\nTotal Pembayaran: ${formatPrice(data.transaction.totalAmount.toString())}`;
-        
-        // Tambahkan informasi kredit jika ada
-        const creditAmount = safeParseFloat(data.transaction.creditAmount);
-        if (creditAmount > 0) {
-          const totalAmountValue = safeParseFloat(data.transaction.totalAmount);
-          const paidAmount = totalAmountValue - creditAmount;
-          
-          message += `\n\n*Informasi Kredit:*`;
-          message += `\nTotal Belanja: ${formatPrice(data.transaction.totalAmount.toString())}`;
-          message += `\nJumlah Dibayar: ${formatPrice(paidAmount.toString())}`;
-          message += `\nSisa Kredit: ${formatPrice(creditAmount.toString())}`;
-        }
-        
-        // Tambahkan info bank jika ada
-        if (bankInfo) {
-          message += `\n\n${bankInfo}`;
-        }
-        
-        // Tambahkan detail item jika opsi diaktifkan
-        if (itemDetails) {
-          message += `\n${itemDetails}`;
-        }
-        
-        // Tambahkan informasi paket aktif
-        if (activePackagesInfo) {
-          message += activePackagesInfo;
-        }
-        
-        // Tambahkan pesan terima kasih
-        message += `\n\n${settings.invoiceThankYouMessage || "Semoga sehat selalu!"}`;
-        
-        // Tambahkan tanda tangan
-        if (settings.whatsappSignature) {
-          message += `\n\n${settings.whatsappSignature.replace(/{{companyName}}/g, settings.companyName)}`;
-        } else {
-          message += `\n\nSalam,\nTim ${settings.companyName}`;
-        }
-      }
-      
-      // Tambahkan pengingat jadwal jika diaktifkan
-      if (settings.includeAppointmentReminder) {
-        const appointments = data.items.filter(item => item.type === 'package')
-          .map(item => `\n• ${item.name}: Silahkan jadwalkan sesi terapi Anda melalui bagian resepsionis kami.`);
-          
-        if (appointments.length > 0) {
-          message += '\n\n*Pengingat Jadwal Terapi:*';
-          message += appointments.join('');
-        }
-      }
+      // Buat pesan dengan format standar sederhana
+      const message = `*INVOICE - ${invoiceId}*
+Tanggal: ${invoiceDate}
+Pasien: ${patientName}
+Total: ${totalAmount}
+Status: ${paymentStatus}${activePackagesInfo}
 
-      // Modifikasi template sederhana khusus untuk WhatsApp jika pesan template terlalu panjang
-      if (message.length > 2000) {
-        console.log("Pesan terlalu panjang, menggunakan template sederhana...");
-        // Buat template sederhana dengan informasi penting saja
-        let simplifiedMessage = `*INVOICE ${invoiceId}*\n`;
-        simplifiedMessage += `Tanggal: ${format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id })}\n`;
-        simplifiedMessage += `Pasien: ${data.patient.name}\n`;
-        simplifiedMessage += `Total: ${formatPrice(data.transaction.totalAmount.toString())}\n`;
-        
-        // Tambahkan status pembayaran
-        const creditAmount = safeParseFloat(data.transaction.creditAmount);
-        if (creditAmount > 0) {
-          simplifiedMessage += `Status: Kredit (${formatPrice(creditAmount.toString())})\n`;
-        } else {
-          simplifiedMessage += `Status: ${data.transaction.isPaid === false ? 'Belum Lunas' : 'Lunas'}\n`;
-        }
-        
-        // Tambahkan informasi paket aktif jika ada (lebih singkat)
-        if (activePackages.length > 0) {
-          simplifiedMessage += `\n*Paket Aktif:*\n`;
-          activePackages.forEach(session => {
-            simplifiedMessage += `• ${session.package?.name}: ${session.remainingSessions} sesi tersisa\n`;
-          });
-        }
-        
-        // Tambahkan footer
-        simplifiedMessage += `\nSilahkan buka aplikasi untuk melihat invoice lengkap.`;
-        
-        message = simplifiedMessage;
-      }
+Silahkan kunjungi klinik kami untuk informasi lebih lanjut.`;
       
-      // Batasi panjang pesan jika masih terlalu panjang
-      const MAX_MESSAGE_LENGTH = 4000; // WhatsApp memiliki batasan karakter
-      const trimmedMessage = message.length > MAX_MESSAGE_LENGTH 
-        ? message.substring(0, MAX_MESSAGE_LENGTH - 100) + "\n\n[Pesan terpotong karena terlalu panjang]" 
-        : message;
+      // Log pesan untuk debugging
+      console.log("Pesan WhatsApp yang akan dikirim:", message);
       
-      // Log pesan sebelum encoding untuk debugging
-      console.log("Pesan WhatsApp sebelum encoding:", trimmedMessage);
-      console.log("Panjang pesan:", trimmedMessage.length, "karakter");
-      
-      // Encode pesan untuk URL WhatsApp
-      const encodedMessage = encodeURIComponent(trimmedMessage);
-      
-      // Dapatkan nomor telepon pasien dan hapus karakter non-numerik
+      // Dapatkan nomor telepon pasien dan format
       let phoneNumber = data.patient.phoneNumber.replace(/\D/g, '');
-      
-      // Pastikan format nomor telepon benar (tambahkan 62 jika dimulai dengan 0)
       if (phoneNumber.startsWith('0')) {
         phoneNumber = '62' + phoneNumber.substring(1);
       }
       
-      console.log("Nomor telepon yang digunakan:", phoneNumber);
+      // Encode pesan
+      const encodedMessage = encodeURIComponent(message);
       
-      // Buka WhatsApp Business API dengan pesan yang sudah disiapkan
+      // Hapus toast loading
+      loadingToast.dismiss?.();
+      
+      // Buat URL WhatsApp
       const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
-      console.log("URL WhatsApp:", whatsappUrl.substring(0, 100) + "...");
+      console.log("WhatsApp URL:", whatsappUrl);
       
       // Buka WhatsApp dalam tab baru
-      const whatsappWindow = window.open(whatsappUrl, '_blank');
+      window.open(whatsappUrl, '_blank');
       
       toast({
         title: "WhatsApp terbuka",
