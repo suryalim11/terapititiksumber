@@ -546,7 +546,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
     }
   };
 
-  // Fungsi berbagi WhatsApp dengan pendekatan split - memisahkan menjadi 2 langkah
+  // Fungsi berbagi WhatsApp dengan teks minimal
   const handleShareWhatsApp = () => {
     try {
       if (!data.patient || !data.transaction) {
@@ -563,41 +563,46 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       if (phoneNumber.startsWith('0')) {
         phoneNumber = '62' + phoneNumber.substring(1);
       }
-
-      // Buka WhatsApp dengan nomor telepon saja, tanpa pesan
-      // Ini menghindari masalah encoding sepenuhnya
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}`;
+      
+      // Teks super-sederhana untuk menghindari masalah encoding
+      // Hanya menggunakan karakter dasar ASCII untuk keamanan
+      const simpleText = "Invoice " + data.transaction.transactionId + 
+                        "\nPasien: " + data.patient.name + 
+                        "\nTotal: " + formatPrice(data.transaction.totalAmount.toString());
+      
+      // Buka WhatsApp dengan nomor telepon DAN teks sederhana
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(simpleText)}`;
       window.open(whatsappUrl, '_blank');
       
-      // Buat dan salin teks invoice ke clipboard agar pengguna dapat menempelkannya sendiri
+      toast({
+        title: "WhatsApp dibuka",
+        description: "Invoice sederhana telah dikirim via WhatsApp",
+      });
+      
+      // Selain itu, salin pesan lengkap ke clipboard sebagai cadangan
       const invoiceId = data.transaction.transactionId;
       const invoiceDate = format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id });
       let paymentStatus = data.transaction.isPaid ? 'Lunas' : 'Belum Lunas';
       
-      // Buat teks sederhana
-      const invoiceText = "*INVOICE - " + invoiceId + "*\n" +
+      // Pesan lengkap (sebagai cadangan di clipboard)
+      const fullMessage = "*INVOICE - " + invoiceId + "*\n" +
                         "Tanggal: " + invoiceDate + "\n" +
                         "Pasien: " + data.patient.name + "\n" +
                         "Total: " + formatPrice(data.transaction.totalAmount.toString()) + "\n" +
                         "Status: " + paymentStatus + "\n\n" +
                         "Silahkan kunjungi klinik kami untuk informasi lebih lanjut.";
       
-      // Salin teks invoice ke clipboard
-      navigator.clipboard.writeText(invoiceText)
+      // Salin pesan lengkap ke clipboard sebagai cadangan
+      navigator.clipboard.writeText(fullMessage)
         .then(() => {
           toast({
-            title: "WhatsApp terbuka & teks disalin",
-            description: "Teks invoice telah disalin ke clipboard. Silahkan tempel (paste) ke WhatsApp.",
-            duration: 7000,
+            title: "Pesan lengkap disalin",
+            description: "Jika WhatsApp tidak menampilkan semua informasi, Anda dapat menempel (paste) pesan lengkap dari clipboard.",
+            duration: 5000,
           });
         })
-        .catch((err) => {
-          console.error("Clipboard write failed:", err);
-          toast({
-            title: "WhatsApp terbuka",
-            description: "Silahkan ketik detail invoice secara manual di WhatsApp.",
-            duration: 7000,
-          });
+        .catch(() => {
+          // Jika gagal menyalin, abaikan saja
         });
     } catch (error) {
       console.error("Error sharing invoice:", error);
