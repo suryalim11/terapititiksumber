@@ -4315,6 +4315,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Registrar os endpoints para detecção e correção de pacientes duplicados
+  addFixPatientDuplicatesEndpoint(app);
 
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);
