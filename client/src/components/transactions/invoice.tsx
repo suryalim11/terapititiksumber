@@ -546,7 +546,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
     }
   };
 
-  const handleShareWhatsApp = () => {
+  const handleShareWhatsApp = async () => {
     try {
       if (!data.patient || !data.transaction) {
         toast({
@@ -572,10 +572,31 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         if (settings.bankAccountName) bankInfo += `\nAtas Nama: ${settings.bankAccountName}`;
       }
       
+      // Ambil data sesi aktif langsung dari API untuk memastikan data terbaru
+      let fetchedActiveSessions: ActiveSession[] = [];
+      try {
+        if (data?.patient?.id) {
+          console.log("Fetching active sessions for WhatsApp share...");
+          const response = await fetch(`/api/sessions?patientId=${data.patient.id}&active=true&includeRelated=true`);
+          if (response.ok) {
+            fetchedActiveSessions = await response.json();
+            console.log("Fetched active sessions for WhatsApp:", fetchedActiveSessions);
+          } else {
+            console.error("Failed to fetch active sessions for WhatsApp");
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching active sessions for WhatsApp:", error);
+      }
+      
+      // Gunakan data active sessions yang baru di-fetch atau fallback ke data dari useQuery
+      const sessionsToUse = fetchedActiveSessions.length > 0 ? fetchedActiveSessions : activeSessions;
+      console.log("Sessions to use for WhatsApp:", sessionsToUse);
+      
       // Tambahkan informasi paket aktif jika ada
       let activePackagesInfo = '';
-      const activePackages = activeSessions && activeSessions.length > 0 ? 
-        activeSessions.filter(session => session.package && session.remainingSessions > 0) : [];
+      const activePackages = sessionsToUse && sessionsToUse.length > 0 ? 
+        sessionsToUse.filter(session => session.package && session.remainingSessions > 0) : [];
         
       if (activePackages.length > 0) {
         activePackagesInfo = '\n\n*Informasi Paket Aktif:*';
