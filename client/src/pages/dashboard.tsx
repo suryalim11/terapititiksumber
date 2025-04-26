@@ -68,7 +68,7 @@ export default function Dashboard() {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
-  const [showBalance, setShowBalance] = useState(true);
+  const [showBalance, setShowBalance] = useState(false); // Default: hide balance
   const queryClient = useQueryClient();
   
   // Format today's date to YYYY-MM-DD for API query with WIB timezone
