@@ -6,12 +6,40 @@ import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import { InvoiceSettings, defaultInvoiceSettings, INVOICE_SETTINGS_KEY } from "@/components/settings/invoice-settings";
+import { Progress } from "@/components/ui/progress";
+import { useQuery } from "@tanstack/react-query";
 
 // Fungsi helper untuk pengelolaan angka yang aman
 const safeParseFloat = (value: any): number => {
   if (value === undefined || value === null) return 0;
   const num = parseFloat(String(value));
   return isNaN(num) ? 0 : num;
+};
+
+// Definisi tipe untuk sesi aktif
+type ActiveSession = {
+  id: number;
+  patientId: number;
+  packageId: number;
+  totalSessions: number;
+  sessionsUsed: number;
+  remainingSessions: number;
+  status: string;
+  startDate: string;
+  lastSessionDate: string | null;
+  package?: {
+    id: number;
+    name: string;
+    sessions: number;
+    price: string;
+    description?: string;
+  };
+  isDirectOwner?: boolean;
+  owner?: {
+    id: number;
+    name: string;
+    patientId: string;
+  };
 };
 
 type InvoiceProps = {
@@ -41,6 +69,29 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
   const invoiceRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [settings, setSettings] = useState<InvoiceSettings>(defaultInvoiceSettings);
+  
+  // Fetch active sessions untuk pasien ini
+  const { data: activeSessions = [] } = useQuery<ActiveSession[]>({
+    queryKey: [`/api/sessions?patientId=${data?.patient?.id}&active=true&includeRelated=true`],
+    queryFn: async () => {
+      if (!data?.patient?.id) return [];
+      try {
+        // Fetch data dari API
+        const response = await fetch(`/api/sessions?patientId=${data.patient.id}&active=true&includeRelated=true`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch active sessions');
+        }
+        const sessionsData = await response.json();
+        
+        console.log('Active sessions for invoice:', sessionsData);
+        return sessionsData;
+      } catch (error) {
+        console.error('Error fetching active sessions:', error);
+        return [];
+      }
+    },
+    enabled: !!data?.patient?.id && isOpen,
+  });
   
   // Load saved invoice settings from localStorage
   useEffect(() => {
@@ -369,8 +420,71 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           y += 27;
         }
         
-        // Mulai posisi untuk catatan dan info bank
+        // Mulai posisi untuk informasi paket aktif
         let nextY = y + 5;
+        
+        // Tambahkan informasi paket aktif jika ada
+        const hasActivePackages = Array.isArray(activeSessions) && activeSessions.length > 0 && 
+                                activeSessions.some(s => s.package && s.remainingSessions > 0);
+        
+        if (hasActivePackages) {
+          // Judul bagian paket aktif
+          doc.setFillColor(235, 245, 255); // Light blue background
+          doc.setDrawColor(200, 220, 240); // Border color
+          doc.roundedRect(14, nextY, 182, 7, 1, 1, 'FD');
+          
+          doc.setTextColor(0, 90, 170); // Blue text
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.text("Informasi Paket Aktif", 20, nextY + 5);
+          
+          // Reset text color
+          doc.setTextColor(0, 0, 0);
+          nextY += 12;
+          
+          // Filter untuk paket yang masih memiliki sesi tersisa
+          const activePackages = activeSessions.filter(session => 
+            session.package && session.remainingSessions > 0
+          );
+          
+          // Tampilkan setiap paket aktif
+          activePackages.forEach((session, index) => {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8);
+            
+            // Nama paket dan info pemilik
+            const packageName = session.package?.name || `Paket Terapi #${session.packageId}`;
+            let displayName = packageName;
+            
+            if (!session.isDirectOwner && session.owner) {
+              displayName += ` (Paket bersama ${session.owner.name})`;
+            }
+            
+            doc.text(displayName, 20, nextY);
+            doc.text(`${session.sessionsUsed}/${session.totalSessions} Sesi`, 180, nextY, { align: 'right' });
+            
+            // Progress bar background
+            doc.setDrawColor(220, 220, 220);
+            doc.setFillColor(230, 230, 230);
+            doc.roundedRect(20, nextY + 2, 160, 2, 0.5, 0.5, 'FD');
+            
+            // Progress bar filled portion
+            const progressPercent = Math.round((session.sessionsUsed / session.totalSessions) * 100);
+            const progressWidth = Math.max(1, (progressPercent / 100) * 160); // Minimal 1mm width
+            
+            doc.setFillColor(23, 107, 235);
+            doc.roundedRect(20, nextY + 2, progressWidth, 2, 0.5, 0.5, 'F');
+            
+            // Remaining sessions
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7);
+            doc.text(`${session.remainingSessions} sesi tersisa`, 20, nextY + 7);
+            
+            nextY += 12;
+          });
+          
+          nextY += 2; // Additional spacing after packages section
+        }
         
         // Tentukan apakah perlu menampilkan info bank
         const showBankInfo = (data.paymentMethod === 'bank_transfer' || data.paymentMethod === 'qris') && 
@@ -846,6 +960,43 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                       <strong>Atas Nama:</strong> {settings.bankAccountName}
                     </p>
                   )}
+                </div>
+              )}
+              
+              {/* Tampilkan informasi paket aktif yang dimiliki pasien */}
+              {activeSessions && activeSessions.length > 0 && (
+                <div className="mt-6 mb-4 border rounded-lg p-4 bg-blue-50">
+                  <h3 className="text-sm font-semibold mb-2 text-blue-700">Informasi Paket Aktif</h3>
+                  <div className="space-y-3">
+                    {activeSessions
+                      .filter(session => 
+                        session.package && 
+                        session.remainingSessions > 0
+                      )
+                      .map(session => {
+                        const progressPercent = Math.round((session.sessionsUsed / session.totalSessions) * 100);
+                        return (
+                          <div key={session.id} className="space-y-1">
+                            <div className="flex justify-between items-center text-xs text-gray-700">
+                              <span>
+                                {session.package?.name || `Paket Terapi #${session.packageId}`}
+                                {!session.isDirectOwner && session.owner && (
+                                  <span className="text-xs text-amber-600 ml-1">
+                                    (Paket bersama {session.owner.name})
+                                  </span>
+                                )}
+                              </span>
+                              <span className="font-medium">{session.sessionsUsed}/{session.totalSessions} Sesi</span>
+                            </div>
+                            <Progress value={progressPercent} className="h-2" />
+                            <div className="text-xs text-gray-500">
+                              {session.remainingSessions} sesi tersisa
+                            </div>
+                          </div>
+                        )
+                      })
+                    }
+                  </div>
                 </div>
               )}
               
