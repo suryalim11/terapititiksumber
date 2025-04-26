@@ -117,80 +117,129 @@ export function addFixPatientDuplicatesEndpoint(app: express.Express) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const { patientIds, packageId } = req.body;
+      const { patientIds, options } = req.body;
       
       if (!patientIds || !Array.isArray(patientIds) || patientIds.length < 2) {
         return res.status(400).json({ error: 'At least two patient IDs are required' });
       }
       
-      if (!packageId) {
-        return res.status(400).json({ error: 'Package ID is required' });
-      }
+      const {
+        mergePackages = true, // Se deve mesclar pacotes/sessões
+        onlyActive = true,    // Se deve considerar apenas sessões ativas
+        createMissingSession = false // Se deve criar sessão faltante para o paciente principal
+      } = options || {};
 
       const primaryPatientId = patientIds[0];
       const duplicatePatientIds = patientIds.slice(1);
       
-      // Passo 1: Obter a sessão ativa do paciente principal para o pacote especificado
-      const primarySession = await db.query.sessions.findFirst({
-        where: and(
-          eq(sessions.patientId, primaryPatientId),
-          eq(sessions.status, 'active'),
-          eq(sessions.packageId, packageId)
-        )
+      // Passo 1: Verificar se existem sessões ativas para os pacientes
+      // Primeiro obtemos todas as sessões dos pacientes duplicados
+      const duplicateSessionsQuery = await db.query.sessions.findMany({
+        where: inArray(sessions.patientId, duplicatePatientIds)
       });
-
-      if (!primarySession) {
+      
+      // Filtrar apenas sessões ativas se necessário
+      const allDuplicateSessions = onlyActive 
+        ? duplicateSessionsQuery.filter(s => s.status === 'active')
+        : duplicateSessionsQuery;
+      
+      if (allDuplicateSessions.length === 0) {
         return res.status(404).json({ 
-          error: 'Paciente principal não possui um pacote ativo com o ID especificado',
-          primaryPatientId,
-          packageId
+          error: 'Nenhum dos pacientes duplicados possui sessões' + (onlyActive ? ' ativas' : ''),
+          duplicatePatientIds
         });
       }
       
-      // Passo 2: Obter as sessões ativas dos pacientes duplicados para o mesmo pacote
-      const duplicateSessions = [];
-      let totalAdditionalSessions = 0;
+      // Agrupar sessões por pacote
+      const sessionsByPackage = allDuplicateSessions.reduce((acc, session) => {
+        if (!acc[session.packageId]) {
+          acc[session.packageId] = [];
+        }
+        acc[session.packageId].push(session);
+        return acc;
+      }, {} as Record<number, typeof sessions.$inferSelect[]>);
       
-      for (const dupPatientId of duplicatePatientIds) {
-        const session = await db.query.sessions.findFirst({
+      const packagesProcessed = [];
+      const sessionsMerged = [];
+      const relationsCreated = [];
+      
+      // Para cada pacote, processar a mesclagem
+      for (const [packageIdStr, duplicateSessions] of Object.entries(sessionsByPackage)) {
+        const packageId = parseInt(packageIdStr);
+        
+        // Verificar se o paciente principal tem uma sessão com este pacote
+        let primarySession = await db.query.sessions.findFirst({
           where: and(
-            eq(sessions.patientId, dupPatientId),
-            eq(sessions.status, 'active'),
-            eq(sessions.packageId, packageId)
+            eq(sessions.patientId, primaryPatientId),
+            eq(sessions.packageId, packageId),
+            onlyActive ? eq(sessions.status, 'active') : undefined
           )
         });
         
-        if (session) {
-          duplicateSessions.push(session);
-          totalAdditionalSessions += session.totalSessions;
+        // Se não tem sessão e não queremos criar, pular este pacote
+        if (!primarySession && !createMissingSession) {
+          console.log(`Paciente principal ${primaryPatientId} não tem sessão para pacote ${packageId} - pulando`);
+          continue;
+        }
+        
+        // Se não tem sessão mas queremos criar, criar uma nova
+        if (!primarySession && createMissingSession) {
+          const firstDuplicateSession = duplicateSessions[0];
+          // Criar nova sessão para o paciente principal
+          const [newSession] = await db.insert(sessions).values({
+            patientId: primaryPatientId,
+            packageId,
+            transactionId: firstDuplicateSession.transactionId, // Usar a mesma transação da primeira sessão duplicada
+            totalSessions: 0, // Será atualizado a seguir
+            sessionsUsed: 0,
+            status: 'active',
+            startDate: new Date()
+          }).returning();
+          
+          primarySession = newSession;
+          console.log(`Criada nova sessão ${newSession.id} para paciente ${primaryPatientId} e pacote ${packageId}`);
+        }
+        
+        // Calcular total adicional de sessões
+        const totalAdditionalSessions = duplicateSessions.reduce((total, s) => total + (s.totalSessions - s.sessionsUsed), 0);
+        
+        // Atualizar a sessão do paciente principal
+        const updatedSession = await db.update(sessions)
+          .set({ 
+            totalSessions: primarySession!.totalSessions + totalAdditionalSessions,
+            // Se a sessão principal não tiver lastSessionDate, usar a mais recente das sessões duplicadas
+            lastSessionDate: primarySession!.lastSessionDate || 
+              duplicateSessions.reduce((latest, s) => 
+                s.lastSessionDate && (!latest || s.lastSessionDate > latest) ? s.lastSessionDate : latest, null as Date | null)
+          })
+          .where(eq(sessions.id, primarySession!.id))
+          .returning();
+        
+        packagesProcessed.push({
+          packageId,
+          primarySessionId: primarySession!.id,
+          updatedTotalSessions: updatedSession[0].totalSessions,
+          additionalSessions: totalAdditionalSessions
+        });
+        
+        // Marcar as sessões dos pacientes duplicados como mescladas
+        for (const session of duplicateSessions) {
+          await db.update(sessions)
+            .set({ status: 'merged' })
+            .where(eq(sessions.id, session.id));
+          
+          sessionsMerged.push(session.id);
         }
       }
       
-      if (duplicateSessions.length === 0) {
+      if (packagesProcessed.length === 0) {
         return res.status(404).json({ 
-          error: 'Nenhum dos pacientes duplicados possui um pacote ativo com o ID especificado',
-          duplicatePatientIds,
-          packageId
+          error: 'Não foi possível processar nenhum pacote. Os pacientes podem não compartilhar pacotes comuns ou não há sessões ativas.',
+          patientIds
         });
       }
       
-      // Passo 3: Atualizar a sessão do paciente principal
-      const updatedSession = await db.update(sessions)
-        .set({ 
-          totalSessions: primarySession.totalSessions + totalAdditionalSessions 
-        })
-        .where(eq(sessions.id, primarySession.id))
-        .returning();
-      
-      // Passo 4: Marcar as sessões dos pacientes duplicados como mescladas
-      for (const session of duplicateSessions) {
-        await db.update(sessions)
-          .set({ status: 'merged' })
-          .where(eq(sessions.id, session.id));
-      }
-      
-      // Passo 5: Criar relações entre os pacientes
-      const relationResults = [];
+      // Criar relações entre os pacientes
       for (const dupPatientId of duplicatePatientIds) {
         const relationExists = await db.query.patientRelationships.findFirst({
           where: and(
@@ -206,11 +255,11 @@ export function addFixPatientDuplicatesEndpoint(app: express.Express) {
             relationshipType: 'duplicate_patient'
           }).returning();
           
-          relationResults.push(relation);
+          relationsCreated.push(relation[0]);
         }
       }
       
-      // Passo 6: Atualizar os agendamentos dos pacientes duplicados para o paciente principal
+      // Atualizar os agendamentos dos pacientes duplicados para o paciente principal
       for (const dupPatientId of duplicatePatientIds) {
         await db.execute(
           `UPDATE appointments 
@@ -221,23 +270,24 @@ export function addFixPatientDuplicatesEndpoint(app: express.Express) {
       
       // Log da operação
       console.log(`[${formatDateToWIB(new Date())}] Merged patient records: Patient IDs ${duplicatePatientIds.join(', ')} merged into ${primaryPatientId}`);
-      console.log(`Primary session ${primarySession.id} updated to total sessions: ${updatedSession[0].totalSessions}`);
+      console.log(`Packages processed: ${packagesProcessed.map(p => p.packageId).join(', ')}`);
       
       return res.json({
         success: true,
         message: 'Registros de pacientes duplicados unificados com sucesso',
         primaryPatient: {
-          id: primaryPatientId,
-          updatedSession: updatedSession[0]
+          id: primaryPatientId
         },
         mergedData: {
           duplicatePatientIds,
-          mergedSessionIds: duplicateSessions.map(s => s.id)
+          packagesProcessed,
+          sessionsMerged,
+          relationsCreated
         }
       });
     } catch (error) {
       console.error('Error merging duplicate patients:', error);
-      return res.status(500).json({ error: 'Internal server error during merge' });
+      return res.status(500).json({ error: 'Internal server error during merge', details: error.message });
     }
   });
 
