@@ -687,8 +687,24 @@ export default function Transactions() {
   // Fungsi untuk membagikan transaksi melalui WhatsApp
   const handleShareWhatsApp = async (transaction: Transaction) => {
     try {
+      console.log("Memulai pengiriman WhatsApp untuk transaksi:", transaction.transactionId);
+      
+      // Selalu ambil data transaksi terbaru dari API untuk memastikan data lengkap
+      let updatedTransaction = {...transaction};
+      try {
+        console.log(`Mengambil detail transaksi ID ${transaction.id} dari API`);
+        const detailTransaction = await apiRequest<any>(`/api/transactions/${transaction.id}`);
+        if (detailTransaction) {
+          console.log("Detail transaksi dari API:", detailTransaction);
+          updatedTransaction = detailTransaction;
+        }
+      } catch (fetchError) {
+        console.error("Gagal mengambil detail transaksi dari API:", fetchError);
+        // Lanjutkan dengan data yang sudah ada
+      }
+      
       // Cari data pasien untuk transaksi ini
-      const patient = patients?.find((p: any) => p.id === transaction.patientId);
+      const patient = patients?.find((p: any) => p.id === updatedTransaction.patientId);
       
       if (!patient) {
         toast({
@@ -726,26 +742,30 @@ export default function Transactions() {
         console.error("Error fetching active sessions:", err);
       }
       
-      // Parse items dari transaksi
+      // Parse items dari transaksi yang sudah diupdate
       let items: any[] = [];
-      if (transaction.items) {
+      if (updatedTransaction.items) {
         try {
-          if (typeof transaction.items === 'string') {
-            items = JSON.parse(transaction.items);
-          } else if (Array.isArray(transaction.items)) {
-            items = transaction.items;
+          if (typeof updatedTransaction.items === 'string') {
+            items = JSON.parse(updatedTransaction.items);
+          } else if (Array.isArray(updatedTransaction.items)) {
+            items = updatedTransaction.items;
           }
         } catch (e) {
           console.error("Error parsing items:", e);
         }
       }
       
+      // Lakukan logging untuk memastikan items valid
+      console.log("Items untuk WhatsApp sebelum diproses:", updatedTransaction.items);
+      console.log("Items untuk WhatsApp setelah diproses:", items);
+      
       // Format pesan WhatsApp sesuai template yang diminta
       let message = `Yth. ${patient.name},\n\n`;
       message += `Terima kasih telah mengunjungi Klinik Terapi Titik Sumber.\n\n`;
       message += `Berikut adalah detail invoice Anda:\n`;
-      message += `No. Invoice: ${transaction.transactionId}\n`;
-      message += `Total: ${formatPrice(transaction.totalAmount)}\n\n`;
+      message += `No. Invoice: ${updatedTransaction.transactionId}\n`;
+      message += `Total: ${formatPrice(updatedTransaction.totalAmount)}\n\n`;
       
       // Tambahkan informasi pembayaran
       message += `Informasi Pembayaran:\n\n`;
@@ -758,7 +778,9 @@ export default function Transactions() {
       if (items && items.length > 0) {
         items.forEach((item: any) => {
           const qty = item.quantity || 1;
-          message += `${qty} x ${item.name} - ${formatPrice(item.price)}\n`;
+          const itemName = item.name || "Item"; // Gunakan nilai default jika name tidak ada
+          console.log("Item transaksi untuk WhatsApp:", item); // Debug log
+          message += `${qty} x ${itemName} - ${formatPrice(item.price)}\n`;
         });
       }
       
