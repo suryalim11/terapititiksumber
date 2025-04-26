@@ -569,39 +569,45 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       const invoiceDate = format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id });
       const paymentStatus = data.transaction.isPaid ? 'Lunas' : 'Belum Lunas';
       
-      // Buat informasi item
-      let items = "";
+      // Buat informasi item dengan cara sederhana
+      let itemsText = "";
       if (Array.isArray(data.items) && data.items.length > 0) {
-        items = "\n\nItem Transaksi:";
+        itemsText = " - Item:";
         data.items.forEach((item, index) => {
           const qty = item.quantity || 1;
-          const price = formatPrice(item.price || '0');
-          const total = formatPrice(((parseFloat(item.price || '0') * qty).toString()));
-          items += `\n${index+1}. ${item.name} (${qty}x) - ${total}`;
+          const itemName = item.name || `Item #${index+1}`;
+          itemsText += ` ${itemName} (${qty}),`;
         });
+        // Hapus koma di akhir
+        itemsText = itemsText.slice(0, -1);
       }
       
-      // Memastikan teks untuk WhatsApp sangat sederhana
-      const message = 
+      // Buat pesan minimal untuk WhatsApp
+      // Gunakan format super simple tanpa terlalu banyak newline dan karakter khusus
+      const simpleMessage = 
+        `INVOICE ${invoiceId} - ${invoiceDate} - Pasien: ${data.patient.name} - Total: ${formatPrice(data.transaction.totalAmount.toString())} - Status: ${paymentStatus}${itemsText}`;
+      
+      // Buka WhatsApp dengan pesan minimal
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(simpleMessage)}`;
+      window.open(whatsappUrl, '_blank');
+      
+      // Buat pesan lengkap untuk clipboard
+      const fullMessage = 
         "*INVOICE " + invoiceId + "*" +
         "\nTanggal: " + invoiceDate +
         "\nPasien: " + data.patient.name +
         "\nTotal: " + formatPrice(data.transaction.totalAmount.toString()) +
-        "\nStatus: " + paymentStatus +
-        items +
-        "\n\nSilahkan kunjungi klinik kami untuk informasi lebih lanjut.";
+        "\nStatus: " + paymentStatus;
       
-      // Buka WhatsApp web dengan nomor telepon dan teks sederhana
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
-      window.open(whatsappUrl, '_blank');
-      
+      // Beri tahu user
       toast({
         title: "WhatsApp dibuka",
-        description: "Invoice dengan detail item telah dikirim via WhatsApp",
+        description: "Invoice sederhana telah dikirim. Pesan lengkap ada di clipboard.",
+        duration: 4000,
       });
       
       // Salin pesan ke clipboard sebagai backup
-      navigator.clipboard.writeText(message).catch(err => {
+      navigator.clipboard.writeText(fullMessage).catch(err => {
         console.log("Clipboard write failed, but ignoring:", err);
       });
     } catch (error) {
