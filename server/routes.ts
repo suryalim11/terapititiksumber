@@ -23,6 +23,7 @@ import { handleTherapySlotsBatch } from "./routes/therapy-slots-batch";
 import fixTransactionsTable from "./fix-transactions-schema";
 import { fixMissingPackageSessions } from "./fix-missing-sessions";
 import { fixAgusIsrofinSessions } from "./fix-agus-isrofin";
+import { addFixPatientDuplicatesEndpoint } from "./fix-patient-duplicates";
 import crypto from "crypto";
 import { setupAuth } from "./auth";
 import multer from "multer";
