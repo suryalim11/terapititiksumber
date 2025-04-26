@@ -66,8 +66,24 @@ const SystemLogs: React.FC = () => {
       if (endDate) params.append("toDate", endDate.toISOString());
 
       return fetch(`/api/admin/system-logs?${params.toString()}`)
-        .then((res) => res.json())
-        .then((data) => data.logs as SystemLog[]);
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! Status: ${res.status}`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          // Memastikan data.logs ada, jika tidak kembalikan array kosong
+          if (!data || !data.logs) {
+            console.warn("Data logs tidak ditemukan, mengembalikan array kosong");
+            return [];
+          }
+          return data.logs as SystemLog[];
+        })
+        .catch((error) => {
+          console.error("Error fetching system logs:", error);
+          return [];
+        });
     },
   });
 

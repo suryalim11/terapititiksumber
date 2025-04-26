@@ -2,6 +2,27 @@ import { pgTable, text, serial, integer, boolean, timestamp, json, decimal, date
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// System Logs Schema
+export const systemLogs = pgTable("system_logs", {
+  id: serial("id").primaryKey(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  userId: integer("user_id"),
+  action: text("action").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id"),
+  details: json("details"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+});
+
+export const insertSystemLogSchema = createInsertSchema(systemLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSystemLog = z.infer<typeof insertSystemLogSchema>;
+export type SystemLog = typeof systemLogs.$inferSelect;
+
 // Registration Link Schema
 export const registrationLinks = pgTable("registration_links", {
   id: serial("id").primaryKey(),
@@ -427,28 +448,4 @@ export const insertPatientRelationshipSchema = createInsertSchema(patientRelatio
 export type PatientRelationship = typeof patientRelationships.$inferSelect;
 export type InsertPatientRelationship = z.infer<typeof insertPatientRelationshipSchema>;
 
-// System Log Schema
-export const systemLogs = pgTable("system_logs", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id"),  // Bisa null jika tindakan dilakukan oleh sistem
-  action: text("action").notNull(),  // Jenis tindakan: login, create, update, delete
-  entityType: text("entity_type").notNull(),  // Jenis entitas: patient, appointment, transaction, dll
-  entityId: text("entity_id"),  // ID dari entitas yang diubah (bisa null untuk tindakan umum)
-  details: json("details"),  // Detail perubahan dalam format JSON
-  ipAddress: text("ip_address"),  // Alamat IP pengguna
-  userAgent: text("user_agent"),  // User agent browser
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
 
-export const insertSystemLogSchema = createInsertSchema(systemLogs).pick({
-  userId: true,
-  action: true,
-  entityType: true,
-  entityId: true,
-  details: true,
-  ipAddress: true,
-  userAgent: true,
-});
-
-export type SystemLog = typeof systemLogs.$inferSelect;
-export type InsertSystemLog = z.infer<typeof insertSystemLogSchema>;
