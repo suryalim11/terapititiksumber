@@ -949,9 +949,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               </svg>
               <span>Kirim via WhatsApp</span>
             </div>
-            {activeSessions && activeSessions.length > 0 && activeSessions.some(s => s.package && s.remainingSessions > 0) && (
+            {activeSessions && activeSessions.length > 0 && activeSessions.some(s => s.package && s.remainingSessions > 0 && s.totalSessions > 1) && (
               <span className="text-xs mt-1 font-normal">
-                Termasuk info paket aktif ({activeSessions.filter(s => s.package && s.remainingSessions > 0).length})
+                Termasuk info paket aktif ({activeSessions.filter(s => s.package && s.remainingSessions > 0 && s.totalSessions > 1).length})
               </span>
             )}
           </Button>
