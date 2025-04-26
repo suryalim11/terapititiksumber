@@ -721,8 +721,8 @@ export default function Transactions() {
       
       // Buka WhatsApp dengan pesan yang sudah disiapkan
       // Jika nomor pasien tersedia, gunakan nomor tersebut
-      const whatsappUrl = patient.phone 
-        ? `https://wa.me/${patient.phone.replace(/\D/g, '')}?text=${encodedMessage}`
+      const whatsappUrl = patient.phoneNumber 
+        ? `https://wa.me/${patient.phoneNumber.replace(/\D/g, '')}?text=${encodedMessage}`
         : `https://wa.me/?text=${encodedMessage}`;
       
       window.open(whatsappUrl, '_blank');
