@@ -4,9 +4,9 @@ import {
   InsertTransaction, Session, InsertSession,
   Appointment, InsertAppointment, TherapySlot, InsertTherapySlot,
   RegistrationLink, InsertRegistrationLink, ConfirmationToken, InsertConfirmationToken,
-  MedicalHistory, InsertMedicalHistory,
+  MedicalHistory, InsertMedicalHistory, SystemLog, InsertSystemLog,
   medicalHistories, patients, users, products, packages, transactions, 
-  sessions, appointments, therapySlots, registrationLinks, confirmationTokens
+  sessions, appointments, therapySlots, registrationLinks, confirmationTokens, systemLogs
 } from "@shared/schema";
 import { db, sql } from "./db";
 import { eq, gt, lt, gte, lte, and, desc, asc, not, inArray, ne, or } from "drizzle-orm";
