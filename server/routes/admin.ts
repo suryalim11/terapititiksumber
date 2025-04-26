@@ -7,7 +7,7 @@ const router = express.Router();
 
 // Middleware para verificar se o usuário é admin
 const isAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (req.session.user && req.session.user.role === 'admin') {
+  if (req.isAuthenticated && req.isAuthenticated() && req.user && (req.user as any).role === 'admin') {
     next();
   } else {
     res.status(403).json({ error: 'Acesso não autorizado' });
@@ -30,12 +30,13 @@ router.get("/duplicate-patients", async (req, res) => {
       ORDER BY count DESC
     `);
 
-    if (!duplicatePhones.length) {
+    // Verificar se há resultados
+    if (!duplicatePhones.rows || duplicatePhones.rows.length === 0) {
       return res.json([]);
     }
 
     // Extrair os números de telefone duplicados
-    const phoneNumbers = duplicatePhones.map(row => row.phone_number);
+    const phoneNumbers = duplicatePhones.rows.map((row: any) => row.phone_number);
 
     // Buscar detalhes completos dos pacientes com os telefones duplicados
     const duplicatePatients = await db.select()
@@ -123,7 +124,7 @@ router.get("/session-integrity", async (req, res) => {
       ORDER BY s.patient_id, s.id
     `);
     
-    res.json(inconsistentSessions);
+    res.json(inconsistentSessions.rows || []);
   } catch (error) {
     console.error("Error checking session integrity:", error);
     res.status(500).json({ error: "Erro ao verificar integridade das sessões" });
