@@ -35,21 +35,21 @@ router.get("/duplicate-patients", async (req, res) => {
     }
 
     // Extrair os números de telefone duplicados
-    const phoneNumbers = duplicatePhones.map(row => row.phone);
+    const phoneNumbers = duplicatePhones.map(row => row.phone_number);
 
     // Buscar detalhes completos dos pacientes com os telefones duplicados
     const duplicatePatients = await db.select()
       .from(patients)
-      .where(inArray(patients.phone, phoneNumbers as string[]));
+      .where(inArray(patients.phoneNumber, phoneNumbers as string[]));
 
     // Organizar pacientes por número de telefone
     const groupedPatients: Record<string, any[]> = {};
     
     for (const patient of duplicatePatients) {
-      if (!groupedPatients[patient.phone]) {
-        groupedPatients[patient.phone] = [];
+      if (!groupedPatients[patient.phoneNumber]) {
+        groupedPatients[patient.phoneNumber] = [];
       }
-      groupedPatients[patient.phone].push(patient);
+      groupedPatients[patient.phoneNumber].push(patient);
     }
 
     // Para cada paciente, buscar suas sessões e transações

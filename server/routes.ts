@@ -23,6 +23,7 @@ import { handleTherapySlotsBatch } from "./routes/therapy-slots-batch";
 import fixTransactionsTable from "./fix-transactions-schema";
 import { fixMissingPackageSessions } from "./fix-missing-sessions";
 import { fixAgusIsrofinSessions } from "./fix-agus-isrofin";
+import adminRoutes from "./routes/admin";
 import { addFixPatientDuplicatesEndpoint } from "./fix-patient-duplicates";
 import crypto from "crypto";
 import { setupAuth } from "./auth";
@@ -77,6 +78,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // API routes
   const apiRouter = app.route("/api");
+  
+  // Admin routes
+  app.use("/api/admin", adminRoutes);
   
   // Change password endpoint
   app.post("/api/change-password", async (req: Request, res: Response) => {
