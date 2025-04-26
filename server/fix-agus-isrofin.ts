@@ -13,7 +13,7 @@ export async function fixAgusIsrofinSessions() {
     // 1. Cari transaksi terbaru
     const lastTransaction = await db.query.transactions.findFirst({
       where: eq(transactions.patientId, patientId),
-      orderBy: [{ column: transactions.createdAt, order: 'desc' }]
+      orderBy: [desc(transactions.createdAt)]
     });
     
     if (!lastTransaction) {

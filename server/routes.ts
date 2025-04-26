@@ -22,6 +22,7 @@ import * as schema from "../shared/schema";
 import { handleTherapySlotsBatch } from "./routes/therapy-slots-batch";
 import fixTransactionsTable from "./fix-transactions-schema";
 import { fixMissingPackageSessions } from "./fix-missing-sessions";
+import { fixAgusIsrofinSessions } from "./fix-agus-isrofin";
 import crypto from "crypto";
 import { setupAuth } from "./auth";
 import multer from "multer";
@@ -4280,6 +4281,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ 
         success: false, 
         message: "Terjadi kesalahan dalam memperbaiki sinkronisasi paket terapi", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+  
+  // Endpoint khusus untuk memperbaiki sesi Agus Isrofin
+  app.post("/api/sessions/fix-agus-isrofin", async (req: Request, res: Response) => {
+    try {
+      // Pastikan hanya admin yang bisa mengakses endpoint ini
+      if (!req.isAuthenticated() || req.user.role !== 'admin') {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Akses tidak diizinkan, dibutuhkan hak akses admin" 
+        });
+      }
+      
+      console.log("Memulai perbaikan khusus sesi Agus Isrofin...");
+      
+      // Jalankan fungsi perbaikan khusus untuk Agus Isrofin
+      const result = await fixAgusIsrofinSessions();
+      
+      console.log(`Perbaikan sesi Agus Isrofin selesai: ${result.message}`);
+      
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error("Error dalam memperbaiki sesi Agus Isrofin:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan dalam memperbaiki sesi Agus Isrofin", 
         error: error instanceof Error ? error.message : String(error) 
       });
     }
