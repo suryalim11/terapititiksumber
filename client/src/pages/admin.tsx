@@ -9,14 +9,14 @@ export default function AdminPage() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
-  // Verificar se o usuário é admin
+  // Memeriksa apakah pengguna adalah admin
   if (user?.role !== 'admin') {
     return (
       <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold text-red-600">Acesso Negado</h1>
-        <p className="mt-2">Você não tem permissão para acessar esta página.</p>
+        <h1 className="text-2xl font-bold text-red-600">Akses Ditolak</h1>
+        <p className="mt-2">Anda tidak memiliki izin untuk mengakses halaman ini.</p>
         <Button onClick={() => setLocation("/")} className="mt-4">
-          Voltar ao Dashboard
+          Kembali ke Dashboard
         </Button>
       </div>
     );
@@ -25,9 +25,9 @@ export default function AdminPage() {
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Administração do Sistema</h1>
+        <h1 className="text-2xl font-bold">Administrasi Sistem</h1>
         <Button onClick={() => setLocation("/")} variant="outline">
-          Voltar ao Dashboard
+          Kembali ke Dashboard
         </Button>
       </div>
 

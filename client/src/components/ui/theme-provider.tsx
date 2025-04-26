@@ -26,30 +26,30 @@ export function ThemeProvider({
   storageKey = "ui-theme",
   ...props
 }: ThemeProviderProps) {
-  // Inicializa o tema a partir do localStorage ou usa o padrão
+  // Inisialisasi tema dari localStorage atau gunakan default
   const [theme, setTheme] = useState<Theme>(
     () => {
-      // Verifica se existe um tema salvo no localStorage
+      // Periksa apakah ada tema tersimpan di localStorage
       const savedTheme = localStorage.getItem(storageKey);
       
-      // Se existe e é válido, use-o
+      // Jika ada dan valid, gunakan
       if (savedTheme && ["dark", "light", "system"].includes(savedTheme)) {
         return savedTheme as Theme;
       }
       
-      // Caso contrário, use o tema padrão
+      // Jika tidak, gunakan tema default
       return defaultTheme;
     }
   );
 
-  // Função para aplicar o tema diretamente ao documento
+  // Fungsi untuk menerapkan tema langsung ke dokumen
   const applyTheme = (newTheme: Theme) => {
     const root = window.document.documentElement;
     
-    // Remove classes anteriores de tema
+    // Hapus kelas tema sebelumnya
     root.classList.remove("light", "dark");
 
-    // Se o tema for "system", determine baseado nas preferências do sistema
+    // Jika tema adalah "system", tentukan berdasarkan preferensi sistem
     if (newTheme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
         .matches
@@ -57,35 +57,35 @@ export function ThemeProvider({
         : "light";
 
       root.classList.add(systemTheme);
-      console.log("Tema do sistema aplicado:", systemTheme);
+      console.log("Tema sistem diterapkan:", systemTheme);
       return;
     }
 
-    // Adiciona a classe correspondente ao tema
+    // Tambahkan kelas yang sesuai dengan tema
     root.classList.add(newTheme);
-    console.log("Tema aplicado diretamente:", newTheme);
+    console.log("Tema diterapkan langsung:", newTheme);
   };
 
-  // Aplica o tema inicial
+  // Terapkan tema awal
   useEffect(() => {
     applyTheme(theme);
   }, []);
 
-  // Fornece os valores e funções para o contexto
+  // Sediakan nilai dan fungsi untuk konteks
   const value = {
     theme,
     setTheme: (newTheme: Theme) => {
-      // Salva no localStorage
+      // Simpan di localStorage
       localStorage.setItem(storageKey, newTheme);
       
-      // Aplica o tema diretamente ao DOM - isso causa a mudança instantânea
+      // Terapkan tema langsung ke DOM - ini menyebabkan perubahan instan
       applyTheme(newTheme);
       
-      // Atualiza o estado do componente
+      // Perbarui state komponen
       setTheme(newTheme);
       
-      // Log para depuração
-      console.log("Tema alterado para:", newTheme);
+      // Log untuk debugging
+      console.log("Tema diubah menjadi:", newTheme);
     },
   };
 
