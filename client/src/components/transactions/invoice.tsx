@@ -546,7 +546,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
     }
   };
 
-  // Fungsi alternatif berbagi menggunakan Web Share API
+  // Fungsi berbagi WhatsApp dengan pendekatan split - memisahkan menjadi 2 langkah
   const handleShareWhatsApp = () => {
     try {
       if (!data.patient || !data.transaction) {
@@ -558,13 +558,20 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         return;
       }
       
-      // Format invoice id
+      // Dapatkan nomor telepon dan format untuk WhatsApp
+      let phoneNumber = data.patient.phoneNumber.replace(/\D/g, '');
+      if (phoneNumber.startsWith('0')) {
+        phoneNumber = '62' + phoneNumber.substring(1);
+      }
+
+      // Buka WhatsApp dengan nomor telepon saja, tanpa pesan
+      // Ini menghindari masalah encoding sepenuhnya
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}`;
+      window.open(whatsappUrl, '_blank');
+      
+      // Buat dan salin teks invoice ke clipboard agar pengguna dapat menempelkannya sendiri
       const invoiceId = data.transaction.transactionId;
-      
-      // Format tanggal
       const invoiceDate = format(new Date(data.transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: id });
-      
-      // Format status pembayaran
       let paymentStatus = data.transaction.isPaid ? 'Lunas' : 'Belum Lunas';
       
       // Buat teks sederhana
@@ -575,54 +582,28 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                         "Status: " + paymentStatus + "\n\n" +
                         "Silahkan kunjungi klinik kami untuk informasi lebih lanjut.";
       
-      // Dapatkan nomor telepon dan format untuk WhatsApp
-      let phoneNumber = data.patient.phoneNumber.replace(/\D/g, '');
-      if (phoneNumber.startsWith('0')) {
-        phoneNumber = '62' + phoneNumber.substring(1);
-      }
-      
-      // Alternatif 1: Gunakan navigator.share jika tersedia (untuk perangkat mobile)
-      if (navigator.share) {
-        // Gunakan Web Share API untuk berbagi
-        navigator.share({
-          title: `Invoice ${invoiceId}`,
-          text: invoiceText
-        })
+      // Salin teks invoice ke clipboard
+      navigator.clipboard.writeText(invoiceText)
         .then(() => {
           toast({
-            title: "Berbagi berhasil",
-            description: "Invoice telah dibagikan",
+            title: "WhatsApp terbuka & teks disalin",
+            description: "Teks invoice telah disalin ke clipboard. Silahkan tempel (paste) ke WhatsApp.",
+            duration: 7000,
           });
         })
-        .catch((error) => {
-          console.error("Error using Web Share API:", error);
-          
-          // Fallback ke WhatsApp URL
-          const encodedMessage = encodeURIComponent(invoiceText);
-          const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
-          window.open(whatsappUrl, '_blank');
-          
+        .catch((err) => {
+          console.error("Clipboard write failed:", err);
           toast({
             title: "WhatsApp terbuka",
-            description: "Invoice telah disiapkan untuk dikirim",
+            description: "Silahkan ketik detail invoice secara manual di WhatsApp.",
+            duration: 7000,
           });
         });
-      } else {
-        // Alternatif 2: Langsung buka WhatsApp jika Web Share API tidak tersedia
-        const encodedMessage = encodeURIComponent(invoiceText);
-        const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
-        window.open(whatsappUrl, '_blank');
-        
-        toast({
-          title: "WhatsApp terbuka",
-          description: "Invoice telah disiapkan untuk dikirim",
-        });
-      }
     } catch (error) {
       console.error("Error sharing invoice:", error);
       toast({
         title: "Gagal membagikan invoice",
-        description: "Terjadi kesalahan saat berbagi invoice",
+        description: "Terjadi kesalahan saat berbagi invoice. Silahkan coba lagi.",
         variant: "destructive"
       });
     }
