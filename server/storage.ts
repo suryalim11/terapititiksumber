@@ -1,12 +1,13 @@
 import { 
   users, patients, products, packages, transactions, sessions, appointments, therapySlots,
-  registrationLinks, confirmationTokens, medicalHistories, debtPayments, patientRelationships,
+  registrationLinks, confirmationTokens, medicalHistories, debtPayments, patientRelationships, systemLogs,
   type User, type InsertUser, type Patient, type InsertPatient,
   type Product, type InsertProduct, type Package, type InsertPackage, type Transaction,
   type InsertTransaction, type Session, type InsertSession,
   type Appointment, type InsertAppointment, type TherapySlot, type InsertTherapySlot,
   type ConfirmationToken, type InsertConfirmationToken, type MedicalHistory, type InsertMedicalHistory,
-  type DebtPayment, type InsertDebtPayment, type PatientRelationship, type InsertPatientRelationship
+  type DebtPayment, type InsertDebtPayment, type PatientRelationship, type InsertPatientRelationship, 
+  type SystemLog, type InsertSystemLog
 } from "@shared/schema";
 import { format } from "date-fns";
 

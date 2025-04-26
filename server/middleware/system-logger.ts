@@ -1,5 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
-import { storage } from '../database-storage';
+import { storage } from '../storage';
+import { Session } from 'express-session';
+
+// Definisi tipe untuk user dalam session
+interface SessionWithUser extends Session {
+  user?: {
+    id: number;
+    username: string;
+    role: string;
+    [key: string]: any;
+  };
+}
 
 // Middleware untuk mencatat aktivitas login
 export const logLoginActivity = async (req: Request, res: Response, next: NextFunction) => {
