@@ -9,6 +9,7 @@ import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { InvoiceSettings } from "@/components/settings/invoice-settings";
+import { ResetInvoiceSettings } from "@/components/settings/reset-invoice-settings";
 
 import {
   Card,
@@ -402,7 +403,15 @@ export default function SettingsPage() {
 
         {/* Application Settings */}
         <TabsContent value="invoice">
-          <InvoiceSettings />
+          <div className="space-y-6">
+            <InvoiceSettings />
+            <div className="text-center">
+              <ResetInvoiceSettings />
+              <p className="text-sm text-muted-foreground mt-2">
+                Reset ke pengaturan default terbaru. Ini akan mengembalikan semua pengaturan invoice dan template WhatsApp ke pengaturan default.
+              </p>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="app">
