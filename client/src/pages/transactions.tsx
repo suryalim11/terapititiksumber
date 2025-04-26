@@ -685,7 +685,7 @@ export default function Transactions() {
   };
   
   // Fungsi untuk membagikan transaksi melalui WhatsApp
-  const handleShareWhatsApp = (transaction: Transaction) => {
+  const handleShareWhatsApp = async (transaction: Transaction) => {
     try {
       // Cari data pasien untuk transaksi ini
       const patient = patients?.find((p: any) => p.id === transaction.patientId);
@@ -699,22 +699,88 @@ export default function Transactions() {
         return;
       }
       
-      // Buat pesan singkat untuk WhatsApp
-      let message = `*INVOICE - ${transaction.transactionId}*\n`;
-      message += `Tanggal: ${formatDate(transaction.createdAt)}\n`;
-      message += `Pasien: ${patient.name}\n`;
-      message += `Total: ${formatPrice(transaction.totalAmount)}\n`;
-      
-      // Tambahkan status pembayaran
-      if (transaction.isPaid) {
-        message += `Status: Lunas\n`;
-      } else if (transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0) {
-        message += `Status: Kredit\n`;
-        message += `Jumlah Kredit: ${formatPrice(transaction.creditAmount.toString())}\n`;
+      // Ambil setting invoice dari localStorage
+      let settings: any = {};
+      try {
+        const settingsString = localStorage.getItem("invoice_settings");
+        if (settingsString) {
+          settings = JSON.parse(settingsString);
+          console.log("Loaded invoice settings:", settings);
+        }
+      } catch (err) {
+        console.error("Error loading invoice settings:", err);
       }
       
-      // Tambahkan catatan
-      message += `\nSilahkan kunjungi klinik kami untuk informasi lebih lanjut.`;
+      // Cari paket aktif untuk pasien
+      let activeSessions: any[] = [];
+      try {
+        // Fetch active sessions for this patient
+        const response = await fetch(`/api/sessions?patientId=${patient.id}&active=true&includeRelated=true`);
+        if (response.ok) {
+          activeSessions = await response.json();
+          console.log("Active sessions for WhatsApp message:", activeSessions);
+        } else {
+          console.error("Failed to fetch active sessions");
+        }
+      } catch (err) {
+        console.error("Error fetching active sessions:", err);
+      }
+      
+      // Parse items dari transaksi
+      let items: any[] = [];
+      if (transaction.items) {
+        try {
+          if (typeof transaction.items === 'string') {
+            items = JSON.parse(transaction.items);
+          } else if (Array.isArray(transaction.items)) {
+            items = transaction.items;
+          }
+        } catch (e) {
+          console.error("Error parsing items:", e);
+        }
+      }
+      
+      // Format pesan WhatsApp sesuai template yang diminta
+      let message = `Yth. ${patient.name},\n\n`;
+      message += `Terima kasih telah mengunjungi Klinik Terapi Titik Sumber.\n\n`;
+      message += `Berikut adalah detail invoice Anda:\n`;
+      message += `No. Invoice: ${transaction.transactionId}\n`;
+      message += `Total: ${formatPrice(transaction.totalAmount)}\n\n`;
+      
+      // Tambahkan informasi pembayaran
+      message += `Informasi Pembayaran:\n\n`;
+      message += `Bank: ${settings.bankName || 'BCA'}\n`;
+      message += `No. Rekening: ${settings.bankAccountNumber || '1234567890'}\n`;
+      message += `Atas Nama: ${settings.bankAccountName || 'Klinik TTS'}\n\n`;
+      
+      // Tambahkan detail item
+      message += `Detail Item:\n\n`;
+      if (items && items.length > 0) {
+        items.forEach((item: any) => {
+          const qty = item.quantity || 1;
+          message += `${qty} x ${item.name} - ${formatPrice(item.price)}\n`;
+        });
+      }
+      
+      // Tambahkan informasi paket aktif jika ada
+      if (activeSessions && activeSessions.length > 0) {
+        message += `\nInformasi Paket Aktif:\n\n`;
+        
+        activeSessions.forEach((session: any) => {
+          const packageName = session.package?.name || "Paket";
+          const used = session.sessionsUsed || 0;
+          const total = session.totalSessions || 0;
+          const remaining = total - used;
+          const percentUsed = Math.round((used / total) * 100);
+          
+          message += `• ${packageName}\n`;
+          message += `${used}/${total} Sesi (${percentUsed}%)\n`;
+          message += `${remaining} sesi tersisa\n\n`;
+        });
+      }
+      
+      message += `Semoga sehat selalu!\n\n`;
+      message += `Salam,\nTim Klinik Terapi Titik Sumber`;
       
       // Encode pesan untuk URL WhatsApp
       const encodedMessage = encodeURIComponent(message);
