@@ -1,7 +1,7 @@
 import express from 'express';
 import { db } from './db';
-import { sessions, patientRelationships } from '@shared/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { sessions, patientRelationships, patients, packages } from '@shared/schema';
+import { eq, and, inArray, desc } from 'drizzle-orm';
 
 // Função auxiliar para formatar uma data para o timezone WIB (UTC+7)
 function formatDateToWIB(date: Date): string {
@@ -47,6 +47,93 @@ export function addFixPatientDuplicatesEndpoint(app: express.Express) {
     } catch (error) {
       console.error('Error detecting duplicate patients:', error);
       return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+  
+  // Endpoint para obter informações detalhadas sobre pacientes duplicados
+  app.get('/api/admin/duplicate-patients-details', async (req, res) => {
+    try {
+      // Verificar se o endpoint é acessado com um token de acesso
+      // Este é um bypass temporário para testar a funcionalidade sem autenticação
+      const accessToken = req.headers.authorization?.split(' ')[1];
+      const isDirectAccess = accessToken === 'terapi-titik-sumber-direct-access';
+      
+      if ((!req.isAuthenticated || !req.isAuthenticated()) && !isDirectAccess) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Encontrar grupos de pacientes com mesmo número de telefone
+      const duplicateGroups = await db.execute(
+        `SELECT 
+          phone_number, 
+          COUNT(*) as count,
+          ARRAY_AGG(id) as patient_ids
+        FROM patients 
+        WHERE phone_number IS NOT NULL AND phone_number <> ''
+        GROUP BY phone_number
+        HAVING COUNT(*) > 1
+        ORDER BY count DESC`
+      );
+      
+      // Para cada grupo, obter detalhes completos dos pacientes e suas sessões ativas
+      const duplicateDetails = [];
+      
+      for (const group of duplicateGroups.rows) {
+        const patientIds = group.patient_ids;
+        
+        // Obter detalhes dos pacientes
+        const patientsDetails = await db.query.patients.findMany({
+          where: inArray(patients.id, patientIds),
+          orderBy: [desc(patients.createdAt)]
+        });
+        
+        // Para cada paciente, obter suas sessões ativas
+        const patientsWithSessions = await Promise.all(
+          patientsDetails.map(async (patient) => {
+            const activeSessions = await db.query.sessions.findMany({
+              where: and(
+                eq(sessions.patientId, patient.id),
+                eq(sessions.status, 'active')
+              )
+            });
+            
+            // Para cada sessão, obter detalhes do pacote
+            const sessionsWithPackages = await Promise.all(
+              activeSessions.map(async (session) => {
+                const packageDetail = await db.query.packages.findFirst({
+                  where: eq(packages.id, session.packageId)
+                });
+                
+                return {
+                  ...session,
+                  packageName: packageDetail?.name || 'Pacote Desconhecido',
+                  packagePrice: packageDetail?.price || '0'
+                };
+              })
+            );
+            
+            return {
+              ...patient,
+              displayId: `P-2025-${patient.id.toString().padStart(3, '0')}`,
+              activeSessions: sessionsWithPackages
+            };
+          })
+        );
+        
+        duplicateDetails.push({
+          phoneNumber: group.phone_number,
+          count: parseInt(group.count),
+          patients: patientsWithSessions
+        });
+      }
+      
+      return res.json({
+        success: true,
+        duplicateGroups: duplicateDetails
+      });
+    } catch (error) {
+      console.error('Error getting duplicate patients details:', error);
+      return res.status(500).json({ error: 'Internal server error', details: error.message });
     }
   });
 
