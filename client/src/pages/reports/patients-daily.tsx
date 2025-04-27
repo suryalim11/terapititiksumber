@@ -281,7 +281,7 @@ export default function PatientsDailyReport() {
                       name="Jumlah Pasien"
                       radius={[4, 4, 0, 0]}
                     >
-                      {chartData.map((entry, index) => (
+                      {chartData.map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={getDayColor(entry.dayName)} />
                       ))}
                       <LabelList dataKey="patientCount" position="top" />

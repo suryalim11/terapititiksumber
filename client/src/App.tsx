@@ -10,6 +10,8 @@ import PatientDetailMobile from "@/pages/patient-detail-mobile"; // New mobile f
 import Transactions from "@/pages/transactions";
 import Products from "@/pages/products";
 import Reports from "@/pages/reports";
+import ReportsIndex from "@/pages/reports/index";
+import PatientsDailyReport from "@/pages/reports/patients-daily";
 import Settings from "@/pages/settings";
 import Register from "@/pages/register";
 // Import halaman register sederhana untuk testing
@@ -35,6 +37,8 @@ function Router() {
       <ProtectedRoute path="/therapy-slots" component={TherapySlots} />
       <ProtectedRoute path="/products" component={Products} />
       <ProtectedRoute path="/reports" component={Reports} />
+      <ProtectedRoute path="/reports/index" component={ReportsIndex} />
+      <ProtectedRoute path="/reports/patients-daily" component={PatientsDailyReport} />
       <ProtectedRoute path="/settings" component={Settings} />
       <ProtectedRoute path="/backup-restore" component={BackupRestore} />
       <ProtectedRoute path="/admin" component={AdminPage} />
