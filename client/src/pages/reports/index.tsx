@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'wouter';
 import { DashboardHeader } from '../../components/header';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
 import { BarChart2, Calendar, FileText, Users } from 'lucide-react';
 
 export default function ReportsIndex() {

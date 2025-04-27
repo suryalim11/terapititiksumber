@@ -6,15 +6,15 @@ import {
   CardDescription, 
   CardHeader, 
   CardTitle 
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+} from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "../../components/ui/select";
 import { 
   Table, 
   TableBody, 
@@ -22,7 +22,7 @@ import {
   TableHead, 
   TableHeader, 
   TableRow 
-} from '@/components/ui/table';
+} from '../../components/ui/table';
 import { 
   BarChart, 
   Bar, 
@@ -90,7 +90,7 @@ export default function PatientsDailyReport() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['/api/reports/patients-per-day', selectedMonth, selectedYear],
     queryFn: async () => {
-      const response = await fetch(`/api/reports/patients-per-day?month=${selectedMonth}&year=${selectedYear}`);
+      const response = await fetch(`/api/reports/patients-per-day?month=${selectedMonth}&year=${selectedYear}&apiKey=terapi-titik-sumber-public`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch patients daily report');
