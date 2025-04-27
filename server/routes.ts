@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { requireAuth, requireAdminRole } from "./middleware/auth";
+import { requireAuth, requireAdminRole, allowPublicOrAuth } from "./middleware/auth";
 import { z } from "zod";
 import { 
   insertPatientSchema, 
@@ -4325,7 +4325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   addFixPatientDuplicatesEndpoint(app);
   
   // Endpoint untuk laporan jumlah pasien per hari dalam sebulan
-  app.get("/api/reports/patients-per-day", async (req: Request, res: Response) => {
+  app.get("/api/reports/patients-per-day", allowPublicOrAuth, async (req: Request, res: Response) => {
     try {
       // Ambil bulan dan tahun dari query string, default ke bulan & tahun saat ini
       const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;

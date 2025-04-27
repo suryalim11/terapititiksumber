@@ -25,3 +25,18 @@ export function requireAdminRole(req: Request, res: Response, next: NextFunction
     message: "Akses ditolak. Anda tidak memiliki hak akses admin" 
   });
 }
+
+/**
+ * Middleware untuk mengizinkan akses publik atau pengguna yang terautentikasi
+ * Digunakan untuk endpoint yang bisa diakses publik atau pengguna login
+ */
+export function allowPublicOrAuth(req: Request, res: Response, next: NextFunction) {
+  // Jika pengguna sudah login atau menggunakan parameter apiKey yang benar
+  if (req.isAuthenticated() || req.query.apiKey === "terapi-titik-sumber-public") {
+    return next();
+  }
+  return res.status(401).json({ 
+    success: false, 
+    message: "Anda harus login untuk mengakses halaman ini" 
+  });
+}
