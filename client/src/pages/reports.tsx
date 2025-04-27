@@ -117,6 +117,36 @@ function PatientsDaily() {
         return '#81c784'; // Hijau
     }
   };
+  
+  // Fungsi untuk menghubungi pasien via WhatsApp
+  const contactViaWhatsApp = (phoneNumber: string) => {
+    if (!phoneNumber || phoneNumber === '-') {
+      toast({
+        title: "Tidak dapat menghubungi",
+        description: "Nomor WhatsApp pasien tidak tersedia.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Membersihkan nomor telepon (menghapus spasi, tanda kurung, tanda hubung, dll)
+    let cleanNumber = phoneNumber.replace(/\s+/g, '').replace(/[()-]/g, '');
+    
+    // Jika nomor tidak dimulai dengan '+', tambahkan kode negara Indonesia (+62)
+    if (!cleanNumber.startsWith('+')) {
+      // Jika nomor dimulai dengan '0', ganti dengan kode negara Indonesia
+      if (cleanNumber.startsWith('0')) {
+        cleanNumber = `+62${cleanNumber.substring(1)}`;
+      } else {
+        // Jika tidak dimulai dengan '0', tambahkan kode negara Indonesia di depan
+        cleanNumber = `+62${cleanNumber}`;
+      }
+    }
+    
+    // Buka WhatsApp dengan nomor tersebut
+    const whatsappUrl = `https://wa.me/${cleanNumber}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
   // Fetch data laporan pasien harian
   const { data, isLoading, error } = useQuery({
@@ -194,13 +224,13 @@ function PatientsDaily() {
       
       const appointments = await response.json();
       
-      // Menggabungkan data pasien dengan nama pasien
+      // Menggabungkan data pasien dengan nama pasien dan nomor telepon
       const detailedPatients = appointments.map((appointment: any) => {
         const patient = patientsData?.find((p: any) => p.id === appointment.patientId);
         return {
           ...appointment,
           patientName: patient?.name || 'Pasien tidak ditemukan',
-          patientPhone: patient?.phone || '-',
+          patientPhone: patient?.phone || patient?.whatsapp || patient?.wa || '-',
         };
       });
       
@@ -487,7 +517,26 @@ function PatientsDaily() {
                         {appointment.patientName}
                       </td>
                       <td className="px-4 py-2">
-                        {appointment.patientPhone}
+                        {appointment.patientPhone && appointment.patientPhone !== '-' ? (
+                          <button
+                            onClick={() => contactViaWhatsApp(appointment.patientPhone)}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center"
+                          >
+                            {appointment.patientPhone}
+                            <svg 
+                              className="w-4 h-4 ml-1" 
+                              fill="currentColor" 
+                              viewBox="0 0 24 24" 
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                              <path d="M13.613 21.662C12.243 21.662 10.893 21.294 9.7 20.597l-.657-.389-.696.151c-1.292.28-2.544.141-3.707-.417l8.528-8.528c.657 1.286.82 2.773.48 4.172l-.15.696.388.658c.697 1.193 1.065 2.543 1.065 3.913 0 .312-.031.624-.075.937.517-.364.992-.792 1.415-1.238l1.176-1.176c.03-.308.063-.618.063-.937 0-5.416-4.415-9.827-9.85-9.857-.313 0-.637.033-.95.07-.449.438-.881.913-1.25 1.434.313-.044.626-.073.938-.073 4.338.002 7.87 3.536 7.87 7.873 0 1.371-.368 2.721-1.065 3.914l-.388.656.15.697c.341 1.398.177 2.886-.48 4.172z" fillRule="evenodd" clipRule="evenodd" />
+                              <path d="M12 0C5.373 0 0 5.373 0 12c0 1.94.456 3.776 1.267 5.403L.05 23.997l6.594-1.198C8.27 23.586 10.134 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zM5.592 19.189c-1.248-.822-2.242-1.957-2.887-3.298C1.992 14.601 1.7 13.31 1.7 12c0-5.632 4.596-10.227 10.23-10.227 2.736 0 5.306 1.064 7.237 2.996 1.93 1.931 2.996 4.502 2.996 7.237 0 5.625-4.592 10.224-10.227 10.224h-.004c-1.113-.002-2.22-.203-3.278-.601L3.494 22.859l1.14-5.492c-.437-1.066-.658-2.202-.658-3.365H5.59c.288 1.488.913 2.852 1.833 3.992.134.165.271.325.409.476.138.152.28.3.424.437.145.138.294.269.445.392l.239-.4z" fillRule="evenodd" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        ) : (
+                          <span className="text-gray-500">-</span>
+                        )}
                       </td>
                       <td className="px-4 py-2">
                         {appointment.timeSlot}
