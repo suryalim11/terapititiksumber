@@ -472,9 +472,10 @@ export default function Reports() {
 
       <div ref={reportRef}>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="financial">Laporan Keuangan</TabsTrigger>
             <TabsTrigger value="therapy">Laporan Terapi</TabsTrigger>
+            <TabsTrigger value="patients-daily" onClick={() => window.location.href = "/reports/patients-daily"}>Pasien Harian</TabsTrigger>
           </TabsList>
 
           <TabsContent value="financial" className="space-y-6">
