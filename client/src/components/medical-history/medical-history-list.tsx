@@ -381,18 +381,9 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                           </div>
                         </TableCell>
                         <TableCell className="max-w-[250px]">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger className="text-left w-full">
-                                <div className="line-clamp-2 text-left">
-                                  {history.complaint}
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent side="right" className="max-w-sm">
-                                <p>{history.complaint}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                          <div className="text-left w-full whitespace-normal">
+                            {history.complaint}
+                          </div>
                         </TableCell>
                         <TableCell>{history.beforeBloodPressure || "-"}</TableCell>
                         <TableCell>{history.afterBloodPressure || "-"}</TableCell>
@@ -401,18 +392,9 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                         <TableCell>{history.weight || "-"}</TableCell>
                         <TableCell className="max-w-[200px]">
                           {history.notes ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger className="text-left w-full">
-                                  <div className="line-clamp-2 text-left">
-                                    {history.notes}
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-sm">
-                                  <p>{history.notes}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <div className="text-left w-full whitespace-normal">
+                              {history.notes}
+                            </div>
                           ) : (
                             "-"
                           )}
@@ -522,16 +504,7 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                       <div className="grid grid-cols-1 gap-1 text-sm">
                         <div>
                           <span className="font-medium">Keluhan:</span>{" "}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="line-clamp-3 text-sm cursor-help">{history.complaint}</span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-sm">
-                                <p>{history.complaint}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                          <span className="text-sm whitespace-normal break-words">{history.complaint}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
@@ -560,16 +533,7 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                         {history.notes && (
                           <div className="mt-2">
                             <span className="font-medium">Catatan:</span>{" "}
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="line-clamp-3 text-sm cursor-help">{history.notes}</span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-sm">
-                                  <p>{history.notes}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <span className="text-sm whitespace-normal break-words">{history.notes}</span>
                           </div>
                         )}
                       </div>
