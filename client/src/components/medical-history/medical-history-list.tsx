@@ -496,7 +496,16 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                       <div className="grid grid-cols-1 gap-1 text-sm">
                         <div>
                           <span className="font-medium">Keluhan:</span>{" "}
-                          <span className="line-clamp-2">{history.complaint}</span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="line-clamp-3 text-sm cursor-help">{history.complaint}</span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-sm">
+                                <p>{history.complaint}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
