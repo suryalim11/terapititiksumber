@@ -61,6 +61,15 @@ function PatientsDaily() {
   // State untuk bulan dan tahun yang dipilih
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  
+  // State untuk dialog
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDayData, setSelectedDayData] = useState<any>(null);
+  
+  // State untuk menyimpan data detail pasien
+  const [patientDetails, setPatientDetails] = useState<any[]>([]);
+  const { toast } = useToast();
 
   // Array nama bulan untuk dropdown
   const months = [
@@ -80,6 +89,17 @@ function PatientsDaily() {
 
   // Membuat array tahun untuk dropdown (tahun saat ini dan 2 tahun sebelumnya)
   const years = [currentYear, currentYear - 1, currentYear - 2];
+  
+  // Fetch data pasien untuk pencarian nama
+  const { data: patientsData } = useQuery({
+    queryKey: ['/api/patients'],
+  });
+  
+  // Fetch data appointments untuk pencarian detail
+  const { data: appointmentsData } = useQuery({
+    queryKey: ['/api/appointments'],
+    enabled: false, // tidak aktif secara default, akan dipanggil sesuai kebutuhan
+  });
   
   // Fungsi helper untuk mendapatkan nama bulan
   const getMonthName = (monthNumber: number) => {
@@ -153,6 +173,49 @@ function PatientsDaily() {
   };
 
   const weeklyData = getWeeklyData();
+  
+  // Handler untuk click pada bar chart
+  const handleBarClick = async (data: any) => {
+    if (!data || !data.activePayload || !data.activePayload[0]) return;
+    
+    const clickedData = data.activePayload[0].payload;
+    if (!clickedData || !clickedData.date) return;
+    
+    setSelectedDate(clickedData.date);
+    setSelectedDayData(clickedData);
+    
+    try {
+      // Mengambil data pasien untuk tanggal yang dipilih
+      const response = await fetch(`/api/appointments/date/${clickedData.date}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch appointments for this date');
+      }
+      
+      const appointments = await response.json();
+      
+      // Menggabungkan data pasien dengan nama pasien
+      const detailedPatients = appointments.map((appointment: any) => {
+        const patient = patientsData?.find((p: any) => p.id === appointment.patientId);
+        return {
+          ...appointment,
+          patientName: patient?.name || 'Pasien tidak ditemukan',
+          patientPhone: patient?.phone || '-',
+        };
+      });
+      
+      setPatientDetails(detailedPatients);
+      setIsDetailsDialogOpen(true);
+      
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      toast({
+        title: "Terjadi kesalahan",
+        description: "Tidak dapat mengambil detail pasien untuk tanggal ini.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -253,6 +316,7 @@ function PatientsDaily() {
               <CardTitle>Grafik Pasien per Hari</CardTitle>
               <CardDescription>
                 {getMonthName(selectedMonth)} {selectedYear}
+                <span className="ml-2 text-xs text-blue-500 italic">(Klik pada bar untuk melihat detail pasien)</span>
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -261,6 +325,8 @@ function PatientsDaily() {
                   <BarChart
                     data={chartData}
                     margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
+                    onClick={handleBarClick}
+                    cursor="pointer"
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis 
@@ -317,7 +383,7 @@ function PatientsDaily() {
                 </thead>
                 <tbody>
                   {weeklyData.map((week) => (
-                    <tr key={week.weekNumber} className="border-b">
+                    <tr key={week.weekNumber} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
                       <td className="px-4 py-2 font-medium">
                         Minggu {week.weekNumber}
                       </td>
@@ -349,11 +415,12 @@ function PatientsDaily() {
                     <th className="px-4 py-2 text-left">Tanggal</th>
                     <th className="px-4 py-2 text-left">Hari</th>
                     <th className="px-4 py-2 text-right">Jumlah Pasien</th>
+                    <th className="px-4 py-2 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data?.dailyData?.map((day: any, index: number) => (
-                    <tr key={index} className="border-b">
+                    <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
                       <td className="px-4 py-2">
                         {day.date.split('-')[2]} {getMonthName(selectedMonth)}
                       </td>
@@ -363,6 +430,23 @@ function PatientsDaily() {
                       <td className="px-4 py-2 text-right">
                         {day.patientCount}
                       </td>
+                      <td className="px-4 py-2 text-center">
+                        {day.patientCount > 0 && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedDate(day.date);
+                              setSelectedDayData(day);
+                              handleBarClick({ 
+                                activePayload: [{ payload: day }] 
+                              });
+                            }}
+                          >
+                            Lihat Detail
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -371,6 +455,77 @@ function PatientsDaily() {
           </Card>
         </>
       )}
+      
+      {/* Dialog untuk menampilkan detail pasien per tanggal */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Detail Pasien Tanggal {selectedDate ? `${selectedDate.split('-')[2]} ${getMonthName(parseInt(selectedDate.split('-')[1]))} ${selectedDate.split('-')[0]}` : ''} 
+              {selectedDayData && ` (${selectedDayData.dayName})`}
+            </DialogTitle>
+            <DialogDescription>
+              Total {patientDetails?.length || 0} pasien pada tanggal ini
+            </DialogDescription>
+          </DialogHeader>
+          
+          {patientDetails && patientDetails.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="px-4 py-2 text-left">Nama Pasien</th>
+                    <th className="px-4 py-2 text-left">No. WA</th>
+                    <th className="px-4 py-2 text-left">Sesi</th>
+                    <th className="px-4 py-2 text-left">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {patientDetails.map((appointment, index) => (
+                    <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <td className="px-4 py-2 font-medium">
+                        {appointment.patientName}
+                      </td>
+                      <td className="px-4 py-2">
+                        {appointment.patientPhone}
+                      </td>
+                      <td className="px-4 py-2">
+                        {appointment.timeSlot}
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className={`inline-block px-2 py-1 rounded text-xs ${
+                          appointment.status === 'Completed' ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' : 
+                          appointment.status === 'Scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100' : 
+                          appointment.status === 'Cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100' : 
+                          'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
+                        }`}>
+                          {appointment.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              {isLoading ? (
+                <div className="flex justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                </div>
+              ) : (
+                <p>Tidak ada data detail pasien untuk tanggal ini.</p>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
