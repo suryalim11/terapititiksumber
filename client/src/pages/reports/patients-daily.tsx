@@ -36,7 +36,7 @@ import {
   LabelList
 } from 'recharts';
 import { Loader2 } from 'lucide-react';
-import { DashboardHeader } from '@/components/header';
+import { DashboardHeader } from '../../components/header';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 

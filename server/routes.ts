@@ -4325,7 +4325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   addFixPatientDuplicatesEndpoint(app);
   
   // Endpoint untuk laporan jumlah pasien per hari dalam sebulan
-  app.get("/api/reports/patients-per-day", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/reports/patients-per-day", async (req: Request, res: Response) => {
     try {
       // Ambil bulan dan tahun dari query string, default ke bulan & tahun saat ini
       const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
