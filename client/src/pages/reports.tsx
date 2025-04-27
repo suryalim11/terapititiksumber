@@ -230,7 +230,7 @@ function PatientsDaily() {
         return {
           ...appointment,
           patientName: patient?.name || 'Pasien tidak ditemukan',
-          patientPhone: patient?.phone || patient?.whatsapp || patient?.wa || '-',
+          patientPhone: patient?.phoneNumber || patient?.phone || '-',
         };
       });
       
