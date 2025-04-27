@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, addHours, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
+import { useLocation } from "wouter";
 import { 
   Card, 
   CardContent, 
@@ -229,6 +230,7 @@ function PatientsDaily() {
         const patient = patientsData?.find((p: any) => p.id === appointment.patientId);
         return {
           ...appointment,
+          patientId: appointment.patientId, // Memastikan patientId tersedia
           patientName: patient?.name || 'Pasien tidak ditemukan',
           patientPhone: patient?.phoneNumber || patient?.phone || '-',
         };
@@ -514,7 +516,23 @@ function PatientsDaily() {
                   {patientDetails.map((appointment, index) => (
                     <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
                       <td className="px-4 py-2 font-medium">
-                        {appointment.patientName}
+                        <button 
+                          onClick={() => { 
+                            // Menggunakan navigasi wouter yang lebih baik
+                            if (appointment.patientId) {
+                              window.location.href = `/patients/${appointment.patientId}`;
+                            } else {
+                              toast({
+                                title: "Navigasi gagal",
+                                description: "ID pasien tidak ditemukan",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+                        >
+                          {appointment.patientName}
+                        </button>
                       </td>
                       <td className="px-4 py-2">
                         {appointment.patientPhone && appointment.patientPhone !== '-' ? (
