@@ -4324,6 +4324,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Registrar os endpoints para detecção e correção de pacientes duplicados
   addFixPatientDuplicatesEndpoint(app);
   
+  // Endpoint untuk laporan jumlah pasien per hari dalam sebulan
+  app.get("/api/reports/patients-per-day", requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Ambil bulan dan tahun dari query string, default ke bulan & tahun saat ini
+      const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
+      const year = parseInt(req.query.year as string) || new Date().getFullYear();
+      
+      // Validasi parameter bulan dan tahun
+      if (month < 1 || month > 12) {
+        return res.status(400).json({
+          success: false,
+          message: "Bulan harus antara 1-12"
+        });
+      }
+
+      console.log(`Mengambil data pasien harian untuk bulan ${month}/${year}`);
+      
+      // Menentukan tanggal awal dan akhir bulan
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+      endDate.setHours(23, 59, 59, 999);
+      
+      const totalDays = endDate.getDate();
+      
+      // Query untuk mendapatkan jumlah pasien per hari dari tabel appointments
+      const result = await db.execute(sql`
+        SELECT 
+          DATE_TRUNC('day', date) as day,
+          COUNT(DISTINCT patient_id) as patient_count
+        FROM 
+          appointments
+        WHERE 
+          date >= ${startDate} AND date <= ${endDate}
+          AND status != 'Cancelled'
+        GROUP BY 
+          DATE_TRUNC('day', date)
+        ORDER BY 
+          day ASC
+      `);
+      
+      // Membuat array untuk semua hari dalam bulan dengan jumlah pasien
+      const dailyData = [];
+      
+      // Inisialisasi dengan nilai 0 untuk semua hari
+      for (let day = 1; day <= totalDays; day++) {
+        const currentDate = new Date(year, month - 1, day);
+        const dateStr = format(currentDate, 'yyyy-MM-dd');
+        
+        dailyData.push({
+          date: dateStr,
+          patientCount: 0,
+          dayName: format(currentDate, 'EEEE', { locale: id })
+        });
+      }
+      
+      // Mengisi data dari hasil query
+      if (result.rows && result.rows.length > 0) {
+        for (const row of result.rows) {
+          const rowDate = new Date(row.day);
+          const day = rowDate.getDate();
+          const patientCount = parseInt(row.patient_count);
+          
+          // Update nilai di dailyData
+          if (day >= 1 && day <= totalDays) {
+            dailyData[day - 1].patientCount = patientCount;
+          }
+        }
+      }
+      
+      // Menghitung total pasien dan rata-rata per hari
+      const totalPatients = dailyData.reduce((sum, day) => sum + day.patientCount, 0);
+      const avgPatients = totalPatients / totalDays;
+      
+      // Format respons
+      return res.status(200).json({
+        success: true,
+        month,
+        year,
+        totalDays,
+        totalPatients,
+        averagePatientsPerDay: Math.round(avgPatients * 100) / 100,
+        dailyData
+      });
+      
+    } catch (error) {
+      console.error("Error mengambil laporan pasien per hari:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil laporan pasien per hari",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Endpoint untuk mengambil log sistem
   app.get("/api/admin/system-logs", requireAuth, requireAdminRole, async (req: Request, res: Response) => {
     try {
