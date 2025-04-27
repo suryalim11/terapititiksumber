@@ -380,16 +380,42 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                             {renderSourceBadge(history)}
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {history.complaint}
+                        <TableCell className="max-w-[250px]">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger className="text-left w-full">
+                                <div className="line-clamp-2 text-left">
+                                  {history.complaint}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-sm">
+                                <p>{history.complaint}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </TableCell>
                         <TableCell>{history.beforeBloodPressure || "-"}</TableCell>
                         <TableCell>{history.afterBloodPressure || "-"}</TableCell>
                         <TableCell>{history.heartRate || "-"}</TableCell>
                         <TableCell>{history.pulseRate || "-"}</TableCell>
                         <TableCell>{history.weight || "-"}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {history.notes || "-"}
+                        <TableCell className="max-w-[200px]">
+                          {history.notes ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger className="text-left w-full">
+                                  <div className="line-clamp-2 text-left">
+                                    {history.notes}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-sm">
+                                  <p>{history.notes}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            "-"
+                          )}
                         </TableCell>
                         <TableCell className="text-right space-x-1">
                           {!isFromOtherPatient ? (
@@ -534,7 +560,16 @@ export function MedicalHistoryList({ patientId }: MedicalHistoryListProps) {
                         {history.notes && (
                           <div className="mt-2">
                             <span className="font-medium">Catatan:</span>{" "}
-                            <span className="line-clamp-3">{history.notes}</span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="line-clamp-3 text-sm cursor-help">{history.notes}</span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-sm">
+                                  <p>{history.notes}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </div>
                         )}
                       </div>
