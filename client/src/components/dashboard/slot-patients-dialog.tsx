@@ -343,18 +343,34 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       // Hindari event bubbling
       event.stopPropagation();
       
+      // Konversi patient.id ke number untuk memastikan tipe data konsisten
+      const patientIdNumber = typeof patient.id === 'string' ? parseInt(patient.id) : patient.id;
+      
+      // Simpan ID pasien dan nama pasien ke localStorage untuk recovery jika event gagal
+      localStorage.setItem('pendingTransactionPatientId', patientIdNumber.toString());
+      localStorage.setItem('pendingTransactionPatientName', patient.name);
+      
       // Tutup dialog terlebih dahulu
       onClose();
       
-      // Navigasi ke halaman transaksi
-      navigate(`/transactions`);
+      // Log untuk debugging
+      console.log("Persiapan navigasi ke transaksi untuk pasien:", {
+        id: patientIdNumber,
+        name: patient.name
+      });
       
-      // Tunggu sebentar untuk memastikan halaman transaksi sudah dimuat
+      // Navigasi langsung ke halaman transaksi dengan parameter query
+      navigate(`/transactions?patient=${patientIdNumber}&delay=2000`);
+      
+      // Tambahkan notifikasi untuk feedback
+      toast({
+        title: "Membuat transaksi baru",
+        description: `Mempersiapkan transaksi untuk pasien: ${patient.name}`,
+      });
+      
+      // Tunggu sebentar untuk memastikan halaman transaksi sudah dimuat, lalu kirim event
       setTimeout(() => {
         // Buat custom event untuk membuka form transaksi
-        // Konversi patient.id ke number untuk memastikan tipe data konsisten
-        const patientIdNumber = typeof patient.id === 'string' ? parseInt(patient.id) : patient.id;
-        
         const openFormEvent = new CustomEvent('openTransactionForm', {
           detail: { 
             patientId: patientIdNumber,
@@ -373,13 +389,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         window.dispatchEvent(openFormEvent);
         
         console.log("Dispatched openTransactionForm event with patientId:", patientIdNumber);
-      }, 1000); // Delay 1000ms (1 detik) untuk memastikan halaman transaksi sudah benar-benar dimuat
-      
-      // Tambahkan notifikasi untuk feedback
-      toast({
-        title: "Membuat transaksi baru",
-        description: `Form transaksi untuk ${patient.name || 'pasien terpilih'} akan segera dibuka`,
-      });
+      }, 1500); // Delay 1500ms untuk memastikan halaman transaksi sudah benar-benar dimuat
     } catch (error) {
       console.error("Error navigating to transaction:", error);
       toast({
