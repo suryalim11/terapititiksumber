@@ -360,7 +360,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       });
       
       // Navigasi langsung ke halaman transaksi dengan parameter query
-      navigate(`/transactions?patient=${patientIdNumber}&delay=2000`);
+      navigate(`/transactions?patientId=${patientIdNumber}&delay=2000`);
       
       // Tambahkan notifikasi untuk feedback
       toast({

@@ -106,9 +106,111 @@ export default function Transactions() {
   // Effect untuk auto-show form jika ada patientId di URL
   // Buat ref untuk melacak apakah form sudah pernah dibuka untuk patientId ini
   const hasOpenedFormRef = useRef(false);
+  const localStorageCheckedRef = useRef(false);
   
   // Dapatkan parameter delay dari URL jika ada
   const delayParamFromUrl = urlParams.get("delay");
+  
+  // Effect untuk memeriksa localStorage (recovery mechanism)
+  useEffect(() => {
+    // Skip jika form sudah dibuka dari URL param atau localStorage sudah diperiksa
+    if (patientIdFromUrl || localStorageCheckedRef.current) {
+      return;
+    }
+    
+    // Tandai bahwa localStorage sudah diperiksa
+    localStorageCheckedRef.current = true;
+    
+    // Cek apakah ada pending patient ID dari localStorage
+    const pendingPatientId = localStorage.getItem('pendingTransactionPatientId');
+    const pendingPatientName = localStorage.getItem('pendingTransactionPatientName');
+    
+    if (pendingPatientId) {
+      console.log("Menemukan pending patient ID di localStorage:", pendingPatientId);
+      const patientIdNumber = parseInt(pendingPatientId);
+      
+      // Tunggu data patients tersedia
+      if (patients && patients.length > 0) {
+        // Cari pasien dalam data
+        const patient = patients.find((p: any) => p.id === patientIdNumber);
+        
+        if (patient) {
+          console.log("Pasien dari localStorage ditemukan:", patient.name);
+          
+          // Hapus dari localStorage
+          localStorage.removeItem('pendingTransactionPatientId');
+          localStorage.removeItem('pendingTransactionPatientName');
+          
+          // Set selectedPatientId
+          setSelectedPatientId(patientIdNumber);
+          
+          // Tampilkan feedback
+          toast({
+            title: "Data pasien ditemukan",
+            description: `Memuat data pasien: ${patient.name}`,
+          });
+          
+          // Buka form transaksi dengan delay
+          setTimeout(() => {
+            setIsTransactionFormOpen(true);
+            toast({
+              title: "Form transaksi dibuka",
+              description: `Silahkan lengkapi transaksi untuk ${patient.name}`,
+            });
+          }, 500);
+        } else {
+          console.log("Pasien dengan ID", patientIdNumber, "tidak ditemukan dalam data lokal");
+          
+          // Coba ambil langsung dari API
+          apiRequest<any>(`/api/patients/${patientIdNumber}`)
+            .then(patient => {
+              if (patient && patient.id) {
+                console.log("Berhasil mengambil data pasien dari API:", patient);
+                
+                // Hapus dari localStorage 
+                localStorage.removeItem('pendingTransactionPatientId');
+                localStorage.removeItem('pendingTransactionPatientName');
+                
+                // Set selectedPatientId
+                setSelectedPatientId(patientIdNumber);
+                
+                // Buka form transaksi
+                setTimeout(() => {
+                  setIsTransactionFormOpen(true);
+                  toast({
+                    title: "Form transaksi dibuka",
+                    description: `Silahkan lengkapi transaksi untuk ${patient.name}`,
+                  });
+                }, 500);
+              } else {
+                console.error("Pasien tidak ditemukan di API");
+                toast({
+                  title: "Pasien tidak ditemukan",
+                  description: "Tidak dapat menemukan data pasien yang tersimpan",
+                  variant: "destructive"
+                });
+                
+                // Hapus data yang tidak valid dari localStorage
+                localStorage.removeItem('pendingTransactionPatientId');
+                localStorage.removeItem('pendingTransactionPatientName');
+              }
+            })
+            .catch(err => {
+              console.error("Error fetching patient from API:", err);
+              toast({
+                title: "Terjadi kesalahan",
+                description: "Gagal memuat data pasien dari server",
+                variant: "destructive"
+              });
+              
+              // Hapus data dari localStorage
+              localStorage.removeItem('pendingTransactionPatientId');
+              localStorage.removeItem('pendingTransactionPatientName');
+            });
+        }
+      }
+    }
+  }, [patients, toast, apiRequest]);
   
   useEffect(() => {
     if (patientIdFromUrl) {
@@ -193,6 +295,13 @@ export default function Transactions() {
         const patientIdNumber = typeof patientId === 'string' ? parseInt(patientId) : patientId;
         
         console.log("Event openTransactionForm diterima dengan patientId:", patientIdNumber, "type:", typeof patientIdNumber);
+        
+        // Bersihkan localStorage karena event sudah diterima dengan baik
+        if (localStorage.getItem('pendingTransactionPatientId')) {
+          console.log("Menghapus data pendingTransactionPatientId dari localStorage");
+          localStorage.removeItem('pendingTransactionPatientId');
+          localStorage.removeItem('pendingTransactionPatientName');
+        }
         
         // Verifikasi pasien ada dalam data
         console.log("Memeriksa data pasien. Total pasien:", patients?.length || 0);
