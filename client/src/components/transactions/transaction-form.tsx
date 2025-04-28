@@ -167,9 +167,14 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   const queryClient = useQueryClient();
 
   // Siapkan default value untuk patientId berdasarkan prop selectedPatientId
-  const initialPatientId = selectedPatientId ? 
-    (typeof selectedPatientId === 'number' ? selectedPatientId.toString() : selectedPatientId) 
-    : '';
+  // Pastikan patientId selalu berupa string
+  let initialPatientId = '';
+  
+  if (selectedPatientId !== null && selectedPatientId !== undefined) {
+    initialPatientId = typeof selectedPatientId === 'number' 
+      ? selectedPatientId.toString() 
+      : String(selectedPatientId);
+  }
   
   console.log("Setting up form with initialPatientId:", initialPatientId, "from selectedPatientId:", selectedPatientId);
   
@@ -1799,7 +1804,15 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               console.log("Looking for patient with ID str:", patientIdStr);
                               console.log("Types of patient IDs available:", patients.slice(0, 3).map(p => typeof p.id));
                               
-                              const selectedPatient = patients.find((p: Patient) => p.id.toString() === patientIdStr);
+                              // Perbaikan: Konversi ID pasien ke number dahulu untuk memastikan perbandingan yang konsisten
+                              // Konversi ke number untuk perbandingan yang konsisten
+                              const patientIdNumber = patientIdStr ? parseInt(patientIdStr, 10) : -1;
+                              
+                              // Coba kedua pendekatan: exact number matching dan string matching
+                              const selectedPatient = patients.find(p => 
+                                p.id === patientIdNumber || 
+                                p.id.toString() === patientIdStr
+                              );
                               console.log("Selected patient result:", selectedPatient?.name || "Not found");
                               
                               // Jika pencarian termasuk 'syaflina' atau 'syafliana', cek apakah IDs sesuai dengan Queenzky Zahwa Aqeela
