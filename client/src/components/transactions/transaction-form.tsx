@@ -1818,6 +1818,63 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               console.log("Patient search with ID:", patientIdStr, "as number:", patientIdNumber);
                               
                               // Coba cari pasien dengan pendekatan yang lebih komprehensif dan toleran terhadap perbedaan tipe data
+                              // Coba cari dari localStorage dengan key patient_[ID] terlebih dahulu
+                              // Ini adalah data yang telah disimpan oleh slot-patients-dialog.tsx
+                              try {
+                                // Cek apakah ada data pasien lengkap di localStorage
+                                const storedPatientData = localStorage.getItem(`patient_${patientIdNumber}`);
+                                if (storedPatientData) {
+                                  const parsedPatient = JSON.parse(storedPatientData);
+                                  if (parsedPatient && parsedPatient.id === patientIdNumber) {
+                                    console.log("FOUND patient from localStorage cache:", parsedPatient.name);
+                                    // Jika ada dan valid, gunakan ini
+                                    return parsedPatient;
+                                  }
+                                }
+                              } catch (err) {
+                                console.error("Error parsing stored patient data:", err);
+                                // Lanjutkan ke metode pencarian biasa
+                              }
+
+                              // Lanjut ke metode fallback: coba langsung dari API
+                              const apiPatientUrl = `/api/patients/${patientIdNumber}`;
+                              console.log(`Mencoba memuat data pasien ${patientIdNumber} dari API: ${apiPatientUrl}`);
+                              try {
+                                // Gunakan fetch dengan mode sync
+                                const apiPatientResponse = localStorage.getItem(`temp_api_patient_${patientIdNumber}`);
+                                if (apiPatientResponse) {
+                                  try {
+                                    const apiPatient = JSON.parse(apiPatientResponse);
+                                    console.log("FOUND patient from API quick-cache:", apiPatient.name);
+                                    return apiPatient;
+                                  } catch (err) {
+                                    console.error("Error parsing cached API patient:", err);
+                                  }
+                                }
+                                
+                                // Jalankan fetch yang asinkron untuk digunakan pada render berikutnya
+                                fetch(apiPatientUrl)
+                                  .then(response => response.json())
+                                  .then(patient => {
+                                    if (patient && patient.id) {
+                                      console.log("✅ Berhasil memuat pasien dari API:", patient.name);
+                                      // Simpan ke cache sementara untuk render berikutnya
+                                      localStorage.setItem(`temp_api_patient_${patientIdNumber}`, JSON.stringify(patient));
+                                      // Memicu rerender dengan timeout
+                                      setTimeout(() => {
+                                        // Gunakan force refresh jika dibutuhkan
+                                        console.log("API data loaded, will refresh on next render");
+                                      }, 100);
+                                    }
+                                  })
+                                  .catch(err => {
+                                    console.error("Error fetching patient from API:", err);
+                                  });
+                              } catch (err) {
+                                console.error("Error in direct API loading:", err);
+                              }
+                            
+                              // Gunakan metode pencarian dari array pasien sebagai fallback terakhir
                               const selectedPatient = patients.find(p => {
                                 try {
                                   // Konversi kedua ID ke string dan number untuk berbagai jenis perbandingan
@@ -1826,7 +1883,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                   const searchStringId = String(patientIdStr).trim();
                                   const searchNumericId = Number(patientIdNumber);
                                   
-                                  // Log debugging untuk debug
+                                  // Log debugging jika ada kecocokan
                                   if (patientNumericId === searchNumericId || patientStringId === searchStringId) {
                                     console.log(`MATCH FOUND! Patient ${p.name} with ID ${patientStringId} matches search ID ${searchStringId}`);
                                   }

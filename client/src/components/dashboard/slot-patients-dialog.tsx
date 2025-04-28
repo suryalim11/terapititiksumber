@@ -346,68 +346,130 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       // Konversi patient.id ke number untuk memastikan tipe data konsisten
       const patientIdNumber = typeof patient.id === 'string' ? parseInt(patient.id) : patient.id;
       
-      // Simpan data pasien lengkap ke localStorage sebagai JSON untuk recovery dan referensi
-      // Ini memungkinkan halaman transaksi mendapatkan data lebih lengkap
-      const patientData = {
-        id: patientIdNumber,
-        name: patient.name,
-        phoneNumber: patient.phoneNumber || '',
-        address: patient.address || '',
-        patientId: patient.patientId || '',
-        lastVisit: patient.lastVisit || null
-      };
-      
-      localStorage.setItem('pendingTransactionPatientId', patientIdNumber.toString());
-      localStorage.setItem('pendingTransactionPatientName', patient.name);
-      localStorage.setItem('pendingTransactionPatientData', JSON.stringify(patientData));
-      
-      // Tutup dialog terlebih dahulu
-      onClose();
-      
-      // Log untuk debugging
-      console.log("Persiapan navigasi ke transaksi untuk pasien:", patientData);
-      
-      // Navigasi langsung ke halaman transaksi dengan parameter query yang lebih eksplisit
-      navigate(`/transactions?patientId=${patientIdNumber}&patientName=${encodeURIComponent(patient.name)}&delay=2000&source=slot-dialog`);
-      
-      // Tambahkan notifikasi untuk feedback
-      toast({
-        title: "Membuat transaksi baru",
-        description: `Mempersiapkan transaksi untuk pasien: ${patient.name}`,
-      });
-      
-      // Tunggu sebentar untuk memastikan halaman transaksi sudah dimuat, lalu kirim event
-      // Menambah delay untuk memberikan waktu lebih banyak bagi halaman untuk siap
-      setTimeout(() => {
-        // Buat custom event untuk membuka form transaksi dengan data pasien yang lebih lengkap
-        const openFormEvent = new CustomEvent('openTransactionForm', {
-          detail: { 
-            patientId: patientIdNumber,
-            patientName: patient.name,
-            patientData: patientData, // Kirim data lengkap sekaligus
-            timestamp: new Date().getTime() // Tambahkan timestamp untuk memastikan event unik
+      // Backup metode: Cek langsung ke API untuk mendapatkan data lengkap pasien
+      fetch(`/api/patients/${patientIdNumber}`)
+        .then(response => response.json())
+        .then(completePatientData => {
+          if (!completePatientData || !completePatientData.id) {
+            throw new Error("Data pasien tidak ditemukan di server");
           }
+          
+          console.log("Data lengkap pasien dari API:", completePatientData);
+          
+          // Simpan data pasien yang sangat lengkap ke localStorage
+          const patientData = {
+            ...completePatientData, // Semua data dari API
+            id: patientIdNumber, // Pastikan ID tetap konsisten
+          };
+          
+          // Simpan ID sebagai string (lebih kompatibel dengan localStorage)
+          localStorage.setItem('pendingTransactionPatientId', patientIdNumber.toString());
+          // Simpan nama pasien
+          localStorage.setItem('pendingTransactionPatientName', completePatientData.name || patient.name);
+          // Simpan data JSON lengkap pasien
+          localStorage.setItem('pendingTransactionPatientData', JSON.stringify(patientData));
+          // Tambahkan satu lagi flag untuk memastikan data bisa diambil dengan ID
+          localStorage.setItem(`patient_${patientIdNumber}`, JSON.stringify(patientData));
+          
+          // Tutup dialog terlebih dahulu
+          onClose();
+          
+          // Log untuk debugging
+          console.log("Persiapan navigasi ke transaksi untuk pasien dengan data lengkap:", patientData);
+          
+          // Navigasi langsung ke halaman transaksi dengan parameter query yang lebih eksplisit
+          navigate(`/transactions?patientId=${patientIdNumber}&patientName=${encodeURIComponent(completePatientData.name)}&delay=2000&source=slot-dialog&timestamp=${Date.now()}`);
+          
+          // Tambahkan notifikasi untuk feedback
+          toast({
+            title: "Membuat transaksi baru",
+            description: `Mempersiapkan transaksi untuk ${completePatientData.name}`,
+          });
+          
+          // Tunggu sebentar untuk memastikan halaman transaksi sudah dimuat, lalu kirim event
+          setTimeout(() => {
+            // Buat custom event untuk membuka form transaksi dengan data pasien yang sangat lengkap
+            const openFormEvent = new CustomEvent('openTransactionForm', {
+              detail: { 
+                patientId: patientIdNumber,
+                patientName: completePatientData.name,
+                patientData: patientData, // Kirim data lengkap sekaligus
+                timestamp: Date.now() // Tambahkan timestamp untuk memastikan event unik
+              }
+            });
+            
+            // Log untuk debugging
+            console.log("Mengirim event dengan data SANGAT lengkap:", {
+              patientId: patientIdNumber,
+              patientIdType: typeof patientIdNumber,
+              patientName: completePatientData.name,
+              patientData: JSON.stringify(patientData).substring(0, 100) + "..." // Tampilkan sebagian saja
+            });
+            
+            // Kirim event utama
+            window.dispatchEvent(openFormEvent);
+            
+            // Siapkan beberapa kali percobaan untuk mengatasi race condition
+            const retryIntervals = [500, 1000, 1500];
+            retryIntervals.forEach(interval => {
+              setTimeout(() => {
+                const retryEvent = new CustomEvent('openTransactionForm', {
+                  detail: { 
+                    patientId: patientIdNumber,
+                    patientName: completePatientData.name,
+                    patientData: patientData,
+                    timestamp: Date.now() + interval, // Timestamp unik untuk setiap retry
+                    retry: interval
+                  }
+                });
+                window.dispatchEvent(retryEvent);
+                console.log(`Retry #${interval/500}: Dispatched event with patientId ${patientIdNumber}`);
+              }, interval);
+            });
+            
+          }, 2000); // Delay awal
+        })
+        .catch(err => {
+          console.error("Error fetching complete patient data:", err);
+          
+          // Fallback ke metode lama jika API gagal
+          const patientData = {
+            id: patientIdNumber,
+            name: patient.name,
+            phoneNumber: patient.phoneNumber || '',
+            address: patient.address || '',
+            patientId: patient.patientId || '',
+            lastVisit: patient.lastVisit || null
+          };
+          
+          localStorage.setItem('pendingTransactionPatientId', patientIdNumber.toString());
+          localStorage.setItem('pendingTransactionPatientName', patient.name);
+          localStorage.setItem('pendingTransactionPatientData', JSON.stringify(patientData));
+          
+          // Tutup dialog terlebih dahulu
+          onClose();
+          
+          // Navigasi dengan metode lama
+          navigate(`/transactions?patientId=${patientIdNumber}&patientName=${encodeURIComponent(patient.name)}&delay=2000&source=slot-dialog-fallback`);
+          
+          toast({
+            title: "Membuat transaksi baru",
+            description: `Mempersiapkan transaksi untuk ${patient.name} (metode alternatif)`,
+          });
+          
+          // Dispatch event dengan metode lama
+          setTimeout(() => {
+            const openFormEvent = new CustomEvent('openTransactionForm', {
+              detail: { 
+                patientId: patientIdNumber,
+                patientName: patient.name,
+                timestamp: Date.now()
+              }
+            });
+            window.dispatchEvent(openFormEvent);
+          }, 2000);
         });
-        
-        // Log untuk debugging
-        console.log("Mengirim event dengan data lengkap:", {
-          patientId: patientIdNumber,
-          patientIdType: typeof patientIdNumber,
-          patientName: patient.name,
-          patientData: patientData
-        });
-        
-        // Dispatching event dengan retry mechanism kalau perlu
-        window.dispatchEvent(openFormEvent);
-        
-        // Dispatch kedua setelah penundaan tambahan sebagai backup
-        setTimeout(() => {
-          window.dispatchEvent(openFormEvent);
-          console.log("Re-dispatched openTransactionForm event as backup");
-        }, 500);
-        
-        console.log("Dispatched openTransactionForm event with patientId:", patientIdNumber);
-      }, 2000); // Menambah delay menjadi 2000ms untuk memastikan halaman transaksi sudah benar-benar dimuat
+      
     } catch (error) {
       console.error("Error navigating to transaction:", error);
       toast({
