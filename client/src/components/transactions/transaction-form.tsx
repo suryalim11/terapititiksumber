@@ -456,8 +456,14 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
       return;
     }
     
-    // Cari pasien di data yang ada
-    const patient = allAvailablePatients.find(p => p.id === patientIdToSearch);
+    // Cari pasien di data yang ada dengan pendekatan yang lebih komprehensif
+    const patient = allAvailablePatients.find(p => {
+      // Konversi ID pasien ke string untuk memastikan perbandingan string-to-string akurat
+      const patientIdStr = p.id.toString();
+      const searchIdStr = patientIdToSearch.toString();
+      
+      return p.id === patientIdToSearch || patientIdStr === searchIdStr;
+    });
     
     if (patient) {
       console.log("Pasien ditemukan:", patient.name, "dengan ID:", patient.id);
@@ -1804,15 +1810,27 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               console.log("Looking for patient with ID str:", patientIdStr);
                               console.log("Types of patient IDs available:", patients.slice(0, 3).map(p => typeof p.id));
                               
-                              // Perbaikan: Konversi ID pasien ke number dahulu untuk memastikan perbandingan yang konsisten
-                              // Konversi ke number untuk perbandingan yang konsisten
+                              // Perbaikan: Konversi ID pasien dan normalisasi ke both number & string format
+                              // Konversi patientIdStr ke number untuk perbandingan yang konsisten
                               const patientIdNumber = patientIdStr ? parseInt(patientIdStr, 10) : -1;
                               
-                              // Coba kedua pendekatan: exact number matching dan string matching
-                              const selectedPatient = patients.find(p => 
-                                p.id === patientIdNumber || 
-                                p.id.toString() === patientIdStr
-                              );
+                              // Logging untuk debug
+                              console.log("Patient search with ID:", patientIdStr, "as number:", patientIdNumber);
+                              
+                              // Coba cari pasien dengan pendekatan yang komprehensif
+                              const selectedPatient = patients.find(p => {
+                                // Konversi ID pasien ke string untuk memastikan perbandingan string-to-string akurat
+                                const patientStringId = p.id.toString();
+                                
+                                // Periksa dengan beberapa metode
+                                return (
+                                  // Metode 1: Perbandingan numeric ID (paling akurat)
+                                  p.id === patientIdNumber ||
+                                  
+                                  // Metode 2: Perbandingan string ID (fallback)
+                                  patientStringId === patientIdStr
+                                );
+                              });
                               console.log("Selected patient result:", selectedPatient?.name || "Not found");
                               
                               // Jika pencarian termasuk 'syaflina' atau 'syafliana', cek apakah IDs sesuai dengan Queenzky Zahwa Aqeela
