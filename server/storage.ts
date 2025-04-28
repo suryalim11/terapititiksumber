@@ -490,12 +490,39 @@ export class MemStorage implements IStorage {
   }
   
   async searchPatientByNameOrPhone(query: string): Promise<Patient[]> {
+    // Normalisasi nomor telepon untuk pencarian
+    const normalizePhoneNumber = (phone: string) => {
+      // Hapus semua karakter non-numerik
+      const numericOnly = phone.replace(/\D/g, '');
+      
+      // Normalisasi awalan +62 dan 0
+      if (numericOnly.startsWith('62')) {
+        return numericOnly; // Format 62xxx
+      } else if (numericOnly.startsWith('0')) {
+        return '62' + numericOnly.substring(1); // Ubah 0xxx menjadi 62xxx
+      } else {
+        return numericOnly; // Format lainnya
+      }
+    };
+
     const queryLowerCase = query.toLowerCase();
-    return Array.from(this.patients.values()).filter(
-      patient => 
-        patient.name.toLowerCase().includes(queryLowerCase) || 
-        patient.phoneNumber.includes(query)
-    );
+    
+    // Normalisasi query nomor telepon
+    const normalizedQueryPhone = normalizePhoneNumber(query);
+    
+    return Array.from(this.patients.values()).filter(patient => {
+      // Pencarian berdasarkan nama (case-insensitive)
+      if (patient.name.toLowerCase().includes(queryLowerCase)) {
+        return true;
+      }
+      
+      // Pencarian berdasarkan nomor telepon yang dinormalisasi
+      const normalizedPatientPhone = normalizePhoneNumber(patient.phoneNumber);
+      
+      // Pencocokan lengkap atau sebagian pada nomor telepon yang sudah dinormalisasi
+      return normalizedPatientPhone.includes(normalizedQueryPhone) || 
+             normalizedQueryPhone.includes(normalizedPatientPhone);
+    });
   }
 
   async createPatient(insertPatient: InsertPatient): Promise<Patient> {
