@@ -1827,17 +1827,26 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                   const parsedPatient = JSON.parse(storedPatientData);
                                   if (parsedPatient && parsedPatient.id === patientIdNumber) {
                                     console.log("FOUND patient from localStorage cache:", parsedPatient.name);
-                                    // Jika ada dan valid, buat object baru dari data yang ada
-                                    // untuk mencegah object reference error
-                                    const simplifiedPatient = {
-                                      id: parsedPatient.id,
-                                      name: parsedPatient.name,
-                                      patientId: parsedPatient.patientId,
-                                      phoneNumber: parsedPatient.phoneNumber || '',
-                                      address: parsedPatient.address || '',
-                                      email: parsedPatient.email || null
-                                    };
-                                    return simplifiedPatient;
+                                    
+                                    // Selalu buat UI komponen di sini, bukan mengembalikan objek mentah
+                                    return (
+                                      <div className="space-y-1">
+                                        <p className="font-medium">
+                                          Pasien terpilih: {parsedPatient.name}
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-1">
+                                          <p className="text-xs text-muted-foreground">ID Pasien:</p>
+                                          <p className="text-xs">{parsedPatient.patientId}</p>
+                                          
+                                          {parsedPatient.phoneNumber && (
+                                            <>
+                                              <p className="text-xs text-muted-foreground">No. WhatsApp:</p>
+                                              <p className="text-xs">{parsedPatient.phoneNumber}</p>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
                                   }
                                 }
                               } catch (err) {
@@ -1855,15 +1864,26 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                   try {
                                     const apiPatient = JSON.parse(apiPatientResponse);
                                     console.log("FOUND patient from API quick-cache:", apiPatient.name);
-                                    // Pastikan untuk mengubah objek mentah jadi object terformat
-                                    return {
-                                      id: apiPatient.id,
-                                      name: apiPatient.name,
-                                      patientId: apiPatient.patientId || '',
-                                      phoneNumber: apiPatient.phoneNumber || '',
-                                      address: apiPatient.address || '',
-                                      email: apiPatient.email || null
-                                    };
+                                    
+                                    // Selalu render komponen UI untuk hasil API juga
+                                    return (
+                                      <div className="space-y-1">
+                                        <p className="font-medium">
+                                          Pasien terpilih: {apiPatient.name}
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-1">
+                                          <p className="text-xs text-muted-foreground">ID Pasien:</p>
+                                          <p className="text-xs">{apiPatient.patientId || '-'}</p>
+                                          
+                                          {apiPatient.phoneNumber && (
+                                            <>
+                                              <p className="text-xs text-muted-foreground">No. WhatsApp:</p>
+                                              <p className="text-xs">{apiPatient.phoneNumber}</p>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
                                   } catch (err) {
                                     console.error("Error parsing cached API patient:", err);
                                   }
@@ -1875,14 +1895,14 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                   .then(patient => {
                                     if (patient && patient.id) {
                                       console.log("✅ Berhasil memuat pasien dari API:", patient.name);
-                                      // Hanya simpan data penting saja untuk menghindari object reference error
+                                      // Pastikan hanya menyimpan data primitif, bukan objek kompleks
                                       const simplifiedPatient = {
-                                        id: patient.id,
-                                        name: patient.name,
-                                        patientId: patient.patientId,
-                                        phoneNumber: patient.phoneNumber || '',
-                                        address: patient.address || '',
-                                        email: patient.email || null
+                                        id: Number(patient.id),
+                                        name: String(patient.name || ''),
+                                        patientId: String(patient.patientId || ''),
+                                        phoneNumber: String(patient.phoneNumber || ''),
+                                        address: String(patient.address || ''),
+                                        email: patient.email ? String(patient.email) : null
                                       };
                                       // Simpan ke cache sementara untuk render berikutnya
                                       localStorage.setItem(`temp_api_patient_${patientIdNumber}`, JSON.stringify(simplifiedPatient));

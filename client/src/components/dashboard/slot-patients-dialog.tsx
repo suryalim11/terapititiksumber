@@ -359,16 +359,17 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
           // Simpan data pasien yang sangat lengkap ke localStorage
           // Tapi kita buat objek baru dengan properti yang telah difilter
           // untuk menghindari error objek yang terlalu kompleks atau circular reference
+          // Pastikan semua data adalah tipe primitif, bukan objek atau array kompleks
           const patientData = {
-            id: patientIdNumber, // Pastikan ID tetap konsisten
-            name: completePatientData.name || '',
-            patientId: completePatientData.patientId || '',
-            phoneNumber: completePatientData.phoneNumber || '',
-            address: completePatientData.address || '',
-            email: completePatientData.email || null,
-            birthDate: completePatientData.birthDate || null,
-            gender: completePatientData.gender || '',
-            therapySlotId: completePatientData.therapySlotId || null
+            id: Number(patientIdNumber), // Pastikan ID tetap konsisten, tipe number
+            name: String(completePatientData.name || ''),
+            patientId: String(completePatientData.patientId || ''),
+            phoneNumber: String(completePatientData.phoneNumber || ''),
+            address: String(completePatientData.address || ''),
+            email: completePatientData.email ? String(completePatientData.email) : null,
+            birthDate: completePatientData.birthDate ? String(completePatientData.birthDate) : null,
+            gender: String(completePatientData.gender || ''),
+            therapySlotId: completePatientData.therapySlotId ? Number(completePatientData.therapySlotId) : null
           };
           
           // Simpan ID sebagai string (lebih kompatibel dengan localStorage)
@@ -443,12 +444,12 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
           
           // Fallback ke metode lama jika API gagal
           const patientData = {
-            id: patientIdNumber,
-            name: patient.name,
-            phoneNumber: patient.phoneNumber || '',
-            address: patient.address || '',
-            patientId: patient.patientId || '',
-            lastVisit: patient.lastVisit || null
+            id: Number(patientIdNumber),
+            name: String(patient.name || ''),
+            phoneNumber: String(patient.phoneNumber || ''),
+            address: String(patient.address || ''),
+            patientId: String(patient.patientId || ''),
+            lastVisit: patient.lastVisit ? String(patient.lastVisit) : null
           };
           
           localStorage.setItem('pendingTransactionPatientId', patientIdNumber.toString());
