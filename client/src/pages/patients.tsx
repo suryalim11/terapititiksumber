@@ -76,12 +76,37 @@ export default function Patients() {
   // Konversi Map kembali ke array
   const dedupedPatients = Array.from(patientDeduplication.values());
   
+  // Normalisasi nomor telepon untuk pencarian
+  const normalizePhoneNumber = (phone: string) => {
+    // Hapus semua karakter non-numerik
+    const numericOnly = phone.replace(/\D/g, '');
+    
+    // Normalisasi awalan +62 dan 0
+    if (numericOnly.startsWith('62')) {
+      return numericOnly; // Format 62xxx
+    } else if (numericOnly.startsWith('0')) {
+      return '62' + numericOnly.substring(1); // Ubah 0xxx menjadi 62xxx
+    } else {
+      return numericOnly; // Format lainnya
+    }
+  };
+
   // Filter patients based on search term
-  const filteredPatients = dedupedPatients.filter(patient => 
-    patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.patientId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.phoneNumber.includes(searchTerm)
-  );
+  const filteredPatients = dedupedPatients.filter(patient => {
+    // Pencarian berdasarkan nama dan ID pasien
+    if (patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        patient.patientId.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return true;
+    }
+    
+    // Pencarian berdasarkan nomor telepon yang dinormalisasi
+    const normalizedPatientPhone = normalizePhoneNumber(patient.phoneNumber);
+    const normalizedSearchTerm = normalizePhoneNumber(searchTerm);
+    
+    // Pencocokan lengkap atau sebagian
+    return normalizedPatientPhone.includes(normalizedSearchTerm) || 
+           normalizedSearchTerm.includes(normalizedPatientPhone);
+  });
 
   // Fetch appointments data for selected patient
   const { data: appointments = [], isLoading: isLoadingAppointments } = useQuery<Appointment[]>({
