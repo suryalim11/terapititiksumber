@@ -1817,19 +1817,39 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               // Logging untuk debug
                               console.log("Patient search with ID:", patientIdStr, "as number:", patientIdNumber);
                               
-                              // Coba cari pasien dengan pendekatan yang komprehensif
+                              // Coba cari pasien dengan pendekatan yang lebih komprehensif dan toleran terhadap perbedaan tipe data
                               const selectedPatient = patients.find(p => {
-                                // Konversi ID pasien ke string untuk memastikan perbandingan string-to-string akurat
-                                const patientStringId = p.id.toString();
-                                
-                                // Periksa dengan beberapa metode
-                                return (
-                                  // Metode 1: Perbandingan numeric ID (paling akurat)
-                                  p.id === patientIdNumber ||
+                                try {
+                                  // Konversi kedua ID ke string dan number untuk berbagai jenis perbandingan
+                                  const patientStringId = String(p.id);
+                                  const patientNumericId = Number(p.id);
+                                  const searchStringId = String(patientIdStr).trim();
+                                  const searchNumericId = Number(patientIdNumber);
                                   
-                                  // Metode 2: Perbandingan string ID (fallback)
-                                  patientStringId === patientIdStr
-                                );
+                                  // Log debugging untuk debug
+                                  if (patientNumericId === searchNumericId || patientStringId === searchStringId) {
+                                    console.log(`MATCH FOUND! Patient ${p.name} with ID ${patientStringId} matches search ID ${searchStringId}`);
+                                  }
+                                  
+                                  // Periksa dengan beberapa metode perbandingan (dari yang paling ketat hingga paling longgar)
+                                  return (
+                                    // Metode 1: Perbandingan numeric ID (paling akurat)
+                                    patientNumericId === searchNumericId ||
+                                    
+                                    // Metode 2: Perbandingan string ID yang ketat
+                                    patientStringId === searchStringId ||
+                                    
+                                    // Metode 3: Perbandingan string ID yang lebih fleksibel (trim whitespace)
+                                    patientStringId.trim() === searchStringId.trim() ||
+                                    
+                                    // Metode 4: Perbandingan string ID dengan parse Int
+                                    parseInt(patientStringId, 10) === parseInt(searchStringId, 10)
+                                  );
+                                } catch (err) {
+                                  console.error("Error comparing patient IDs:", err);
+                                  // Jika terjadi error, fallback ke perbandingan dasar
+                                  return String(p.id) === String(patientIdStr);
+                                }
                               });
                               console.log("Selected patient result:", selectedPatient?.name || "Not found");
                               
