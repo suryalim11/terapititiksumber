@@ -1827,8 +1827,17 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                   const parsedPatient = JSON.parse(storedPatientData);
                                   if (parsedPatient && parsedPatient.id === patientIdNumber) {
                                     console.log("FOUND patient from localStorage cache:", parsedPatient.name);
-                                    // Jika ada dan valid, gunakan ini
-                                    return parsedPatient;
+                                    // Jika ada dan valid, buat object baru dari data yang ada
+                                    // untuk mencegah object reference error
+                                    const simplifiedPatient = {
+                                      id: parsedPatient.id,
+                                      name: parsedPatient.name,
+                                      patientId: parsedPatient.patientId,
+                                      phoneNumber: parsedPatient.phoneNumber || '',
+                                      address: parsedPatient.address || '',
+                                      email: parsedPatient.email || null
+                                    };
+                                    return simplifiedPatient;
                                   }
                                 }
                               } catch (err) {
@@ -1846,7 +1855,15 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                   try {
                                     const apiPatient = JSON.parse(apiPatientResponse);
                                     console.log("FOUND patient from API quick-cache:", apiPatient.name);
-                                    return apiPatient;
+                                    // Pastikan untuk mengubah objek mentah jadi object terformat
+                                    return {
+                                      id: apiPatient.id,
+                                      name: apiPatient.name,
+                                      patientId: apiPatient.patientId || '',
+                                      phoneNumber: apiPatient.phoneNumber || '',
+                                      address: apiPatient.address || '',
+                                      email: apiPatient.email || null
+                                    };
                                   } catch (err) {
                                     console.error("Error parsing cached API patient:", err);
                                   }
@@ -1858,8 +1875,17 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                   .then(patient => {
                                     if (patient && patient.id) {
                                       console.log("✅ Berhasil memuat pasien dari API:", patient.name);
+                                      // Hanya simpan data penting saja untuk menghindari object reference error
+                                      const simplifiedPatient = {
+                                        id: patient.id,
+                                        name: patient.name,
+                                        patientId: patient.patientId,
+                                        phoneNumber: patient.phoneNumber || '',
+                                        address: patient.address || '',
+                                        email: patient.email || null
+                                      };
                                       // Simpan ke cache sementara untuk render berikutnya
-                                      localStorage.setItem(`temp_api_patient_${patientIdNumber}`, JSON.stringify(patient));
+                                      localStorage.setItem(`temp_api_patient_${patientIdNumber}`, JSON.stringify(simplifiedPatient));
                                       // Memicu rerender dengan timeout
                                       setTimeout(() => {
                                         // Gunakan force refresh jika dibutuhkan

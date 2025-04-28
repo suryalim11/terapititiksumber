@@ -357,9 +357,18 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
           console.log("Data lengkap pasien dari API:", completePatientData);
           
           // Simpan data pasien yang sangat lengkap ke localStorage
+          // Tapi kita buat objek baru dengan properti yang telah difilter
+          // untuk menghindari error objek yang terlalu kompleks atau circular reference
           const patientData = {
-            ...completePatientData, // Semua data dari API
             id: patientIdNumber, // Pastikan ID tetap konsisten
+            name: completePatientData.name || '',
+            patientId: completePatientData.patientId || '',
+            phoneNumber: completePatientData.phoneNumber || '',
+            address: completePatientData.address || '',
+            email: completePatientData.email || null,
+            birthDate: completePatientData.birthDate || null,
+            gender: completePatientData.gender || '',
+            therapySlotId: completePatientData.therapySlotId || null
           };
           
           // Simpan ID sebagai string (lebih kompatibel dengan localStorage)
