@@ -1609,11 +1609,42 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               
                               if (searchValue.length < 2) return;
                               
+                              // Normalisasi nomor telepon untuk pencarian
+                              const normalizePhoneNumber = (phone: string) => {
+                                if (!phone) return '';
+                                // Hapus semua karakter non-numerik
+                                const numericOnly = phone.replace(/\D/g, '');
+                                
+                                // Normalisasi awalan +62 dan 0
+                                if (numericOnly.startsWith('62')) {
+                                  return numericOnly; // Format 62xxx
+                                } else if (numericOnly.startsWith('0')) {
+                                  return '62' + numericOnly.substring(1); // Ubah 0xxx menjadi 62xxx
+                                } else {
+                                  return numericOnly; // Format lainnya
+                                }
+                              };
+                              
                               // Find matching patient
-                              const matchingPatient = patients.find((patient: Patient) => 
-                                patient.name.toLowerCase().includes(searchValue) || 
-                                patient.patientId.toLowerCase().includes(searchValue)
-                              );
+                              const matchingPatient = patients.find((patient: Patient) => {
+                                // Pencarian berdasarkan nama dan ID pasien
+                                if (patient.name.toLowerCase().includes(searchValue) || 
+                                    patient.patientId.toLowerCase().includes(searchValue)) {
+                                  return true;
+                                }
+                                
+                                // Pencarian berdasarkan nomor telepon yang dinormalisasi
+                                if (patient.phoneNumber) {
+                                  const normalizedPatientPhone = normalizePhoneNumber(patient.phoneNumber);
+                                  const normalizedSearchTerm = normalizePhoneNumber(searchValue);
+                                  
+                                  // Pencocokan lengkap atau sebagian
+                                  return normalizedPatientPhone.includes(normalizedSearchTerm) || 
+                                         normalizedSearchTerm.includes(normalizedPatientPhone);
+                                }
+                                
+                                return false;
+                              });
                               
                               // Auto-select if we have a match
                               if (matchingPatient) {
@@ -1691,11 +1722,40 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                             ) : searchTerm ? (
                               // Filter berdasarkan searchTerm untuk kata kunci lainnya
                               patients
-                                .filter(patient => 
-                                  patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                  patient.patientId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                  (patient.phoneNumber && patient.phoneNumber.includes(searchTerm))
-                                )
+                                .filter(patient => {
+                                  // Pencarian berdasarkan nama dan ID pasien
+                                  if (patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                      patient.patientId.toLowerCase().includes(searchTerm.toLowerCase())) {
+                                    return true;
+                                  }
+                                  
+                                  // Pencarian berdasarkan nomor telepon yang dinormalisasi
+                                  if (patient.phoneNumber) {
+                                    const normalizePhoneNumber = (phone: string) => {
+                                      if (!phone) return '';
+                                      // Hapus semua karakter non-numerik
+                                      const numericOnly = phone.replace(/\D/g, '');
+                                      
+                                      // Normalisasi awalan +62 dan 0
+                                      if (numericOnly.startsWith('62')) {
+                                        return numericOnly; // Format 62xxx
+                                      } else if (numericOnly.startsWith('0')) {
+                                        return '62' + numericOnly.substring(1); // Ubah 0xxx menjadi 62xxx
+                                      } else {
+                                        return numericOnly; // Format lainnya
+                                      }
+                                    };
+                                    
+                                    const normalizedPatientPhone = normalizePhoneNumber(patient.phoneNumber);
+                                    const normalizedSearchTerm = normalizePhoneNumber(searchTerm);
+                                    
+                                    // Pencocokan lengkap atau sebagian
+                                    return normalizedPatientPhone.includes(normalizedSearchTerm) || 
+                                           normalizedSearchTerm.includes(normalizedPatientPhone);
+                                  }
+                                  
+                                  return false;
+                                })
                                 .map((patient: Patient) => (
                                   <SelectItem 
                                     key={patient.id} 
