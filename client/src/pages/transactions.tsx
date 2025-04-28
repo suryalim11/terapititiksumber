@@ -131,8 +131,13 @@ export default function Transactions() {
       
       // Tunggu data patients tersedia
       if (patients && patients.length > 0) {
-        // Cari pasien dalam data
-        const patient = patients.find((p: any) => p.id === patientIdNumber);
+        // Cari pasien dalam data dengan pendekatan yang lebih fleksibel
+        const patient = patients.find((p: any) => {
+          // Konversi ID untuk perbandingan string-to-string
+          const pIdStr = p.id.toString();
+          const searchIdStr = patientIdNumber.toString();
+          return p.id === patientIdNumber || pIdStr === searchIdStr;
+        });
         
         if (patient) {
           console.log("Pasien dari localStorage ditemukan:", patient.name);
@@ -309,7 +314,13 @@ export default function Transactions() {
           console.log("Sampel ID pasien yang tersedia:", patients.slice(0, 5).map((p: any) => p.id));
         }
         
-        const patient = patients.find((p: any) => p.id === patientIdNumber);
+        // Gunakan pendekatan yang lebih fleksibel untuk menemukan pasien
+        const patient = patients.find((p: any) => {
+          // Konversi ID untuk perbandingan string-to-string
+          const pIdStr = p.id.toString();
+          const searchIdStr = patientIdNumber.toString();
+          return p.id === patientIdNumber || pIdStr === searchIdStr;
+        });
         
         if (patient) {
           console.log("Pasien ditemukan:", patient.name, "dengan ID:", patient.id);

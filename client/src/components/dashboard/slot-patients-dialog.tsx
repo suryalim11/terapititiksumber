@@ -346,21 +346,29 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       // Konversi patient.id ke number untuk memastikan tipe data konsisten
       const patientIdNumber = typeof patient.id === 'string' ? parseInt(patient.id) : patient.id;
       
-      // Simpan ID pasien dan nama pasien ke localStorage untuk recovery jika event gagal
+      // Simpan data pasien lengkap ke localStorage sebagai JSON untuk recovery dan referensi
+      // Ini memungkinkan halaman transaksi mendapatkan data lebih lengkap
+      const patientData = {
+        id: patientIdNumber,
+        name: patient.name,
+        phoneNumber: patient.phoneNumber || '',
+        address: patient.address || '',
+        patientId: patient.patientId || '',
+        lastVisit: patient.lastVisit || null
+      };
+      
       localStorage.setItem('pendingTransactionPatientId', patientIdNumber.toString());
       localStorage.setItem('pendingTransactionPatientName', patient.name);
+      localStorage.setItem('pendingTransactionPatientData', JSON.stringify(patientData));
       
       // Tutup dialog terlebih dahulu
       onClose();
       
       // Log untuk debugging
-      console.log("Persiapan navigasi ke transaksi untuk pasien:", {
-        id: patientIdNumber,
-        name: patient.name
-      });
+      console.log("Persiapan navigasi ke transaksi untuk pasien:", patientData);
       
-      // Navigasi langsung ke halaman transaksi dengan parameter query
-      navigate(`/transactions?patientId=${patientIdNumber}&delay=2000`);
+      // Navigasi langsung ke halaman transaksi dengan parameter query yang lebih eksplisit
+      navigate(`/transactions?patientId=${patientIdNumber}&patientName=${encodeURIComponent(patient.name)}&delay=2000&source=slot-dialog`);
       
       // Tambahkan notifikasi untuk feedback
       toast({
@@ -369,27 +377,37 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       });
       
       // Tunggu sebentar untuk memastikan halaman transaksi sudah dimuat, lalu kirim event
+      // Menambah delay untuk memberikan waktu lebih banyak bagi halaman untuk siap
       setTimeout(() => {
-        // Buat custom event untuk membuka form transaksi
+        // Buat custom event untuk membuka form transaksi dengan data pasien yang lebih lengkap
         const openFormEvent = new CustomEvent('openTransactionForm', {
           detail: { 
             patientId: patientIdNumber,
-            patientName: patient.name 
+            patientName: patient.name,
+            patientData: patientData, // Kirim data lengkap sekaligus
+            timestamp: new Date().getTime() // Tambahkan timestamp untuk memastikan event unik
           }
         });
         
         // Log untuk debugging
-        console.log("Mengirim event dengan data:", {
+        console.log("Mengirim event dengan data lengkap:", {
           patientId: patientIdNumber,
           patientIdType: typeof patientIdNumber,
-          patientName: patient.name
+          patientName: patient.name,
+          patientData: patientData
         });
         
-        // Dispatch event ke window sehingga halaman transaksi bisa menangkapnya
+        // Dispatching event dengan retry mechanism kalau perlu
         window.dispatchEvent(openFormEvent);
         
+        // Dispatch kedua setelah penundaan tambahan sebagai backup
+        setTimeout(() => {
+          window.dispatchEvent(openFormEvent);
+          console.log("Re-dispatched openTransactionForm event as backup");
+        }, 500);
+        
         console.log("Dispatched openTransactionForm event with patientId:", patientIdNumber);
-      }, 1500); // Delay 1500ms untuk memastikan halaman transaksi sudah benar-benar dimuat
+      }, 2000); // Menambah delay menjadi 2000ms untuk memastikan halaman transaksi sudah benar-benar dimuat
     } catch (error) {
       console.error("Error navigating to transaction:", error);
       toast({
