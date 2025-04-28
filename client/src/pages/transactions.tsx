@@ -288,12 +288,27 @@ export default function Transactions() {
     const handleOpenTransactionForm = (event: CustomEvent) => {
       const patientId = event.detail?.patientId;
       const patientName = event.detail?.patientName;
+      const eventTimestamp = event.detail?.timestamp || Date.now();
       
       console.log("Event openTransactionForm diterima:", {
         rawPatientId: patientId,
         patientIdType: typeof patientId,
-        patientName
+        patientName,
+        timestamp: eventTimestamp
       });
+      
+      // Periksa timestamp terakhir untuk mencegah event duplikat atau basi diterima
+      const lastEventTimestamp = localStorage.getItem('lastProcessedTransactionPageEvent');
+      if (lastEventTimestamp && parseInt(lastEventTimestamp) >= eventTimestamp) {
+        console.log("Mengabaikan event duplikat atau basi:", {
+          lastProcessed: lastEventTimestamp,
+          currentEvent: eventTimestamp
+        });
+        return; // Event lebih lama atau sama, abaikan
+      }
+      
+      // Update timestamp terakhir
+      localStorage.setItem('lastProcessedTransactionPageEvent', String(eventTimestamp));
       
       if (patientId) {
         // Parse patientId ke number untuk memastikan tipe data
@@ -325,25 +340,29 @@ export default function Transactions() {
         if (patient) {
           console.log("Pasien ditemukan:", patient.name, "dengan ID:", patient.id);
           
-          // Set selected patient ID
-          setSelectedPatientId(patientIdNumber);
-          
-          // Segera buka form transaksi
-          console.log("Segera membuka form transaksi untuk pasien ID:", patientIdNumber);
-          
-          // Gunakan setTimeout untuk memastikan bahwa state selectedPatientId sudah terupdate
-          setTimeout(() => {
-            setIsTransactionFormOpen(true);
+          // Set selected patient ID hanya jika belum diset atau berbeda
+          if (!selectedPatientId || selectedPatientId !== patientIdNumber) {
+            setSelectedPatientId(patientIdNumber);
             
-            // Log debugging
-            console.log("Form transaksi seharusnya sudah terbuka sekarang");
+            // Segera buka form transaksi
+            console.log("Segera membuka form transaksi untuk pasien ID:", patientIdNumber);
             
-            // Tampilkan toast untuk konfirmasi
-            toast({
-              title: "Form transaksi dibuka",
-              description: `Silahkan lengkapi data transaksi untuk ${patient.name}`,
-            });
-          }, 300);
+            // Gunakan setTimeout untuk memastikan bahwa state selectedPatientId sudah terupdate
+            setTimeout(() => {
+              setIsTransactionFormOpen(true);
+              
+              // Log debugging
+              console.log("Form transaksi seharusnya sudah terbuka sekarang");
+              
+              // Tampilkan toast untuk konfirmasi hanya sekali
+              toast({
+                title: "Form transaksi dibuka",
+                description: `Silahkan lengkapi data transaksi untuk ${patient.name}`,
+              });
+            }, 300);
+          } else {
+            console.log("Patient ID sudah diset, tidak perlu update ulang:", patientIdNumber);
+          }
         } else {
           console.error("Pasien dengan ID", patientIdNumber, "tidak ditemukan dalam data");
           console.log("Mencoba memuat data pasien secara langsung...");

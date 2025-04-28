@@ -416,26 +416,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
               patientData: JSON.stringify(patientData).substring(0, 100) + "..." // Tampilkan sebagian saja
             });
             
-            // Kirim event utama
+            // Kirim event utama hanya sekali, tanpa retry berkali-kali
             window.dispatchEvent(openFormEvent);
-            
-            // Siapkan beberapa kali percobaan untuk mengatasi race condition
-            const retryIntervals = [500, 1000, 1500];
-            retryIntervals.forEach(interval => {
-              setTimeout(() => {
-                const retryEvent = new CustomEvent('openTransactionForm', {
-                  detail: { 
-                    patientId: patientIdNumber,
-                    patientName: completePatientData.name,
-                    patientData: patientData,
-                    timestamp: Date.now() + interval, // Timestamp unik untuk setiap retry
-                    retry: interval
-                  }
-                });
-                window.dispatchEvent(retryEvent);
-                console.log(`Retry #${interval/500}: Dispatched event with patientId ${patientIdNumber}`);
-              }, interval);
-            });
+            console.log("Event telah dikirim sekali untuk patientId", patientIdNumber);
             
           }, 2000); // Delay awal
         })
@@ -467,17 +450,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             description: `Mempersiapkan transaksi untuk ${patient.name} (metode alternatif)`,
           });
           
-          // Dispatch event dengan metode lama
-          setTimeout(() => {
-            const openFormEvent = new CustomEvent('openTransactionForm', {
-              detail: { 
-                patientId: patientIdNumber,
-                patientName: patient.name,
-                timestamp: Date.now()
-              }
-            });
-            window.dispatchEvent(openFormEvent);
-          }, 2000);
+          // Dispatch event dengan metode sederhana
+          // Kita percaya bahwa localStorage akan tersedia dan tidak perlu event retry
+          console.log("Menggunakan metode fallback untuk navigasi ke transaksi");
         });
       
     } catch (error) {
