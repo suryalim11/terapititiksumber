@@ -1638,20 +1638,31 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               
                               // Find matching patient
                               const matchingPatient = patients.find((patient: Patient) => {
-                                // Pencarian berdasarkan nama dan ID pasien
-                                if (patient.name.toLowerCase().includes(searchValue) || 
-                                    patient.patientId.toLowerCase().includes(searchValue)) {
+                                // Perbaikan: Pastikan ada data pasien dan gunakan konversi string eksplisit
+                                const patientName = patient.name ? String(patient.name).toLowerCase() : '';
+                                const patientId = patient.patientId ? String(patient.patientId).toLowerCase() : '';
+                                
+                                console.log(`Checking if "${searchValue}" matches in "${patientName}"`);
+                                
+                                // Pencarian berdasarkan nama dan ID pasien (metode includes dan equality)
+                                if ((patientName.includes(searchValue) || patientName === searchValue) || 
+                                    (patientId.includes(searchValue) || patientId === searchValue)) {
+                                  console.log(`Found match: "${patientName}"`);
                                   return true;
                                 }
                                 
                                 // Pencarian berdasarkan nomor telepon yang dinormalisasi
                                 if (patient.phoneNumber) {
-                                  const normalizedPatientPhone = normalizePhoneNumber(patient.phoneNumber);
+                                  // Gunakan explicit string conversion untuk menghindari error
+                                  const phoneNumber = String(patient.phoneNumber);
+                                  const normalizedPatientPhone = normalizePhoneNumber(phoneNumber);
                                   const normalizedSearchTerm = normalizePhoneNumber(searchValue);
                                   
                                   // Pencocokan lengkap atau sebagian
-                                  return normalizedPatientPhone.includes(normalizedSearchTerm) || 
-                                         normalizedSearchTerm.includes(normalizedPatientPhone);
+                                  if (normalizedPatientPhone.includes(normalizedSearchTerm) || 
+                                      normalizedSearchTerm.includes(normalizedPatientPhone)) {
+                                    return true;
+                                  }
                                 }
                                 
                                 return false;
@@ -1659,7 +1670,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               
                               // Auto-select if we have a match
                               if (matchingPatient) {
-                                const patientIdStr = matchingPatient.id.toString();
+                                const patientIdStr = String(matchingPatient.id);
                                 console.log("Auto-selected patient:", matchingPatient.name, "ID:", patientIdStr);
                                 field.onChange(patientIdStr);
                               }
@@ -1673,7 +1684,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                             field.onChange(value);
                             
                             // Log the patient name for debugging
-                            const selectedPatient = patients.find((p: Patient) => p.id.toString() === value);
+                            const selectedPatient = patients.find((p: Patient) => String(p.id) === value);
                             if (selectedPatient) {
                               console.log("Selected patient:", selectedPatient.name);
                             }
@@ -1734,9 +1745,14 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               // Filter berdasarkan searchTerm untuk kata kunci lainnya
                               patients
                                 .filter(patient => {
-                                  // Pencarian berdasarkan nama dan ID pasien
-                                  if (patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                      patient.patientId.toLowerCase().includes(searchTerm.toLowerCase())) {
+                                  // Perbaikan: Gunakan konversi string eksplisit untuk mencegah error
+                                  const patientName = patient.name ? String(patient.name).toLowerCase() : '';
+                                  const patientId = patient.patientId ? String(patient.patientId).toLowerCase() : '';
+                                  const searchTermLower = searchTerm.toLowerCase();
+                                  
+                                  // Pencarian berdasarkan nama dan ID pasien (metode includes dan equality)
+                                  if ((patientName.includes(searchTermLower) || patientName === searchTermLower) ||
+                                      (patientId.includes(searchTermLower) || patientId === searchTermLower)) {
                                     return true;
                                   }
                                   
@@ -1757,12 +1773,16 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                       }
                                     };
                                     
-                                    const normalizedPatientPhone = normalizePhoneNumber(patient.phoneNumber);
+                                    // Gunakan explicit string conversion untuk mencegah error
+                                    const phoneNumber = String(patient.phoneNumber);
+                                    const normalizedPatientPhone = normalizePhoneNumber(phoneNumber);
                                     const normalizedSearchTerm = normalizePhoneNumber(searchTerm);
                                     
                                     // Pencocokan lengkap atau sebagian
-                                    return normalizedPatientPhone.includes(normalizedSearchTerm) || 
-                                           normalizedSearchTerm.includes(normalizedPatientPhone);
+                                    if (normalizedPatientPhone.includes(normalizedSearchTerm) || 
+                                        normalizedSearchTerm.includes(normalizedPatientPhone)) {
+                                      return true;
+                                    }
                                   }
                                   
                                   return false;
@@ -1804,7 +1824,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               const patientIdStr = field.value === null || field.value === undefined
                                 ? ''
                                 : (typeof field.value === 'number'
-                                   ? field.value.toString()
+                                   ? String(field.value) // Menggunakan String() agar konsisten
                                    : String(field.value));
                                 
                               console.log("Looking for patient with ID str:", patientIdStr);
@@ -1960,7 +1980,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               if (!selectedPatient && searchTerm?.toLowerCase().includes('syafl')) {
                                 const queenzkyPatient = patients.find(p => p.name.includes('Queenzky'));
                                 
-                                if (queenzkyPatient && queenzkyPatient.id.toString() === patientIdStr) {
+                                if (queenzkyPatient && String(queenzkyPatient.id) === patientIdStr) {
                                   // Tampilkan data Queenzky sebagai "Syafliana"
                                   return (
                                     <div className="space-y-1">
