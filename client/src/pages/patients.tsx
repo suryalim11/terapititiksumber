@@ -93,19 +93,46 @@ export default function Patients() {
 
   // Filter patients based on search term
   const filteredPatients = dedupedPatients.filter(patient => {
-    // Pencarian berdasarkan nama dan ID pasien
-    if (patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        patient.patientId.toLowerCase().includes(searchTerm.toLowerCase())) {
+    // Jika searchTerm kosong, tampilkan semua pasien
+    if (!searchTerm.trim()) {
+      return true;
+    }
+    
+    const lowerSearchTerm = searchTerm.toLowerCase().trim();
+    
+    // Pencarian berdasarkan nama
+    if (patient.name && patient.name.toLowerCase().includes(lowerSearchTerm)) {
+      return true;
+    }
+    
+    // Pencarian berdasarkan ID pasien
+    if (patient.patientId && patient.patientId.toLowerCase().includes(lowerSearchTerm)) {
       return true;
     }
     
     // Pencarian berdasarkan nomor telepon yang dinormalisasi
-    const normalizedPatientPhone = normalizePhoneNumber(patient.phoneNumber);
-    const normalizedSearchTerm = normalizePhoneNumber(searchTerm);
+    if (patient.phoneNumber) {
+      const normalizedPatientPhone = normalizePhoneNumber(patient.phoneNumber);
+      
+      // Hanya normalisasi nomor telepon jika searchTerm berisi angka
+      if (/\d/.test(lowerSearchTerm)) {
+        const normalizedSearchTerm = normalizePhoneNumber(lowerSearchTerm);
+        
+        // Pencocokan lengkap atau sebagian nomor telepon
+        if (normalizedPatientPhone.includes(normalizedSearchTerm) || 
+            normalizedSearchTerm.includes(normalizedPatientPhone)) {
+          return true;
+        }
+      }
+    }
     
-    // Pencocokan lengkap atau sebagian
-    return normalizedPatientPhone.includes(normalizedSearchTerm) || 
-           normalizedSearchTerm.includes(normalizedPatientPhone);
+    // Pencarian berdasarkan alamat
+    if (patient.address && patient.address.toLowerCase().includes(lowerSearchTerm)) {
+      return true;
+    }
+    
+    // Tidak cocok dengan kriteria pencarian
+    return false;
   });
 
   // Fetch appointments data for selected patient
