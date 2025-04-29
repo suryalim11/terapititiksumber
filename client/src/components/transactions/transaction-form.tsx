@@ -1587,13 +1587,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                 console.log("Rendering patient field. Current value:", field.value, "type:", typeof field.value);
                 
                 // Pastikan patientId dalam bentuk string untuk select component
-                let idAsString = '';
-                if (field.value) {
-                  // Pastikan kita menangani kasus ketika field.value adalah null atau undefined
-                  idAsString = field.value === null || field.value === undefined 
-                    ? '' 
-                    : (typeof field.value === 'number' ? String(field.value) : String(field.value));
-                }
+                // Sederhanakan dan buat konsisten konversi nilai ke string
+                const idAsString = field.value ? String(field.value) : '';
                 
                 // Log untuk debugging
                 console.log("Processed ID as string:", idAsString);
@@ -1821,11 +1816,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                         {field.value && (
                           <div className="text-sm p-2 border rounded-md bg-muted/40">
                             {(() => {
-                              const patientIdStr = field.value === null || field.value === undefined
-                                ? ''
-                                : (typeof field.value === 'number'
-                                   ? String(field.value) // Menggunakan String() agar konsisten
-                                   : String(field.value));
+                              // Sederhanakan konversi ID pasien dengan konsisten menggunakan String()
+                              const patientIdStr = field.value ? String(field.value) : '';
                                 
                               console.log("Looking for patient with ID str:", patientIdStr);
                               console.log("Types of patient IDs available:", patients.slice(0, 3).map(p => typeof p.id));
