@@ -1592,7 +1592,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                   // Pastikan kita menangani kasus ketika field.value adalah null atau undefined
                   idAsString = field.value === null || field.value === undefined 
                     ? '' 
-                    : (typeof field.value === 'number' ? field.value.toString() : String(field.value));
+                    : (typeof field.value === 'number' ? String(field.value) : String(field.value));
                 }
                 
                 // Log untuk debugging
@@ -1724,7 +1724,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                 return filteredPatients.map((patient: Patient) => (
                                   <SelectItem 
                                     key={patient.id} 
-                                    value={patient.id.toString()}
+                                    value={String(patient.id)}
                                     className={`cursor-pointer hover:bg-primary/10 ${
                                       queenzkyPatient && patient.id === queenzkyPatient.id 
                                         ? 'border-l-4 border-amber-500 pl-2' 
@@ -1790,7 +1790,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                 .map((patient: Patient) => (
                                   <SelectItem 
                                     key={patient.id} 
-                                    value={patient.id.toString()}
+                                    value={String(patient.id)}
                                     className={`cursor-pointer hover:bg-primary/10 ${patient.name.includes('(') ? 'border-l-4 border-blue-500 pl-2' : ''}`}
                                   >
                                     <span className="font-medium">
@@ -1804,7 +1804,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               patients?.map((patient: Patient) => (
                                 <SelectItem 
                                   key={patient.id} 
-                                  value={patient.id.toString()}
+                                  value={String(patient.id)}
                                   className={`cursor-pointer hover:bg-primary/10 ${patient.name.includes('(') ? 'border-l-4 border-blue-500 pl-2' : ''}`}
                                 >
                                   <span className="font-medium">
