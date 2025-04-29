@@ -100,13 +100,18 @@ export default function Patients() {
     
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
     
-    // Pencarian berdasarkan nama
-    if (patient.name && patient.name.toLowerCase().includes(lowerSearchTerm)) {
+    // Perbaikan: Pastikan ada data pasien dan convert ke string untuk menghindari error
+    const patientName = patient.name ? String(patient.name).toLowerCase() : '';
+    const patientId = patient.patientId ? String(patient.patientId).toLowerCase() : '';
+    const patientAddress = patient.address ? String(patient.address).toLowerCase() : '';
+    
+    // Pencarian berdasarkan nama - gunakan includes() dan === untuk alternatif
+    if (patientName.includes(lowerSearchTerm) || patientName === lowerSearchTerm) {
       return true;
     }
     
     // Pencarian berdasarkan ID pasien
-    if (patient.patientId && patient.patientId.toLowerCase().includes(lowerSearchTerm)) {
+    if (patientId.includes(lowerSearchTerm)) {
       return true;
     }
     
@@ -114,7 +119,7 @@ export default function Patients() {
     if (patient.phoneNumber) {
       const normalizedPatientPhone = normalizePhoneNumber(patient.phoneNumber);
       
-      // Hanya normalisasi nomor telepon jika searchTerm berisi angka
+      // Cek jika search term adalah nomor telepon (berisi angka)
       if (/\d/.test(lowerSearchTerm)) {
         const normalizedSearchTerm = normalizePhoneNumber(lowerSearchTerm);
         
@@ -127,7 +132,7 @@ export default function Patients() {
     }
     
     // Pencarian berdasarkan alamat
-    if (patient.address && patient.address.toLowerCase().includes(lowerSearchTerm)) {
+    if (patientAddress.includes(lowerSearchTerm)) {
       return true;
     }
     
