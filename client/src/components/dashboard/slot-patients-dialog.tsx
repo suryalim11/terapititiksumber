@@ -381,6 +381,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
           // Tambahkan satu lagi flag untuk memastikan data bisa diambil dengan ID
           localStorage.setItem(`patient_${patientIdNumber}`, JSON.stringify(patientData));
           
+          // Tambahkan flag untuk menghilangkan dropdown di form transaksi
+          localStorage.setItem('hidePatientDropdown', 'true');
+          
           // Tutup dialog terlebih dahulu
           onClose();
           
@@ -388,7 +391,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
           console.log("Persiapan navigasi ke transaksi untuk pasien dengan data lengkap:", patientData);
           
           // Navigasi langsung ke halaman transaksi dengan parameter query yang lebih eksplisit
-          navigate(`/transactions?patientId=${patientIdNumber}&patientName=${encodeURIComponent(completePatientData.name)}&delay=2000&source=slot-dialog&timestamp=${Date.now()}`);
+          navigate(`/transactions?patientId=${patientIdNumber}&patientName=${encodeURIComponent(completePatientData.name)}&hideDropdown=true&delay=2000&source=slot-dialog&timestamp=${Date.now()}`);
           
           // Tambahkan notifikasi untuk feedback
           toast({
