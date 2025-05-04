@@ -1093,7 +1093,11 @@ export default function Transactions() {
         </div>
         <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2">
           <Button onClick={() => {
+            // Reset selectedPatientId dan buka form
             setSelectedPatientId(null);
+            // Hapus flag hidePatientDropdown dari localStorage jika ada
+            localStorage.removeItem('hidePatientDropdown');
+            // Buka form transaksi
             setIsTransactionFormOpen(true);
           }}>
             <PlusCircle className="mr-2 h-4 w-4" />
