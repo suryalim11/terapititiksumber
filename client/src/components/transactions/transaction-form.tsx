@@ -804,13 +804,16 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
         // Create debt payment
         const debtPaymentResponse = await apiRequest("/api/transactions/debt-payment", {
           method: "POST",
-          data: {
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
             transactionId: selectedDebtTransaction.id,
             amount: paymentAmount,
             paymentMethod: values.paymentMethod,
             isPaidOff: parseFloat(paymentAmount) >= parseFloat(selectedDebtTransaction.debt_amount),
             notes: `Pembayaran utang transaksi #${selectedDebtTransaction.id}`
-          },
+          })
         });
         
         // Handle success
@@ -885,7 +888,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
           
           {/* Invoice display (after successful transaction) */}
           {showInvoice && invoiceData ? (
-            <Invoice data={invoiceData} onClose={handleInvoiceClose} />
+            <Invoice isOpen={showInvoice} data={invoiceData} onClose={handleInvoiceClose} />
           ) : (
             <Form {...form}>
               <form
