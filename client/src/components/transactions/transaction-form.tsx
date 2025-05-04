@@ -894,8 +894,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                 className="space-y-6"
                 key={formKey} // Force re-render when the form key changes
               >
-                {/* Patient selection - conditionally rendered based on hidePatientDropdown flag */}
-                {(hidePatientDropdown || hidePatientSearch) ? (
+                {/* Patient selection - conditionally rendered based on hidePatientDropdown flag atau hidePatientSearch prop */}
+                {hidePatientSearch === true ? (
                   /* Jika dropdown disembunyikan, tampilkan hanya detail pasien yang sudah dipilih */
                   <FormField
                     control={form.control}

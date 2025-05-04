@@ -1097,8 +1097,11 @@ export default function Transactions() {
             setSelectedPatientId(null);
             // Hapus flag hidePatientDropdown dari localStorage jika ada
             localStorage.removeItem('hidePatientDropdown');
-            // Buka form transaksi
+            // Buka form transaksi - tanpa mengirim prop hidePatientSearch
             setIsTransactionFormOpen(true);
+            
+            // Log untuk debugging
+            console.log("Membuka form transaksi dari tombol Transaksi Baru - selectedPatientId:", null);
           }}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Transaksi Baru
@@ -1372,6 +1375,7 @@ export default function Transactions() {
             }
           }} 
           selectedPatientId={selectedPatientId}
+          // Hanya sembunyikan dropdown pasien jika selectedPatientId tidak null (dipilih dari slot)
           hidePatientSearch={selectedPatientId !== null && selectedPatientId !== undefined}
         />
       )}
