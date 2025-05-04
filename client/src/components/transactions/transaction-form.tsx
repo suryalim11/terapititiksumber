@@ -924,118 +924,112 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                 align="start" 
                                 className="z-[100] overflow-y-auto max-h-[300px] w-full"
                               >
-                                {patients?.length === 0 ? (
-                                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                    Belum ada data pasien
-                                  </div>
-                                ) : searchTerm && searchTerm.toLowerCase().includes('syafl') ? (
-                                  // Khusus untuk pencarian "syaflina" atau "syafliana"
-                                  (() => {
-                                    // Temukan pasien Queenzky dan pasien lain yang cocok
-                                    const queenzkyPatient = patients.find(p => p.name.includes('Queenzky'));
-                                    const otherPatients = patients.filter(p => 
-                                      p.name.toLowerCase().includes('syahl') || 
-                                      (queenzkyPatient && p.id !== queenzkyPatient.id)
+                                {(() => {
+                                  // Menampilkan pesan saat tidak ada data
+                                  if (!patients || patients.length === 0) {
+                                    return (
+                                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                        Belum ada data pasien
+                                      </div>
                                     );
+                                  }
+                                  
+                                  // Filter pasien berdasarkan kata kunci pencarian
+                                  let filteredPatients = patients;
+                                  
+                                  // Jika ada kata kunci pencarian
+                                  if (searchTerm) {
+                                    const searchTermLower = searchTerm.toLowerCase();
                                     
-                                    // Gabungkan hasilnya dengan Queenzky di awal (jika ditemukan)
-                                    const filteredPatients = queenzkyPatient 
-                                      ? [queenzkyPatient, ...otherPatients] 
-                                      : otherPatients;
+                                    // Kasus khusus untuk "syaflina"
+                                    if (searchTermLower.includes('syafl')) {
+                                      const queenzkyPatient = patients.find(p => p.name.includes('Queenzky'));
+                                      const otherPatients = patients.filter(p => 
+                                        p.name.toLowerCase().includes('syahl') || 
+                                        (queenzkyPatient && p.id !== queenzkyPatient.id)
+                                      );
+                                      
+                                      filteredPatients = queenzkyPatient 
+                                        ? [queenzkyPatient, ...otherPatients] 
+                                        : otherPatients;
+                                    } else {
+                                      // Filter untuk kasus umum
+                                      filteredPatients = patients.filter(patient => {
+                                        // Pastikan ada data dan gunakan konversi string eksplisit
+                                        const patientName = patient.name ? String(patient.name).toLowerCase() : '';
+                                        const patientId = patient.patientId ? String(patient.patientId).toLowerCase() : '';
+                                        
+                                        // Cek kecocokan nama dan ID pasien
+                                        if (patientName.includes(searchTermLower) || patientId.includes(searchTermLower)) {
+                                          return true;
+                                        }
+                                        
+                                        // Cek kecocokan nomor telepon
+                                        if (patient.phoneNumber) {
+                                          // Normalisasi nomor telepon
+                                          const normalizePhoneNumber = (phone: string) => {
+                                            if (!phone) return '';
+                                            const numericOnly = phone.replace(/\D/g, '');
+                                            
+                                            if (numericOnly.startsWith('62')) {
+                                              return numericOnly;
+                                            } else if (numericOnly.startsWith('0')) {
+                                              return '62' + numericOnly.substring(1);
+                                            } else {
+                                              return numericOnly;
+                                            }
+                                          };
+                                          
+                                          const phoneNumber = String(patient.phoneNumber);
+                                          const normalizedPatientPhone = normalizePhoneNumber(phoneNumber);
+                                          const normalizedSearchTerm = normalizePhoneNumber(searchTermLower);
+                                          
+                                          if (normalizedPatientPhone.includes(normalizedSearchTerm) || 
+                                              normalizedSearchTerm.includes(normalizedPatientPhone)) {
+                                            return true;
+                                          }
+                                        }
+                                        
+                                        return false;
+                                      });
+                                    }
+                                  }
+                                  
+                                  // Tampilkan pesan jika tidak ada hasil pencarian
+                                  if (searchTerm && filteredPatients.length === 0) {
+                                    return (
+                                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                        Tidak ada pasien yang cocok dengan "{searchTerm}"
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  // Render daftar pasien yang sudah difilter
+                                  return filteredPatients.map((patient: Patient) => {
+                                    const isQueenzky = patient.name && patient.name.includes('Queenzky');
+                                    const isForwardedPatient = patient.name && patient.name.includes('(');
                                     
-                                    return filteredPatients.map((patient: Patient) => (
+                                    return (
                                       <SelectItem 
                                         key={patient.id} 
                                         value={String(patient.id)}
                                         className={`cursor-pointer hover:bg-primary/10 ${
-                                          queenzkyPatient && patient.id === queenzkyPatient.id 
+                                          isQueenzky 
                                             ? 'border-l-4 border-amber-500 pl-2' 
-                                            : patient.name.includes('(') ? 'border-l-4 border-blue-500 pl-2' : ''
+                                            : isForwardedPatient ? 'border-l-4 border-blue-500 pl-2' : ''
                                         }`}
                                       >
                                         <span className="font-medium">
                                           {patient.name}
-                                          {queenzkyPatient && patient.id === queenzkyPatient.id && (
+                                          {isQueenzky && searchTerm && searchTerm.toLowerCase().includes('syafl') && (
                                             <span className="ml-2 text-xs text-amber-600">(Syaflina/Syafliana)</span>
                                           )}
                                         </span>
                                         <span className="ml-2 text-xs text-muted-foreground">({patient.patientId})</span>
                                       </SelectItem>
-                                    ));
-                                  })()
-                                ) : searchTerm ? (
-                                  // Filter berdasarkan searchTerm untuk kata kunci lainnya
-                                  patients
-                                    .filter(patient => {
-                                      // Perbaikan: Gunakan konversi string eksplisit untuk mencegah error
-                                      const patientName = patient.name ? String(patient.name).toLowerCase() : '';
-                                      const patientId = patient.patientId ? String(patient.patientId).toLowerCase() : '';
-                                      const searchTermLower = searchTerm.toLowerCase();
-                                      
-                                      // Pencarian berdasarkan nama dan ID pasien (metode includes dan equality)
-                                      if ((patientName.includes(searchTermLower) || patientName === searchTermLower) ||
-                                          (patientId.includes(searchTermLower) || patientId === searchTermLower)) {
-                                        return true;
-                                      }
-                                      
-                                      // Pencarian berdasarkan nomor telepon yang dinormalisasi
-                                      if (patient.phoneNumber) {
-                                        const normalizePhoneNumber = (phone: string) => {
-                                          if (!phone) return '';
-                                          // Hapus semua karakter non-numerik
-                                          const numericOnly = phone.replace(/\D/g, '');
-                                          
-                                          // Normalisasi awalan +62 dan 0
-                                          if (numericOnly.startsWith('62')) {
-                                            return numericOnly; // Format 62xxx
-                                          } else if (numericOnly.startsWith('0')) {
-                                            return '62' + numericOnly.substring(1); // Ubah 0xxx menjadi 62xxx
-                                          } else {
-                                            return numericOnly; // Format lainnya
-                                          }
-                                        };
-                                        
-                                        // Gunakan explicit string conversion untuk mencegah error
-                                        const phoneNumber = String(patient.phoneNumber);
-                                        const normalizedPatientPhone = normalizePhoneNumber(phoneNumber);
-                                        const normalizedSearchTerm = normalizePhoneNumber(searchTerm);
-                                        
-                                        // Pencocokan lengkap atau sebagian
-                                        if (normalizedPatientPhone.includes(normalizedSearchTerm) || 
-                                            normalizedSearchTerm.includes(normalizedPatientPhone)) {
-                                          return true;
-                                        }
-                                      }
-                                      
-                                      return false;
-                                    })
-                                    .map((patient: Patient) => (
-                                      <SelectItem 
-                                        key={patient.id} 
-                                        value={String(patient.id)}
-                                        className={`cursor-pointer hover:bg-primary/10 ${patient.name.includes('(') ? 'border-l-4 border-blue-500 pl-2' : ''}`}
-                                      >
-                                        <span className="font-medium">
-                                          {patient.name}
-                                        </span>
-                                        <span className="ml-2 text-xs text-muted-foreground">({patient.patientId})</span>
-                                      </SelectItem>
-                                    ))
-                                ) : (
-                                  // Tampilkan semua pasien jika tidak ada kata kunci pencarian
-                                  patients?.map((patient: Patient) => (
-                                    <SelectItem 
-                                      key={patient.id} 
-                                      value={String(patient.id)}
-                                      className={`cursor-pointer hover:bg-primary/10 ${patient.name.includes('(') ? 'border-l-4 border-blue-500 pl-2' : ''}`}
-                                    >
-                                      <span className="font-medium">
-                                        {patient.name}
-                                      </span>
-                                      <span className="ml-2 text-xs text-muted-foreground">({patient.patientId})</span>
-                                    </SelectItem>
-                                  ))
-                                )}
+                                    );
+                                  });
+                                })()}
                               </SelectContent>
                             </Select>
                             
