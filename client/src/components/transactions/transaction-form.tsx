@@ -888,15 +888,20 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                 type="text"
                                 placeholder="Cari nama pasien..."
                                 onChange={(e) => {
+                                  const value = e.target.value;
                                   // Reset form value when searching
-                                  if (e.target.value === '') {
+                                  if (value === '') {
                                     field.onChange('');
+                                    setSearchTerm('');
+                                  } else {
+                                    // Update search term on every change
+                                    setSearchTerm(value.toLowerCase());
                                   }
                                 }}
                                 onKeyUp={(e) => {
                                   const searchValue = e.currentTarget.value.toLowerCase();
                                   // Update state for global use
-                                  setSearchTerm(searchValue);
+                                  // setSearchTerm(searchValue);
                                   
                                   if (searchValue.length < 2) return;
                                   
@@ -969,8 +974,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                   console.log("Selected patient:", selectedPatient.name);
                                 }
                               }}
-                              value={idAsString}
-                              defaultValue={idAsString}
+                              value={field.value ? String(field.value) : ''}
                             >
                               <SelectTrigger className="w-full focus:ring-2 focus:ring-primary">
                                 <SelectValue placeholder="Pilih pasien dari daftar..." />
