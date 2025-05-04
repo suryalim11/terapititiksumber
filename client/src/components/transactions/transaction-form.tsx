@@ -167,6 +167,7 @@ type TransactionFormProps = {
   isOpen: boolean;
   onClose: () => void;
   selectedPatientId?: number | null;
+  hidePatientSearch?: boolean;
 };
 
 type Patient = {
@@ -257,7 +258,8 @@ const transactionFormSchema = z.object({
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
-export default function TransactionForm({ isOpen, onClose, selectedPatientId }: TransactionFormProps) {
+export default function TransactionForm({ isOpen, onClose, selectedPatientId, hidePatientSearch = false }: TransactionFormProps) {
+  console.log("TransactionForm initialized with:", { selectedPatientId, hidePatientSearch });
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<string>("");
   const [showInvoice, setShowInvoice] = useState(false);
@@ -893,7 +895,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                 key={formKey} // Force re-render when the form key changes
               >
                 {/* Patient selection - conditionally rendered based on hidePatientDropdown flag */}
-                {hidePatientDropdown ? (
+                {(hidePatientDropdown || hidePatientSearch) ? (
                   /* Jika dropdown disembunyikan, tampilkan hanya detail pasien yang sudah dipilih */
                   <FormField
                     control={form.control}

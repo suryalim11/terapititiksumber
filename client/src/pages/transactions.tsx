@@ -1372,6 +1372,7 @@ export default function Transactions() {
             }
           }} 
           selectedPatientId={selectedPatientId}
+          hidePatientSearch={selectedPatientId !== null && selectedPatientId !== undefined}
         />
       )}
       
