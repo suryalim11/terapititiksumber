@@ -589,7 +589,10 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
       
       const response = await apiRequest("/api/transactions", {
         method: "POST",
-        data: requestData,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestData)
       });
       
       return response;
@@ -1476,9 +1479,9 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                               <Checkbox
                                 id="use-credit"
                                 checked={useCredit}
-                                onCheckedChange={(checked) => {
+                                onCheckedChange={(checked: boolean | "indeterminate") => {
                                   console.log("Checkbox utang diubah:", checked);
-                                  setUseCredit(!!checked);
+                                  setUseCredit(checked === true);
                                 }}
                               />
                               <Label htmlFor="use-credit">Bayar dengan utang</Label>
@@ -1545,7 +1548,9 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                                 <Checkbox
                                   id="pay-debt"
                                   checked={payDebt}
-                                  onCheckedChange={setPayDebt}
+                                  onCheckedChange={(checked: boolean | "indeterminate") => {
+                                    setPayDebt(checked === true);
+                                  }}
                                 />
                                 <Label htmlFor="pay-debt">Bayar utang sekaligus</Label>
                               </div>
