@@ -891,7 +891,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                 placeholder="Cari pasien berdasarkan nama atau ID..."
                                 value={searchTerm || ''}
                                 onChange={(e) => {
-                                  setSearchTerm(e.target.value.toLowerCase());
+                                  setSearchTerm(e.target.value);
                                   if (e.target.value === '') {
                                     field.onChange('');
                                   }
@@ -900,180 +900,64 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                               
                               {/* Daftar pasien */}
                               <div className="mt-2 border rounded-md max-h-[250px] overflow-y-auto">
-                                {(() => {
-                                  // Jika tidak ada data
-                                  if (!patients || patients.length === 0) {
-                                    return (
-                                      <div className="p-3 text-center text-sm text-muted-foreground">
-                                        Belum ada data pasien
-                                      </div>
-                                    );
-                                  }
-                                  
-                                  // Filter pasien berdasarkan pencarian
-                                  let filteredPatients = patients;
-                                  
-                                  if (searchTerm) {
-                                    const searchTermLower = searchTerm.toLowerCase();
-                                    
-                                    // Kasus khusus "syaflina"
-                                    if (searchTermLower.includes('syafl')) {
-                                      // Prioritaskan Queenzky
-                                      const queenzkyPatient = patients.find(p => p.name && p.name.includes('Queenzky'));
-                                      const otherPatients = patients.filter(p => 
-                                        (p.name && p.name.toLowerCase().includes('syahl')) || 
-                                        (queenzkyPatient && p.id !== queenzkyPatient.id)
-                                      );
+                                {!patients || patients.length === 0 ? (
+                                  <div className="p-3 text-center text-sm text-muted-foreground">
+                                    Belum ada data pasien
+                                  </div>
+                                ) : (
+                                  <>
+                                    {patients.filter(patient => {
+                                      if (!searchTerm) return true;
                                       
-                                      filteredPatients = queenzkyPatient 
-                                        ? [queenzkyPatient, ...otherPatients] 
-                                        : otherPatients;
-                                    } 
-                                    // Kasus khusus untuk nama atau username admin
-                                    else if (searchTermLower === 'agus' || searchTermLower.includes('agu')) {
-                                      console.log("Mendeteksi pencarian khusus untuk kata kunci 'agus'");
+                                      const search = searchTerm.toLowerCase();
+                                      const name = (patient.name || '').toLowerCase();
+                                      const id = (patient.patientId || '').toLowerCase();
+                                      const phone = (patient.phoneNumber || '').toLowerCase();
                                       
-                                      // List pasien yang namanya mengandung "agus" (termasuk Agus Lim)
-                                      const agusPatients = [];
+                                      return name.includes(search) || 
+                                             id.includes(search) || 
+                                             phone.includes(search);
+                                    }).map(patient => {
+                                      const isSelected = field.value && String(field.value) === String(patient.id);
+                                      const isQueenzky = patient.name && patient.name.includes('Queenzky');
+                                      const isForwardedPatient = patient.name && patient.name.includes('(');
                                       
-                                      // 1. Cek secara eksplisit
-                                      for (const patient of patients) {
-                                        if (patient.name) {
-                                          const patientNameLower = patient.name.toLowerCase();
-                                          
-                                          if (patientNameLower === 'agus lim' || 
-                                              patientNameLower === 'agus' ||
-                                              patientNameLower.includes('agus')) {
-                                            console.log(`Menemukan pasien AGU/AGUS: ${patient.name}`);
-                                            agusPatients.push(patient);
-                                          }
-                                        }
-                                      }
-                                      
-                                      // 2. Fallback ke pencarian manual jika tidak ditemukan
-                                      if (agusPatients.length === 0) {
-                                        // Tambahkan pengecekan username admin
-                                        console.log("Mencari ID pasien Agus Lim/aguslim...");
-                                        const agusOrAdmin = patients.find(p => 
-                                          (p.name && p.name === 'Agus Lim') || 
-                                          (p.patientId && p.patientId.includes('agus'))
-                                        );
-                                        
-                                        if (agusOrAdmin) {
-                                          agusPatients.push(agusOrAdmin);
-                                          console.log(`Ditemukan Agus Lim: ${agusOrAdmin.name}`);
-                                        }
-                                      }
-                                      
-                                      // Tampilkan semua pasien jika masih tidak ditemukan
-                                      if (agusPatients.length > 0) {
-                                        filteredPatients = agusPatients;
-                                        console.log(`Ditemukan ${agusPatients.length} pasien yang cocok dengan "agus"`);
-                                      } else {
-                                        console.log("Tidak ditemukan pasien yang cocok dengan 'agus', menampilkan semua pasien");
-                                      }
-                                    } else {
-                                      // Filter umum
-                                      filteredPatients = patients.filter(patient => {
-                                        const patientName = patient.name ? String(patient.name).toLowerCase() : '';
-                                        const patientId = patient.patientId ? String(patient.patientId).toLowerCase() : '';
-                                        
-                                        // Cek kecocokan nama dan ID - debug untuk "agus"
-                                        console.log(`Checking '${searchTermLower}' against patient: ${patientName}`);
-                                        if (patientName.includes(searchTermLower) || patientId.includes(searchTermLower)) {
-                                          console.log(`MATCH FOUND for ${patientName} with search term ${searchTermLower}`);
-                                          return true;
-                                        }
-                                        
-                                        // Tambahan: Cek juga nama depan "Agus" (jika nama disingkat)
-                                        if (patient.name && searchTermLower === "agus" && 
-                                            (patient.name === "Agus" || patient.name === "Agus Lim" || patient.name.startsWith("Agus"))) {
-                                          console.log(`Special match found for Agus: ${patient.name}`);
-                                          return true;
-                                        }
-                                        
-                                        // Cek kecocokan nomor telepon
-                                        if (patient.phoneNumber) {
-                                          const phoneNumber = String(patient.phoneNumber).toLowerCase();
-                                          
-                                          // Normalisasi nomor telepon
-                                          const normalizePhoneNumber = (phone: string) => {
-                                            if (!phone) return '';
-                                            const numericOnly = phone.replace(/\D/g, '');
-                                            
-                                            if (numericOnly.startsWith('62')) {
-                                              return numericOnly;
-                                            } else if (numericOnly.startsWith('0')) {
-                                              return '62' + numericOnly.substring(1);
-                                            } else {
-                                              return numericOnly;
+                                      return (
+                                        <div
+                                          key={patient.id}
+                                          className={`flex items-center justify-between p-2 border-b cursor-pointer hover:bg-muted/50
+                                            ${isSelected ? 'bg-primary/10 border-primary' : ''}
+                                            ${isQueenzky ? 'border-l-4 border-l-amber-500' : 
+                                              isForwardedPatient ? 'border-l-4 border-l-blue-500' : ''
                                             }
-                                          };
-                                          
-                                          const normalizedPatientPhone = normalizePhoneNumber(phoneNumber);
-                                          const normalizedSearchTerm = normalizePhoneNumber(searchTermLower);
-                                          
-                                          if (normalizedPatientPhone.includes(normalizedSearchTerm) || 
-                                              normalizedSearchTerm.includes(normalizedPatientPhone)) {
-                                            return true;
-                                          }
-                                        }
-                                        
-                                        return false;
-                                      });
-                                    }
-                                  }
-                                  
-                                  // Jika tidak ada hasil pencarian
-                                  if (searchTerm && filteredPatients.length === 0) {
-                                    return (
-                                      <div className="p-3 text-center text-sm text-muted-foreground">
-                                        Tidak ada pasien yang cocok dengan "{searchTerm}"
-                                      </div>
-                                    );
-                                  }
-                                  
-                                  // Render list pasien
-                                  return filteredPatients.map(patient => {
-                                    const isSelected = field.value && String(field.value) === String(patient.id);
-                                    const isQueenzky = patient.name && patient.name.includes('Queenzky');
-                                    const isForwardedPatient = patient.name && patient.name.includes('(');
-                                    
-                                    return (
-                                      <div
-                                        key={patient.id}
-                                        className={`flex items-center justify-between p-2 border-b cursor-pointer hover:bg-muted/50
-                                          ${isSelected ? 'bg-primary/10 border-primary' : ''}
-                                          ${isQueenzky ? 'border-l-4 border-l-amber-500' : 
-                                            isForwardedPatient ? 'border-l-4 border-l-blue-500' : ''
-                                          }
-                                        `}
-                                        onClick={() => {
-                                          field.onChange(String(patient.id));
-                                          console.log("Selected patient:", patient.name, "with ID:", patient.id);
-                                        }}
-                                      >
-                                        <div>
-                                          <div className="font-medium">
-                                            {patient.name}
-                                            {isQueenzky && searchTerm && searchTerm.toLowerCase().includes('syafl') && (
-                                              <span className="ml-2 text-xs text-amber-600">(Syaflina/Syafliana)</span>
-                                            )}
+                                          `}
+                                          onClick={() => {
+                                            field.onChange(String(patient.id));
+                                            console.log("Selected patient:", patient.name, "with ID:", patient.id);
+                                          }}
+                                        >
+                                          <div>
+                                            <div className="font-medium">
+                                              {patient.name}
+                                              {isQueenzky && searchTerm && searchTerm.toLowerCase().includes('syafl') && (
+                                                <span className="ml-2 text-xs text-amber-600">(Syaflina/Syafliana)</span>
+                                              )}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                              ID: {patient.patientId} - Tel: {patient.phoneNumber || 'N/A'}
+                                            </div>
                                           </div>
-                                          <div className="text-xs text-muted-foreground">
-                                            ID: {patient.patientId} - Tel: {patient.phoneNumber || 'N/A'}
-                                          </div>
+                                          
+                                          {isSelected && (
+                                            <Badge variant="outline" className="bg-primary/20">
+                                              Dipilih
+                                            </Badge>
+                                          )}
                                         </div>
-                                        
-                                        {isSelected && (
-                                          <Badge variant="outline" className="bg-primary/20">
-                                            Dipilih
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    );
-                                  });
-                                })()}
+                                      );
+                                    })}
+                                  </>
+                                )}
                               </div>
                             </div>
                             
