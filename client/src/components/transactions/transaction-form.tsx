@@ -889,75 +889,13 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                 placeholder="Cari nama pasien..."
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  // Reset form value when searching
+                                  
+                                  // Selalu update search term untuk filter dropdown
+                                  setSearchTerm(value.toLowerCase());
+                                  
+                                  // Reset form value ketika menghapus input
                                   if (value === '') {
                                     field.onChange('');
-                                    setSearchTerm('');
-                                  } else {
-                                    // Update search term on every change
-                                    setSearchTerm(value.toLowerCase());
-                                  }
-                                }}
-                                onKeyUp={(e) => {
-                                  const searchValue = e.currentTarget.value.toLowerCase();
-                                  // Update state for global use
-                                  // setSearchTerm(searchValue);
-                                  
-                                  if (searchValue.length < 2) return;
-                                  
-                                  // Normalisasi nomor telepon untuk pencarian
-                                  const normalizePhoneNumber = (phone: string) => {
-                                    if (!phone) return '';
-                                    // Hapus semua karakter non-numerik
-                                    const numericOnly = phone.replace(/\D/g, '');
-                                    
-                                    // Normalisasi awalan +62 dan 0
-                                    if (numericOnly.startsWith('62')) {
-                                      return numericOnly; // Format 62xxx
-                                    } else if (numericOnly.startsWith('0')) {
-                                      return '62' + numericOnly.substring(1); // Ubah 0xxx menjadi 62xxx
-                                    } else {
-                                      return numericOnly; // Format lainnya
-                                    }
-                                  };
-                                  
-                                  // Find matching patient
-                                  const matchingPatient = patients.find((patient: Patient) => {
-                                    // Perbaikan: Pastikan ada data pasien dan gunakan konversi string eksplisit
-                                    const patientName = patient.name ? String(patient.name).toLowerCase() : '';
-                                    const patientId = patient.patientId ? String(patient.patientId).toLowerCase() : '';
-                                    
-                                    console.log(`Checking if "${searchValue}" matches in "${patientName}"`);
-                                    
-                                    // Pencarian berdasarkan nama dan ID pasien (metode includes dan equality)
-                                    if ((patientName.includes(searchValue) || patientName === searchValue) || 
-                                        (patientId.includes(searchValue) || patientId === searchValue)) {
-                                      console.log(`Found match: "${patientName}"`);
-                                      return true;
-                                    }
-                                    
-                                    // Pencarian berdasarkan nomor telepon yang dinormalisasi
-                                    if (patient.phoneNumber) {
-                                      // Gunakan explicit string conversion untuk menghindari error
-                                      const phoneNumber = String(patient.phoneNumber);
-                                      const normalizedPatientPhone = normalizePhoneNumber(phoneNumber);
-                                      const normalizedSearchTerm = normalizePhoneNumber(searchValue);
-                                      
-                                      // Pencocokan lengkap atau sebagian
-                                      if (normalizedPatientPhone.includes(normalizedSearchTerm) || 
-                                          normalizedSearchTerm.includes(normalizedPatientPhone)) {
-                                        return true;
-                                      }
-                                    }
-                                    
-                                    return false;
-                                  });
-                                  
-                                  // Auto-select if we have a match
-                                  if (matchingPatient) {
-                                    const patientIdStr = String(matchingPatient.id);
-                                    console.log("Auto-selected patient:", matchingPatient.name, "ID:", patientIdStr);
-                                    field.onChange(patientIdStr);
                                   }
                                 }}
                               />
