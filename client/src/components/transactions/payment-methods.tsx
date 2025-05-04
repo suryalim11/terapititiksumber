@@ -13,7 +13,7 @@ type PaymentMethod = {
   icon: React.ReactNode;
 };
 
-export default function PaymentMethods({ field }: PaymentMethodsProps) {
+export default function PaymentMethods({ field, error }: PaymentMethodsProps) {
   const { value, onChange } = field;
   
   const paymentMethods: PaymentMethod[] = [
@@ -47,22 +47,34 @@ export default function PaymentMethods({ field }: PaymentMethodsProps) {
   ];
 
   return (
-    <div className="flex space-x-3">
-      {paymentMethods.map((method) => (
-        <div
-          key={method.id}
-          className={cn(
-            "flex-1 border rounded-lg p-3 text-center flex flex-col items-center justify-center cursor-pointer transition-colors",
-            value === method.id
-              ? "border-primary bg-primary/10 dark:bg-primary/20"
-              : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-          )}
-          onClick={() => onChange(method.id)}
-        >
-          {method.icon}
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{method.name}</span>
+    <div className="space-y-2">
+      <div className="flex space-x-3">
+        {paymentMethods.map((method) => (
+          <div
+            key={method.id}
+            className={cn(
+              "flex-1 border rounded-lg p-3 text-center flex flex-col items-center justify-center cursor-pointer transition-colors",
+              value === method.id
+                ? "border-primary bg-primary/10 dark:bg-primary/20"
+                : error && !value 
+                  ? "border-destructive" 
+                  : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+            )}
+            onClick={() => onChange(method.id)}
+          >
+            {method.icon}
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{method.name}</span>
+          </div>
+        ))}
+      </div>
+      
+      {/* Error message */}
+      {error && !value && (
+        <div className="text-sm text-destructive flex items-center gap-1">
+          <AlertTriangle className="h-4 w-4" />
+          <span>Pilih metode pembayaran</span>
         </div>
-      ))}
+      )}
     </div>
   );
 }

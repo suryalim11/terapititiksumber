@@ -1687,15 +1687,21 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                 <FormField
                   control={form.control}
                   name="paymentMethod"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Metode Pembayaran</FormLabel>
-                      <FormControl>
-                        <PaymentMethods field={field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    // Check if there's any form error for paymentMethod
+                    const paymentMethodError = !!form.formState.errors.paymentMethod;
+                    const showError = paymentMethodError || paymentMethodValidated && !field.value;
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Metode Pembayaran</FormLabel>
+                        <FormControl>
+                          <PaymentMethods field={field} error={showError} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 
                 {/* Display name preference (only for Syaflina/Syafliana case) */}
