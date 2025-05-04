@@ -273,34 +273,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Periksa apakah dropdown harus disembunyikan
-  // 1. Periksa localStorage untuk flag yang disetel oleh slot-patients-dialog
-  const [hidePatientDropdown, setHidePatientDropdown] = useState<boolean>(false);
-  
-  useEffect(() => {
-    // Jika selectedPatientId sudah ada, maka itu berasal dari slot-patients-dialog, jadi sembunyikan dropdown
-    const hasPreselectedPatient = selectedPatientId !== null && selectedPatientId !== undefined;
-    // Periksa localStorage
-    const hideFromStorage = localStorage.getItem('hidePatientDropdown') === 'true';
-    // Periksa URL parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    const hideFromUrl = urlParams.get('hideDropdown') === 'true';
-    
-    // Set state berdasarkan kondisi-kondisi di atas
-    setHidePatientDropdown(hasPreselectedPatient || hideFromStorage || hideFromUrl);
-    
-    // Hapus flag dari localStorage untuk mencegah efek samping pada pemuatan halaman berikutnya
-    if (hideFromStorage) {
-      localStorage.removeItem('hidePatientDropdown');
-    }
-    
-    console.log("TransactionForm - Should hide dropdown?", {
-      hasPreselectedPatient,
-      hideFromStorage,
-      hideFromUrl,
-      result: hasPreselectedPatient || hideFromStorage || hideFromUrl
-    });
-  }, [selectedPatientId]);
+  // Gunakan prop hidePatientSearch langsung untuk menentukan apakah dropdown harus disembunyikan
+  // Prop ini akan true jika form dibuka dari slot-patients-dialog (dengan selectedPatientId)
+  // dan false jika form dibuka dari tombol "Transaksi Baru"
+  console.log("TransactionForm - hidePatientSearch prop:", hidePatientSearch);
+  console.log("TransactionForm - selectedPatientId:", selectedPatientId);
 
   // Siapkan default value untuk patientId berdasarkan prop selectedPatientId
   // Pastikan patientId selalu berupa string
@@ -894,8 +871,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                 className="space-y-6"
                 key={formKey} // Force re-render when the form key changes
               >
-                {/* Patient selection - conditionally rendered based on hidePatientDropdown flag atau hidePatientSearch prop */}
-                {hidePatientSearch === true ? (
+                {/* Patient selection - sekarang hanya menggunakan prop hidePatientSearch */}
+                {hidePatientSearch ? (
                   /* Jika dropdown disembunyikan, tampilkan hanya detail pasien yang sudah dipilih */
                   <FormField
                     control={form.control}

@@ -381,7 +381,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
           // Tambahkan satu lagi flag untuk memastikan data bisa diambil dengan ID
           localStorage.setItem(`patient_${patientIdNumber}`, JSON.stringify(patientData));
           
-          // Tambahkan flag untuk menghilangkan dropdown di form transaksi
+          // Flag ini tidak lagi digunakan (digantikan oleh parameter URL)
+          // Tapi tetap disimpan untuk backward compatibility
           localStorage.setItem('hidePatientDropdown', 'true');
           
           // Tutup dialog terlebih dahulu
