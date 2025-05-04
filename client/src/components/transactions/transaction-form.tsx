@@ -310,6 +310,8 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
   const [payDebt, setPayDebt] = useState(false);
   const [selectedDebtTransaction, setSelectedDebtTransaction] = useState<any>(null);
   const [paymentAmount, setPaymentAmount] = useState<string>("0");
+  // State untuk validasi metode pembayaran
+  const [paymentMethodValidated, setPaymentMethodValidated] = useState(false);
   
   // Fungsi untuk menghitung total harga (subtotal - discount)
   const calculateTotalPrice = () => {
@@ -914,6 +916,9 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
       
       // Tambahkan validasi metode pembayaran
       if (!submissionData.paymentMethod) {
+        // Set state untuk menunjukkan validasi telah dilakukan
+        setPaymentMethodValidated(true);
+        
         toast({
           title: "Metode pembayaran belum dipilih",
           description: "Silakan pilih metode pembayaran.",
@@ -921,6 +926,9 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
         });
         setIsSubmitting(false);
         return;
+      } else {
+        // Reset state validasi jika valid
+        setPaymentMethodValidated(false);
       }
       
       console.log("Submitting final transaction data:", submissionData);
