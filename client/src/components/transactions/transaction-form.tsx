@@ -609,7 +609,24 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
       
       // Show invoice if needed
       if (data) {
-        setInvoiceData(data);
+        // Buat struktur data yang sesuai untuk Invoice component
+        const invoiceData = {
+          transaction: data,
+          patient: patients.find((p) => p.id === parseInt(form.getValues().patientId)),
+          items: cartItems,
+          paymentMethod: form.getValues().paymentMethod,
+          discount: form.getValues().discount,
+          subtotal: subtotal,
+          isPaid: !useCredit,
+          creditAmount: data.creditAmount,
+          paidAmount: data.paidAmount,
+          displayName: searchTerm?.toLowerCase().includes('syafl') 
+            ? form.getValues().displayName || "original"
+            : "original"
+        };
+        
+        console.log("Setting invoice data:", invoiceData);
+        setInvoiceData(invoiceData);
         setShowInvoice(true);
       } else {
         // If no need to show invoice, just close the form
