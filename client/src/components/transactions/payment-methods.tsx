@@ -1,8 +1,10 @@
 import { cn } from "@/lib/utils";
 import { ControllerRenderProps } from "react-hook-form";
+import { AlertTriangle } from "lucide-react";
 
 type PaymentMethodsProps = {
   field: ControllerRenderProps<any, "paymentMethod">;
+  error?: boolean; // Add error prop to show validation error
 };
 
 type PaymentMethod = {

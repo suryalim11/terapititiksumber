@@ -573,11 +573,22 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
           }
         : null;
       
+      // Pastikan patientId dalam bentuk number
+      const patientIdAsNumber = values.patientId ? parseInt(String(values.patientId)) : 0;
+      
+      // Pastikan totalAmount dihitung dengan benar
+      const totalAmountValue = subtotal - (parseFloat(values.discount || "0") || 0);
+      
       const requestData = {
         ...values,
         items: itemsWithDetails,
-        patientId: parseInt(values.patientId),
+        patientId: patientIdAsNumber,
+        totalAmount: totalAmountValue.toString(), // Pastikan total amount selalu tersedia
+        subtotal: subtotal.toString(), // Pastikan subtotal selalu tersedia
+        discount: values.discount || "0", // Pastikan discount selalu tersedia
         isPaid: !useCredit, // If using credit, mark as unpaid
+        creditAmount: useCredit ? totalAmountValue.toString() : "0", // Tambahkan creditAmount jika kredit
+        paidAmount: useCredit ? "0" : totalAmountValue.toString(), // Tambahkan paidAmount
         debtPayment, // Include debt payment info if applicable
         // If this is a Syaflina/Queenzky case, include display name preference
         displayName: searchTerm?.toLowerCase().includes('syafl') 
@@ -635,10 +646,19 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
     },
     onError: (error) => {
       console.error("Error creating transaction:", error);
+      
+      // Tampilkan error secara lebih detail jika tersedia
+      let errorMessage = "Terjadi kesalahan saat mencatat transaksi.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        errorMessage = JSON.stringify(error);
+      }
+      
       toast({
         title: "Gagal membuat transaksi",
-        description:
-          "Terjadi kesalahan saat mencatat transaksi. Silakan coba lagi.",
+        description: `${errorMessage} Silakan coba lagi.`,
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -881,14 +901,43 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
         })),
       };
       
+      // Tambahkan validasi patientId sebelum membuat transaksi
+      if (!submissionData.patientId) {
+        toast({
+          title: "Pasien belum dipilih",
+          description: "Silakan pilih pasien terlebih dahulu.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Tambahkan validasi metode pembayaran
+      if (!submissionData.paymentMethod) {
+        toast({
+          title: "Metode pembayaran belum dipilih",
+          description: "Silakan pilih metode pembayaran.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      console.log("Submitting final transaction data:", submissionData);
+      
       // Create final transaction
       await createTransaction.mutateAsync(submissionData);
     } catch (error) {
       console.error("Error creating transaction:", error);
+      
+      // Tampilkan error secara lebih detail jika tersedia
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Terjadi kesalahan saat mencatat transaksi.";
+        
       toast({
         title: "Gagal membuat transaksi",
-        description:
-          "Terjadi kesalahan saat mencatat transaksi. Silakan coba lagi.",
+        description: `${errorMessage} Silakan coba lagi.`,
         variant: "destructive",
       });
       setIsSubmitting(false);
