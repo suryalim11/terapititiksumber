@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
+import { ControllerRenderProps } from "react-hook-form";
 
 type PaymentMethodsProps = {
-  value: string;
-  onChange: (value: string) => void;
+  field: ControllerRenderProps<any, "paymentMethod">;
 };
 
 type PaymentMethod = {
@@ -11,7 +11,9 @@ type PaymentMethod = {
   icon: React.ReactNode;
 };
 
-export default function PaymentMethods({ value, onChange }: PaymentMethodsProps) {
+export default function PaymentMethods({ field }: PaymentMethodsProps) {
+  const { value, onChange } = field;
+  
   const paymentMethods: PaymentMethod[] = [
     {
       id: "bank_transfer",

@@ -311,23 +311,42 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
   const [selectedDebtTransaction, setSelectedDebtTransaction] = useState<any>(null);
   const [paymentAmount, setPaymentAmount] = useState<string>("0");
   
+  // Fungsi untuk menghitung total harga (subtotal - discount)
+  const calculateTotalPrice = () => {
+    const subtotal = cartItems.reduce(
+      (sum, item) => sum + parseFloat(item.price) * item.quantity, 0
+    );
+    const discount = parseFloat(form.getValues().discount || "0");
+    return Math.max(0, subtotal - discount);
+  };
+
   // Effect untuk memantau perubahan pada useCredit
   useEffect(() => {
+    console.log("useCredit effect triggered, useCredit =", useCredit);
+    
     if (useCredit) {
       // Jika credit diaktifkan, hitung default values
-      const subtotal = cartItems.reduce(
-        (sum, item) => sum + parseFloat(item.price) * item.quantity, 0
-      );
-      const discount = parseFloat(form.getValues().discount || "0");
-      const totalAmount = Math.max(0, subtotal - discount);
+      const totalAmount = calculateTotalPrice();
+      
+      console.log("Setting up credit values:", {
+        totalAmount
+      });
       
       // Set default paidAmount ke 0 dan creditAmount ke totalAmount
       form.setValue("paidAmount", "0");
       form.setValue("creditAmount", totalAmount.toString());
+      
+      // Pastikan isPaid disetel ke false
+      form.setValue("isPaid", false);
     } else {
+      console.log("Resetting credit values");
+      
       // Jika credit dinonaktifkan, reset nilai
-      form.setValue("paidAmount", "0");
+      form.setValue("paidAmount", calculateTotalPrice().toString());
       form.setValue("creditAmount", "0");
+      
+      // Kembalikan isPaid ke true
+      form.setValue("isPaid", true);
     }
   }, [useCredit, cartItems, form]);
 
@@ -1457,7 +1476,10 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                               <Checkbox
                                 id="use-credit"
                                 checked={useCredit}
-                                onCheckedChange={setUseCredit}
+                                onCheckedChange={(checked) => {
+                                  console.log("Checkbox utang diubah:", checked);
+                                  setUseCredit(!!checked);
+                                }}
                               />
                               <Label htmlFor="use-credit">Bayar dengan utang</Label>
                             </div>
