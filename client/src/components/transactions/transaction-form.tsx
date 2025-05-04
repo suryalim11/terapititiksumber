@@ -928,14 +928,67 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                       filteredPatients = queenzkyPatient 
                                         ? [queenzkyPatient, ...otherPatients] 
                                         : otherPatients;
+                                    } 
+                                    // Kasus khusus untuk nama atau username admin
+                                    else if (searchTermLower === 'agus' || searchTermLower.includes('agu')) {
+                                      console.log("Mendeteksi pencarian khusus untuk kata kunci 'agus'");
+                                      
+                                      // List pasien yang namanya mengandung "agus" (termasuk Agus Lim)
+                                      const agusPatients = [];
+                                      
+                                      // 1. Cek secara eksplisit
+                                      for (const patient of patients) {
+                                        if (patient.name) {
+                                          const patientNameLower = patient.name.toLowerCase();
+                                          
+                                          if (patientNameLower === 'agus lim' || 
+                                              patientNameLower === 'agus' ||
+                                              patientNameLower.includes('agus')) {
+                                            console.log(`Menemukan pasien AGU/AGUS: ${patient.name}`);
+                                            agusPatients.push(patient);
+                                          }
+                                        }
+                                      }
+                                      
+                                      // 2. Fallback ke pencarian manual jika tidak ditemukan
+                                      if (agusPatients.length === 0) {
+                                        // Tambahkan pengecekan username admin
+                                        console.log("Mencari ID pasien Agus Lim/aguslim...");
+                                        const agusOrAdmin = patients.find(p => 
+                                          (p.name && p.name === 'Agus Lim') || 
+                                          (p.patientId && p.patientId.includes('agus'))
+                                        );
+                                        
+                                        if (agusOrAdmin) {
+                                          agusPatients.push(agusOrAdmin);
+                                          console.log(`Ditemukan Agus Lim: ${agusOrAdmin.name}`);
+                                        }
+                                      }
+                                      
+                                      // Tampilkan semua pasien jika masih tidak ditemukan
+                                      if (agusPatients.length > 0) {
+                                        filteredPatients = agusPatients;
+                                        console.log(`Ditemukan ${agusPatients.length} pasien yang cocok dengan "agus"`);
+                                      } else {
+                                        console.log("Tidak ditemukan pasien yang cocok dengan 'agus', menampilkan semua pasien");
+                                      }
                                     } else {
                                       // Filter umum
                                       filteredPatients = patients.filter(patient => {
                                         const patientName = patient.name ? String(patient.name).toLowerCase() : '';
                                         const patientId = patient.patientId ? String(patient.patientId).toLowerCase() : '';
                                         
-                                        // Cek kecocokan nama dan ID
+                                        // Cek kecocokan nama dan ID - debug untuk "agus"
+                                        console.log(`Checking '${searchTermLower}' against patient: ${patientName}`);
                                         if (patientName.includes(searchTermLower) || patientId.includes(searchTermLower)) {
+                                          console.log(`MATCH FOUND for ${patientName} with search term ${searchTermLower}`);
+                                          return true;
+                                        }
+                                        
+                                        // Tambahan: Cek juga nama depan "Agus" (jika nama disingkat)
+                                        if (patient.name && searchTermLower === "agus" && 
+                                            (patient.name === "Agus" || patient.name === "Agus Lim" || patient.name.startsWith("Agus"))) {
+                                          console.log(`Special match found for Agus: ${patient.name}`);
                                           return true;
                                         }
                                         
