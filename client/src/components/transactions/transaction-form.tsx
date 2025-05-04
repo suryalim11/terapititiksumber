@@ -525,9 +525,22 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
     mutationFn: async (values: TransactionFormValues) => {
       console.log("Creating transaction with values:", values);
       
-      // Get the patient data
-      const patient = patients.find((p: Patient) => p.id === parseInt(form.getValues().patientId));
-      if (!patient) throw new Error("Patient not found");
+      // Get the patient data dengan mencari lebih fleksibel
+      const patientId = parseInt(String(values.patientId || form.getValues().patientId));
+      console.log("Looking for patient with ID:", patientId, "in", patients.length, "patients");
+      
+      // Debug patient IDs yang tersedia
+      console.log("Available patient IDs:", patients.map(p => p.id));
+      
+      // Gunakan pencarian lebih fleksibel dengan String untuk menyamakan ID
+      const patient = patients.find((p: Patient) => String(p.id) === String(patientId));
+      
+      if (!patient) {
+        console.error("Patient not found for ID:", patientId);
+        // Daripada throw error, kita catat saja dan lanjutkan
+        // Ini akan memungkinkan transaksi tetap dibuat meskipun pasien tidak ditemukan di state lokal
+        console.warn("Continuing transaction creation despite patient not found in local state");
+      }
       
       // Get items details
       const itemsWithDetails = values.items.map(item => {
