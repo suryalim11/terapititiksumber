@@ -883,69 +883,45 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                         <FormLabel>Pilih Pasien</FormLabel>
                         <FormControl>
                           <div className="space-y-2">
-                            <div className="mb-2">
-                              <Input 
-                                type="text"
-                                placeholder="Cari nama pasien..."
+                            {/* List pasien dalam bentuk flat list dengan filter search input */}
+                            <div className="relative space-y-2">
+                              {/* Search input */}
+                              <Input
+                                className="w-full"
+                                placeholder="Cari pasien berdasarkan nama atau ID..."
+                                value={searchTerm || ''}
                                 onChange={(e) => {
-                                  const value = e.target.value;
-                                  
-                                  // Selalu update search term untuk filter dropdown
-                                  setSearchTerm(value.toLowerCase());
-                                  
-                                  // Reset form value ketika menghapus input
-                                  if (value === '') {
+                                  setSearchTerm(e.target.value.toLowerCase());
+                                  if (e.target.value === '') {
                                     field.onChange('');
                                   }
                                 }}
                               />
-                            </div>
-                            
-                            <Select
-                              onValueChange={(value) => {
-                                console.log("Select changed to value:", value);
-                                field.onChange(value);
-                                
-                                // Log the patient name for debugging
-                                const selectedPatient = patients.find((p: Patient) => String(p.id) === value);
-                                if (selectedPatient) {
-                                  console.log("Selected patient:", selectedPatient.name);
-                                }
-                              }}
-                              value={field.value ? String(field.value) : ''}
-                            >
-                              <SelectTrigger className="w-full focus:ring-2 focus:ring-primary">
-                                <SelectValue placeholder="Pilih pasien dari daftar..." />
-                              </SelectTrigger>
-                              <SelectContent 
-                                position="popper" 
-                                side="bottom" 
-                                sideOffset={4} 
-                                align="start" 
-                                className="z-[100] overflow-y-auto max-h-[300px] w-full"
-                              >
+                              
+                              {/* Daftar pasien */}
+                              <div className="mt-2 border rounded-md max-h-[250px] overflow-y-auto">
                                 {(() => {
-                                  // Menampilkan pesan saat tidak ada data
+                                  // Jika tidak ada data
                                   if (!patients || patients.length === 0) {
                                     return (
-                                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                      <div className="p-3 text-center text-sm text-muted-foreground">
                                         Belum ada data pasien
                                       </div>
                                     );
                                   }
                                   
-                                  // Filter pasien berdasarkan kata kunci pencarian
+                                  // Filter pasien berdasarkan pencarian
                                   let filteredPatients = patients;
                                   
-                                  // Jika ada kata kunci pencarian
                                   if (searchTerm) {
                                     const searchTermLower = searchTerm.toLowerCase();
                                     
-                                    // Kasus khusus untuk "syaflina"
+                                    // Kasus khusus "syaflina"
                                     if (searchTermLower.includes('syafl')) {
-                                      const queenzkyPatient = patients.find(p => p.name.includes('Queenzky'));
+                                      // Prioritaskan Queenzky
+                                      const queenzkyPatient = patients.find(p => p.name && p.name.includes('Queenzky'));
                                       const otherPatients = patients.filter(p => 
-                                        p.name.toLowerCase().includes('syahl') || 
+                                        (p.name && p.name.toLowerCase().includes('syahl')) || 
                                         (queenzkyPatient && p.id !== queenzkyPatient.id)
                                       );
                                       
@@ -953,19 +929,20 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                         ? [queenzkyPatient, ...otherPatients] 
                                         : otherPatients;
                                     } else {
-                                      // Filter untuk kasus umum
+                                      // Filter umum
                                       filteredPatients = patients.filter(patient => {
-                                        // Pastikan ada data dan gunakan konversi string eksplisit
                                         const patientName = patient.name ? String(patient.name).toLowerCase() : '';
                                         const patientId = patient.patientId ? String(patient.patientId).toLowerCase() : '';
                                         
-                                        // Cek kecocokan nama dan ID pasien
+                                        // Cek kecocokan nama dan ID
                                         if (patientName.includes(searchTermLower) || patientId.includes(searchTermLower)) {
                                           return true;
                                         }
                                         
                                         // Cek kecocokan nomor telepon
                                         if (patient.phoneNumber) {
+                                          const phoneNumber = String(patient.phoneNumber).toLowerCase();
+                                          
                                           // Normalisasi nomor telepon
                                           const normalizePhoneNumber = (phone: string) => {
                                             if (!phone) return '';
@@ -980,7 +957,6 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                             }
                                           };
                                           
-                                          const phoneNumber = String(patient.phoneNumber);
                                           const normalizedPatientPhone = normalizePhoneNumber(phoneNumber);
                                           const normalizedSearchTerm = normalizePhoneNumber(searchTermLower);
                                           
@@ -995,43 +971,58 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
                                     }
                                   }
                                   
-                                  // Tampilkan pesan jika tidak ada hasil pencarian
+                                  // Jika tidak ada hasil pencarian
                                   if (searchTerm && filteredPatients.length === 0) {
                                     return (
-                                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                      <div className="p-3 text-center text-sm text-muted-foreground">
                                         Tidak ada pasien yang cocok dengan "{searchTerm}"
                                       </div>
                                     );
                                   }
                                   
-                                  // Render daftar pasien yang sudah difilter
-                                  return filteredPatients.map((patient: Patient) => {
+                                  // Render list pasien
+                                  return filteredPatients.map(patient => {
+                                    const isSelected = field.value && String(field.value) === String(patient.id);
                                     const isQueenzky = patient.name && patient.name.includes('Queenzky');
                                     const isForwardedPatient = patient.name && patient.name.includes('(');
                                     
                                     return (
-                                      <SelectItem 
-                                        key={patient.id} 
-                                        value={String(patient.id)}
-                                        className={`cursor-pointer hover:bg-primary/10 ${
-                                          isQueenzky 
-                                            ? 'border-l-4 border-amber-500 pl-2' 
-                                            : isForwardedPatient ? 'border-l-4 border-blue-500 pl-2' : ''
-                                        }`}
+                                      <div
+                                        key={patient.id}
+                                        className={`flex items-center justify-between p-2 border-b cursor-pointer hover:bg-muted/50
+                                          ${isSelected ? 'bg-primary/10 border-primary' : ''}
+                                          ${isQueenzky ? 'border-l-4 border-l-amber-500' : 
+                                            isForwardedPatient ? 'border-l-4 border-l-blue-500' : ''
+                                          }
+                                        `}
+                                        onClick={() => {
+                                          field.onChange(String(patient.id));
+                                          console.log("Selected patient:", patient.name, "with ID:", patient.id);
+                                        }}
                                       >
-                                        <span className="font-medium">
-                                          {patient.name}
-                                          {isQueenzky && searchTerm && searchTerm.toLowerCase().includes('syafl') && (
-                                            <span className="ml-2 text-xs text-amber-600">(Syaflina/Syafliana)</span>
-                                          )}
-                                        </span>
-                                        <span className="ml-2 text-xs text-muted-foreground">({patient.patientId})</span>
-                                      </SelectItem>
+                                        <div>
+                                          <div className="font-medium">
+                                            {patient.name}
+                                            {isQueenzky && searchTerm && searchTerm.toLowerCase().includes('syafl') && (
+                                              <span className="ml-2 text-xs text-amber-600">(Syaflina/Syafliana)</span>
+                                            )}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            ID: {patient.patientId} - Tel: {patient.phoneNumber || 'N/A'}
+                                          </div>
+                                        </div>
+                                        
+                                        {isSelected && (
+                                          <Badge variant="outline" className="bg-primary/20">
+                                            Dipilih
+                                          </Badge>
+                                        )}
+                                      </div>
                                     );
                                   });
                                 })()}
-                              </SelectContent>
-                            </Select>
+                              </div>
+                            </div>
                             
                             {/* Show selected patient info */}
                             {field.value && (
