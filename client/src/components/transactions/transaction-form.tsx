@@ -273,19 +273,32 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId }: 
   
   // Periksa apakah dropdown harus disembunyikan
   // 1. Periksa localStorage untuk flag yang disetel oleh slot-patients-dialog
-  const hideDropdownFromStorage = localStorage.getItem('hidePatientDropdown') === 'true';
-  // 2. Periksa URL untuk parameter hideDropdown
-  const urlParams = new URLSearchParams(window.location.search);
-  const hideDropdownFromUrl = urlParams.get('hideDropdown') === 'true';
-  // Gabungkan keduanya ke dalam satu flag
-  const hidePatientDropdown = hideDropdownFromStorage || hideDropdownFromUrl;
+  const [hidePatientDropdown, setHidePatientDropdown] = useState<boolean>(false);
   
-  // Hapus flag dari localStorage setelah digunakan untuk mencegah efek samping pada pemuatan halaman berikutnya
   useEffect(() => {
-    if (hideDropdownFromStorage) {
+    // Jika selectedPatientId sudah ada, maka itu berasal dari slot-patients-dialog, jadi sembunyikan dropdown
+    const hasPreselectedPatient = selectedPatientId !== null && selectedPatientId !== undefined;
+    // Periksa localStorage
+    const hideFromStorage = localStorage.getItem('hidePatientDropdown') === 'true';
+    // Periksa URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const hideFromUrl = urlParams.get('hideDropdown') === 'true';
+    
+    // Set state berdasarkan kondisi-kondisi di atas
+    setHidePatientDropdown(hasPreselectedPatient || hideFromStorage || hideFromUrl);
+    
+    // Hapus flag dari localStorage untuk mencegah efek samping pada pemuatan halaman berikutnya
+    if (hideFromStorage) {
       localStorage.removeItem('hidePatientDropdown');
     }
-  }, [hideDropdownFromStorage]);
+    
+    console.log("TransactionForm - Should hide dropdown?", {
+      hasPreselectedPatient,
+      hideFromStorage,
+      hideFromUrl,
+      result: hasPreselectedPatient || hideFromStorage || hideFromUrl
+    });
+  }, [selectedPatientId]);
 
   // Siapkan default value untuk patientId berdasarkan prop selectedPatientId
   // Pastikan patientId selalu berupa string
