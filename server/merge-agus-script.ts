@@ -11,11 +11,11 @@ export async function mergeAgusIsrofinDirectly() {
   console.log("Menjalankan perbaikan langsung untuk paket ganda Agus Isrofin...");
   
   try {
-    // ID pasien yang bermasalah
-    const primaryId = 86;    // ID yang dipertahankan
-    const duplicateId = 261; // ID yang paketnya akan dinonaktifkan
+    // ID pasien yang bermasalah (diperbarui berdasarkan tangkapan layar)
+    const primaryId = 86;    // ID yang dipertahankan (P-2025-086)
+    const duplicateId = 323; // ID yang paketnya akan dinonaktifkan (P-2025-323)
     
-    // 1. Tandai semua sesi aktif dengan ID 261 sebagai "inactive"
+    // 1. Tandai semua sesi aktif dengan ID pasien duplikat sebagai "inactive"
     const deactivateResult = await db.execute(sql`
       UPDATE sessions
       SET status = 'inactive', 
