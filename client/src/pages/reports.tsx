@@ -1611,6 +1611,199 @@ export default function Reports() {
           <TabsContent value="patients-daily" className="space-y-6">
             {activeTab === "patients-daily" && <PatientsDaily />}
           </TabsContent>
+          
+          <TabsContent value="visits" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl font-heading">Laporan Kunjungan Pasien</CardTitle>
+                <CardDescription>
+                  Laporan bulanan kunjungan pasien di klinik untuk keperluan pelaporan Kemenkes
+                </CardDescription>
+                
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <div className="flex items-center">
+                    <span className="mr-2">Tahun:</span>
+                    <Select
+                      value={selectedYear.toString()}
+                      onValueChange={(value) => setSelectedYear(parseInt(value))}
+                    >
+                      <SelectTrigger className="w-36">
+                        <SelectValue placeholder="Pilih Tahun" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[2024, 2025, 2026].map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <span className="mr-2">Bulan:</span>
+                    <Select
+                      value={selectedMonth.toString()}
+                      onValueChange={(value) => setSelectedMonth(parseInt(value))}
+                    >
+                      <SelectTrigger className="w-36">
+                        <SelectValue placeholder="Pilih Bulan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 12 }, (_, i) => {
+                          const monthNumber = i + 1;
+                          const monthName = format(new Date(2025, i, 1), "MMMM", { locale: id });
+                          return (
+                            <SelectItem key={monthNumber} value={monthNumber.toString()}>
+                              {monthName}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="ml-auto"
+                    onClick={exportMonthlyVisitReport}
+                    disabled={isLoadingVisitReport}
+                  >
+                    {isLoadingVisitReport ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Memuat...
+                      </>
+                    ) : (
+                      <>
+                        <FileDown className="mr-2 h-4 w-4" />
+                        Ekspor ke Excel
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              
+              <CardContent>
+                {isLoadingVisitReport ? (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                  </div>
+                ) : monthlyVisitReport ? (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg shadow-sm">
+                        <h3 className="text-lg font-semibold mb-2">Total Kunjungan</h3>
+                        <p className="text-2xl md:text-3xl font-bold text-blue-700 dark:text-blue-300">
+                          {monthlyVisitReport.summary.totalVisits}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          Pasien yang berkunjung di bulan ini
+                        </p>
+                      </div>
+                      
+                      <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg shadow-sm">
+                        <h3 className="text-lg font-semibold mb-2">Pasien Baru</h3>
+                        <p className="text-2xl md:text-3xl font-bold text-green-700 dark:text-green-300">
+                          {monthlyVisitReport.summary.newPatients}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          {Math.round((monthlyVisitReport.summary.newPatients / (monthlyVisitReport.summary.totalVisits || 1)) * 100)}% dari total kunjungan
+                        </p>
+                      </div>
+                      
+                      <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg shadow-sm">
+                        <h3 className="text-lg font-semibold mb-2">Pasien Lama</h3>
+                        <p className="text-2xl md:text-3xl font-bold text-purple-700 dark:text-purple-300">
+                          {monthlyVisitReport.summary.returningPatients}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          {Math.round((monthlyVisitReport.summary.returningPatients / (monthlyVisitReport.summary.totalVisits || 1)) * 100)}% dari total kunjungan
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-6">
+                      <h3 className="text-lg font-semibold mb-4">Detail Kunjungan Pasien</h3>
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[60px]">No</TableHead>
+                              <TableHead>Tanggal</TableHead>
+                              <TableHead>Nama Pasien</TableHead>
+                              <TableHead>Alamat</TableHead>
+                              <TableHead className="w-[80px]">Umur</TableHead>
+                              <TableHead className="w-[60px]">JK</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Keluhan</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {monthlyVisitReport.visits.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={8} className="text-center py-4">
+                                  Tidak ada data kunjungan pasien untuk bulan ini
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              monthlyVisitReport.visits.map((visit, index) => (
+                                <TableRow key={`${visit.patientName}-${visit.date}-${index}`}>
+                                  <TableCell>{index + 1}</TableCell>
+                                  <TableCell>
+                                    {format(new Date(visit.date), "dd MMM yyyy", { locale: id })}
+                                  </TableCell>
+                                  <TableCell>{visit.patientName}</TableCell>
+                                  <TableCell className="max-w-[200px] truncate" title={visit.patientAddress}>
+                                    {visit.patientAddress}
+                                  </TableCell>
+                                  <TableCell>{visit.patientAge}</TableCell>
+                                  <TableCell>{visit.patientGender}</TableCell>
+                                  <TableCell>
+                                    <Badge variant={visit.visitType === "BARU" ? "default" : "outline"}>
+                                      {visit.visitType}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="max-w-[200px] truncate" title={visit.complaint}>
+                                    {visit.complaint}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end mt-4">
+                      <Button onClick={exportMonthlyVisitReport} disabled={isLoadingVisitReport}>
+                        {isLoadingVisitReport ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Memuat...
+                          </>
+                        ) : (
+                          <>
+                            <FileDown className="mr-2 h-4 w-4" />
+                            Ekspor Laporan Excel (Format Kemenkes)
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center">
+                    <p className="text-gray-500 dark:text-gray-400">
+                      Tidak dapat memuat data laporan kunjungan pasien.
+                      <br />
+                      Silakan pilih bulan dan tahun, lalu coba lagi.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
       
