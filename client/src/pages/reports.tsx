@@ -1819,7 +1819,23 @@ export default function Reports() {
                                 <TableRow key={`${visit.patientName}-${visit.date}-${index}`}>
                                   <TableCell>{index + 1}</TableCell>
                                   <TableCell>
-                                    {format(new Date(visit.date), "dd MMM yyyy", { locale: id })}
+                                    {(() => {
+                                      try {
+                                        // Handle tanggal dalam format DD-MM-YYYY
+                                        if (visit.date.includes("-") && visit.date.length === 10) {
+                                          const [day, month, year] = visit.date.split("-");
+                                          if (day && month && year) {
+                                            const parsedDate = new Date(`${year}-${month}-${day}`);
+                                            return format(parsedDate, "dd MMM yyyy", { locale: id });
+                                          }
+                                        }
+                                        // Fallback untuk format lain
+                                        return visit.date;
+                                      } catch (e) {
+                                        console.error("Error formatting date:", e);
+                                        return visit.date;
+                                      }
+                                    })()}
                                   </TableCell>
                                   <TableCell>{visit.patientName}</TableCell>
                                   <TableCell className="max-w-[200px] truncate" title={visit.patientAddress}>
