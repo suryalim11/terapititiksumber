@@ -108,8 +108,24 @@ export default function Dashboard() {
     refetchInterval: 10000,
   });
   
+  // Fungsi untuk mendapatkan tanggal dari slot (YYYY-MM-DD) dari format apapun
+  const getSlotDateStr = (slot: TherapySlot): string => {
+    if (!slot || !slot.date) {
+      console.error('Invalid slot or missing date:', slot);
+      return '';
+    }
+    
+    if (typeof slot.date === 'string') {
+      // Format: "2025-04-07 00:00:00" atau "2025-04-07 03:07:41.562" -> ambil "2025-04-07"
+      return slot.date.split(' ')[0];
+    } else {
+      // Format: Date object -> convert ke string "2025-04-07"
+      return new Date(slot.date).toISOString().split('T')[0];
+    }
+  };
+
   // Gunakan API ini sebagai satu-satunya sumber data slot
-  const { data: slotsByPeriod = [], isLoading: isSlotsLoading, refetch: refetchSlotsByPeriod } = useQuery<TherapySlot[]>({
+  const { data: slotsByPeriod = [], isLoading: isSlotsLoading, refetch: refetchSlotsByPeriod, error: slotsError } = useQuery<TherapySlot[]>({
     queryKey: ['/api/slots-by-period', selectedPeriod],
     queryFn: async () => {
       try {
@@ -123,24 +139,47 @@ export default function Dashboard() {
         // Ambil semua data dari server
         const response = await fetch(todayQuery);
         if (!response.ok) {
-          throw new Error('Failed to fetch today slots');
+          const errorText = await response.text();
+          console.error(`Server returned ${response.status} with text: ${errorText}`);
+          throw new Error(`Failed to fetch today slots: ${response.status} ${errorText}`);
         }
         
         // Ambil semua data dari server
-        const rawData: TherapySlot[] = await response.json();
-        console.log("Data sebelum deduplikasi: " + rawData.length + " slots, tanggal untuk cek: " + formattedToday);
+        const rawData = await response.json();
+        
+        // Verifikasi bahwa rawData adalah array
+        if (!Array.isArray(rawData)) {
+          console.error('Expected array but got:', typeof rawData, rawData);
+          return []; // Return empty array instead of throwing to prevent UI disruption
+        }
+        
+        // Konversi data mentah ke tipe TherapySlot dengan nilai default untuk bidang yang hilang
+        const processedSlots: TherapySlot[] = rawData.map(slot => ({
+          id: slot.id || 0,
+          date: slot.date || '',
+          timeSlot: slot.timeSlot || '',
+          isActive: slot.isActive !== undefined ? slot.isActive : true,
+          maxQuota: slot.maxQuota || 6,
+          currentCount: slot.currentCount || 0,
+          percentage: slot.currentCount && slot.maxQuota ? (slot.currentCount / slot.maxQuota) * 100 : 0,
+          createdAt: slot.createdAt || ''
+        }));
+        
+        console.log("Data sebelum deduplikasi: " + processedSlots.length + " slots, tanggal untuk cek: " + formattedToday);
         
         // Log debug lengkap
-        console.log("Raw data dari server:", rawData.map(s => ({ 
+        console.log("Raw data dari server:", processedSlots.map(s => ({ 
           id: s.id, 
           date: s.date, 
           isActive: s.isActive,
-          timeSlot: s.timeSlot
+          timeSlot: s.timeSlot,
+          currentCount: s.currentCount,
+          maxQuota: s.maxQuota
         })));
         
         // Langkah 1: Deduplikasi berdasarkan ID
         const idSet = new Set<number>();
-        const filteredSlots: TherapySlot[] = rawData.filter((slot) => {
+        const filteredSlots: TherapySlot[] = processedSlots.filter((slot) => {
           if (idSet.has(slot.id)) {
             console.log(`Removing duplicate slot with ID: ${slot.id}`);
             return false;
@@ -155,7 +194,7 @@ export default function Dashboard() {
         
         // Pertama, kelompokkan slot berdasarkan kombinasi tanggal+waktu
         filteredSlots.forEach(slot => {
-          const slotDateStr = getSlotDateStr(slot); // Gunakan fungsi yang sudah ada
+          const slotDateStr = getSlotDateStr(slot);
           const key = `${slotDateStr}-${slot.timeSlot}`;
           
           if (!dateTimeMap.has(key)) {
@@ -200,66 +239,13 @@ export default function Dashboard() {
         
         let filteredByPeriod = [...uniqueSlots];
         
-        // PINDAHKAN FUNGSI DI ATAS BLOK if (selectedPeriod === 'day')
-        
-        // Fungsi untuk mendapatkan tanggal dari slot (YYYY-MM-DD) dari format apapun
-        const getSlotDateStr = (slot: TherapySlot): string => {
-          if (!slot || !slot.date) {
-            console.error('Invalid slot or missing date:', slot);
-            return '';
-          }
-          
-          if (typeof slot.date === 'string') {
-            // Format: "2025-04-07 00:00:00" atau "2025-04-07 03:07:41.562" -> ambil "2025-04-07"
-            return slot.date.split(' ')[0];
-          } else {
-            // Format: Date object -> convert ke string "2025-04-07"
-            return new Date(slot.date).toISOString().split('T')[0];
-          }
-        };
-        
+        // Tidak perlu filter lagi untuk day mode karena API sudah menyaring berdasarkan tanggal
         if (selectedPeriod === 'day') {
           // Filter hanya untuk hari ini (dalam zona waktu WIB)
           const todayWIBStr = dateToWIBDateString(nowWIB);
           console.log(`Filter untuk hari ini (WIB): ${todayWIBStr}`);
           
-          // Log data lengkap untuk inspeksi
-          console.log("Data slot lengkap untuk debugging:", uniqueSlots.map(s => ({
-            id: s.id,
-            date: s.date,
-            timeSlot: s.timeSlot,
-            dateStr: s.date ? 
-              (typeof s.date === 'string' ? s.date.split(' ')[0] : new Date(s.date).toISOString().split('T')[0]) 
-              : 'invalid-date'
-          })));
-          
-          // Lebih simple: filter dengan substring tanggal
-          filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
-            try {
-              // Skip slot yang tidak memiliki data yang valid
-              if (!slot || !slot.date) {
-                console.log("Melewati slot tanpa data tanggal:", slot);
-                return false;
-              }
-              
-              const dateStr = String(slot.date);
-              
-              // Cek apakah tanggal mengandung string hari ini (2025-05-05)
-              // Ini lebih robust untuk menangani berbagai format tanggal dari database
-              return dateStr.includes(todayWIBStr);
-            } catch (err) {
-              console.error("Error saat memfilter slot:", err, slot);
-              return false;
-            }
-          });
-          
-          // Log hasil seleksi
-          console.log(`Hasil filter hari ini: ${filteredByPeriod.length} slot ditemukan`);
-          if (filteredByPeriod.length > 0) {
-            console.log("Contoh slot terapi hari ini:", filteredByPeriod.slice(0, 3));
-          }
-          
-          console.log(`Hasil filter hari ini (WIB): ${filteredByPeriod.length} slot ditemukan`);
+          filteredByPeriod = uniqueSlots; // Gunakan semua slot karena API sudah difilter
           
         } else if (selectedPeriod === 'past-week') {
           // Filter untuk 7 hari terakhir (dalam zona waktu WIB)
@@ -295,7 +281,7 @@ export default function Dashboard() {
         console.log(`After period (${selectedPeriod}) filtering: ${filteredByPeriod.length} slots`);
         
         // Langkah 4: Urutkan berdasarkan tanggal dan waktu
-        return filteredByPeriod.sort((a: TherapySlot, b: TherapySlot) => {
+        const sortedSlots = filteredByPeriod.sort((a: TherapySlot, b: TherapySlot) => {
           // Konversi string tanggal ke objek Date
           const dateA = new Date(a.date);
           const dateB = new Date(b.date);
@@ -307,9 +293,14 @@ export default function Dashboard() {
           // Jika tanggal sama, bandingkan berdasarkan waktu
           return a.timeSlot.localeCompare(b.timeSlot);
         });
+        
+        // Return hasil yang sudah diproses
+        return sortedSlots;
       } catch (error) {
         console.error("Error fetching slots:", error);
-        throw error;
+        // Don't throw the error, return empty array instead
+        // This prevents the UI from crashing and shows "No slots" message
+        return [];
       }
     },
     refetchInterval: 10000,
