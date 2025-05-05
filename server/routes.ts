@@ -2543,18 +2543,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       console.log(`Total slot setelah deduplikasi ID: ${uniqueSlots.length}`);
       
-      // Deduplikasi lagi: hapus slot dengan kombinasi tanggal+waktu yang sama
-      const uniqueDateTimes = new Set();
-      const finalSlots = uniqueSlots.filter(slot => {
-        const dateTimeKey = `${slot.date}-${slot.timeSlot}`;
-        if (uniqueDateTimes.has(dateTimeKey)) {
-          console.log(`Menghapus slot duplikat dengan tanggal+waktu: ${dateTimeKey}`);
-          return false;
-        }
-        uniqueDateTimes.add(dateTimeKey);
-        return true;
-      });
-      console.log(`Total slot setelah deduplikasi tanggal+waktu: ${finalSlots.length}`);
+      // Tidak lagi melakukan deduplikasi berdasarkan tanggal+waktu
+      // karena ini menyebabkan slot dengan ID berbeda tapi waktu sama (seperti 13:00-15:00) dihilangkan salah satunya
+      // Slot 420 dan 423 sama-sama di jam 13:00-15:00 tanggal 2025-05-05, tapi 423 memiliki 5 pasien
+      
+      // Gunakan langsung uniqueSlots tanpa deduplikasi tambahan
+      const finalSlots = uniqueSlots;
+      console.log(`Total slot aktif setelah filter: ${finalSlots.length}`);
       
       // First sort by date, then by timeSlot
       finalSlots.sort((a, b) => {
