@@ -1090,12 +1090,32 @@ export default function Reports() {
       </div>
 
       <div ref={reportRef}>
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-            <TabsTrigger className="text-sm sm:text-base" value="financial">Keuangan</TabsTrigger>
-            <TabsTrigger className="text-sm sm:text-base" value="therapy">Terapi</TabsTrigger>
-            <TabsTrigger className="text-sm sm:text-base" value="patients-daily">Pasien</TabsTrigger>
-            <TabsTrigger className="text-sm sm:text-base" value="visits">Kunjungan</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-1.5">
+            <TabsTrigger 
+              className="text-xs sm:text-sm font-medium rounded-md py-2 px-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700" 
+              value="financial"
+            >
+              Keuangan
+            </TabsTrigger>
+            <TabsTrigger 
+              className="text-xs sm:text-sm font-medium rounded-md py-2 px-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700" 
+              value="therapy"
+            >
+              Terapi
+            </TabsTrigger>
+            <TabsTrigger 
+              className="text-xs sm:text-sm font-medium rounded-md py-2 px-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700" 
+              value="patients-daily"
+            >
+              Pasien
+            </TabsTrigger>
+            <TabsTrigger 
+              className="text-xs sm:text-sm font-medium rounded-md py-2 px-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700" 
+              value="visits"
+            >
+              Kunjungan
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="financial" className="space-y-6">
