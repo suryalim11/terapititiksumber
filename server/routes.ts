@@ -2194,15 +2194,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create data rows
       const rows = report.visits.map((visit, index) => {
-        // Format tanggal sesuai dengan format laporan (DD.MM.YYYY)
-        const dateParts = visit.date.split('-');
-        const formattedDate = dateParts.length === 3 ? 
-          `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}` : // format: DD.MM.YYYY
-          visit.date; // gunakan format asli jika tidak sesuai format yang diharapkan
-          
+        // Ekstrak tanggal dan hilangkan timestamp yang tidak diperlukan
+        // Format yang kita targetkan: hanya tanggal (DD)
+        let formattedDate;
+        
+        try {
+          // Ambil tanggal dari format yyyy-MM-dd
+          const dateParts = visit.date.split('-');
+          if (dateParts.length === 3) {
+            // Ambil HANYA hari (bagian terakhir)
+            formattedDate = dateParts[2]; // DD (hari)
+          } else {
+            // Jika format tidak sesuai, gunakan teks asli
+            formattedDate = visit.date;
+          }
+        } catch (e) {
+          // Fallback jika ada error
+          formattedDate = visit.date; 
+        }
+        
         const row = [
           index + 1, // Nomor
-          formattedDate, // Tanggal dengan format DD.MM.YYYY
+          formattedDate, // Hanya tanggal (DD)
           visit.patientName,
           visit.patientAddress,
           visit.patientAge,
