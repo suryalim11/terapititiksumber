@@ -195,9 +195,17 @@ export default function Dashboard() {
           const todayWIBStr = dateToWIBDateString(nowWIB);
           console.log(`Filter untuk hari ini (WIB): ${todayWIBStr}`);
           
-          // Metode alternatif: bandingkan string tanggal YYYY-MM-DD
-          console.log("Menggunakan metode perbandingan string tanggal untuk filter hari ini");
+          // Log data lengkap untuk inspeksi
+          console.log("Data slot lengkap untuk debugging:", uniqueSlots.map(s => ({
+            id: s.id,
+            date: s.date,
+            timeSlot: s.timeSlot,
+            dateStr: s.date ? 
+              (typeof s.date === 'string' ? s.date.split(' ')[0] : new Date(s.date).toISOString().split('T')[0]) 
+              : 'invalid-date'
+          })));
           
+          // Lebih simple: filter dengan substring tanggal
           filteredByPeriod = uniqueSlots.filter((slot: any) => {
             try {
               // Skip slot yang tidak memiliki data yang valid
@@ -206,21 +214,22 @@ export default function Dashboard() {
                 return false;
               }
               
-              // Ekstrak tanggal dalam format YYYY-MM-DD dari slot date
-              const slotDateStr = getSlotDateStr(slot);
+              const dateStr = String(slot.date);
               
-              // Bandingkan dengan string tanggal hari ini
-              const isSameDay = slotDateStr === todayWIBStr;
-              
-              // Log untuk debugging detail
-              console.log(`Slot ${slot.id}: tanggal=${slotDateStr}, hari ini=${todayWIBStr}, sama=${isSameDay}`);
-              
-              return isSameDay;
+              // Cek apakah tanggal mengandung string hari ini (2025-05-05)
+              // Ini lebih robust untuk menangani berbagai format tanggal dari database
+              return dateStr.includes(todayWIBStr);
             } catch (err) {
               console.error("Error saat memfilter slot:", err, slot);
               return false;
             }
           });
+          
+          // Log hasil seleksi
+          console.log(`Hasil filter hari ini: ${filteredByPeriod.length} slot ditemukan`);
+          if (filteredByPeriod.length > 0) {
+            console.log("Contoh slot terapi hari ini:", filteredByPeriod.slice(0, 3));
+          }
           
           console.log(`Hasil filter hari ini (WIB): ${filteredByPeriod.length} slot ditemukan`);
           
