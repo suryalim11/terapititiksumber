@@ -101,17 +101,22 @@ export default function Dashboard() {
     queryKey: ['/api/slots-by-period', selectedPeriod],
     queryFn: async () => {
       try {
-        // Selalu gunakan parameter yang konsisten untuk mendapatkan data lengkap
-        console.log(`Fetching slots with fixed period=week to ensure consistency`);
-        // Tambahkan parameter includeToday=true untuk memastikan mendapatkan slot hari ini
-        const response = await fetch(`/api/slots-by-period?period=week&includeToday=true`);
+        console.log(`Memperbarui tanggal ke hari ini:`, formattedToday);
+        console.log(`Hari ini adalah tanggal:`, format(todayWIB, 'd MMMM yyyy', { locale: localeId }));
+        
+        // Ubah API endpoint untuk langsung menggunakan filter berdasarkan tanggal
+        const todayQuery = `/api/therapy-slots?date=${formattedToday}`;
+        console.log(`Fetching therapy slots with URL:`, todayQuery);
+        
+        // Ambil semua data dari server
+        const response = await fetch(todayQuery);
         if (!response.ok) {
-          throw new Error('Failed to fetch slots by period');
+          throw new Error('Failed to fetch today slots');
         }
         
         // Ambil semua data dari server
         const rawData = await response.json();
-        console.log(`Received ${rawData.length} slots from API`);
+        console.log("Data sebelum deduplikasi: " + rawData.length + " slots, setelah filter: " + rawData.length + ", setelah deduplikasi: " + rawData.length + " slots");
         
         // Langkah 1: Deduplikasi berdasarkan ID
         const idSet = new Set();
