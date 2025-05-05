@@ -387,7 +387,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           
           doc.setFont("helvetica", "bold");
           doc.setTextColor(0, 128, 0); // Green for amount paid
-          doc.text("Dibayar:", 140, y + 10, { align: 'right' });
+          doc.text("Dibayar Dimuka:", 140, y + 10, { align: 'right' });
           doc.text(formatPrice(paidAmountValue.toString()), 195, y + 10, { align: 'right' });
           y += 12;
           doc.setTextColor(0, 0, 0); // Reset text color to black
@@ -564,7 +564,15 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       message += `Terima kasih telah mengunjungi Klinik Terapi Titik Sumber.\n\n`;
       message += `Berikut adalah detail invoice Anda:\n`;
       message += `No. Invoice: ${data.transaction.transactionId}\n`;
-      message += `Total: ${formatPrice(data.transaction.totalAmount)}\n\n`;
+      message += `Total: ${formatPrice(data.transaction.totalAmount)}\n`;
+      
+      // Tambahkan informasi kredit jika transaksi belum lunas
+      if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount) > 0) {
+        message += `Dibayar Dimuka: ${formatPrice(data.transaction.paidAmount || "0")}\n`;
+        message += `Sisa Hutang: ${formatPrice(data.transaction.creditAmount)}\n`;
+      }
+      
+      message += `\n`;
       
       // Tambahkan informasi pembayaran
       message += `Informasi Pembayaran:\n\n`;
