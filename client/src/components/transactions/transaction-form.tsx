@@ -341,6 +341,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
     
     // Update creditAmount sesuai dengan jumlah yang belum dibayar
     form.setValue("creditAmount", remainingCredit.toString());
+    form.setValue("paidAmount", paidValue.toString());
     
     // Set isPaid = false karena ini pembayaran kredit
     form.setValue("isPaid", false);
@@ -988,6 +989,30 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
           price: item.price,
         })),
       };
+      
+      // Pastikan paidAmount dan creditAmount diset dengan benar untuk pembayaran sebagian
+      if (useCredit) {
+        // Log untuk debugging
+        console.log("Transaksi dengan pembayaran sebagian (credit)");
+        console.log("isPaid:", submissionData.isPaid);
+        console.log("paidAmount:", submissionData.paidAmount);
+        console.log("creditAmount:", submissionData.creditAmount);
+        
+        // Pastikan isPaid adalah false untuk pembayaran sebagian
+        submissionData.isPaid = false;
+        
+        // Pastikan nilai paidAmount dan creditAmount sudah benar
+        const totalAmount = parseFloat(submissionData.totalAmount || "0");
+        const paidAmount = parseFloat(submissionData.paidAmount || "0");
+        
+        // Hitung ulang creditAmount sebagai selisih totalAmount - paidAmount
+        submissionData.creditAmount = Math.max(0, totalAmount - paidAmount).toString();
+        
+        console.log("Final credit values setelah koreksi:");
+        console.log("isPaid:", submissionData.isPaid);
+        console.log("paidAmount:", submissionData.paidAmount);
+        console.log("creditAmount:", submissionData.creditAmount);
+      }
       
       // Tambahkan validasi patientId sebelum membuat transaksi
       if (!submissionData.patientId) {
