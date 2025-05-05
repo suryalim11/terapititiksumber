@@ -10,6 +10,17 @@ import {
   CardTitle, 
   CardDescription 
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { FileDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -616,6 +627,39 @@ export default function Reports() {
   });
   const { toast } = useToast();
   const reportRef = useRef<HTMLDivElement>(null);
+  
+  // Ekspor laporan kunjungan ke Excel
+  const exportMonthlyVisitReport = () => {
+    try {
+      const monthNames = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+      ];
+      
+      const monthName = monthNames[selectedMonth - 1];
+      const exportURL = `/api/reports/monthly-visits/export?year=${selectedYear}&month=${selectedMonth}`;
+      
+      // Create download link
+      const link = document.createElement("a");
+      link.href = exportURL;
+      link.setAttribute("download", `Laporan_Kunjungan_${monthName}_${selectedYear}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Ekspor dimulai",
+        description: `Laporan kunjungan pasien bulan ${monthName} ${selectedYear} sedang diunduh.`,
+      });
+    } catch (error) {
+      console.error("Error exporting visit report:", error);
+      toast({
+        title: "Gagal mengekspor laporan",
+        description: "Terjadi kesalahan saat mengekspor laporan kunjungan pasien.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Fetch transactions
   const { data: transactions, isLoading: isLoadingTransactions } = useQuery({
@@ -668,6 +712,29 @@ export default function Reports() {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true
+  });
+  
+  // Fetch monthly visit report
+  const { data: monthlyVisitReport, isLoading: isLoadingVisitReport } = useQuery({
+    queryKey: ["/api/reports/monthly-visits", selectedYear, selectedMonth],
+    queryFn: async () => {
+      // Tambahkan timestamp untuk menghindari cache browser
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/reports/monthly-visits?year=${selectedYear}&month=${selectedMonth}&_=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch monthly visit report");
+      }
+      return await response.json();
+    },
+    enabled: activeTab === "visits",
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Generate daily financial data for chart
