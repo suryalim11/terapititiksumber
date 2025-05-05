@@ -2672,10 +2672,12 @@ export class DatabaseStorage implements IStorage {
         const tranDate = new Date(transaction.createdAt);
         const dateStr = format(tranDate, 'yyyy-MM-dd');
         
-        // Update data harian
+        // Update data harian - gunakan paidAmount untuk pendapatan aktual (bukan total transaksi)
         const dailyData = dailyDataMap.get(dateStr);
         if (dailyData) {
-          dailyData.totalAmount += totalAmount;
+          // Gunakan paidAmount untuk total pendapatan harian (uang yang benar-benar masuk)
+          const actualPaid = Number(transaction.paidAmount || transaction.totalAmount);
+          dailyData.totalAmount += actualPaid;
           dailyData.productSales += productSalesInTransaction;
           dailyData.serviceSales += serviceSalesInTransaction;
           dailyData.credits += creditAmount;
@@ -2701,9 +2703,10 @@ export class DatabaseStorage implements IStorage {
           }
           
           if (displayPaymentMethod in dailyData.paymentMethod) {
-            dailyData.paymentMethod[displayPaymentMethod] += totalAmount;
+            // Gunakan paidAmount untuk mencatat pembayaran per metode
+            dailyData.paymentMethod[displayPaymentMethod] += actualPaid;
           } else {
-            dailyData.paymentMethod["Lainnya"] += totalAmount;
+            dailyData.paymentMethod["Lainnya"] += actualPaid;
           }
         }
       }
