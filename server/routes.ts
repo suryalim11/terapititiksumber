@@ -1380,12 +1380,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const package_ = await storage.getPackage(item.id);
           
           if (package_) {
-            await storage.createSession({
+            // Membuat sesi dengan sessionsUsed=1 untuk menandai bahwa satu sesi sudah terpakai saat paket dibeli
+            const newSession = await storage.createSession({
               patientId: validatedData.patientId,
               transactionId: newTransaction.id,
               packageId: item.id,
               totalSessions: package_.sessions
             });
+            
+            // Update sessionsUsed ke 1 untuk menandai bahwa sesi pertama sudah digunakan
+            if (newSession && newSession.id) {
+              await storage.updateSessionUsage(newSession.id, 1);
+              console.log(`Paket terapi baru dibuat dengan ID ${newSession.id} untuk pasien ${validatedData.patientId}, sesi pertama otomatis ditandai terpakai`);
+            }
           }
         }
       }
