@@ -125,25 +125,12 @@ export default function Dashboard() {
         });
         console.log(`After ID deduplication: ${filteredSlots.length} slots remaining`);
         
-        // Langkah 2: Deduplikasi berdasarkan tanggal+waktu (dengan normalisasi tanggal)
-        const dateTimeSet = new Set();
-        const uniqueSlots = filteredSlots.filter((slot: any) => {
-          // Ekstrak tanggal dari string date (YYYY-MM-DD)
-          const datePart = typeof slot.date === 'string' ? slot.date.split(' ')[0] : 
-            new Date(slot.date).toISOString().split('T')[0];
-            
-          // Ambil hanya bagian tanggal (YYYY-MM-DD), buang timestamp
-          // Format: YYYY-MM-DD-HH:MM-HH:MM
-          const normalizedDate = datePart.split('T')[0];
-          const dateTimeKey = `${normalizedDate}-${slot.timeSlot}`;
-          
-          if (dateTimeSet.has(dateTimeKey)) {
-            console.log(`Removing duplicate slot with date+time: ${dateTimeKey}`);
-            return false;
-          }
-          dateTimeSet.add(dateTimeKey);
-          return true;
-        });
+        // Penting: Kita tidak lagi melakukan deduplikasi berdasarkan tanggal+waktu
+        // karena ini menyebabkan slot dengan ID berbeda namun waktu/tanggal sama hilang
+        // Hilangnya satu dari dua slot 13:00-15:00 (ID 420 dan 423) menyebabkan data pasien hilang
+        
+        // Sudah cukup melakukan deduplikasi berdasarkan ID saja
+        const uniqueSlots = filteredSlots;
         console.log(`After date+time deduplication: ${uniqueSlots.length} slots remaining`);
         
         // Langkah 3: Filter berdasarkan periode yang dipilih pengguna
