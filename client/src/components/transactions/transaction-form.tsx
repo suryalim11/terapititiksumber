@@ -323,6 +323,29 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
   };
 
   // Effect untuk memantau perubahan pada useCredit
+  // Handler untuk perubahan paidAmount saat menggunakan pembayaran kredit/utang
+  const handlePaidAmountChange = (value: string) => {
+    if (!useCredit) return; // Hanya aktif jika mode utang diaktifkan
+    
+    const totalAmount = calculateTotalPrice();
+    const paidValue = parseFloat(value) || 0;
+    
+    // Hitung sisa kredit (totalAmount - paidAmount)
+    const remainingCredit = Math.max(0, totalAmount - paidValue);
+    
+    console.log("Menghitung pembayaran sebagian:", {
+      totalAmount,
+      paidAmount: paidValue,
+      remainingCredit
+    });
+    
+    // Update creditAmount sesuai dengan jumlah yang belum dibayar
+    form.setValue("creditAmount", remainingCredit.toString());
+    
+    // Set isPaid = false karena ini pembayaran kredit
+    form.setValue("isPaid", false);
+  };
+  
   useEffect(() => {
     console.log("useCredit effect triggered, useCredit =", useCredit);
     
@@ -334,11 +357,17 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
         totalAmount
       });
       
-      // Set default paidAmount ke 0 dan creditAmount ke totalAmount
-      form.setValue("paidAmount", "0");
-      form.setValue("creditAmount", totalAmount.toString());
+      // Set default paidAmount ke 0 (bisa diubah user) dan creditAmount ke totalAmount
+      const currentPaidAmount = form.getValues("paidAmount");
+      if (currentPaidAmount === "0" || !currentPaidAmount) {
+        form.setValue("paidAmount", "0");
+        form.setValue("creditAmount", totalAmount.toString());
+      } else {
+        // Jika user sudah memasukkan nilai, hitung ulang creditAmount
+        handlePaidAmountChange(currentPaidAmount);
+      }
       
-      // Pastikan isPaid disetel ke false
+      // Pastikan isPaid disetel ke false untuk transaksi kredit
       form.setValue("isPaid", false);
     } else {
       console.log("Resetting credit values");
@@ -1666,6 +1695,12 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                                             {...field}
                                             type="number"
                                             min="0"
+                                            onChange={(e) => {
+                                              // Panggil field.onChange untuk update form
+                                              field.onChange(e);
+                                              // Kemudian panggil handler pembayaran sebagian
+                                              handlePaidAmountChange(e.target.value);
+                                            }}
                                           />
                                         </FormControl>
                                       </div>

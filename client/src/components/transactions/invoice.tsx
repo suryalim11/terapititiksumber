@@ -799,51 +799,17 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               </tfoot>
             </table>
 
-            {/* Total section dengan subtotal dan diskon */}
-            <div className="border-t border-gray-200 pt-4 mb-4">
-              {/* Subtotal */}
-              {data.subtotal && (
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium">Subtotal</span>
-                  <span>{formatPrice(data.subtotal.toString())}</span>
-                </div>
-              )}
-              
-              {/* Diskon jika ada dan lebih dari 0 */}
-              {data.discount && parseFloat(data.discount.toString()) > 0 && (
-                <div className="flex justify-between text-sm mb-2 text-red-500">
-                  <span className="font-medium">Diskon</span>
-                  <span>{formatPrice(data.discount.toString())}</span>
-                </div>
-              )}
-              
-              {/* Total akhir */}
-              <div className="flex justify-between text-base font-bold mt-2 pt-2 border-t border-gray-200">
-                <span>Total</span>
-                <span>{formatPrice(data.transaction.totalAmount.toString())}</span>
-              </div>
-              
-              {/* Kredit (jika ada) */}
-              {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
-                <div className="flex justify-between text-sm mt-2 font-medium text-red-500">
-                  <span>Kredit</span>
-                  <span>{formatPrice(data.transaction.creditAmount.toString())}</span>
-                </div>
-              )}
-              
-              {/* Total yang dibayarkan (jika ada kredit) */}
-              {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
-                <div className="flex justify-between text-base font-bold mt-2 pt-2 border-t border-gray-200 text-green-600">
-                  <span>Dibayar</span>
-                  <span>{formatPrice((parseFloat(data.transaction.totalAmount.toString()) - parseFloat(data.transaction.creditAmount.toString())).toString())}</span>
-                </div>
-              )}
-              
+            {/* Informasi pembayaran */}
+            <div className="border-t border-gray-200 pt-4 mb-4">              
               {/* Informasi kredit jika transaksi belum lunas */}
-              {(data.isPaid === false || data.transaction.isPaid === false) && 
+              {(data.transaction.isPaid === false) && 
                data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
                 <div className="mt-3 p-3 bg-gray-50 border border-red-200 rounded-md">
                   <div className="font-medium text-sm mb-2 text-red-700">Informasi Kredit:</div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Total Tagihan</span>
+                    <span>{formatPrice(data.transaction.totalAmount.toString())}</span>
+                  </div>
                   <div className="flex justify-between text-sm mb-1">
                     <span>Dibayar Dimuka</span>
                     <span>{formatPrice(data.transaction.paidAmount?.toString() || "0")}</span>
