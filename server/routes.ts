@@ -2122,6 +2122,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Laporan Kunjungan Pasien Bulanan
+  app.get("/api/reports/monthly-visits", async (req: Request, res: Response) => {
+    try {
+      // Ambil tahun dan bulan dari query parameters
+      const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+      const month = req.query.month ? parseInt(req.query.month as string) : new Date().getMonth() + 1;
+      
+      console.log(`Mendapatkan laporan kunjungan pasien bulanan untuk tahun=${year}, bulan=${month}`);
+      
+      // Panggil metode dari storage untuk mendapatkan laporan
+      const report = await storage.getMonthlyVisitReport(year, month);
+      
+      return res.status(200).json(report);
+    } catch (error) {
+      console.error("Error fetching monthly visit report:", error);
+      return res.status(500).json({ 
+        message: "Gagal mendapatkan laporan kunjungan bulanan", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+  
+  // Ekspor Laporan Kunjungan Pasien Bulanan ke Excel
+  app.get("/api/reports/monthly-visits/export", async (req: Request, res: Response) => {
+    try {
+      // Ambil tahun dan bulan dari query parameters
+      const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+      const month = req.query.month ? parseInt(req.query.month as string) : new Date().getMonth() + 1;
+      
+      console.log(`Ekspor laporan kunjungan pasien bulanan untuk tahun=${year}, bulan=${month}`);
+      
+      // Get report data
+      const report = await storage.getMonthlyVisitReport(year, month);
+      
+      // Import xlsx library
+      const XLSX = require('xlsx');
+      
+      // Create a new workbook
+      const workbook = XLSX.utils.book_new();
+      
+      // Get month name in Indonesian
+      const monthNames = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+      ];
+      const monthName = monthNames[month - 1];
+      
+      // Create header rows
+      const headerData = [
+        ["LAPORAN BULANAN PASIEN TRADISIONAL"],
+        ["KEMENTERIAN KESEHATAN RI"],
+        ["DIREKTORAT JENDERAL PELAYANAN KESEHATAN"],
+        [""],
+        ["NAMA KLINIK:", report.clinicInfo.name],
+        ["KECAMATAN:", report.clinicInfo.district],
+        ["KELURAHAN:", report.clinicInfo.location],
+        ["KOTA:", report.clinicInfo.city],
+        ["BULAN:", `${monthName} ${year}`],
+        [""],
+        // Table header
+        [
+          "NO", "TANGGAL", "NAMA PASIEN", "ALAMAT", "UMUR", "JK",
+          "PASIEN", "KELUHAN", "JENIS TERAPI", "", ""
+        ],
+        [
+          "", "", "", "", "", "", "BARU/LAMA", "", "RAMUAN", "KETERAMPILAN", "KOMBINASI"
+        ]
+      ];
+      
+      // Create data rows
+      const rows = report.visits.map((visit, index) => {
+        const row = [
+          index + 1, // Nomor
+          visit.date.split('-')[2], // Tanggal (ambil bagian hari)
+          visit.patientName,
+          visit.patientAddress,
+          visit.patientAge,
+          visit.patientGender,
+          visit.visitType,
+          visit.complaint,
+          visit.treatmentTypes.includes("RAMUAN") ? "√" : "",
+          visit.treatmentTypes.includes("KETERAMPILAN") ? "√" : "",
+          visit.treatmentTypes.includes("KOMBINASI") ? "√" : ""
+        ];
+        return row;
+      });
+      
+      // Add summary row
+      const summaryRow = [
+        "", "TOTAL", "", "", "", "",
+        `B=${report.summary.newPatients} L=${report.summary.returningPatients}`,
+        "", "", "", ""
+      ];
+      
+      // Combine all rows
+      const allRows = [...headerData, ...rows, [""], [summaryRow]];
+      
+      // Create worksheet
+      const worksheet = XLSX.utils.aoa_to_sheet(allRows);
+      
+      // Set column widths
+      const colWidths = [5, 10, 30, 35, 8, 5, 10, 35, 10, 15, 12];
+      worksheet['!cols'] = colWidths.map(width => ({ width }));
+      
+      // Merge cells for headers
+      worksheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }, // Title row
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 10 } }, // Kementerian row
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 10 } }, // Direktorat row
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } }, // Nama Klinik label
+        { s: { r: 4, c: 2 }, e: { r: 4, c: 10 } }, // Nama Klinik value
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } }, // Kecamatan label
+        { s: { r: 5, c: 2 }, e: { r: 5, c: 10 } }, // Kecamatan value
+        { s: { r: 6, c: 0 }, e: { r: 6, c: 1 } }, // Kelurahan label
+        { s: { r: 6, c: 2 }, e: { r: 6, c: 10 } }, // Kelurahan value
+        { s: { r: 7, c: 0 }, e: { r: 7, c: 1 } }, // Kota label
+        { s: { r: 7, c: 2 }, e: { r: 7, c: 10 } }, // Kota value
+        { s: { r: 8, c: 0 }, e: { r: 8, c: 1 } }, // Bulan label
+        { s: { r: 8, c: 2 }, e: { r: 8, c: 10 } }  // Bulan value
+      ];
+      
+      // Add the worksheet to the workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Pasien");
+      
+      // Set the response headers for file download
+      res.setHeader('Content-Disposition', `attachment; filename="Laporan_Pasien_${monthName}_${year}.xlsx"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      
+      // Write the workbook to the response
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      res.send(buffer);
+      
+    } catch (error) {
+      console.error("Error exporting monthly visit report:", error);
+      return res.status(500).json({ 
+        message: "Gagal mengekspor laporan kunjungan bulanan ke Excel", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
 
   app.get("/api/dashboard/activities", async (req: Request, res: Response) => {
     try {
