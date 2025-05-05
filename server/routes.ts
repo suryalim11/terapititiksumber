@@ -2157,8 +2157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get report data
       const report = await storage.getMonthlyVisitReport(year, month);
       
-      // Import xlsx library
-      const XLSX = require('xlsx');
+      // Import xlsx library menggunakan dynamic import (ES modules)
+      const XLSX = await import('xlsx');
       
       // Create a new workbook
       const workbook = XLSX.utils.book_new();
