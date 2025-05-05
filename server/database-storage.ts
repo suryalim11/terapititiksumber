@@ -2325,73 +2325,87 @@ export class DatabaseStorage implements IStorage {
     productsSold: number;
     activePackages: number;
   }> {
-    // Gunakan zona waktu WIB untuk perhitungan hari ini
-    const wibNow = getWIBDate(new Date());
-    
-    // Dapatkan rentang waktu hari ini dalam zona waktu WIB
-    const startOfDay = new Date(wibNow);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(wibNow);
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    // Count patients with appointments today (using distinct patient IDs)
-    const appointmentsToday = await db.query.appointments.findMany({
-      where: and(
-        eq(schema.appointments.date, startOfDay.toISOString().split('T')[0]),
-        ne(schema.appointments.status, 'Cancelled')
-      ),
-      columns: {
-        patientId: true
-      }
-    });
-    
-    // Gunakan Set untuk menghitung jumlah pasien unik yang memiliki appointment hari ini
-    const uniquePatientIds = new Set(appointmentsToday.map(a => a.patientId));
-    const patientsToday = uniquePatientIds.size;
-    
-    // Calculate income from today's transactions
-    const todayTransactions = await db.query.transactions.findMany({
-      where: and(
-        gte(schema.transactions.createdAt, startOfDay),
-        lte(schema.transactions.createdAt, endOfDay)
-      )
-    });
-    
-    let incomeToday = 0;
-    let productsSold = 0;
-    
-    for (const transaction of todayTransactions) {
-      incomeToday += Number(transaction.totalAmount);
+    try {
+      // Gunakan zona waktu WIB untuk perhitungan hari ini
+      const wibNow = getWIBDate(new Date());
       
-      // Count products sold
-      if (typeof transaction.items === 'string') {
-        const items = JSON.parse(transaction.items);
-        for (const item of items) {
-          if (item.type === 'product') {
-            productsSold += item.quantity || 1;
-          }
+      // Dapatkan rentang waktu hari ini dalam zona waktu WIB
+      const startOfDay = new Date(wibNow);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(wibNow);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      // Count patients with appointments today (using distinct patient IDs)
+      const appointmentsToday = await db.query.appointments.findMany({
+        where: and(
+          eq(schema.appointments.date, startOfDay.toISOString().split('T')[0]),
+          ne(schema.appointments.status, 'Cancelled')
+        ),
+        columns: {
+          patientId: true
         }
-      } else if (Array.isArray(transaction.items)) {
-        for (const item of transaction.items) {
-          if (item.type === 'product') {
-            productsSold += item.quantity || 1;
+      });
+      
+      // Gunakan Set untuk menghitung jumlah pasien unik yang memiliki appointment hari ini
+      const uniquePatientIds = new Set(appointmentsToday.map(a => a.patientId));
+      const patientsToday = uniquePatientIds.size;
+      
+      // Calculate income from today's transactions
+      const todayTransactions = await db.query.transactions.findMany({
+        where: and(
+          gte(schema.transactions.createdAt, startOfDay),
+          lte(schema.transactions.createdAt, endOfDay)
+        )
+      });
+      
+      let incomeToday = 0;
+      let productsSold = 0;
+      
+      for (const transaction of todayTransactions) {
+        // Gunakan paidAmount untuk menghitung actual income (uang yang masuk)
+        // Jika transaksi kredit, maka paidAmount yang digunakan
+        // Jika transaksi lunas, maka totalAmount == paidAmount
+        const actualPaid = Number(transaction.paidAmount || transaction.totalAmount);
+        incomeToday += actualPaid;
+      
+        // Count products sold
+        if (typeof transaction.items === 'string') {
+          const items = JSON.parse(transaction.items);
+          for (const item of items) {
+            if (item.type === 'product') {
+              productsSold += item.quantity || 1;
+            }
+          }
+        } else if (Array.isArray(transaction.items)) {
+          for (const item of transaction.items) {
+            if (item.type === 'product') {
+              productsSold += item.quantity || 1;
+            }
           }
         }
       }
+    
+      // Count active packages
+      const activePackages = await db.query.sessions.findMany({
+        where: eq(schema.sessions.status, "active")
+      });
+      
+      return {
+        patientsToday: patientsToday,
+        incomeToday,
+        productsSold,
+        activePackages: activePackages.length
+      };
+    } catch (error) {
+      console.error("Error getting daily stats:", error);
+      return {
+        patientsToday: 0,
+        incomeToday: 0,
+        productsSold: 0,
+        activePackages: 0
+      };
     }
-    
-    // Count active packages
-    const activePackages = await db.query.sessions.findMany({
-      where: eq(schema.sessions.status, "active")
-    });
-    
-    return {
-      patientsToday: patientsToday,
-      incomeToday,
-      productsSold,
-      activePackages: activePackages.length
-    };
   }
   
   /**
@@ -2551,8 +2565,9 @@ export class DatabaseStorage implements IStorage {
         const discountAmount = Number(transaction.discount) || 0;
         summary.totalDiscount += discountAmount;
         
-        // Update ringkasan
-        summary.totalIncome += totalAmount;
+        // Update ringkasan - gunakan paidAmount untuk pendapatan aktual (bukan total transaksi)
+        const actualPaidAmount = Number(transaction.paidAmount || transaction.totalAmount);
+        summary.totalIncome += actualPaidAmount;
         
         // Update statistik metode pembayaran
         switch (transaction.paymentMethod.toLowerCase()) {
@@ -2596,7 +2611,7 @@ export class DatabaseStorage implements IStorage {
         // Update statistik hutang
         // Lakukan pengecekan apakah transaksi ini memiliki hutang yang belum dibayar
         const isPaid = transaction.isPaid === true || transaction.isPaid === 1;
-        const paidAmount = Number(transaction.paidAmount) || 0;
+        const transactionPaidAmount = Number(transaction.paidAmount) || 0;
         let debtAmount = Number(transaction.debtAmount) || 0;
         
         // Anggap SEMUA transaksi kredit sebagai hutang untuk sementara, tanpa memperhatikan isPaid
