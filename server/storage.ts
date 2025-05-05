@@ -83,6 +83,31 @@ export interface IStorage {
     }[];
   }>;
   
+  // Monthly Visit Report
+  getMonthlyVisitReport(year: number, month: number): Promise<{
+    clinicInfo: {
+      name: string;
+      location: string;
+      district: string;
+      city: string;
+    },
+    summary: {
+      totalVisits: number; 
+      newPatients: number;
+      returningPatients: number;
+    },
+    visits: {
+      date: string;
+      patientName: string;
+      patientAddress: string;
+      patientAge: number;
+      patientGender: string;
+      visitType: string; // "BARU" atau "LAMA"
+      complaint: string;
+      treatmentTypes: string[]; // ["RAMUAN", "KETERAMPILAN", "KOMBINASI"]
+    }[]
+  }>;
+  
   // Products
   getProduct(id: number): Promise<Product | undefined>;
   getAllProducts(): Promise<Product[]>;
