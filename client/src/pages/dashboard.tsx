@@ -132,16 +132,34 @@ export default function Dashboard() {
         console.log(`Memperbarui tanggal ke hari ini:`, formattedToday);
         console.log(`Hari ini adalah tanggal:`, format(todayWIB, 'd MMMM yyyy', { locale: localeId }));
         
-        // Ubah API endpoint untuk langsung menggunakan filter berdasarkan tanggal
-        const todayQuery = `/api/therapy-slots?date=${formattedToday}`;
-        console.log(`Fetching therapy slots with URL:`, todayQuery);
+        // Modifikasi endpoint berdasarkan periode yang dipilih
+        let apiUrl = '/api/therapy-slots';
         
-        // Ambil semua data dari server
-        const response = await fetch(todayQuery);
+        // Gunakan zona waktu WIB untuk semua perhitungan tanggal
+        const nowWIB = getStartOfDayWIB(new Date()); // Tanggal hari ini dalam WIB, jam 00:00:00
+        
+        if (selectedPeriod === 'day') {
+          // Untuk hari ini, filter berdasarkan tanggal
+          apiUrl = `/api/therapy-slots?date=${formattedToday}`;
+        } else if (selectedPeriod === 'week') {
+          // Untuk minggu ini, ambil semua slot aktif
+          apiUrl = `/api/therapy-slots?activeOnly=true`;
+        } else if (selectedPeriod === 'month') {
+          // Untuk bulan ini, ambil semua slot aktif
+          apiUrl = `/api/therapy-slots?activeOnly=true`;
+        } else if (selectedPeriod === 'all') {
+          // Ambil semua slot aktif
+          apiUrl = `/api/therapy-slots?activeOnly=true`;
+        }
+        
+        console.log(`Fetching therapy slots with URL:`, apiUrl);
+        
+        // Ambil data dari server
+        const response = await fetch(apiUrl);
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`Server returned ${response.status} with text: ${errorText}`);
-          throw new Error(`Failed to fetch today slots: ${response.status} ${errorText}`);
+          throw new Error(`Failed to fetch slots: ${response.status} ${errorText}`);
         }
         
         // Ambil semua data dari server
@@ -165,10 +183,10 @@ export default function Dashboard() {
           createdAt: slot.createdAt || ''
         }));
         
-        console.log("Data sebelum deduplikasi: " + processedSlots.length + " slots, tanggal untuk cek: " + formattedToday);
+        console.log("Data sebelum deduplikasi: " + processedSlots.length + " slots");
         
         // Log debug lengkap
-        console.log("Raw data dari server:", processedSlots.map(s => ({ 
+        console.log("Raw data dari server (sample):", processedSlots.slice(0, 3).map(s => ({ 
           id: s.id, 
           date: s.date, 
           isActive: s.isActive,
@@ -181,7 +199,6 @@ export default function Dashboard() {
         const idSet = new Set<number>();
         const filteredSlots: TherapySlot[] = processedSlots.filter((slot) => {
           if (idSet.has(slot.id)) {
-            console.log(`Removing duplicate slot with ID: ${slot.id}`);
             return false;
           }
           idSet.add(slot.id);
@@ -233,69 +250,88 @@ export default function Dashboard() {
         
         console.log(`After date+time deduplication: ${uniqueSlots.length} slots remaining`);
         
-        // Langkah 3: Filter berdasarkan periode yang dipilih pengguna
-        // Gunakan zona waktu WIB untuk semua filter tanggal
-        const nowWIB = getStartOfDayWIB(new Date()); // Tanggal hari ini dalam WIB, jam 00:00:00
+        // Filter data berdasarkan periode yang dipilih
+        let filteredByPeriod: TherapySlot[] = [];
         
-        let filteredByPeriod = [...uniqueSlots];
-        
-        // Tidak perlu filter lagi untuk day mode karena API sudah menyaring berdasarkan tanggal
         if (selectedPeriod === 'day') {
-          // Filter hanya untuk hari ini (dalam zona waktu WIB)
+          // Untuk hari ini, gunakan tanggal hari ini
           const todayWIBStr = dateToWIBDateString(nowWIB);
-          console.log(`Filter untuk hari ini (WIB): ${todayWIBStr}`);
-          
-          filteredByPeriod = uniqueSlots; // Gunakan semua slot karena API sudah difilter
-          
-        } else if (selectedPeriod === 'past-week') {
-          // Filter untuk 7 hari terakhir (dalam zona waktu WIB)
-          const oneWeekAgoWIB = new Date(nowWIB);
-          oneWeekAgoWIB.setDate(oneWeekAgoWIB.getDate() - 7);
           
           filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
-            const slotDate = new Date(getSlotDateStr(slot));
-            return slotDate >= oneWeekAgoWIB && slotDate <= nowWIB;
+            const slotDateStr = getSlotDateStr(slot);
+            return slotDateStr === todayWIBStr;
+          });
+          
+        } else if (selectedPeriod === 'week') {
+          // Untuk minggu ini, filter 7 hari ke depan
+          const weekEndDate = new Date(nowWIB);
+          weekEndDate.setDate(weekEndDate.getDate() + 6); // 7 hari termasuk hari ini
+          
+          filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
+            try {
+              const slotDateStr = getSlotDateStr(slot);
+              if (!slotDateStr) return false;
+              
+              const slotDate = new Date(slotDateStr);
+              return slotDate >= nowWIB && slotDate <= weekEndDate;
+            } catch (err) {
+              console.error("Error filtering slot for week:", err);
+              return false;
+            }
           });
           
         } else if (selectedPeriod === 'month') {
-          // Filter untuk bulan ini (dalam zona waktu WIB)
+          // Untuk bulan ini, gunakan bulan sekarang
           const startOfMonth = new Date(nowWIB.getFullYear(), nowWIB.getMonth(), 1);
           const endOfMonth = new Date(nowWIB.getFullYear(), nowWIB.getMonth() + 1, 0);
           
           filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
-            const slotDate = new Date(getSlotDateStr(slot));
-            return slotDate >= startOfMonth && slotDate <= endOfMonth;
+            try {
+              const slotDateStr = getSlotDateStr(slot);
+              if (!slotDateStr) return false;
+              
+              const slotDate = new Date(slotDateStr);
+              return slotDate >= startOfMonth && slotDate <= endOfMonth;
+            } catch (err) {
+              console.error("Error filtering slot for month:", err);
+              return false;
+            }
           });
+          
         } else if (selectedPeriod === 'all') {
-          // Tampilkan semua slot yang tanggalnya >= hari ini (masa depan)
-          // Gunakan nowWIB untuk mendapatkan tanggal saat ini dalam WIB
-          
-          filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
-            const slotDate = new Date(getSlotDateStr(slot));
-            return slotDate >= getStartOfDayWIB(new Date()); // Filter hanya slot yang >= hari ini
-          });
-          
-          console.log(`Mode "Semua Slot": menampilkan ${filteredByPeriod.length} slot dari sekarang ke depan`);
+          // Untuk semua slot, tampilkan semua
+          filteredByPeriod = uniqueSlots;
         }
         
         console.log(`After period (${selectedPeriod}) filtering: ${filteredByPeriod.length} slots`);
         
         // Langkah 4: Urutkan berdasarkan tanggal dan waktu
         const sortedSlots = filteredByPeriod.sort((a: TherapySlot, b: TherapySlot) => {
-          // Konversi string tanggal ke objek Date
-          const dateA = new Date(a.date);
-          const dateB = new Date(b.date);
-          
-          // Perbandingan tanggal
-          const dateComparison = dateA.getTime() - dateB.getTime();
-          if (dateComparison !== 0) return dateComparison;
-          
-          // Jika tanggal sama, bandingkan berdasarkan waktu
-          return a.timeSlot.localeCompare(b.timeSlot);
+          try {
+            // Konversi string tanggal ke objek Date
+            const dateA = new Date(getSlotDateStr(a));
+            const dateB = new Date(getSlotDateStr(b));
+            
+            // Perbandingan tanggal
+            const dateComparison = dateA.getTime() - dateB.getTime();
+            if (dateComparison !== 0) return dateComparison;
+            
+            // Jika tanggal sama, bandingkan berdasarkan waktu
+            return a.timeSlot.localeCompare(b.timeSlot);
+          } catch (err) {
+            console.error("Error sorting slots:", err);
+            return 0;
+          }
         });
         
+        // Hitung persentase penggunaan untuk semua slot
+        const slotsWithPercentage = sortedSlots.map(slot => ({
+          ...slot,
+          percentage: slot.maxQuota ? (slot.currentCount / slot.maxQuota) * 100 : 0
+        }));
+        
         // Return hasil yang sudah diproses
-        return sortedSlots;
+        return slotsWithPercentage;
       } catch (error) {
         console.error("Error fetching slots:", error);
         // Don't throw the error, return empty array instead
@@ -536,22 +572,6 @@ export default function Dashboard() {
               </div>
               
               <TabsContent value={selectedPeriod} className="mt-0">
-                {/* Debug info: */}
-                <div className="mx-4 my-2 p-2 bg-blue-50 text-xs border border-blue-200 rounded-md">
-                  <p>Debug Info (period: {selectedPeriod})</p>
-                  <p>Total slot: {slotsByPeriod?.length || 0}</p>
-                  <p>Today's Date (WIB): {dateToWIBDateString(new Date())}</p>
-                  {slotsByPeriod && slotsByPeriod.length > 0 && (
-                    <div>
-                      <p className="font-semibold mt-1">First 3 slots:</p>
-                      {slotsByPeriod.slice(0, 3).map((s: any, i: number) => (
-                        <div key={i} className="mt-1">
-                          <span>Slot {i+1}: ID={s.id}, Date={typeof s.date === 'string' ? s.date.split(' ')[0] : 'unknown'}, Time={s.timeSlot}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
                 
                 {isSlotsLoading ? (
                   <div className="flex justify-center items-center py-6">
