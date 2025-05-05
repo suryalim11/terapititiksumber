@@ -129,13 +129,8 @@ export default function Dashboard() {
         // karena ini menyebabkan slot dengan ID berbeda namun waktu/tanggal sama hilang
         // Hilangnya satu dari dua slot 13:00-15:00 (ID 420 dan 423) menyebabkan data pasien hilang
         
-        // Filter untuk hanya menampilkan slot yang memiliki pasien aktif (currentCount > 0)
-        // Ini akan menghilangkan slot seperti ID 420 yang waktu 13:00-15:00 tapi tidak memiliki pasien aktif
-        const slotsWithPatients = filteredSlots.filter((slot: any) => slot.currentCount > 0);
-        console.log(`After filtering out empty slots: ${slotsWithPatients.length} slots with patients remaining`);
-        
-        // Sudah cukup melakukan deduplikasi berdasarkan ID dan filter slot kosong
-        const uniqueSlots = slotsWithPatients;
+        // Sudah cukup melakukan deduplikasi berdasarkan ID saja
+        const uniqueSlots = filteredSlots;
         console.log(`After date+time deduplication: ${uniqueSlots.length} slots remaining`);
         
         // Langkah 3: Filter berdasarkan periode yang dipilih pengguna
