@@ -1821,15 +1821,65 @@ export default function Reports() {
                                   <TableCell>
                                     {(() => {
                                       try {
-                                        // Handle tanggal dalam format DD-MM-YYYY
-                                        if (visit.date.includes("-") && visit.date.length === 10) {
-                                          const [day, month, year] = visit.date.split("-");
-                                          if (day && month && year) {
-                                            const parsedDate = new Date(`${year}-${month}-${day}`);
-                                            return format(parsedDate, "dd MMM yyyy", { locale: id });
+                                        // Kasus 1: Format "04 03:07:41.562-04-2025" atau "01 00:00:00-05-2025"
+                                        if (visit.date.includes(" ") && visit.date.includes(":")) {
+                                          // Split di space untuk mendapatkan bagian tanggal di depan
+                                          const parts = visit.date.split(" ");
+                                          const day = parts[0].padStart(2, '0');
+                                          
+                                          // Jika ada bagian bulan dan tahun di timestamp
+                                          if (parts[1] && parts[1].includes("-")) {
+                                            const dateParts = parts[1].split("-");
+                                            if (dateParts.length >= 2) {
+                                              const monthNumber = parseInt(dateParts[dateParts.length - 2]);
+                                              const year = dateParts[dateParts.length - 1];
+                                              
+                                              // Parse tanggal untuk format dengan date-fns
+                                              try {
+                                                const dateObj = new Date(year, monthNumber - 1, parseInt(day));
+                                                return format(dateObj, "dd MMM yyyy", { locale: id });
+                                              } catch (parseError) {
+                                                console.log("Error parsing complex date:", parseError);
+                                              }
+                                            }
                                           }
                                         }
-                                        // Fallback untuk format lain
+                                        
+                                        // Kasus 2: Format DD-Bulan-YYYY (seperti 04-April-2025)
+                                        if (visit.date.includes("-")) {
+                                          const parts = visit.date.split("-");
+                                          if (parts.length === 3) {
+                                            // Cek jika bagian tengah adalah nama bulan (bukan angka)
+                                            if (isNaN(parseInt(parts[1]))) {
+                                              // Sudah dalam format yang diinginkan - tampilkan lebih pendek
+                                              return `${parts[0]} ${parts[1].substring(0, 3)} ${parts[2]}`;
+                                            }
+                                            // Format DD-MM-YYYY 
+                                            else {
+                                              const [day, month, year] = parts;
+                                              if (day && month && year) {
+                                                try {
+                                                  const parsedDate = new Date(`${year}-${month}-${day}`);
+                                                  return format(parsedDate, "dd MMM yyyy", { locale: id });
+                                                } catch (parseError) {
+                                                  console.log("Error parsing date:", parseError);
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                        
+                                        // Fallback: Cobalah parse sebagai Date object
+                                        try {
+                                          const dateObj = new Date(visit.date);
+                                          if (!isNaN(dateObj.getTime())) {
+                                            return format(dateObj, "dd MMM yyyy", { locale: id });
+                                          }
+                                        } catch (parseError) {
+                                          console.log("Final fallback error:", parseError);
+                                        }
+                                        
+                                        // Fallback tanpa formatting
                                         return visit.date;
                                       } catch (e) {
                                         console.error("Error formatting date:", e);
