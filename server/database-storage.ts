@@ -2828,17 +2828,26 @@ export class DatabaseStorage implements IStorage {
       console.log(`Generating monthly visit report from ${startDate.toISOString()} to ${endDate.toISOString()}`);
       
       // Mengambil semua appointment yang aktif dalam rentang tanggal
-      const appointments = await db.query.appointments.findMany({
-        where: and(
-          or(
-            eq(schema.appointments.status, "Active"),
-            eq(schema.appointments.status, "Completed")
-          ),
-          // Filter tanggal menggunakan substring 
-          // Karena date di database adalah string dengan format 'YYYY-MM-DD'
-          sql`SUBSTRING(${schema.appointments.date}, 1, 7) = ${`${year}-${String(month).padStart(2, '0')}`}`
-        )
-      });
+      // Gunakan format string sederhana untuk menghindari circular reference
+      const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
+      
+      // Dapatkan appointments menggunakan query langsung
+      const appointmentsQuery = await db.execute(`
+        SELECT * FROM appointments 
+        WHERE (status = 'Active' OR status = 'Completed')
+        AND SUBSTRING(date, 1, 7) = '${yearMonth}'
+      `);
+      
+      // Konversi hasil query ke format yang sesuai
+      const appointments = appointmentsQuery.rows.map(row => ({
+        id: row.id,
+        patientId: row.patient_id,
+        therapySlotId: row.therapy_slot_id,
+        date: row.date,
+        notes: row.notes,
+        status: row.status,
+        createdAt: row.created_at
+      }));
       
       console.log(`Found ${appointments.length} visits in the report period`);
       
@@ -2861,18 +2870,17 @@ export class DatabaseStorage implements IStorage {
       
       // Mendapatkan appointment terawal untuk setiap pasien
       for (const patientId of patientIds) {
-        const firstVisit = await db.query.appointments.findFirst({
-          where: and(
-            eq(schema.appointments.patientId, patientId),
-            or(
-              eq(schema.appointments.status, "Active"),
-              eq(schema.appointments.status, "Completed")
-            )
-          ),
-          orderBy: [asc(schema.appointments.date)]
-        });
+        // Gunakan raw query untuk menghindari circular reference
+        const firstVisitQuery = await db.execute(`
+          SELECT * FROM appointments 
+          WHERE patient_id = ${patientId}
+          AND (status = 'Active' OR status = 'Completed')
+          ORDER BY date ASC
+          LIMIT 1
+        `);
         
-        if (firstVisit) {
+        if (firstVisitQuery.rows.length > 0) {
+          const firstVisit = firstVisitQuery.rows[0];
           patientFirstVisits.set(patientId, new Date(firstVisit.date));
         }
       }
