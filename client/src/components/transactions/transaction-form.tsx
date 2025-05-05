@@ -713,6 +713,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
       // Pastikan totalAmount dihitung dengan benar
       const totalAmountValue = subtotal - (parseFloat(values.discount || "0") || 0);
       
+      // Persiapkan data yang akan dikirim ke server
       const requestData = {
         ...values,
         items: itemsWithDetails,
@@ -720,15 +721,42 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
         totalAmount: totalAmountValue.toString(), // Pastikan total amount selalu tersedia
         subtotal: subtotal.toString(), // Pastikan subtotal selalu tersedia
         discount: values.discount || "0", // Pastikan discount selalu tersedia
-        isPaid: !useCredit, // If using credit, mark as unpaid
-        creditAmount: useCredit ? totalAmountValue.toString() : "0", // Tambahkan creditAmount jika kredit
-        paidAmount: useCredit ? "0" : totalAmountValue.toString(), // Tambahkan paidAmount
         debtPayment, // Include debt payment info if applicable
+        
+        // Jika menggunakan kredit/pembayaran sebagian
+        isPaid: useCredit ? false : true,
+        
         // If this is a Syaflina/Queenzky case, include display name preference
         displayName: searchTerm?.toLowerCase().includes('syafl') 
           ? values.displayName || "original"
           : "original" 
       };
+      
+      // Jika menggunakan pembayaran kredit/sebagian, gunakan nilai yang dimasukkan user
+      if (useCredit) {
+        // Dapatkan nilai yang sudah divalidasi sebelumnya
+        const paidAmount = parseFloat(values.paidAmount || "0");
+        const totalAmount = parseFloat(values.totalAmount || "0");
+        
+        // Hitung creditAmount sebagai selisih
+        const creditAmount = Math.max(0, totalAmount - paidAmount);
+        
+        // Masukkan nilai-nilai ini ke requestData
+        requestData.paidAmount = paidAmount.toString();
+        requestData.creditAmount = creditAmount.toString();
+        
+        // Log untuk debugging
+        console.log("Nilai pembayaran kredit final:", {
+          totalAmount,
+          paidAmount: requestData.paidAmount,
+          creditAmount: requestData.creditAmount,
+          isPaid: requestData.isPaid
+        });
+      } else {
+        // Jika pembayaran penuh, bayar total semuanya
+        requestData.paidAmount = totalAmountValue.toString();
+        requestData.creditAmount = "0";
+      }
       
       console.log("Submitting transaction with data:", requestData);
       
@@ -1786,14 +1814,46 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                                             {...field}
                                             type="number"
                                             min="0"
+                                            max={calculateTotalPrice()}
+                                            className="text-green-700 bg-green-50 border-green-300"
                                             onChange={(e) => {
-                                              // Panggil field.onChange untuk update form
-                                              field.onChange(e);
-                                              // Kemudian panggil handler pembayaran sebagian
-                                              handlePaidAmountChange(e.target.value);
+                                              // Validasi nilai input
+                                              let inputValue = e.target.value;
+                                              
+                                              // Pastikan nilai tidak negatif
+                                              if (parseFloat(inputValue) < 0) {
+                                                inputValue = "0";
+                                              }
+                                              
+                                              // Pastikan nilai tidak melebihi total
+                                              const totalAmount = calculateTotalPrice();
+                                              if (parseFloat(inputValue) > totalAmount) {
+                                                inputValue = totalAmount.toString();
+                                              }
+                                              
+                                              // Update nilai form
+                                              field.onChange({
+                                                ...e,
+                                                target: {
+                                                  ...e.target,
+                                                  value: inputValue
+                                                }
+                                              });
+                                              
+                                              // Panggil handler khusus untuk menghitung kredit
+                                              handlePaidAmountChange(inputValue);
+                                              
+                                              // Log nilai untuk debugging
+                                              console.log("Perubahan jumlah bayar:", inputValue);
                                             }}
                                           />
                                         </FormControl>
+                                      </div>
+                                      <div className="text-xs text-green-600 mt-1 font-medium">
+                                        {parseFloat(field.value) > 0 ? 
+                                          `Membayar: ${formatPrice(field.value)}` : 
+                                          "Belum ada pembayaran"
+                                        }
                                       </div>
                                       <FormMessage />
                                     </FormItem>
