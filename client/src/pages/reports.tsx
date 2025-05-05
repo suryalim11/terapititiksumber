@@ -263,14 +263,14 @@ function PatientsDaily() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="w-full md:w-1/2 lg:w-1/4">
-          <Card>
-            <CardHeader className="py-3">
-              <CardTitle className="text-sm font-medium">Bulan</CardTitle>
+        <div className="w-full sm:w-1/2 lg:w-1/4">
+          <Card className="h-full">
+            <CardHeader className="py-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Bulan</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="py-1">
               <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
-                <SelectTrigger>
+                <SelectTrigger className="text-xs sm:text-sm">
                   <SelectValue placeholder="Pilih bulan" />
                 </SelectTrigger>
                 <SelectContent>
@@ -285,14 +285,14 @@ function PatientsDaily() {
           </Card>
         </div>
         
-        <div className="w-full md:w-1/2 lg:w-1/4">
-          <Card>
-            <CardHeader className="py-3">
-              <CardTitle className="text-sm font-medium">Tahun</CardTitle>
+        <div className="w-full sm:w-1/2 lg:w-1/4">
+          <Card className="h-full">
+            <CardHeader className="py-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Tahun</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="py-1">
               <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
-                <SelectTrigger>
+                <SelectTrigger className="text-xs sm:text-sm">
                   <SelectValue placeholder="Pilih tahun" />
                 </SelectTrigger>
                 <SelectContent>
@@ -309,30 +309,30 @@ function PatientsDaily() {
         
         {data && (
           <>
-            <div className="w-full md:w-1/2 lg:w-1/4">
-              <Card>
-                <CardHeader className="py-3">
-                  <CardTitle className="text-sm font-medium">Total Pasien</CardTitle>
-                  <CardDescription>
+            <div className="w-full sm:w-1/2 lg:w-1/4">
+              <Card className="h-full">
+                <CardHeader className="py-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Total Pasien</CardTitle>
+                  <CardDescription className="text-xs">
                     {getMonthName(selectedMonth)} {selectedYear}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{data.totalPatients}</div>
+                <CardContent className="py-1">
+                  <div className="text-xl sm:text-2xl font-bold">{data.totalPatients}</div>
                 </CardContent>
               </Card>
             </div>
             
-            <div className="w-full md:w-1/2 lg:w-1/4">
-              <Card>
-                <CardHeader className="py-3">
-                  <CardTitle className="text-sm font-medium">Rata-rata Per Hari</CardTitle>
-                  <CardDescription>
+            <div className="w-full sm:w-1/2 lg:w-1/4">
+              <Card className="h-full">
+                <CardHeader className="py-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Rata-rata Per Hari</CardTitle>
+                  <CardDescription className="text-xs">
                     {getMonthName(selectedMonth)} {selectedYear}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{data.averagePatientsPerDay}</div>
+                <CardContent className="py-1">
+                  <div className="text-xl sm:text-2xl font-bold">{data.averagePatientsPerDay}</div>
                 </CardContent>
               </Card>
             </div>
@@ -408,92 +408,97 @@ function PatientsDaily() {
           </Card>
 
           <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Laporan Mingguan</CardTitle>
-              <CardDescription>
+            <CardHeader className="py-3 sm:py-4">
+              <CardTitle className="text-base sm:text-lg">Laporan Mingguan</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 {getMonthName(selectedMonth)} {selectedYear}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="px-4 py-2 text-left">Minggu</th>
-                    <th className="px-4 py-2 text-left">Periode</th>
-                    <th className="px-4 py-2 text-right">Total Pasien</th>
-                    <th className="px-4 py-2 text-right">Rata-rata/Hari</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {weeklyData.map((week) => (
-                    <tr key={week.weekNumber} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
-                      <td className="px-4 py-2 font-medium">
-                        Minggu {week.weekNumber}
-                      </td>
-                      <td className="px-4 py-2">
-                        {week.startDate.split('-')[2]} - {week.endDate.split('-')[2]} {getMonthName(selectedMonth)}
-                      </td>
-                      <td className="px-4 py-2 text-right">{week.totalPatients}</td>
-                      <td className="px-4 py-2 text-right">
-                        {(week.totalPatients / week.dailyData.length).toFixed(1)}
-                      </td>
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <table className="w-full text-xs sm:text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-2 sm:px-4 py-1 sm:py-2 text-left whitespace-nowrap">Minggu</th>
+                      <th className="px-2 sm:px-4 py-1 sm:py-2 text-left whitespace-nowrap">Periode</th>
+                      <th className="px-2 sm:px-4 py-1 sm:py-2 text-right whitespace-nowrap">Total</th>
+                      <th className="px-2 sm:px-4 py-1 sm:py-2 text-right whitespace-nowrap">Rata-rata</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {weeklyData.map((week) => (
+                      <tr key={week.weekNumber} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                        <td className="px-2 sm:px-4 py-1 sm:py-2 font-medium whitespace-nowrap">
+                          Minggu {week.weekNumber}
+                        </td>
+                        <td className="px-2 sm:px-4 py-1 sm:py-2 whitespace-nowrap">
+                          {week.startDate.split('-')[2]}-{week.endDate.split('-')[2]} {getMonthName(selectedMonth)}
+                        </td>
+                        <td className="px-2 sm:px-4 py-1 sm:py-2 text-right whitespace-nowrap">{week.totalPatients}</td>
+                        <td className="px-2 sm:px-4 py-1 sm:py-2 text-right whitespace-nowrap">
+                          {(week.totalPatients / week.dailyData.length).toFixed(1)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Detail Harian</CardTitle>
-              <CardDescription>
+            <CardHeader className="py-3 sm:py-4">
+              <CardTitle className="text-base sm:text-lg">Detail Harian</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 {getMonthName(selectedMonth)} {selectedYear}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="px-4 py-2 text-left">Tanggal</th>
-                    <th className="px-4 py-2 text-left">Hari</th>
-                    <th className="px-4 py-2 text-right">Jumlah Pasien</th>
-                    <th className="px-4 py-2 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data?.dailyData?.map((day: any, index: number) => (
-                    <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td className="px-4 py-2">
-                        {day.date.split('-')[2]} {getMonthName(selectedMonth)}
-                      </td>
-                      <td className="px-4 py-2">
-                        {day.dayName}
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        {day.patientCount}
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        {day.patientCount > 0 && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => {
-                              setSelectedDate(day.date);
-                              setSelectedDayData(day);
-                              handleBarClick({ 
-                                activePayload: [{ payload: day }] 
-                              });
-                            }}
-                          >
-                            Lihat Detail
-                          </Button>
-                        )}
-                      </td>
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <table className="w-full text-xs sm:text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-2 sm:px-4 py-1 sm:py-2 text-left whitespace-nowrap">Tanggal</th>
+                      <th className="px-2 sm:px-4 py-1 sm:py-2 text-left whitespace-nowrap">Hari</th>
+                      <th className="px-2 sm:px-4 py-1 sm:py-2 text-right whitespace-nowrap">Jumlah</th>
+                      <th className="px-2 sm:px-4 py-1 sm:py-2 text-center whitespace-nowrap">Aksi</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data?.dailyData?.map((day: any, index: number) => (
+                      <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td className="px-2 sm:px-4 py-1 sm:py-2 whitespace-nowrap">
+                          {day.date.split('-')[2]} {getMonthName(selectedMonth)}
+                        </td>
+                        <td className="px-2 sm:px-4 py-1 sm:py-2 whitespace-nowrap">
+                          {day.dayName}
+                        </td>
+                        <td className="px-2 sm:px-4 py-1 sm:py-2 text-right whitespace-nowrap">
+                          {day.patientCount}
+                        </td>
+                        <td className="px-2 sm:px-4 py-1 sm:py-2 text-center whitespace-nowrap">
+                          {day.patientCount > 0 && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="px-2 h-7 text-xs"
+                              onClick={() => {
+                                setSelectedDate(day.date);
+                                setSelectedDayData(day);
+                                handleBarClick({ 
+                                  activePayload: [{ payload: day }] 
+                                });
+                              }}
+                            >
+                              Detail
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </>
@@ -513,20 +518,20 @@ function PatientsDaily() {
           </DialogHeader>
           
           {patientDetails && patientDetails.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <table className="w-full text-xs sm:text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="px-4 py-2 text-left">Nama Pasien</th>
-                    <th className="px-4 py-2 text-left">No. WA</th>
-                    <th className="px-4 py-2 text-left">Sesi</th>
-                    <th className="px-4 py-2 text-left">Status</th>
+                    <th className="px-2 sm:px-4 py-1 sm:py-2 text-left whitespace-nowrap">Nama Pasien</th>
+                    <th className="px-2 sm:px-4 py-1 sm:py-2 text-left whitespace-nowrap">No. WA</th>
+                    <th className="px-2 sm:px-4 py-1 sm:py-2 text-left whitespace-nowrap">Sesi</th>
+                    <th className="px-2 sm:px-4 py-1 sm:py-2 text-left whitespace-nowrap">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {patientDetails.map((appointment, index) => (
                     <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td className="px-4 py-2 font-medium">
+                      <td className="px-2 sm:px-4 py-1 sm:py-2 font-medium whitespace-nowrap">
                         <button 
                           onClick={() => { 
                             // Menggunakan navigasi wouter yang lebih baik
@@ -540,20 +545,20 @@ function PatientsDaily() {
                               });
                             }
                           }}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline text-xs sm:text-sm"
                         >
                           {appointment.patientName}
                         </button>
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-2 sm:px-4 py-1 sm:py-2 whitespace-nowrap">
                         {appointment.patientPhone && appointment.patientPhone !== '-' ? (
                           <button
                             onClick={() => contactViaWhatsApp(appointment.patientPhone)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center"
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center text-xs sm:text-sm"
                           >
                             {appointment.patientPhone}
                             <svg 
-                              className="w-4 h-4 ml-1" 
+                              className="w-3 h-3 sm:w-4 sm:h-4 ml-1" 
                               fill="currentColor" 
                               viewBox="0 0 24 24" 
                               xmlns="http://www.w3.org/2000/svg"
@@ -564,14 +569,14 @@ function PatientsDaily() {
                             </svg>
                           </button>
                         ) : (
-                          <span className="text-gray-500">-</span>
+                          <span className="text-gray-500 text-xs sm:text-sm">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-2 sm:px-4 py-1 sm:py-2 whitespace-nowrap text-xs sm:text-sm">
                         {appointment.timeSlot}
                       </td>
-                      <td className="px-4 py-2">
-                        <span className={`inline-block px-2 py-1 rounded text-xs ${
+                      <td className="px-2 sm:px-4 py-1 sm:py-2 whitespace-nowrap">
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${
                           appointment.status === 'Completed' ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' : 
                           appointment.status === 'Scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100' : 
                           appointment.status === 'Cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100' : 
