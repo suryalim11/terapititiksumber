@@ -766,10 +766,9 @@ export default function Reports() {
         const transactionDate = format(adjustedDate, "yyyy-MM-dd");
         const dataPoint = dailyData.find(d => d.date === transactionDate);
         if (dataPoint) {
-          // Hanya gunakan totalAmount yang sebenarnya, jangan kurangi dengan discount karena
-          // discount sudah termasuk dalam totalAmount
-          const total = parseFloat(transaction.totalAmount.toString());
-          dataPoint.amount += total;
+          // Gunakan paidAmount untuk menghitung uang yang benar-benar masuk
+          const actualPaid = parseFloat(transaction.paidAmount || transaction.totalAmount.toString());
+          dataPoint.amount += actualPaid;
         }
       });
     }
@@ -797,10 +796,9 @@ export default function Reports() {
         // Menggunakan addHours(-7) untuk menyesuaikan ke zona waktu WIB (UTC+7)
         const adjustedDate = addHours(new Date(transaction.createdAt), -7);
         const monthIndex = adjustedDate.getMonth();
-        // Hanya gunakan totalAmount yang sebenarnya, jangan kurangi dengan discount 
-        // karena discount sudah termasuk dalam totalAmount
-        const total = parseFloat(transaction.totalAmount.toString());
-        monthlyData[monthIndex].amount += total;
+        // Gunakan paidAmount untuk menghitung uang yang benar-benar masuk
+        const actualPaid = parseFloat(transaction.paidAmount || transaction.totalAmount.toString());
+        monthlyData[monthIndex].amount += actualPaid;
       });
     }
 
@@ -1399,7 +1397,7 @@ export default function Reports() {
                                   data={monthlyFinancialReport.dailyData.map((day: any) => ({
                                     ...day,
                                     formattedDate: format(parseISO(day.date), 'dd'),
-                                    total: day.totalAmount
+                                    total: day.totalAmount // totalAmount sudah berupa paidAmount di server
                                   }))}
                                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                                 >
@@ -1409,9 +1407,11 @@ export default function Reports() {
                                   <Tooltip 
                                     formatter={(value, name) => {
                                       const formattedValue = `Rp${(value as number).toLocaleString('id-ID')}`;
-                                      const formattedName = name === 'total' ? 'Total' : 
+                                      const formattedName = name === 'total' ? 'Total Pendapatan' : 
                                                            name === 'productSales' ? 'Produk' : 
-                                                           name === 'serviceSales' ? 'Layanan' : name;
+                                                           name === 'serviceSales' ? 'Layanan' : 
+                                                           name === 'credits' ? 'Kredit' : 
+                                                           name === 'debtPayments' ? 'Pembayaran Hutang' : name;
                                       return [formattedValue, formattedName];
                                     }}
                                     labelFormatter={(label) => `Tanggal ${label}`}
@@ -1419,7 +1419,14 @@ export default function Reports() {
                                   <Legend />
                                   <Bar dataKey="productSales" name="Produk" fill="#82ca9d" />
                                   <Bar dataKey="serviceSales" name="Layanan" fill="#8884d8" />
-                                  <Line type="monotone" dataKey="total" name="Total" stroke="#ff7300" strokeWidth={2} />
+                                  <Line type="monotone" dataKey="total" name="Total Pendapatan" stroke="#ff7300" strokeWidth={2} />
+                                  {/* Tampilkan garis untuk kredit & pembayaran hutang jika ada */}
+                                  {monthlyFinancialReport.dailyData.some((day: any) => day.credits > 0) && (
+                                    <Line type="monotone" dataKey="credits" name="Kredit" stroke="#f43f5e" strokeWidth={1} strokeDasharray="5 5" />
+                                  )}
+                                  {monthlyFinancialReport.dailyData.some((day: any) => day.debtPayments > 0) && (
+                                    <Line type="monotone" dataKey="debtPayments" name="Pembayaran Hutang" stroke="#3b82f6" strokeWidth={1} strokeDasharray="3 3" />
+                                  )}
                                 </ComposedChart>
                               </ResponsiveContainer>
                             </div>
@@ -1538,7 +1545,13 @@ export default function Reports() {
                                transaction.paymentMethod === "qris" ? "QRIS" : "Tunai"}
                             </td>
                             <td className="px-4 py-2 text-right">
-                              Rp{parseFloat(transaction.totalAmount.toString()).toLocaleString('id-ID')}
+                              {/* Jika transaksi kredit, tampilkan yang benar-benar dibayar (paidAmount) */}
+                              Rp{parseFloat((transaction.paidAmount || transaction.totalAmount).toString()).toLocaleString('id-ID')}
+                              {Number(transaction.creditAmount) > 0 && (
+                                <div className="text-xs text-gray-500">
+                                  (Kredit: Rp{parseFloat(transaction.creditAmount.toString()).toLocaleString('id-ID')})
+                                </div>
+                              )}
                             </td>
                           </tr>
                         ))}
