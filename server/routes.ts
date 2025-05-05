@@ -2542,13 +2542,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return true;
       });
       console.log(`Total slot setelah deduplikasi ID: ${uniqueSlots.length}`);
+
+      // Deduplikasi berdasarkan tanggal dan waktu, tetapi menyimpan yang memiliki pasien terbanyak
+      // ini mencegah ada dua slot di waktu dan tanggal sama, tetapi mempertahankan data pasien
+      const dateTimeMap = new Map();
       
-      // Tidak lagi melakukan deduplikasi berdasarkan tanggal+waktu
-      // karena ini menyebabkan slot dengan ID berbeda tapi waktu sama (seperti 13:00-15:00) dihilangkan salah satunya
-      // Slot 420 dan 423 sama-sama di jam 13:00-15:00 tanggal 2025-05-05, tapi 423 memiliki 5 pasien
+      // Pertama, kita kelompokkan slot berdasarkan kombinasi tanggal+waktu
+      uniqueSlots.forEach(slot => {
+        const key = `${slot.date.split(' ')[0]}-${slot.timeSlot}`;
+        
+        if (!dateTimeMap.has(key)) {
+          dateTimeMap.set(key, []);
+        }
+        
+        dateTimeMap.get(key).push(slot);
+      });
       
-      // Gunakan langsung uniqueSlots tanpa deduplikasi tambahan
-      const finalSlots = uniqueSlots;
+      // Kemudian, untuk setiap kelompok yang memiliki > 1 slot, kita pilih yang terbaik
+      const deduplicatedSlots = [];
+      let duplikatsFound = false;
+      
+      dateTimeMap.forEach((slots, key) => {
+        if (slots.length === 1) {
+          // Jika hanya ada 1 slot, langsung tambahkan
+          deduplicatedSlots.push(slots[0]);
+        } else {
+          // Ada lebih dari 1 slot dengan tanggal+waktu sama
+          duplikatsFound = true;
+          console.log(`Ditemukan ${slots.length} slot dengan kombinasi tanggal+waktu yang sama: ${key}`);
+          
+          // Urutkan berdasarkan: (1) jumlah pasien terbanyak, (2) ID terbaru
+          slots.sort((a, b) => {
+            // Prioritaskan slot yang memiliki pasien
+            if (a.currentCount !== b.currentCount) {
+              return b.currentCount - a.currentCount; // slot dengan pasien lebih banyak didahulukan
+            }
+            
+            // Jika jumlah pasien sama, pilih slot dengan ID lebih tinggi (biasanya yang lebih baru)
+            return b.id - a.id;
+          });
+          
+          // Tambahkan slot terbaik ke hasil akhir
+          deduplicatedSlots.push(slots[0]);
+          
+          // Log slot yang dipilih vs yang dibuang
+          console.log(`  Dipilih: ID=${slots[0].id}, tanggal=${slots[0].date}, waktu=${slots[0].timeSlot}, pasien=${slots[0].currentCount}/${slots[0].maxQuota}`);
+          slots.slice(1).forEach(slot => {
+            console.log(`  Dibuang: ID=${slot.id}, tanggal=${slot.date}, waktu=${slot.timeSlot}, pasien=${slot.currentCount}/${slot.maxQuota}`);
+          });
+        }
+      });
+      
+      if (duplikatsFound) {
+        console.log(`Total slot setelah deduplikasi tanggal+waktu: ${deduplicatedSlots.length}`);
+      } else {
+        console.log(`Tidak ditemukan duplikat tanggal+waktu`);
+      }
+      
+      const finalSlots = deduplicatedSlots;
       console.log(`Total slot aktif setelah filter: ${finalSlots.length}`);
       
       // First sort by date, then by timeSlot

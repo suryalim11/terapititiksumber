@@ -125,12 +125,45 @@ export default function Dashboard() {
         });
         console.log(`After ID deduplication: ${filteredSlots.length} slots remaining`);
         
-        // Penting: Kita tidak lagi melakukan deduplikasi berdasarkan tanggal+waktu
-        // karena ini menyebabkan slot dengan ID berbeda namun waktu/tanggal sama hilang
-        // Hilangnya satu dari dua slot 13:00-15:00 (ID 420 dan 423) menyebabkan data pasien hilang
+        // Deduplikasi berdasarkan tanggal+waktu, tetapi mempertahankan yang memiliki pasien
+        const dateTimeMap = new Map();
         
-        // Sudah cukup melakukan deduplikasi berdasarkan ID saja
-        const uniqueSlots = filteredSlots;
+        // Pertama, kelompokkan slot berdasarkan kombinasi tanggal+waktu
+        filteredSlots.forEach(slot => {
+          const slotDateStr = getSlotDateStr(slot); // Gunakan fungsi yang sudah ada
+          const key = `${slotDateStr}-${slot.timeSlot}`;
+          
+          if (!dateTimeMap.has(key)) {
+            dateTimeMap.set(key, []);
+          }
+          
+          dateTimeMap.get(key).push(slot);
+        });
+        
+        // Kemudian, untuk setiap kelompok dengan > 1 slot, pilih yang terbaik
+        const uniqueSlots = [];
+        
+        dateTimeMap.forEach((slots, key) => {
+          if (slots.length === 1) {
+            // Jika hanya 1 slot untuk kombinasi ini, gunakan langsung
+            uniqueSlots.push(slots[0]);
+          } else {
+            // Jika ada beberapa slot untuk kombinasi yang sama, pilih yang memiliki paling banyak pasien
+            // Ini mencegah kita kehilangan data pasien yang sudah terdaftar di slot tersebut
+            slots.sort((a, b) => {
+              // Prioritaskan slot dengan pasien lebih banyak
+              if (a.currentCount !== b.currentCount) {
+                return b.currentCount - a.currentCount;
+              }
+              // Jika jumlah pasien sama, pilih ID yang lebih besar (biasanya lebih baru)
+              return b.id - a.id;
+            });
+            
+            // Ambil yang terbaik (dengan pasien terbanyak atau ID terbaru)
+            uniqueSlots.push(slots[0]);
+          }
+        });
+        
         console.log(`After date+time deduplication: ${uniqueSlots.length} slots remaining`);
         
         // Langkah 3: Filter berdasarkan periode yang dipilih pengguna
