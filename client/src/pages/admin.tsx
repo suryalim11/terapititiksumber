@@ -20,12 +20,14 @@ export default function AdminPage() {
     dates: boolean;
     transactions: boolean;
     fixPackages: boolean;
+    fixAgusIsrofin: boolean;
   }>({
     sessions: false,
     slots: false,
     dates: false,
     transactions: false,
-    fixPackages: false
+    fixPackages: false,
+    fixAgusIsrofin: false
   });
   
   // Handler untuk memeriksa integritas sesi paket
@@ -164,6 +166,33 @@ export default function AdminPage() {
       setLoading(prev => ({ ...prev, fixPackages: false }));
     }
   };
+  
+  // Handler untuk memperbaiki paket ganda Agus Isrofin
+  const handleFixAgusIsrofin = async () => {
+    try {
+      setLoading(prev => ({ ...prev, fixAgusIsrofin: true }));
+      
+      const result = await apiRequest("/api/sessions/fix-agus-isrofin", {
+        method: "POST"
+      });
+      
+      toast({
+        title: "Perbaikan Selesai", 
+        description: result?.message || "Paket Agus Isrofin berhasil diperbaiki",
+      });
+      
+      console.log("Hasil perbaikan paket Agus Isrofin:", result);
+    } catch (error) {
+      console.error("Error fixing Agus Isrofin packages:", error);
+      toast({
+        title: "Terjadi Kesalahan",
+        description: error instanceof Error ? error.message : "Tidak dapat memperbaiki paket Agus Isrofin",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, fixAgusIsrofin: false }));
+    }
+  };
 
   // Memeriksa apakah pengguna adalah admin
   if (user?.role !== 'admin') {
@@ -279,6 +308,21 @@ export default function AdminPage() {
                   </>
                 ) : (
                   "Perbaiki Paket Terapi (sessionsUsed=0)"
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                className="justify-start"
+                onClick={handleFixAgusIsrofin}
+                disabled={loading.fixAgusIsrofin}
+              >
+                {loading.fixAgusIsrofin ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Memperbaiki...
+                  </>
+                ) : (
+                  "Perbaiki Paket Ganda Agus Isrofin"
                 )}
               </Button>
             </div>
