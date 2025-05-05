@@ -1818,119 +1818,125 @@ export default function Reports() {
                     
                     <div className="mt-6">
                       <h3 className="text-lg font-semibold mb-4">Detail Kunjungan Pasien</h3>
-                      <div className="rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-[60px]">No</TableHead>
-                              <TableHead>Tanggal</TableHead>
-                              <TableHead>Nama Pasien</TableHead>
-                              <TableHead>Alamat</TableHead>
-                              <TableHead className="w-[80px]">Umur</TableHead>
-                              <TableHead className="w-[60px]">JK</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Keluhan</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {monthlyVisitReport.visits.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={8} className="text-center py-4">
-                                  Tidak ada data kunjungan pasien untuk bulan ini
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              monthlyVisitReport.visits.map((visit, index) => (
-                                <TableRow key={`${visit.patientName}-${visit.date}-${index}`}>
-                                  <TableCell>{index + 1}</TableCell>
-                                  <TableCell>
-                                    {(() => {
-                                      try {
-                                        // Kasus 1: Format "04 03:07:41.562-04-2025" atau "01 00:00:00-05-2025"
-                                        if (visit.date.includes(" ") && visit.date.includes(":")) {
-                                          // Split di space untuk mendapatkan bagian tanggal di depan
-                                          const parts = visit.date.split(" ");
-                                          const day = parts[0].padStart(2, '0');
-                                          
-                                          // Jika ada bagian bulan dan tahun di timestamp
-                                          if (parts[1] && parts[1].includes("-")) {
-                                            const dateParts = parts[1].split("-");
-                                            if (dateParts.length >= 2) {
-                                              const monthNumber = parseInt(dateParts[dateParts.length - 2]);
-                                              const year = dateParts[dateParts.length - 1];
-                                              
-                                              // Parse tanggal untuk format dengan date-fns
-                                              try {
-                                                const dateObj = new Date(year, monthNumber - 1, parseInt(day));
-                                                return format(dateObj, "dd MMM yyyy", { locale: id });
-                                              } catch (parseError) {
-                                                console.log("Error parsing complex date:", parseError);
-                                              }
-                                            }
-                                          }
-                                        }
-                                        
-                                        // Kasus 2: Format DD-Bulan-YYYY (seperti 04-April-2025)
-                                        if (visit.date.includes("-")) {
-                                          const parts = visit.date.split("-");
-                                          if (parts.length === 3) {
-                                            // Cek jika bagian tengah adalah nama bulan (bukan angka)
-                                            if (isNaN(parseInt(parts[1]))) {
-                                              // Sudah dalam format yang diinginkan - tampilkan lebih pendek
-                                              return `${parts[0]} ${parts[1].substring(0, 3)} ${parts[2]}`;
-                                            }
-                                            // Format DD-MM-YYYY 
-                                            else {
-                                              const [day, month, year] = parts;
-                                              if (day && month && year) {
+                      <div className="overflow-x-auto -mx-4 sm:mx-0">
+                        <div className="inline-block min-w-full align-middle border rounded-md">
+                          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs sm:text-sm">
+                            <thead className="bg-gray-50 dark:bg-gray-800">
+                              <tr>
+                                <th scope="col" className="py-2 px-2 sm:px-3 text-left font-medium whitespace-nowrap w-[40px] sm:w-[60px]">No</th>
+                                <th scope="col" className="py-2 px-2 sm:px-3 text-left font-medium whitespace-nowrap">Tanggal</th>
+                                <th scope="col" className="py-2 px-2 sm:px-3 text-left font-medium whitespace-nowrap">Nama Pasien</th>
+                                <th scope="col" className="py-2 px-2 sm:px-3 text-left font-medium whitespace-nowrap hidden sm:table-cell">Alamat</th>
+                                <th scope="col" className="py-2 px-2 sm:px-3 text-left font-medium whitespace-nowrap w-[50px] sm:w-[80px]">Umur</th>
+                                <th scope="col" className="py-2 px-2 sm:px-3 text-left font-medium whitespace-nowrap w-[40px] sm:w-[60px]">JK</th>
+                                <th scope="col" className="py-2 px-2 sm:px-3 text-left font-medium whitespace-nowrap">Status</th>
+                                <th scope="col" className="py-2 px-2 sm:px-3 text-left font-medium whitespace-nowrap hidden sm:table-cell">Keluhan</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                              {monthlyVisitReport.visits.length === 0 ? (
+                                <tr>
+                                  <td colSpan={8} className="text-center py-4 px-3 text-gray-500 dark:text-gray-400">
+                                    Tidak ada data kunjungan pasien untuk bulan ini
+                                  </td>
+                                </tr>
+                              ) : (
+                                monthlyVisitReport.visits.map((visit, index) => (
+                                  <tr key={`${visit.patientName}-${visit.date}-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                    <td className="py-2 px-2 sm:px-3 whitespace-nowrap">{index + 1}</td>
+                                    <td className="py-2 px-2 sm:px-3 whitespace-nowrap">
+                                      {(() => {
+                                        try {
+                                          // Kasus 1: Format "04 03:07:41.562-04-2025" atau "01 00:00:00-05-2025"
+                                          if (visit.date.includes(" ") && visit.date.includes(":")) {
+                                            // Split di space untuk mendapatkan bagian tanggal di depan
+                                            const parts = visit.date.split(" ");
+                                            const day = parts[0].padStart(2, '0');
+                                            
+                                            // Jika ada bagian bulan dan tahun di timestamp
+                                            if (parts[1] && parts[1].includes("-")) {
+                                              const dateParts = parts[1].split("-");
+                                              if (dateParts.length >= 2) {
+                                                const monthNumber = parseInt(dateParts[dateParts.length - 2]);
+                                                const year = dateParts[dateParts.length - 1];
+                                                
+                                                // Parse tanggal untuk format dengan date-fns
                                                 try {
-                                                  const parsedDate = new Date(`${year}-${month}-${day}`);
-                                                  return format(parsedDate, "dd MMM yyyy", { locale: id });
+                                                  const dateObj = new Date(year, monthNumber - 1, parseInt(day));
+                                                  return format(dateObj, "dd MMM yyyy", { locale: id });
                                                 } catch (parseError) {
-                                                  console.log("Error parsing date:", parseError);
+                                                  console.log("Error parsing complex date:", parseError);
                                                 }
                                               }
                                             }
                                           }
-                                        }
-                                        
-                                        // Fallback: Cobalah parse sebagai Date object
-                                        try {
-                                          const dateObj = new Date(visit.date);
-                                          if (!isNaN(dateObj.getTime())) {
-                                            return format(dateObj, "dd MMM yyyy", { locale: id });
+                                          
+                                          // Kasus 2: Format DD-Bulan-YYYY (seperti 04-April-2025)
+                                          if (visit.date.includes("-")) {
+                                            const parts = visit.date.split("-");
+                                            if (parts.length === 3) {
+                                              // Cek jika bagian tengah adalah nama bulan (bukan angka)
+                                              if (isNaN(parseInt(parts[1]))) {
+                                                // Sudah dalam format yang diinginkan - tampilkan lebih pendek
+                                                return `${parts[0]} ${parts[1].substring(0, 3)} ${parts[2]}`;
+                                              }
+                                              // Format DD-MM-YYYY 
+                                              else {
+                                                const [day, month, year] = parts;
+                                                if (day && month && year) {
+                                                  try {
+                                                    const parsedDate = new Date(`${year}-${month}-${day}`);
+                                                    return format(parsedDate, "dd MMM yyyy", { locale: id });
+                                                  } catch (parseError) {
+                                                    console.log("Error parsing date:", parseError);
+                                                  }
+                                                }
+                                              }
+                                            }
                                           }
-                                        } catch (parseError) {
-                                          console.log("Final fallback error:", parseError);
+                                          
+                                          // Fallback: Cobalah parse sebagai Date object
+                                          try {
+                                            const dateObj = new Date(visit.date);
+                                            if (!isNaN(dateObj.getTime())) {
+                                              return format(dateObj, "dd MMM yyyy", { locale: id });
+                                            }
+                                          } catch (parseError) {
+                                            console.log("Final fallback error:", parseError);
+                                          }
+                                          
+                                          // Fallback tanpa formatting
+                                          return visit.date;
+                                        } catch (e) {
+                                          console.error("Error formatting date:", e);
+                                          return visit.date;
                                         }
-                                        
-                                        // Fallback tanpa formatting
-                                        return visit.date;
-                                      } catch (e) {
-                                        console.error("Error formatting date:", e);
-                                        return visit.date;
-                                      }
-                                    })()}
-                                  </TableCell>
-                                  <TableCell>{visit.patientName}</TableCell>
-                                  <TableCell className="max-w-[200px] truncate" title={visit.patientAddress}>
-                                    {visit.patientAddress}
-                                  </TableCell>
-                                  <TableCell>{visit.patientAge}</TableCell>
-                                  <TableCell>{visit.patientGender}</TableCell>
-                                  <TableCell>
-                                    <Badge variant={visit.visitType === "BARU" ? "default" : "outline"}>
-                                      {visit.visitType}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="max-w-[200px] truncate" title={visit.complaint}>
-                                    {visit.complaint}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
+                                      })()}
+                                    </td>
+                                    <td className="py-2 px-2 sm:px-3 whitespace-nowrap font-medium">{visit.patientName}</td>
+                                    <td className="py-2 px-2 sm:px-3 max-w-[200px] truncate hidden sm:table-cell" title={visit.patientAddress}>
+                                      {visit.patientAddress}
+                                    </td>
+                                    <td className="py-2 px-2 sm:px-3 whitespace-nowrap">{visit.patientAge}</td>
+                                    <td className="py-2 px-2 sm:px-3 whitespace-nowrap">{visit.patientGender}</td>
+                                    <td className="py-2 px-2 sm:px-3 whitespace-nowrap">
+                                      <span className={`px-2 py-1 text-xs rounded-full ${
+                                        visit.visitType === "BARU" 
+                                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" 
+                                          : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
+                                      }`}>
+                                        {visit.visitType}
+                                      </span>
+                                    </td>
+                                    <td className="py-2 px-2 sm:px-3 max-w-[200px] truncate hidden sm:table-cell" title={visit.complaint}>
+                                      {visit.complaint}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
                     
