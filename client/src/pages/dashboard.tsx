@@ -101,15 +101,15 @@ export default function Dashboard() {
     queryKey: ['/api/slots-by-period', selectedPeriod],
     queryFn: async () => {
       try {
-        // Selalu gunakan period=week untuk mendapatkan data lengkap dari server
-        // Kemudian kita akan melakukan filter di client side sesuai selectedPeriod
+        // Selalu gunakan parameter yang konsisten untuk mendapatkan data lengkap
         console.log(`Fetching slots with fixed period=week to ensure consistency`);
-        const response = await fetch(`/api/slots-by-period?period=week`);
+        // Tambahkan parameter includeToday=true untuk memastikan mendapatkan slot hari ini
+        const response = await fetch(`/api/slots-by-period?period=week&includeToday=true`);
         if (!response.ok) {
           throw new Error('Failed to fetch slots by period');
         }
         
-        // Ambil semua data dari server dengan period=week
+        // Ambil semua data dari server
         const rawData = await response.json();
         console.log(`Received ${rawData.length} slots from API`);
         
@@ -189,9 +189,27 @@ export default function Dashboard() {
           console.log(`Filter untuk hari ini (WIB): ${todayWIBStr}`);
           
           filteredByPeriod = uniqueSlots.filter((slot: any) => {
-            const slotDate = typeof slot.date === 'string' ? new Date(slot.date) : new Date(slot.date);
-            // Gunakan fungsi perbandingan yang memperhatikan zona waktu
-            return isSameDayInWIB(slotDate, nowWIB);
+            try {
+              // Skip slot yang tidak memiliki data yang valid
+              if (!slot || !slot.date) {
+                console.log("Melewati slot tanpa data tanggal:", slot);
+                return false;
+              }
+              
+              const slotDate = typeof slot.date === 'string' ? new Date(slot.date) : new Date(slot.date);
+              
+              // Log untuk debugging
+              console.log(`Membandingkan slot tanggal ${slot.date} (${slotDate.toISOString()}) dengan hari ini ${nowWIB.toISOString()}`);
+              
+              // Gunakan fungsi perbandingan yang memperhatikan zona waktu
+              const isSameDay = isSameDayInWIB(slotDate, nowWIB);
+              console.log(`  Hasil: ${isSameDay ? "SAMA" : "BERBEDA"}`);
+              
+              return isSameDay;
+            } catch (err) {
+              console.error("Error saat memfilter slot:", err, slot);
+              return false;
+            }
           });
           
           console.log(`Hasil filter hari ini (WIB): ${filteredByPeriod.length} slot ditemukan`);
