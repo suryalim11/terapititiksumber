@@ -13,7 +13,9 @@ import {
   RefreshCw,
   Loader2,
   Eye,
-  EyeOff
+  EyeOff,
+  RefreshCcw,
+  Database
 } from "lucide-react";
 import { 
   cn, 
