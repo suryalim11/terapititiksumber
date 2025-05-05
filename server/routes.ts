@@ -2194,49 +2194,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create data rows
       const rows = report.visits.map((visit, index) => {
-        // Ekstrak tanggal dan hilangkan timestamp yang tidak diperlukan
-        // Kita hanya butuh hari (tanggal) saja tanpa jam dan detik
-        let formattedDate;
+        // Untuk Excel, kita akan menggunakan tanggal dalam format DD-MM-YYYY yang sudah ada
+        // Karena di storage.ts kita sudah menyetel format 'dd-MM-yyyy'
+        let formattedDate = visit.date;
         
-        try {
-          // Cek jika tanggal mengandung timestamp dengan milisecond "03:07:41.562" (format khusus terdeteksi)
-          if (visit.date.includes("03:07:41.562")) {
-            // Jika ini adalah format tanggal yang bermasalah, cukup ambil tanggalnya saja
-            // Format: "2025-04-04 03:07:41.562" -> "04"
+        // Jika format masih tidak sesuai (untuk kasus lama), kita konversi
+        if (!visit.date.includes("-") || visit.date.startsWith("20")) {
+          try {
+            // Konversi ke objek Date lalu format ulang
             const dateObj = new Date(visit.date);
-            formattedDate = String(dateObj.getDate()).padStart(2, '0');
-          } 
-          // Cek jika tanggal berisi spasi (dengan timestamp)
-          else if (visit.date.includes(" ")) {
-            // Format: "2025-04-06 00:00:00" -> "06"
-            const dateObj = new Date(visit.date);
-            formattedDate = String(dateObj.getDate()).padStart(2, '0');
-          }
-          // Format standar YYYY-MM-DD
-          else if (visit.date.includes("-")) {
-            const dateParts = visit.date.split('-');
-            if (dateParts.length === 3) {
-              formattedDate = dateParts[2]; // DD (hari)
-            } else {
-              formattedDate = visit.date;
-            }
-          }
-          else {
-            // Format lain yang tidak dikenal, gunakan apa adanya
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const year = dateObj.getFullYear();
+            formattedDate = `${day}-${month}-${year}`;
+          } catch (e) {
+            console.log(`Error saat memformat tanggal ${visit.date}:`, e);
             formattedDate = visit.date;
-          }
-        } catch (e) {
-          console.log(`Error saat memformat tanggal ${visit.date}:`, e);
-          // Fallback jika ada error
-          formattedDate = visit.date;
-        }
-        
-        // Pastikan tanggal hanya berisi digit (DD) tanpa karakter lain
-        if (formattedDate && formattedDate.length > 2) {
-          // Coba ambil 2 digit pertama jika itu adalah angka
-          const match = formattedDate.match(/^\d{2}/);
-          if (match) {
-            formattedDate = match[0];
           }
         }
         

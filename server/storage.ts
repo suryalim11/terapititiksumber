@@ -2070,11 +2070,11 @@ export class MemStorage implements IStorage {
         
         // Menambahkan data untuk laporan
         visits.push({
-          date: format(visitDate, 'yyyy-MM-dd'),
+          date: format(visitDate, 'dd-MM-yyyy'),
           patientName: patient.name,
           patientAddress: patient.address,
           patientAge: patientAge,
-          patientGender: patient.gender === 'male' ? 'L' : 'P',
+          patientGender: patient.gender === 'Laki-laki' ? 'L' : 'P',
           visitType: visitType,
           complaint: appointment.notes || patient.complaints || '-',
           treatmentTypes: ["RAMUAN", "KETERAMPILAN", "KOMBINASI"] // Default semua treatment diberikan
