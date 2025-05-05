@@ -2831,11 +2831,12 @@ export class DatabaseStorage implements IStorage {
       // Gunakan format string sederhana untuk menghindari circular reference
       const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
       
-      // Dapatkan appointments menggunakan query langsung
+      // Dapatkan appointments menggunakan rentang tanggal untuk bulan yang dipilih
       const appointmentsQuery = await db.execute(`
         SELECT * FROM appointments 
         WHERE (status = 'Active' OR status = 'Completed')
-        AND SUBSTRING(date, 1, 7) = '${yearMonth}'
+        AND date >= '${yearMonth}-01'
+        AND date < '${yearMonth}-01'::date + interval '1 month'
       `);
       
       // Konversi hasil query ke format yang sesuai
@@ -2881,7 +2882,31 @@ export class DatabaseStorage implements IStorage {
         
         if (firstVisitQuery.rows.length > 0) {
           const firstVisit = firstVisitQuery.rows[0];
-          patientFirstVisits.set(patientId, new Date(firstVisit.date));
+          // Pastikan tanggal dalam format yang benar
+          const dateStr = firstVisit.date;
+          try {
+            // Jika dateStr adalah string yang valid, konversi ke Date
+            if (typeof dateStr === 'string') {
+              patientFirstVisits.set(patientId, new Date(dateStr));
+            } 
+            // Jika dateStr sudah berupa Date atau timestamp
+            else if (dateStr instanceof Date) {
+              patientFirstVisits.set(patientId, dateStr);
+            }
+            // Jika dateStr adalah timestamp
+            else if (typeof dateStr === 'number') {
+              patientFirstVisits.set(patientId, new Date(dateStr));
+            }
+            // Fallback jika tidak ada kondisi yang terpenuhi
+            else {
+              console.log(`Tanggal tidak valid: ${dateStr}, menggunakan tanggal sekarang`);
+              patientFirstVisits.set(patientId, new Date());
+            }
+          } catch (e) {
+            console.error(`Error konversi tanggal untuk pasien ${patientId}:`, e);
+            // Fallback ke tanggal sekarang jika ada kesalahan
+            patientFirstVisits.set(patientId, new Date());
+          }
         }
       }
       
@@ -2928,12 +2953,14 @@ export class DatabaseStorage implements IStorage {
           }
         }
         
-        // Menambahkan data untuk laporan
+        // Menambahkan data untuk laporan dengan konversi tipe eksplisit
         visits.push({
-          date: appointment.date,
-          patientName: patient.name,
-          patientAddress: patient.address,
-          patientAge: patientAge,
+          date: typeof appointment.date === 'string' ? appointment.date : 
+               (appointment.date instanceof Date ? appointment.date.toISOString().split('T')[0] : 
+               new Date().toISOString().split('T')[0]),
+          patientName: patient.name || '',
+          patientAddress: patient.address || '',
+          patientAge: patientAge || 0,
           patientGender: patient.gender === 'male' ? 'L' : 'P',
           visitType: visitType,
           complaint: appointment.notes || patient.complaints || '-',
@@ -2943,10 +2970,15 @@ export class DatabaseStorage implements IStorage {
       
       // Mengurutkan kunjungan berdasarkan tanggal
       visits.sort((a, b) => {
-        // Urutkan berdasarkan tanggal
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return dateA.getTime() - dateB.getTime();
+        // Urutkan berdasarkan tanggal dengan safety check
+        try {
+          const dateA = a.date ? new Date(a.date) : new Date();
+          const dateB = b.date ? new Date(b.date) : new Date();
+          return dateA.getTime() - dateB.getTime();
+        } catch (error) {
+          console.error("Error sorting dates:", error);
+          return 0; // Tidak mengubah urutan jika ada kesalahan
+        }
       });
       
       // Data klinik
