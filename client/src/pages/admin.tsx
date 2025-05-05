@@ -19,11 +19,13 @@ export default function AdminPage() {
     slots: boolean;
     dates: boolean;
     transactions: boolean;
+    fixPackages: boolean;
   }>({
     sessions: false,
     slots: false,
     dates: false,
-    transactions: false
+    transactions: false,
+    fixPackages: false
   });
   
   // Handler untuk memeriksa integritas sesi paket
@@ -135,6 +137,33 @@ export default function AdminPage() {
       setLoading(prev => ({ ...prev, transactions: false }));
     }
   };
+  
+  // Handler untuk memperbaiki paket terapi dengan sessionsUsed=0
+  const handleFixExistingPackages = async () => {
+    try {
+      setLoading(prev => ({ ...prev, fixPackages: true }));
+      
+      const result = await apiRequest("/api/sessions/fix-existing-packages", {
+        method: "POST"
+      });
+      
+      toast({
+        title: "Perbaikan Selesai", 
+        description: result?.message || "Paket terapi yang sudah ada berhasil diperbaiki",
+      });
+      
+      console.log("Hasil perbaikan paket terapi:", result);
+    } catch (error) {
+      console.error("Error fixing existing packages:", error);
+      toast({
+        title: "Terjadi Kesalahan",
+        description: error instanceof Error ? error.message : "Tidak dapat memperbaiki paket terapi",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, fixPackages: false }));
+    }
+  };
 
   // Memeriksa apakah pengguna adalah admin
   if (user?.role !== 'admin') {
@@ -235,6 +264,21 @@ export default function AdminPage() {
                   </>
                 ) : (
                   "Periksa Transaksi Tertunda"
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                className="justify-start"
+                onClick={handleFixExistingPackages}
+                disabled={loading.fixPackages}
+              >
+                {loading.fixPackages ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Memperbaiki...
+                  </>
+                ) : (
+                  "Perbaiki Paket Terapi (sessionsUsed=0)"
                 )}
               </Button>
             </div>

@@ -4617,6 +4617,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint untuk memperbaiki paket-paket yang sudah ada dengan sessionsUsed=0
+  app.post("/api/sessions/fix-existing-packages", async (req: Request, res: Response) => {
+    try {
+      // Pastikan hanya admin yang bisa mengakses endpoint ini
+      if (!req.isAuthenticated() || req.user.role !== 'admin') {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Akses tidak diizinkan, dibutuhkan hak akses admin" 
+        });
+      }
+      
+      console.log("Memulai perbaikan paket-paket terapi yang sudah ada dengan sessionsUsed=0...");
+      
+      // Jalankan fungsi perbaikan paket yang sudah ada
+      const result = await fixExistingPackages();
+      
+      console.log(`Perbaikan paket terapi selesai: ${result.updated} dari ${result.total} paket berhasil diperbarui`);
+      
+      return res.status(200).json({
+        success: true,
+        message: `Perbaikan paket terapi berhasil: ${result.updated} dari ${result.total} paket diperbarui`,
+        ...result
+      });
+    } catch (error) {
+      console.error("Error dalam memperbaiki paket terapi:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan dalam memperbaiki paket terapi", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+  
   // Registrar os endpoints para detecção e correção de pacientes duplicados
   addFixPatientDuplicatesEndpoint(app);
   
