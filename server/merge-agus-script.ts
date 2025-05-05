@@ -63,13 +63,11 @@ export async function mergeAgusIsrofinDirectly() {
   }
 }
 
-// Eksekusi fungsi jika file ini dijalankan secara langsung
-if (require.main === module) {
-  mergeAgusIsrofinDirectly().then(result => {
-    console.log("Hasil eksekusi:", result);
-    process.exit(0);
-  }).catch(err => {
-    console.error("Error executing script:", err);
-    process.exit(1);
-  });
-}
+// Jalankan otomatis saat diimpor sebagai modul
+// mergeAgusIsrofinDirectly()
+//   .then(result => {
+//     console.log("Hasil eksekusi merge-agus:", result);
+//   })
+//   .catch(err => {
+//     console.error("Error dalam merge-agus-script:", err);
+//   });
