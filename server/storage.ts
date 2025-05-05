@@ -1955,6 +1955,173 @@ export class MemStorage implements IStorage {
     return { updatedSlots: updatedCount, results };
   }
   
+  // Fungsi untuk mendapatkan data kunjungan pasien bulanan untuk laporan
+  async getMonthlyVisitReport(
+    year: number,
+    month: number
+  ): Promise<{
+    clinicInfo: {
+      name: string;
+      location: string;
+      district: string;
+      city: string;
+    },
+    summary: {
+      totalVisits: number; 
+      newPatients: number;
+      returningPatients: number;
+    },
+    visits: {
+      date: string;
+      patientName: string;
+      patientAddress: string;
+      patientAge: number;
+      patientGender: string;
+      visitType: string; // "BARU" atau "LAMA"
+      complaint: string;
+      treatmentTypes: string[]; // ["RAMUAN", "KETERAMPILAN", "KOMBINASI"]
+    }[]
+  }> {
+    try {
+      // Membuat rentang tanggal untuk bulan yang dipilih
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+      endDate.setHours(23, 59, 59, 999);
+      
+      console.log(`[MemStorage] Generating monthly visit report from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      
+      // Mengambil semua appointment yang aktif dalam rentang tanggal
+      const appointments = Array.from(this.appointments.values()).filter(
+        appointment => {
+          const appDate = new Date(appointment.date);
+          // Filter hanya untuk status Aktif/Completed dan dalam rentang tanggal bulan ini
+          return (appointment.status === "Active" || appointment.status === "Completed") &&
+                 appDate >= startDate && appDate <= endDate;
+        }
+      );
+      
+      console.log(`[MemStorage] Found ${appointments.length} visits in the report period`);
+      
+      // Mendapatkan data unik pasien untuk menentukan pasien baru vs lama
+      const patientVisitMap = new Map<number, Date[]>();
+      
+      // Mendapatkan semua data pasien untuk pengayaan laporan
+      const patients = new Map<number, any>();
+      for (const appointment of appointments) {
+        const patient = await this.getPatient(appointment.patientId);
+        if (patient) {
+          patients.set(patient.id, patient);
+          
+          // Track kunjungan pasien
+          if (!patientVisitMap.has(patient.id)) {
+            patientVisitMap.set(patient.id, []);
+          }
+          patientVisitMap.get(patient.id)?.push(new Date(appointment.date));
+        }
+      }
+      
+      // Mengurutkan kunjungan pasien berdasarkan tanggal untuk menentukan kunjungan pertama
+      for (const [patientId, dates] of patientVisitMap.entries()) {
+        dates.sort((a, b) => a.getTime() - b.getTime());
+      }
+      
+      // Mengatur data untuk laporan
+      const summary = {
+        totalVisits: appointments.length,
+        newPatients: 0,
+        returningPatients: 0
+      };
+      
+      const visits = [];
+      
+      for (const appointment of appointments) {
+        const patient = patients.get(appointment.patientId);
+        if (!patient) continue;
+        
+        // Mendapatkan tanggal kunjungan
+        const visitDate = new Date(appointment.date);
+        
+        // Menentukan apakah pasien baru atau lama berdasarkan kunjungan pertama
+        const patientVisits = patientVisitMap.get(patient.id) || [];
+        const isNewVisit = patientVisits.length > 0 && 
+                          patientVisits[0].getTime() === visitDate.getTime();
+        
+        const visitType = isNewVisit ? "BARU" : "LAMA";
+        
+        // Update summary
+        if (isNewVisit) {
+          summary.newPatients++;
+        } else {
+          summary.returningPatients++;
+        }
+        
+        // Menghitung umur pasien
+        let patientAge = 0;
+        if (patient.birthDate) {
+          const birthDate = new Date(patient.birthDate);
+          patientAge = visitDate.getFullYear() - birthDate.getFullYear();
+          
+          // Adjust for birth month/day if needed
+          const m = visitDate.getMonth() - birthDate.getMonth();
+          if (m < 0 || (m === 0 && visitDate.getDate() < birthDate.getDate())) {
+            patientAge--;
+          }
+        }
+        
+        // Menambahkan data untuk laporan
+        visits.push({
+          date: format(visitDate, 'yyyy-MM-dd'),
+          patientName: patient.name,
+          patientAddress: patient.address,
+          patientAge: patientAge,
+          patientGender: patient.gender === 'male' ? 'L' : 'P',
+          visitType: visitType,
+          complaint: appointment.notes || patient.complaints || '-',
+          treatmentTypes: ["RAMUAN", "KETERAMPILAN", "KOMBINASI"] // Default semua treatment diberikan
+        });
+      }
+      
+      // Mengurutkan kunjungan berdasarkan tanggal
+      visits.sort((a, b) => {
+        // Urutkan berdasarkan tanggal
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateA.getTime() - dateB.getTime();
+      });
+      
+      // Data klinik
+      const clinicInfo = {
+        name: "TERAPI TITIK SUMBER RUMAH SEHAT KITA",
+        location: "SEKUPANG",
+        district: "SEKUPANG",
+        city: "BATAM"
+      };
+      
+      return {
+        clinicInfo,
+        summary,
+        visits
+      };
+    } catch (error) {
+      console.error("[MemStorage] Error generating monthly visit report:", error);
+      // Return empty data in case of error
+      return {
+        clinicInfo: {
+          name: "TERAPI TITIK SUMBER RUMAH SEHAT KITA",
+          location: "SEKUPANG",
+          district: "SEKUPANG",
+          city: "BATAM"
+        },
+        summary: {
+          totalVisits: 0,
+          newPatients: 0,
+          returningPatients: 0
+        },
+        visits: []
+      };
+    }
+  }
+  
   // System Logs
   async createSystemLog(logData: InsertSystemLog): Promise<SystemLog> {
     // Untuk implementasi memory storage, tidak perlu menyimpan log

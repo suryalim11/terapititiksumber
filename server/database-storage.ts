@@ -2787,6 +2787,178 @@ export class DatabaseStorage implements IStorage {
       throw error;
     }
   }
+  
+  /**
+   * Mendapatkan data kunjungan pasien bulanan untuk laporan
+   * @param year Tahun untuk laporan
+   * @param month Bulan untuk laporan (1-12)
+   */
+  async getMonthlyVisitReport(
+    year: number,
+    month: number
+  ): Promise<{
+    clinicInfo: {
+      name: string;
+      location: string;
+      district: string;
+      city: string;
+    },
+    summary: {
+      totalVisits: number; 
+      newPatients: number;
+      returningPatients: number;
+    },
+    visits: {
+      date: string;
+      patientName: string;
+      patientAddress: string;
+      patientAge: number;
+      patientGender: string;
+      visitType: string; // "BARU" atau "LAMA"
+      complaint: string;
+      treatmentTypes: string[]; // ["RAMUAN", "KETERAMPILAN", "KOMBINASI"]
+    }[]
+  }> {
+    try {
+      // Membuat rentang tanggal untuk bulan yang dipilih
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+      endDate.setHours(23, 59, 59, 999);
+      
+      console.log(`Generating monthly visit report from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      
+      // Mengambil semua appointment yang aktif dalam rentang tanggal
+      const appointments = await db.query.appointments.findMany({
+        where: and(
+          or(
+            eq(schema.appointments.status, "Active"),
+            eq(schema.appointments.status, "Completed")
+          ),
+          // Filter tanggal menggunakan substring 
+          // Karena date di database adalah string dengan format 'YYYY-MM-DD'
+          sql`SUBSTRING(${schema.appointments.date}, 1, 7) = ${`${year}-${String(month).padStart(2, '0')}`}`
+        )
+      });
+      
+      console.log(`Found ${appointments.length} visits in the report period`);
+      
+      // Mendapatkan data unik pasien untuk menentukan pasien baru vs lama
+      const patientIds = [...new Set(appointments.map(app => app.patientId))];
+      
+      // Mengambil info pasien untuk semua appointments di bulan ini
+      const patients = await db.query.patients.findMany({
+        where: inArray(schema.patients.id, patientIds)
+      });
+      
+      // Map pasien berdasarkan ID untuk pencarian cepat
+      const patientMap = new Map();
+      for (const patient of patients) {
+        patientMap.set(patient.id, patient);
+      }
+      
+      // Mendapatkan riwayat kunjungan semua pasien untuk menentukan kunjungan pertama
+      const patientFirstVisits = new Map<number, Date>();
+      
+      // Mendapatkan appointment terawal untuk setiap pasien
+      for (const patientId of patientIds) {
+        const firstVisit = await db.query.appointments.findFirst({
+          where: and(
+            eq(schema.appointments.patientId, patientId),
+            or(
+              eq(schema.appointments.status, "Active"),
+              eq(schema.appointments.status, "Completed")
+            )
+          ),
+          orderBy: [asc(schema.appointments.date)]
+        });
+        
+        if (firstVisit) {
+          patientFirstVisits.set(patientId, new Date(firstVisit.date));
+        }
+      }
+      
+      // Mengatur data untuk laporan
+      const summary = {
+        totalVisits: appointments.length,
+        newPatients: 0,
+        returningPatients: 0
+      };
+      
+      const visits = [];
+      
+      for (const appointment of appointments) {
+        const patient = patientMap.get(appointment.patientId);
+        if (!patient) continue;
+        
+        // Mendapatkan tanggal kunjungan
+        const visitDate = new Date(appointment.date);
+        
+        // Menentukan apakah pasien baru atau lama
+        const firstVisitDate = patientFirstVisits.get(patient.id);
+        const isNewVisit = firstVisitDate && 
+                          firstVisitDate.getTime() === visitDate.getTime();
+        
+        const visitType = isNewVisit ? "BARU" : "LAMA";
+        
+        // Update summary
+        if (isNewVisit) {
+          summary.newPatients++;
+        } else {
+          summary.returningPatients++;
+        }
+        
+        // Menghitung umur pasien
+        let patientAge = 0;
+        if (patient.birthDate) {
+          const birthDate = new Date(patient.birthDate);
+          patientAge = visitDate.getFullYear() - birthDate.getFullYear();
+          
+          // Adjust for birth month/day if needed
+          const m = visitDate.getMonth() - birthDate.getMonth();
+          if (m < 0 || (m === 0 && visitDate.getDate() < birthDate.getDate())) {
+            patientAge--;
+          }
+        }
+        
+        // Menambahkan data untuk laporan
+        visits.push({
+          date: appointment.date,
+          patientName: patient.name,
+          patientAddress: patient.address,
+          patientAge: patientAge,
+          patientGender: patient.gender === 'male' ? 'L' : 'P',
+          visitType: visitType,
+          complaint: appointment.notes || patient.complaints || '-',
+          treatmentTypes: ["RAMUAN", "KETERAMPILAN", "KOMBINASI"] // Default semua treatment diberikan
+        });
+      }
+      
+      // Mengurutkan kunjungan berdasarkan tanggal
+      visits.sort((a, b) => {
+        // Urutkan berdasarkan tanggal
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateA.getTime() - dateB.getTime();
+      });
+      
+      // Data klinik
+      const clinicInfo = {
+        name: "TERAPI TITIK SUMBER RUMAH SEHAT KITA",
+        location: "SEKUPANG",
+        district: "SEKUPANG",
+        city: "BATAM"
+      };
+      
+      return {
+        clinicInfo,
+        summary,
+        visits
+      };
+    } catch (error) {
+      console.error("Error generating monthly visit report:", error);
+      throw error;
+    }
+  }
 
   async getRecentActivities(limit: number = 10): Promise<any[]> {
     // Mengambil berbagai jenis aktivitas dan menggabungkannya
