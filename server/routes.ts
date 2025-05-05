@@ -25,6 +25,7 @@ import fixTransactionsTable from "./fix-transactions-schema";
 import { fixMissingPackageSessions } from "./fix-missing-sessions";
 import { fixAgusIsrofinSessions } from "./fix-agus-isrofin";
 import { fixExistingPackages } from "./fix-existing-packages";
+import { mergeAgusIsrofinDirectly } from "./merge-agus-script";
 import adminRoutes from "./routes/admin";
 import { addFixPatientDuplicatesEndpoint } from "./fix-patient-duplicates";
 import crypto from "crypto";
@@ -4599,10 +4600,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log("Memulai perbaikan khusus sesi Agus Isrofin...");
+      console.log("Memulai perbaikan khusus sesi Agus Isrofin menggunakan script direct...");
       
-      // Jalankan fungsi perbaikan khusus untuk Agus Isrofin
-      const result = await fixAgusIsrofinSessions();
+      // Gunakan script direct untuk memperbaiki masalah
+      const result = await mergeAgusIsrofinDirectly();
       
       console.log(`Perbaikan sesi Agus Isrofin selesai: ${result.message}`);
       
