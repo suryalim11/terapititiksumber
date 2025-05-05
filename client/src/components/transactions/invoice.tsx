@@ -381,13 +381,14 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
           doc.text(formatPrice(creditAmount.toString()), 195, y + 10, { align: 'right' });
           y += 8;
           
-          // Hitung jumlah yang dibayar (total - kredit)
-          const paidAmount = totalAmountValue - creditAmount;
+          // Gunakan nilai paidAmount yang tersimpan pada transaksi
+          // Jika tidak tersedia, baru hitung dari (total - kredit)
+          const paidAmountValue = safeParseFloat(data.transaction.paidAmount) || (totalAmountValue - creditAmount);
           
           doc.setFont("helvetica", "bold");
           doc.setTextColor(0, 128, 0); // Green for amount paid
           doc.text("Dibayar:", 140, y + 10, { align: 'right' });
-          doc.text(formatPrice(paidAmount.toString()), 195, y + 10, { align: 'right' });
+          doc.text(formatPrice(paidAmountValue.toString()), 195, y + 10, { align: 'right' });
           y += 12;
           doc.setTextColor(0, 0, 0); // Reset text color to black
         } else {
