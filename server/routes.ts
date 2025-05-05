@@ -3318,9 +3318,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(201).json(newSlot);
     } catch (error) {
       console.error("Error ketika membuat therapy slot:", error);
+      
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      
+      // Cek jika ini adalah error duplikasi (dari validasi custom kita)
+      if (error instanceof Error && error.message.includes("Duplikasi slot terapi")) {
+        // Ekstrak ID dari pesan error (ID: X)
+        const idMatch = error.message.match(/\(ID: (\d+)\)/);
+        const existingSlotId = idMatch ? parseInt(idMatch[1]) : null;
+        
+        return res.status(409).json({ 
+          message: error.message,
+          type: "duplicate_slot",
+          existingSlotId: existingSlotId,
+          status: "error"
+        });
+      }
+      
       return res.status(500).json({ message: "Internal server error" });
     }
   });

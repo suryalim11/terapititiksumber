@@ -470,6 +470,18 @@ export default function TherapySlots() {
     }
   };
 
+  // Fungsi untuk memeriksa duplikasi slot terapi
+  const checkForDuplicateSlot = (date: string, timeSlot: string): TherapySlot | undefined => {
+    if (!therapySlots) return undefined;
+    
+    // Cari slot yang sudah ada dengan tanggal dan waktu yang sama
+    return therapySlots.find(slot => 
+      slot.date === date && 
+      slot.timeSlot === timeSlot && 
+      slot.isActive === true
+    );
+  };
+  
   // Handler untuk submit form
   const onSubmit = (data: TherapySlotFormValues) => {
     // Debugging: Periksa tanggal input yang diterima dari form
@@ -506,6 +518,25 @@ export default function TherapySlots() {
     console.log("Submitting date as string format:", dateString);
     console.log("------------ END DEBUGGING FORM SUBMISSION ------------");
     
+    // CEK DUPLIKASI: Periksa di frontend apakah sudah ada slot dengan tanggal dan waktu yang sama
+    const existingSlot = checkForDuplicateSlot(dateString, timeSlot);
+    
+    if (existingSlot) {
+      // Tanya pengguna apakah ingin edit slot yang sudah ada atau tetap buat baru
+      if (confirm(`PERHATIAN: Slot terapi untuk tanggal ${dateString} dan waktu ${timeSlot} sudah ada (ID: ${existingSlot.id}).\n\nApakah Anda ingin mengedit slot yang sudah ada?\n- Klik OK untuk mengedit slot yang sudah ada\n- Klik Cancel untuk tetap membuat slot baru`)) {
+        // Buka dialog edit untuk slot yang sudah ada
+        openEditDialog(existingSlot);
+        setDialogOpen(false);
+        return; // Berhenti karena pengguna memilih edit slot yang sudah ada
+      } else {
+        // Konfirmasi lagi jika pengguna tetap ingin membuat duplikat
+        if (!confirm(`Anda akan membuat DUPLIKAT slot terapi.\nIni dapat menyebabkan kebingungan saat penjadwalan pasien.\n\nLanjutkan pembuatan slot duplikat?`)) {
+          return; // Batal jika pengguna membatalkan pembuatan duplikat
+        }
+        // Lanjutkan jika pengguna mengonfirmasi ingin membuat duplikat
+      }
+    }
+    
     // Menggunakan fetch API langsung karena mutation tidak mendukung properti timeSlot
     fetch("/api/therapy-slots", {
       method: "POST",
@@ -518,10 +549,33 @@ export default function TherapySlots() {
       })
     })
     .then(res => {
-      if (!res.ok) throw new Error('Failed to create therapy slot');
+      if (!res.ok) {
+        // Periksa jika error adalah karena duplikasi dari validasi server
+        if (res.status === 409) {
+          return res.json().then(data => {
+            const errorMsg = data.message || 'Duplikasi slot terapi terdeteksi';
+            const slotId = data.existingSlotId;
+            
+            // Jika ada ID slot yang sudah ada, tawarkan untuk mengedit
+            if (slotId && confirm(`${errorMsg}\n\nApakah Anda ingin mengedit slot yang sudah ada?`)) {
+              // Cari slot yang sudah ada di data
+              const existingSlot = therapySlots.find(s => s.id === slotId);
+              if (existingSlot) {
+                openEditDialog(existingSlot);
+                setDialogOpen(false);
+              }
+              return; // Berhenti karena pengguna akan mengedit slot yang sudah ada
+            }
+            throw new Error(errorMsg);
+          });
+        }
+        throw new Error('Failed to create therapy slot');
+      }
       return res.json();
     })
-    .then(() => {
+    .then((data) => {
+      if (!data) return; // Jika tidak ada data, berarti pengguna memilih untuk mengedit slot yang sudah ada
+      
       queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
       toast({
         title: "Berhasil!",
@@ -603,6 +657,41 @@ export default function TherapySlots() {
     console.log("Edit - Date setelah manual formatting:", dateString);
     console.log("Edit - Updating date as string format:", dateString);
     console.log("------------ END DEBUGGING EDIT FORM SUBMISSION ------------");
+    
+    // CEK PERUBAHAN: Jika tanggal atau waktu berubah, periksa duplikasi
+    const dateChanged = dateString !== selectedSlot.date;
+    const timeChanged = timeSlot !== selectedSlot.timeSlot;
+    
+    if ((dateChanged || timeChanged) && therapySlots) {
+      // Periksa apakah ada slot lain dengan tanggal dan waktu yang sama
+      const duplicateSlot = therapySlots.find(slot => 
+        // Cari slot yang bukan slot yang sedang diedit
+        slot.id !== selectedSlot.id &&
+        // Dan memiliki tanggal + waktu yang sama seperti nilai baru
+        slot.date === dateString && 
+        slot.timeSlot === timeSlot &&
+        // Dan masih aktif
+        slot.isActive === true
+      );
+      
+      if (duplicateSlot) {
+        // Tanya pengguna apakah ingin mengganti edit ke slot yang sudah ada
+        if (confirm(`PERHATIAN: Slot terapi untuk tanggal ${dateString} dan waktu ${timeSlot} sudah ada (ID: ${duplicateSlot.id}).\n\nApakah Anda ingin mengedit slot tersebut sebagai gantinya?\n- Klik OK untuk beralih ke edit slot tersebut\n- Klik Cancel untuk melanjutkan edit slot ini (dapat menyebabkan duplikasi)`)) {
+          // Buka dialog edit untuk slot yang sudah ada sebagai gantinya
+          setEditDialogOpen(false);
+          setTimeout(() => {
+            openEditDialog(duplicateSlot);
+          }, 300);
+          return; // Berhenti karena pengguna memilih edit slot lain
+        } else {
+          // Konfirmasi lagi jika pengguna tetap ingin membuat duplikat
+          if (!confirm(`Anda akan membuat DUPLIKAT slot terapi.\nIni dapat menyebabkan kebingungan saat penjadwalan pasien.\n\nLanjutkan pembuatan slot duplikat?`)) {
+            return; // Batal jika pengguna membatalkan
+          }
+          // Lanjutkan jika pengguna mengonfirmasi ingin membuat duplikat
+        }
+      }
+    }
     
     // Kirim request update
     fetch(`/api/therapy-slots/${selectedSlot.id}`, {
