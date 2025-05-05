@@ -139,8 +139,8 @@ export default function Dashboard() {
         })));
         
         // Langkah 1: Deduplikasi berdasarkan ID
-        const idSet = new Set();
-        const filteredSlots = rawData.filter((slot: any) => {
+        const idSet = new Set<number>();
+        const filteredSlots: TherapySlot[] = rawData.filter((slot) => {
           if (idSet.has(slot.id)) {
             console.log(`Removing duplicate slot with ID: ${slot.id}`);
             return false;
@@ -151,7 +151,7 @@ export default function Dashboard() {
         console.log(`After ID deduplication: ${filteredSlots.length} slots remaining`);
         
         // Deduplikasi berdasarkan tanggal+waktu, tetapi mempertahankan yang memiliki pasien
-        const dateTimeMap = new Map();
+        const dateTimeMap = new Map<string, TherapySlot[]>();
         
         // Pertama, kelompokkan slot berdasarkan kombinasi tanggal+waktu
         filteredSlots.forEach(slot => {
@@ -162,20 +162,23 @@ export default function Dashboard() {
             dateTimeMap.set(key, []);
           }
           
-          dateTimeMap.get(key).push(slot);
+          const slots = dateTimeMap.get(key);
+          if (slots) {
+            slots.push(slot);
+          }
         });
         
         // Kemudian, untuk setiap kelompok dengan > 1 slot, pilih yang terbaik
-        const uniqueSlots = [];
+        const uniqueSlots: TherapySlot[] = [];
         
-        dateTimeMap.forEach((slots, key) => {
+        dateTimeMap.forEach((slots: TherapySlot[], key: string) => {
           if (slots.length === 1) {
             // Jika hanya 1 slot untuk kombinasi ini, gunakan langsung
             uniqueSlots.push(slots[0]);
           } else {
             // Jika ada beberapa slot untuk kombinasi yang sama, pilih yang memiliki paling banyak pasien
             // Ini mencegah kita kehilangan data pasien yang sudah terdaftar di slot tersebut
-            slots.sort((a, b) => {
+            slots.sort((a: TherapySlot, b: TherapySlot) => {
               // Prioritaskan slot dengan pasien lebih banyak
               if (a.currentCount !== b.currentCount) {
                 return b.currentCount - a.currentCount;
@@ -231,7 +234,7 @@ export default function Dashboard() {
           })));
           
           // Lebih simple: filter dengan substring tanggal
-          filteredByPeriod = uniqueSlots.filter((slot: any) => {
+          filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             try {
               // Skip slot yang tidak memiliki data yang valid
               if (!slot || !slot.date) {
@@ -263,7 +266,7 @@ export default function Dashboard() {
           const oneWeekAgoWIB = new Date(nowWIB);
           oneWeekAgoWIB.setDate(oneWeekAgoWIB.getDate() - 7);
           
-          filteredByPeriod = uniqueSlots.filter((slot: any) => {
+          filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             const slotDate = new Date(getSlotDateStr(slot));
             return slotDate >= oneWeekAgoWIB && slotDate <= nowWIB;
           });
@@ -273,7 +276,7 @@ export default function Dashboard() {
           const startOfMonth = new Date(nowWIB.getFullYear(), nowWIB.getMonth(), 1);
           const endOfMonth = new Date(nowWIB.getFullYear(), nowWIB.getMonth() + 1, 0);
           
-          filteredByPeriod = uniqueSlots.filter((slot: any) => {
+          filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             const slotDate = new Date(getSlotDateStr(slot));
             return slotDate >= startOfMonth && slotDate <= endOfMonth;
           });
@@ -281,7 +284,7 @@ export default function Dashboard() {
           // Tampilkan semua slot yang tanggalnya >= hari ini (masa depan)
           // Gunakan nowWIB untuk mendapatkan tanggal saat ini dalam WIB
           
-          filteredByPeriod = uniqueSlots.filter((slot: any) => {
+          filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             const slotDate = new Date(getSlotDateStr(slot));
             return slotDate >= getStartOfDayWIB(new Date()); // Filter hanya slot yang >= hari ini
           });
@@ -292,7 +295,7 @@ export default function Dashboard() {
         console.log(`After period (${selectedPeriod}) filtering: ${filteredByPeriod.length} slots`);
         
         // Langkah 4: Urutkan berdasarkan tanggal dan waktu
-        return filteredByPeriod.sort((a: any, b: any) => {
+        return filteredByPeriod.sort((a: TherapySlot, b: TherapySlot) => {
           // Konversi string tanggal ke objek Date
           const dateA = new Date(a.date);
           const dateB = new Date(b.date);
