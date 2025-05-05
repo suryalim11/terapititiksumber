@@ -327,8 +327,23 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
   const handlePaidAmountChange = (value: string) => {
     if (!useCredit) return; // Hanya aktif jika mode utang diaktifkan
     
+    // Mendapatkan nilai totalAmount (subtotal - discount)
     const totalAmount = calculateTotalPrice();
-    const paidValue = parseFloat(value) || 0;
+    
+    // Konversi nilai paidAmount yang dimasukkan user menjadi angka
+    // Default ke 0 jika input tidak valid
+    let paidValue = 0;
+    try {
+      // Hapus karakter non-numerik (kecuali titik desimal) dan parse
+      const cleanValue = value.replace(/[^0-9.]/g, '');
+      paidValue = parseFloat(cleanValue) || 0;
+      
+      // Pastikan nilai tidak negatif dan tidak melebihi totalAmount
+      paidValue = Math.max(0, Math.min(paidValue, totalAmount));
+    } catch (error) {
+      console.error("Error parsing paidAmount:", error);
+      paidValue = 0;
+    }
     
     // Hitung sisa kredit (totalAmount - paidAmount)
     const remainingCredit = Math.max(0, totalAmount - paidValue);
@@ -341,10 +356,19 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
     
     // Update creditAmount sesuai dengan jumlah yang belum dibayar
     form.setValue("creditAmount", remainingCredit.toString());
+    
+    // Gunakan nilai paidValue yang sudah divalidasi
     form.setValue("paidAmount", paidValue.toString());
     
     // Set isPaid = false karena ini pembayaran kredit
     form.setValue("isPaid", false);
+    
+    // Log nilai akhir untuk debugging
+    console.log("Nilai akhir yang disimpan ke form:", {
+      paidAmount: form.getValues("paidAmount"),
+      creditAmount: form.getValues("creditAmount"),
+      isPaid: form.getValues("isPaid")
+    });
   };
   
   useEffect(() => {
@@ -571,6 +595,31 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
   const createTransaction = useMutation({
     mutationFn: async (values: TransactionFormValues) => {
       console.log("Creating transaction with values:", values);
+      
+      // Pastikan paidAmount ada dan terisi dengan benar
+      if (useCredit) {
+        // Jika menggunakan kredit, validasi paidAmount
+        const totalAmount = parseFloat(values.totalAmount || "0");
+        let paidAmount = parseFloat(values.paidAmount || "0");
+        
+        // Pastikan nilai paidAmount tidak melebihi totalAmount dan tidak negatif
+        paidAmount = Math.max(0, Math.min(paidAmount, totalAmount));
+        
+        // Hitung creditAmount berdasarkan paidAmount yang divalidasi
+        const creditAmount = Math.max(0, totalAmount - paidAmount);
+        
+        // Update nilai di values
+        values.paidAmount = paidAmount.toString();
+        values.creditAmount = creditAmount.toString();
+        values.isPaid = paidAmount >= totalAmount; // isPaid true jika dibayar lunas
+        
+        console.log("Nilai pembayaran setelah validasi:", {
+          totalAmount,
+          paidAmount: values.paidAmount,
+          creditAmount: values.creditAmount,
+          isPaid: values.isPaid
+        });
+      }
       
       // Get the patient data dengan mencari lebih fleksibel
       const patientId = parseInt(String(values.patientId || form.getValues().patientId));
