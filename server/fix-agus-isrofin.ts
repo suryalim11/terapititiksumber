@@ -1,90 +1,103 @@
 import { db } from './db';
-import { sessions, transactions, packages } from '@shared/schema';
+import { sessions, transactions, packages, appointments } from '@shared/schema';
 import { eq, and, desc, sql, ne } from 'drizzle-orm';
 import { storage } from './storage';
 
-// Fungsi khusus untuk memperbaiki masalah paket ganda Agus Isrofin
+// Fungsi khusus untuk memperbaiki masalah paket ganda Agus Isrofin yang muncul di dashboard
 export async function fixAgusIsrofinSessions() {
-  console.log("Starting fix for Agus Isrofin duplicate sessions...");
+  console.log("Starting fix for Agus Isrofin duplicate sessions in dashboard...");
   
   try {
-    // Agus Isrofin memiliki dua ID pasien (ID lama dan ID baru)
-    const primaryPatientId = 86; // ID pasien utama yang akan dipertahankan
-    const duplicatePatientId = 261; // ID pasien duplikat yang menimbulkan masalah
+    // Agus Isrofin memiliki dua ID pasien dengan sesi paket yang sama
+    const primaryPatientId = 86;     // ID pasien utama (P-2025-086)
+    const duplicatePatientId = 261;  // ID pasien duplikat (P-2025-261)
+    const packageId = 8;             // ID paket "Paket 12 Sesi"
     
-    console.log(`Fixing duplicate data for Agus Isrofin: Primary ID ${primaryPatientId}, Duplicate ID ${duplicatePatientId}`);
+    console.log(`Fixing duplicate package display for Agus Isrofin: Primary ID ${primaryPatientId}, Duplicate ID ${duplicatePatientId}`);
     
-    // 1. Cari sesi aktif dari kedua ID pasien
-    const primarySessions = await db.query.sessions.findMany({
-      where: and(
-        eq(sessions.patientId, primaryPatientId),
-        eq(sessions.status, "active")
-      )
+    // 1. Cari paket aktif dari kedua ID pasien
+    const allActiveSessions = await db.query.sessions.findMany({
+      where: eq(sessions.status, "active")
     });
     
-    const duplicateSessions = await db.query.sessions.findMany({
-      where: and(
-        eq(sessions.patientId, duplicatePatientId),
-        eq(sessions.status, "active")
-      )
-    });
+    console.log(`Total active sessions in system: ${allActiveSessions.length}`);
     
-    console.log(`Found ${primarySessions.length} active sessions for primary patient ID`);
-    console.log(`Found ${duplicateSessions.length} active sessions for duplicate patient ID`);
+    // Filter sesi untuk Agus Isrofin (kedua ID)
+    const primarySessions = allActiveSessions.filter(s => s.patientId === primaryPatientId);
+    const duplicateSessions = allActiveSessions.filter(s => s.patientId === duplicatePatientId);
     
-    // Jika tidak ada sesi duplikat, tidak perlu perbaikan
+    console.log(`Found ${primarySessions.length} active sessions for primary patient ID ${primaryPatientId}`);
+    console.log(`Found ${duplicateSessions.length} active sessions for duplicate patient ID ${duplicatePatientId}`);
+    
+    // Jika tidak ada sesi duplikat, periksa jika perlu membuat tampilan yang benar
     if (duplicateSessions.length === 0) {
-      return {
-        success: true,
-        message: "Tidak ada sesi duplikat yang perlu diperbaiki",
-        primarySessions,
-        duplicateSessions: []
-      };
+      if (primarySessions.length === 0) {
+        return {
+          success: false,
+          message: "Tidak ada sesi aktif untuk Agus Isrofin dengan ID manapun"
+        };
+      } else {
+        // Pastikan sesi primer memiliki nilai yang benar
+        const primarySession = primarySessions[0];
+        const packageInfo = await db.query.packages.findFirst({
+          where: eq(packages.id, packageId)
+        });
+        
+        if (packageInfo) {
+          // Perbarui sesi utama dengan nilai yang benar
+          const totalSessions = packageInfo.sessions || 12;
+          await db.update(sessions)
+            .set({
+              packageId: packageId,
+              totalSessions: totalSessions,
+              sessionsUsed: Math.max(1, primarySession.sessionsUsed || 0)
+            })
+            .where(eq(sessions.id, primarySession.id));
+            
+          return {
+            success: true,
+            message: `Paket Agus Isrofin sudah benar dengan ID ${primaryPatientId}`,
+            updatedSession: primarySession.id
+          };
+        }
+      }
     }
     
-    // 2. Catat ID transaksi dari sesi duplikat untuk diperbarui nanti
-    const duplicateTransactionIds = duplicateSessions.map(session => session.transactionId);
-    
-    // 3. Nonaktifkan sesi duplikat (ubah status menjadi "merged")
+    // 2. Nonaktifkan/hapus semua sesi duplikat dengan mengubah status
     for (const session of duplicateSessions) {
       await db.update(sessions)
         .set({
-          status: "merged" as any, // 'merged' adalah status khusus untuk sesi yang telah digabungkan
-          notes: `Merged into patient ID ${primaryPatientId}, session was duplicate`
+          status: "merged",
+          notes: `Merged with patient ID ${primaryPatientId} (session ${session.id})`
         })
         .where(eq(sessions.id, session.id));
       
       console.log(`Marked duplicate session ${session.id} as merged`);
     }
     
-    // 4. Jika ada sesi primer, perbarui datanya untuk mencerminkan total sesi yang benar
+    // 3. Perbarui atau buat sesi primer jika tidak ada
+    let primarySession;
     if (primarySessions.length > 0) {
-      const primarySession = primarySessions[0]; // Ambil sesi pertama jika ada beberapa
+      primarySession = primarySessions[0];
+    } else {
+      // Jika tidak ada sesi primer, buat satu dari sesi duplikat pertama
+      const dupSession = duplicateSessions[0];
+      const newSessionData = {
+        patientId: primaryPatientId,
+        packageId: packageId,
+        transactionId: dupSession.transactionId,
+        totalSessions: dupSession.totalSessions,
+        sessionsUsed: dupSession.sessionsUsed,
+        status: "active" as const,
+        startDate: new Date(),
+        lastSessionDate: new Date()
+      };
       
-      // Cari informasi paket untuk mendapatkan total sesi yang benar
-      const packageInfo = await db.query.packages.findFirst({
-        where: eq(packages.id, primarySession.packageId || 0)
-      });
-      
-      if (packageInfo) {
-        // Hitung sesi terpakai yang benar (gabungkan dari kedua sesi)
-        const totalSessions = packageInfo.sessions || 12; // Default ke 12 jika tidak ada
-        const usedSessions = Math.max(1, primarySession.sessionsUsed || 0); // Minimal 1 sesi terpakai
-        
-        // Perbarui sesi utama dengan nilai yang benar
-        await db.update(sessions)
-          .set({
-            totalSessions: totalSessions,
-            sessionsUsed: usedSessions,
-            lastSessionDate: new Date() // Perbarui terakhir digunakan
-          })
-          .where(eq(sessions.id, primarySession.id));
-          
-        console.log(`Updated primary session ${primarySession.id} with correct session count: ${usedSessions}/${totalSessions}`);
-      }
+      primarySession = await storage.createSession(newSessionData);
+      console.log(`Created new primary session ${primarySession.id} for patient ${primaryPatientId}`);
     }
     
-    // 5. Perbarui semua appointment yang menggunakan ID pasien duplikat
+    // 4. Perbarui semua appointment yang terkait dengan ID pasien duplikat
     await db.execute(sql`
       UPDATE appointments
       SET patient_id = ${primaryPatientId}
@@ -93,19 +106,30 @@ export async function fixAgusIsrofinSessions() {
     
     console.log(`Updated appointments from duplicate patient ID to primary patient ID`);
     
-    // 6. Dapatkan hasil akhir untuk dikembalikan
-    const updatedPrimarySessions = await db.query.sessions.findMany({
+    // 5. Tambahkan catatan ke pasien duplikat
+    await db.execute(sql`
+      UPDATE patients
+      SET notes = CONCAT(COALESCE(notes, ''), '\nID ini duplikat dari pasien ID:${primaryPatientId}. Paket terapi telah digabungkan.')
+      WHERE id = ${duplicatePatientId}
+    `);
+    
+    // 6. Ambil data terbaru untuk verifikasi
+    const updatedActiveSession = await db.query.sessions.findFirst({
       where: and(
         eq(sessions.patientId, primaryPatientId),
-        eq(sessions.status, "active")
+        eq(sessions.status, "active"),
+        eq(sessions.packageId, packageId)
       )
     });
     
+    // Kembalikan hasil perbaikan
     return {
       success: true,
-      message: `Berhasil memperbaiki paket ganda Agus Isrofin. ID pasien utama: ${primaryPatientId}, ID duplikat: ${duplicatePatientId}`,
-      primarySessions: updatedPrimarySessions,
-      mergedSessions: duplicateSessions.length
+      message: `Berhasil memperbaiki paket ganda Agus Isrofin. Semua sesi dan appointment ID ${duplicatePatientId} telah dipindahkan ke ID ${primaryPatientId}`,
+      primaryPatientId,
+      duplicatePatientId,
+      primarySessionId: updatedActiveSession?.id,
+      mergedSessionsCount: duplicateSessions.length
     };
   } catch (error) {
     console.error("Error fixing Agus Isrofin sessions:", error);
