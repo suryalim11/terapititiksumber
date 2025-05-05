@@ -2954,14 +2954,42 @@ export class DatabaseStorage implements IStorage {
         }
         
         // Menambahkan data untuk laporan dengan konversi tipe eksplisit
+        // Konversi tanggal dari format ISO ke format DD-MM-YYYY untuk laporan
+        let visitDateFormatted = '';
+        
+        if (typeof appointment.date === 'string') {
+          // Jika tanggal adalah string, coba parsing dan format
+          try {
+            const dateParts = appointment.date.split('T')[0].split('-');
+            if (dateParts.length === 3) {
+              visitDateFormatted = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+            } else {
+              visitDateFormatted = appointment.date;
+            }
+          } catch (e) {
+            visitDateFormatted = appointment.date;
+          }
+        } else if (appointment.date instanceof Date) {
+          // Format date object ke format DD-MM-YYYY
+          const day = String(appointment.date.getDate()).padStart(2, '0');
+          const month = String(appointment.date.getMonth() + 1).padStart(2, '0');
+          const year = appointment.date.getFullYear();
+          visitDateFormatted = `${day}-${month}-${year}`;
+        } else {
+          // Fallback ke tanggal hari ini dalam format DD-MM-YYYY
+          const today = new Date();
+          const day = String(today.getDate()).padStart(2, '0');
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const year = today.getFullYear();
+          visitDateFormatted = `${day}-${month}-${year}`;
+        }
+        
         visits.push({
-          date: typeof appointment.date === 'string' ? appointment.date : 
-               (appointment.date instanceof Date ? appointment.date.toISOString().split('T')[0] : 
-               new Date().toISOString().split('T')[0]),
+          date: visitDateFormatted,
           patientName: patient.name || '',
           patientAddress: patient.address || '',
           patientAge: patientAge || 0,
-          patientGender: patient.gender === 'male' ? 'L' : 'P',
+          patientGender: patient.gender === 'Laki-laki' ? 'L' : 'P',
           visitType: visitType,
           complaint: appointment.notes || patient.complaints || '-',
           treatmentTypes: ["RAMUAN", "KETERAMPILAN", "KOMBINASI"] // Default semua treatment diberikan
