@@ -67,10 +67,22 @@ interface ActivePackage {
   progress: number;
 }
 
+// Define therapy slot interface
+interface TherapySlot {
+  id: number;
+  date: string;
+  timeSlot: string;
+  isActive: boolean;
+  maxQuota: number;
+  currentCount: number;
+  percentage?: number;
+  createdAt?: string | Date;
+}
+
 export default function Dashboard() {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("day"); // Default to "day" view
   const [showBalance, setShowBalance] = useState(false); // Default: hide balance
   const [isSyncing, setIsSyncing] = useState(false); // State untuk status sinkronisasi
   const queryClient = useQueryClient();
@@ -97,7 +109,7 @@ export default function Dashboard() {
   });
   
   // Gunakan API ini sebagai satu-satunya sumber data slot
-  const { data: slotsByPeriod = [], isLoading: isSlotsLoading, refetch: refetchSlotsByPeriod } = useQuery<any[]>({
+  const { data: slotsByPeriod = [], isLoading: isSlotsLoading, refetch: refetchSlotsByPeriod } = useQuery<TherapySlot[]>({
     queryKey: ['/api/slots-by-period', selectedPeriod],
     queryFn: async () => {
       try {
@@ -115,8 +127,16 @@ export default function Dashboard() {
         }
         
         // Ambil semua data dari server
-        const rawData = await response.json();
-        console.log("Data sebelum deduplikasi: " + rawData.length + " slots, setelah filter: " + rawData.length + ", setelah deduplikasi: " + rawData.length + " slots");
+        const rawData: TherapySlot[] = await response.json();
+        console.log("Data sebelum deduplikasi: " + rawData.length + " slots, tanggal untuk cek: " + formattedToday);
+        
+        // Log debug lengkap
+        console.log("Raw data dari server:", rawData.map(s => ({ 
+          id: s.id, 
+          date: s.date, 
+          isActive: s.isActive,
+          timeSlot: s.timeSlot
+        })));
         
         // Langkah 1: Deduplikasi berdasarkan ID
         const idSet = new Set();
@@ -180,7 +200,7 @@ export default function Dashboard() {
         // PINDAHKAN FUNGSI DI ATAS BLOK if (selectedPeriod === 'day')
         
         // Fungsi untuk mendapatkan tanggal dari slot (YYYY-MM-DD) dari format apapun
-        const getSlotDateStr = (slot: any): string => {
+        const getSlotDateStr = (slot: TherapySlot): string => {
           if (!slot || !slot.date) {
             console.error('Invalid slot or missing date:', slot);
             return '';
