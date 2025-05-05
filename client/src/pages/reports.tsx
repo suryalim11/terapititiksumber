@@ -1086,11 +1086,11 @@ export default function Reports() {
 
       <div ref={reportRef}>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="financial">Laporan Keuangan</TabsTrigger>
-            <TabsTrigger value="therapy">Laporan Terapi</TabsTrigger>
-            <TabsTrigger value="patients-daily">Pasien Harian</TabsTrigger>
-            <TabsTrigger value="visits">Laporan Kunjungan</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+            <TabsTrigger className="text-sm sm:text-base" value="financial">Keuangan</TabsTrigger>
+            <TabsTrigger className="text-sm sm:text-base" value="therapy">Terapi</TabsTrigger>
+            <TabsTrigger className="text-sm sm:text-base" value="patients-daily">Pasien</TabsTrigger>
+            <TabsTrigger className="text-sm sm:text-base" value="visits">Kunjungan</TabsTrigger>
           </TabsList>
 
           <TabsContent value="financial" className="space-y-6">
