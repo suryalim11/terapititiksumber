@@ -147,6 +147,9 @@ export default function Dashboard() {
         } else if (selectedPeriod === 'month') {
           // Untuk bulan ini, ambil semua slot aktif
           apiUrl = `/api/therapy-slots?activeOnly=true`;
+        } else if (selectedPeriod === 'future') {
+          // Untuk tab mendatang, ambil semua slot aktif
+          apiUrl = `/api/therapy-slots?activeOnly=true`;
         } else if (selectedPeriod === 'all') {
           // Ambil semua slot aktif
           apiUrl = `/api/therapy-slots?activeOnly=true`;
@@ -296,6 +299,31 @@ export default function Dashboard() {
               console.error("Error filtering slot for month:", err);
               return false;
             }
+          });
+          
+        } else if (selectedPeriod === 'future') {
+          // Untuk mendatang, tampilkan slot hari ini dan ke depan (masa depan)
+          // Gunakan nilai nowWIB untuk memastikan zona waktu benar
+          console.log("Today in WIB timezone:", dateToWIBDateString(nowWIB));
+          
+          filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
+            try {
+              const slotDateStr = getSlotDateStr(slot);
+              if (!slotDateStr) return false;
+              
+              const slotDate = new Date(slotDateStr);
+              return slotDate >= getStartOfDayWIB(new Date()); // Slot hari ini dan ke depan
+            } catch (err) {
+              console.error("Error filtering slot for future:", err);
+              return false;
+            }
+          });
+          
+          // Sort by date (ascending)
+          filteredByPeriod.sort((a, b) => {
+            const dateA = new Date(getSlotDateStr(a));
+            const dateB = new Date(getSlotDateStr(b));
+            return dateA.getTime() - dateB.getTime();
           });
           
         } else if (selectedPeriod === 'all') {
@@ -563,10 +591,11 @@ export default function Dashboard() {
               onValueChange={handlePeriodChange}
             >
               <div className="px-4 pt-4">
-                <TabsList className="grid w-full grid-cols-4 mb-4">
+                <TabsList className="grid w-full grid-cols-5 mb-4">
                   <TabsTrigger value="day">Hari Ini</TabsTrigger>
                   <TabsTrigger value="week">Minggu Ini</TabsTrigger>
                   <TabsTrigger value="month">Bulan Ini</TabsTrigger>
+                  <TabsTrigger value="future">Mendatang</TabsTrigger>
                   <TabsTrigger value="all">Semua Slot</TabsTrigger>
                 </TabsList>
               </div>
