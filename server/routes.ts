@@ -2195,27 +2195,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create data rows
       const rows = report.visits.map((visit, index) => {
         // Ekstrak tanggal dan hilangkan timestamp yang tidak diperlukan
-        // Format yang kita targetkan: hanya tanggal (DD)
+        // Kita hanya butuh hari (tanggal) saja tanpa jam dan detik
         let formattedDate;
         
         try {
-          // Ambil tanggal dari format yyyy-MM-dd
-          const dateParts = visit.date.split('-');
-          if (dateParts.length === 3) {
-            // Ambil HANYA hari (bagian terakhir)
-            formattedDate = dateParts[2]; // DD (hari)
-          } else {
-            // Jika format tidak sesuai, gunakan teks asli
+          // Cek jika tanggal mengandung timestamp dengan milisecond "03:07:41.562" (format khusus terdeteksi)
+          if (visit.date.includes("03:07:41.562")) {
+            // Jika ini adalah format tanggal yang bermasalah, cukup ambil tanggalnya saja
+            // Format: "2025-04-04 03:07:41.562" -> "04"
+            const dateObj = new Date(visit.date);
+            formattedDate = String(dateObj.getDate()).padStart(2, '0');
+          } 
+          // Cek jika tanggal berisi spasi (dengan timestamp)
+          else if (visit.date.includes(" ")) {
+            // Format: "2025-04-06 00:00:00" -> "06"
+            const dateObj = new Date(visit.date);
+            formattedDate = String(dateObj.getDate()).padStart(2, '0');
+          }
+          // Format standar YYYY-MM-DD
+          else if (visit.date.includes("-")) {
+            const dateParts = visit.date.split('-');
+            if (dateParts.length === 3) {
+              formattedDate = dateParts[2]; // DD (hari)
+            } else {
+              formattedDate = visit.date;
+            }
+          }
+          else {
+            // Format lain yang tidak dikenal, gunakan apa adanya
             formattedDate = visit.date;
           }
         } catch (e) {
+          console.log(`Error saat memformat tanggal ${visit.date}:`, e);
           // Fallback jika ada error
-          formattedDate = visit.date; 
+          formattedDate = visit.date;
+        }
+        
+        // Pastikan tanggal hanya berisi digit (DD) tanpa karakter lain
+        if (formattedDate && formattedDate.length > 2) {
+          // Coba ambil 2 digit pertama jika itu adalah angka
+          const match = formattedDate.match(/^\d{2}/);
+          if (match) {
+            formattedDate = match[0];
+          }
         }
         
         const row = [
-          index + 1, // Nomor
-          formattedDate, // Hanya tanggal (DD)
+          index + 1, // Nomor 
+          formattedDate, // Tanggal yang sudah diformat
           visit.patientName,
           visit.patientAddress,
           visit.patientAge,
