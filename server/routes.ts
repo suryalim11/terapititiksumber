@@ -2192,93 +2192,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ]
       ];
       
+      // Import format dari date-fns
+      const { format } = await import('date-fns');
+      const { id } = await import('date-fns/locale');
+      
       // Create data rows
       const rows = report.visits.map((visit, index) => {
-        // Kita perlu memastikan format tanggal konsisten dalam DD-MM-YYYY
-        let formattedDate = visit.date;
+        // Format tanggal untuk Excel sesuai dengan format yang sebelumnya berhasil - DD-MMMM-YYYY
+        let formattedDate = visit.date; // Default value
         
         try {
-          // FORMAT KHUSUS: Cek format seperti "01 00:00:00-05-2025"
-          if (visit.date.includes(" ") && visit.date.includes(":") && visit.date.includes("-")) {
-            // Format: "DD HH:MM:SS-MM-YYYY"
+          // Kasus 1: Format "04 03:07:41.562-04-2025"
+          if (visit.date.includes(" ") && visit.date.includes(":")) {
+            // Split di space untuk mendapatkan bagian tanggal di depan
             const parts = visit.date.split(" ");
+            // Ambil tanggal (day)
+            const day = parts[0].padStart(2, '0');
             
-            if (parts.length >= 2) {
-              const day = parts[0].padStart(2, '0'); // Hari
-              
-              // Cek bagian kedua yang berisi timestamp dan date: "00:00:00-05-2025"
-              const timestampDatePart = parts[1];
-              
-              if (timestampDatePart.includes("-")) {
-                const dateParts = timestampDatePart.split("-");
+            // Jika ada bagian bulan dan tahun di timestamp
+            if (parts[1] && parts[1].includes("-")) {
+              // Ambil bagian setelah timestamp yang berisi bulan dan tahun
+              const dateParts = parts[1].split("-"); 
+              if (dateParts.length >= 2) {
+                const monthNumber = parseInt(dateParts[dateParts.length - 2]);
+                const year = dateParts[dateParts.length - 1];
                 
-                // Format dateParts biasanya: ["00:00:00", "05", "2025"]
-                if (dateParts.length >= 3) {
-                  const month = dateParts[dateParts.length - 2].padStart(2, '0');
-                  const year = dateParts[dateParts.length - 1];
-                  
-                  // Bentuk format DD-MM-YYYY
-                  formattedDate = `${day}-${month}-${year}`;
-                  console.log(`Berhasil memformat tanggal dari "${visit.date}" menjadi "${formattedDate}"`);
-                }
+                // Konversi angka bulan ke nama bulan bahasa Indonesia
+                const monthNames = [
+                  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+                ];
+                const monthName = monthNames[monthNumber - 1];
+                
+                // Format "DD-MMMM-YYYY"
+                formattedDate = `${day}-${monthName}-${year}`;
               }
             }
           }
-          // FORMAT KHUSUS: Cek format seperti "04 03:07:41.562-04-2025"
-          else if (visit.date.includes(" ") && visit.date.includes(":") && visit.date.includes(".") && visit.date.includes("-")) {
-            const parts = visit.date.split(" ");
+          // Kasus 2: Format "DD-MM-YYYY" 
+          else if (visit.date.includes("-") && visit.date.match(/^\d{2}-\d{2}-\d{4}$/)) {
+            const [day, monthNum, year] = visit.date.split("-");
             
-            if (parts.length >= 2) {
-              const day = parts[0].padStart(2, '0'); // Hari
-              
-              // Cek bagian timestamp dan date: "03:07:41.562-04-2025"
-              const timestampDatePart = parts[1];
-              
-              if (timestampDatePart.includes("-")) {
-                // Cari posisi tanda "-" terakhir, yang memisahkan bulan dan tahun
-                const lastDashPos = timestampDatePart.lastIndexOf("-");
-                
-                if (lastDashPos !== -1 && lastDashPos > 0) {
-                  // Dapatkan bagian setelah tanda "-" terakhir (tahun)
-                  const year = timestampDatePart.substring(lastDashPos + 1);
-                  
-                  // Dapatkan bagian antara tanda "-" kedua terakhir dan terakhir (bulan)
-                  const secondLastDashPos = timestampDatePart.lastIndexOf("-", lastDashPos - 1);
-                  
-                  if (secondLastDashPos !== -1) {
-                    const month = timestampDatePart.substring(secondLastDashPos + 1, lastDashPos);
-                    
-                    // Bentuk format DD-MM-YYYY
-                    formattedDate = `${day}-${month}-${year}`;
-                    console.log(`Berhasil memformat tanggal kompleks dari "${visit.date}" menjadi "${formattedDate}"`);
-                  }
-                }
-              }
-            }
+            // Konversi angka bulan ke nama bulan bahasa Indonesia
+            const monthNumber = parseInt(monthNum);
+            const monthNames = [
+              "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+              "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+            ];
+            const monthName = monthNames[monthNumber - 1];
+            
+            // Format "DD-MMMM-YYYY"
+            formattedDate = `${day}-${monthName}-${year}`;
           }
-          // Jika sudah dalam format DD-MM-YYYY, tidak perlu mengubah apa-apa
-          else if (visit.date.match(/^\d{2}-\d{2}-\d{4}$/)) {
-            formattedDate = visit.date;
+          // Kasus 3: Format "YYYY-MM-DD"
+          else if (visit.date.includes("-") && visit.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [year, monthNum, day] = visit.date.split("-");
+            
+            // Konversi angka bulan ke nama bulan bahasa Indonesia
+            const monthNumber = parseInt(monthNum);
+            const monthNames = [
+              "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+              "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+            ];
+            const monthName = monthNames[monthNumber - 1];
+            
+            // Format "DD-MMMM-YYYY"
+            formattedDate = `${day}-${monthName}-${year}`;
           }
-          // Jika dalam format YYYY-MM-DD, konversi ke DD-MM-YYYY
-          else if (visit.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            const [year, month, day] = visit.date.split("-");
-            formattedDate = `${day}-${month}-${year}`;
-          }
-          // Format lain yang mungkin berupa objek Date yang telah dikonversi ke string
+          // Kasus 4: Cobalah parse sebagai Date object
           else {
-            const dateObj = new Date(visit.date);
-            if (!isNaN(dateObj.getTime())) {
-              const day = String(dateObj.getDate()).padStart(2, '0');
-              const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-              const year = dateObj.getFullYear();
-              formattedDate = `${day}-${month}-${year}`;
+            try {
+              const dateObj = new Date(visit.date);
+              if (!isNaN(dateObj.getTime())) {
+                // Format dengan date-fns untuk mendapatkan nama bulan dalam bahasa Indonesia
+                formattedDate = format(dateObj, "dd-MMMM-yyyy", { locale: id });
+              }
+            } catch (parseError) {
+              console.log(`Tidak dapat mem-parse tanggal: ${visit.date}`, parseError);
             }
           }
         } catch (e) {
           console.log(`Error saat memformat tanggal ${visit.date}:`, e);
           // Biarkan format tanggal apa adanya jika gagal parsing
         }
+        
+        console.log(`Format tanggal dari ${visit.date} menjadi ${formattedDate}`);
+      
         
         const row = [
           index + 1, // Nomor 
