@@ -1334,15 +1334,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Gunakan total amount yang dikirim dari client, jangan hitung ulang
       // Ini akan memastikan konsistensi nilai yang ditampilkan di client dan tersimpan di database
+      const totalAmount = restData.totalAmount || "0";
+      
+      // Handle paidAmount dan creditAmount dengan lebih baik
+      let finalPaidAmount = "0";
+      let finalCreditAmount = "0";
+      
+      if (isPaid) {
+        // Jika bayar lunas, paidAmount = totalAmount dan creditAmount = 0
+        finalPaidAmount = totalAmount;
+        finalCreditAmount = "0";
+      } else {
+        // Jika bayar sebagian, gunakan nilai yang dikirim client
+        finalPaidAmount = paidAmount || "0";
+        
+        // Untuk creditAmount, hitung selisih antara total dan jumlah yang dibayar
+        const totalValue = parseFloat(totalAmount);
+        const paidValue = parseFloat(finalPaidAmount);
+        finalCreditAmount = Math.max(0, totalValue - paidValue).toString();
+      }
+      
+      console.log("Calculated payment values:", {
+        totalAmount,
+        finalPaidAmount,
+        finalCreditAmount,
+        isPaid
+      });
+      
       const validatedData = insertTransactionSchema.parse({
         ...restData,
-        totalAmount: restData.totalAmount, // Use the amount passed from client
+        totalAmount: totalAmount,
         discount: discount || "0",
-        subtotal: subtotal || restData.totalAmount || "0",
+        subtotal: subtotal || totalAmount || "0",
         isPaid, // Include payment status
-        creditAmount: isPaid ? "0" : (creditAmount || restData.totalAmount || "0"),
-        // Jika bayar penuh (isPaid=true), paidAmount=totalAmount. Jika kredit (isPaid=false), paidAmount=0 atau nilai yang diberikan
-        paidAmount: isPaid ? (paidAmount || restData.totalAmount) : (paidAmount || "0")
+        creditAmount: finalCreditAmount,
+        paidAmount: finalPaidAmount
       });
       
       console.log("Validated transaction data:", validatedData);
