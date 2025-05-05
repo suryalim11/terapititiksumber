@@ -172,8 +172,15 @@ export default function Dashboard() {
         
         let filteredByPeriod = [...uniqueSlots];
         
+        // PINDAHKAN FUNGSI DI ATAS BLOK if (selectedPeriod === 'day')
+        
         // Fungsi untuk mendapatkan tanggal dari slot (YYYY-MM-DD) dari format apapun
         const getSlotDateStr = (slot: any): string => {
+          if (!slot || !slot.date) {
+            console.error('Invalid slot or missing date:', slot);
+            return '';
+          }
+          
           if (typeof slot.date === 'string') {
             // Format: "2025-04-07 00:00:00" atau "2025-04-07 03:07:41.562" -> ambil "2025-04-07"
             return slot.date.split(' ')[0];
@@ -188,6 +195,9 @@ export default function Dashboard() {
           const todayWIBStr = dateToWIBDateString(nowWIB);
           console.log(`Filter untuk hari ini (WIB): ${todayWIBStr}`);
           
+          // Metode alternatif: bandingkan string tanggal YYYY-MM-DD
+          console.log("Menggunakan metode perbandingan string tanggal untuk filter hari ini");
+          
           filteredByPeriod = uniqueSlots.filter((slot: any) => {
             try {
               // Skip slot yang tidak memiliki data yang valid
@@ -196,14 +206,14 @@ export default function Dashboard() {
                 return false;
               }
               
-              const slotDate = typeof slot.date === 'string' ? new Date(slot.date) : new Date(slot.date);
+              // Ekstrak tanggal dalam format YYYY-MM-DD dari slot date
+              const slotDateStr = getSlotDateStr(slot);
               
-              // Log untuk debugging
-              console.log(`Membandingkan slot tanggal ${slot.date} (${slotDate.toISOString()}) dengan hari ini ${nowWIB.toISOString()}`);
+              // Bandingkan dengan string tanggal hari ini
+              const isSameDay = slotDateStr === todayWIBStr;
               
-              // Gunakan fungsi perbandingan yang memperhatikan zona waktu
-              const isSameDay = isSameDayInWIB(slotDate, nowWIB);
-              console.log(`  Hasil: ${isSameDay ? "SAMA" : "BERBEDA"}`);
+              // Log untuk debugging detail
+              console.log(`Slot ${slot.id}: tanggal=${slotDateStr}, hari ini=${todayWIBStr}, sama=${isSameDay}`);
               
               return isSameDay;
             } catch (err) {
@@ -498,6 +508,23 @@ export default function Dashboard() {
               </div>
               
               <TabsContent value={selectedPeriod} className="mt-0">
+                {/* Debug info: */}
+                <div className="mx-4 my-2 p-2 bg-blue-50 text-xs border border-blue-200 rounded-md">
+                  <p>Debug Info (period: {selectedPeriod})</p>
+                  <p>Total slot: {slotsByPeriod?.length || 0}</p>
+                  <p>Today's Date (WIB): {dateToWIBDateString(new Date())}</p>
+                  {slotsByPeriod && slotsByPeriod.length > 0 && (
+                    <div>
+                      <p className="font-semibold mt-1">First 3 slots:</p>
+                      {slotsByPeriod.slice(0, 3).map((s: any, i: number) => (
+                        <div key={i} className="mt-1">
+                          <span>Slot {i+1}: ID={s.id}, Date={typeof s.date === 'string' ? s.date.split(' ')[0] : 'unknown'}, Time={s.timeSlot}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
                 {isSlotsLoading ? (
                   <div className="flex justify-center items-center py-6">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
