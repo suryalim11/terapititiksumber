@@ -2194,28 +2194,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create data rows
       const rows = report.visits.map((visit, index) => {
-        // Untuk Excel, kita akan menggunakan tanggal dalam format DD-MM-YYYY yang sudah ada
-        // Karena di storage.ts kita sudah menyetel format 'dd-MM-yyyy'
+        // Kita perlu memastikan format tanggal konsisten dalam DD-MM-YYYY
         let formattedDate = visit.date;
         
-        // Jika format masih tidak sesuai (untuk kasus lama), kita konversi
-        if (!visit.date.includes("-") || visit.date.startsWith("20")) {
-          try {
-            // Konversi ke objek Date lalu format ulang
-            const dateObj = new Date(visit.date);
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const year = dateObj.getFullYear();
-            formattedDate = `${day}-${month}-${year}`;
-          } catch (e) {
-            console.log(`Error saat memformat tanggal ${visit.date}:`, e);
+        try {
+          // Menangani format timestamp lengkap (seperti "04 03:07:41.562-04-2025")
+          if (visit.date.includes(":") || visit.date.includes(".")) {
+            const parts = visit.date.split(" ");
+            
+            // Jika ada bagian timestamp (bisa berupa "03:07:41.562-04-2025" atau hanya "00:00:00-04-2025")
+            if (parts.length >= 2) {
+              // Ekstrak bagian tanggal (di bagian akhir timestamp)
+              const datePart = parts[parts.length - 1]; 
+              
+              // Cek format "DD-MM-YYYY" atau "MM-YYYY" atau mencari tanggal dari string timestamp
+              if (datePart.includes("-")) {
+                const dateSegments = datePart.split("-");
+                if (dateSegments.length >= 2) {
+                  // Kita asumsikan bagian terakhir adalah tahun (4 digit)
+                  const year = dateSegments[dateSegments.length - 1];
+                  // Kita asumsikan bagian sebelum terakhir adalah bulan (2 digit)
+                  const month = dateSegments[dateSegments.length - 2];
+                  // Kita asumsikan bagian pertama dari parts adalah tanggal
+                  const day = parts[0].padStart(2, '0');
+                  
+                  formattedDate = `${day}-${month}-${year}`;
+                }
+              }
+            }
+          }
+          // Jika sudah dalam format DD-MM-YYYY, tidak perlu mengubah apa-apa
+          else if (visit.date.match(/^\d{2}-\d{2}-\d{4}$/)) {
             formattedDate = visit.date;
           }
+          // Jika dalam format YYYY-MM-DD, konversi ke DD-MM-YYYY
+          else if (visit.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [year, month, day] = visit.date.split("-");
+            formattedDate = `${day}-${month}-${year}`;
+          }
+          // Format lain yang mungkin berupa objek Date yang telah dikonversi ke string
+          else {
+            const dateObj = new Date(visit.date);
+            if (!isNaN(dateObj.getTime())) {
+              const day = String(dateObj.getDate()).padStart(2, '0');
+              const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+              const year = dateObj.getFullYear();
+              formattedDate = `${day}-${month}-${year}`;
+            }
+          }
+        } catch (e) {
+          console.log(`Error saat memformat tanggal ${visit.date}:`, e);
+          // Biarkan format tanggal apa adanya jika gagal parsing
         }
         
         const row = [
           index + 1, // Nomor 
-          formattedDate, // Tanggal yang sudah diformat
+          formattedDate, // Tanggal yang sudah diformat dengan benar
           visit.patientName,
           visit.patientAddress,
           visit.patientAge,
