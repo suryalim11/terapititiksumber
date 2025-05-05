@@ -2198,27 +2198,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let formattedDate = visit.date;
         
         try {
-          // Menangani format timestamp lengkap (seperti "04 03:07:41.562-04-2025")
-          if (visit.date.includes(":") || visit.date.includes(".")) {
+          // FORMAT KHUSUS: Cek format seperti "01 00:00:00-05-2025"
+          if (visit.date.includes(" ") && visit.date.includes(":") && visit.date.includes("-")) {
+            // Format: "DD HH:MM:SS-MM-YYYY"
             const parts = visit.date.split(" ");
             
-            // Jika ada bagian timestamp (bisa berupa "03:07:41.562-04-2025" atau hanya "00:00:00-04-2025")
             if (parts.length >= 2) {
-              // Ekstrak bagian tanggal (di bagian akhir timestamp)
-              const datePart = parts[parts.length - 1]; 
+              const day = parts[0].padStart(2, '0'); // Hari
               
-              // Cek format "DD-MM-YYYY" atau "MM-YYYY" atau mencari tanggal dari string timestamp
-              if (datePart.includes("-")) {
-                const dateSegments = datePart.split("-");
-                if (dateSegments.length >= 2) {
-                  // Kita asumsikan bagian terakhir adalah tahun (4 digit)
-                  const year = dateSegments[dateSegments.length - 1];
-                  // Kita asumsikan bagian sebelum terakhir adalah bulan (2 digit)
-                  const month = dateSegments[dateSegments.length - 2];
-                  // Kita asumsikan bagian pertama dari parts adalah tanggal
-                  const day = parts[0].padStart(2, '0');
+              // Cek bagian kedua yang berisi timestamp dan date: "00:00:00-05-2025"
+              const timestampDatePart = parts[1];
+              
+              if (timestampDatePart.includes("-")) {
+                const dateParts = timestampDatePart.split("-");
+                
+                // Format dateParts biasanya: ["00:00:00", "05", "2025"]
+                if (dateParts.length >= 3) {
+                  const month = dateParts[dateParts.length - 2].padStart(2, '0');
+                  const year = dateParts[dateParts.length - 1];
                   
+                  // Bentuk format DD-MM-YYYY
                   formattedDate = `${day}-${month}-${year}`;
+                  console.log(`Berhasil memformat tanggal dari "${visit.date}" menjadi "${formattedDate}"`);
+                }
+              }
+            }
+          }
+          // FORMAT KHUSUS: Cek format seperti "04 03:07:41.562-04-2025"
+          else if (visit.date.includes(" ") && visit.date.includes(":") && visit.date.includes(".") && visit.date.includes("-")) {
+            const parts = visit.date.split(" ");
+            
+            if (parts.length >= 2) {
+              const day = parts[0].padStart(2, '0'); // Hari
+              
+              // Cek bagian timestamp dan date: "03:07:41.562-04-2025"
+              const timestampDatePart = parts[1];
+              
+              if (timestampDatePart.includes("-")) {
+                // Cari posisi tanda "-" terakhir, yang memisahkan bulan dan tahun
+                const lastDashPos = timestampDatePart.lastIndexOf("-");
+                
+                if (lastDashPos !== -1 && lastDashPos > 0) {
+                  // Dapatkan bagian setelah tanda "-" terakhir (tahun)
+                  const year = timestampDatePart.substring(lastDashPos + 1);
+                  
+                  // Dapatkan bagian antara tanda "-" kedua terakhir dan terakhir (bulan)
+                  const secondLastDashPos = timestampDatePart.lastIndexOf("-", lastDashPos - 1);
+                  
+                  if (secondLastDashPos !== -1) {
+                    const month = timestampDatePart.substring(secondLastDashPos + 1, lastDashPos);
+                    
+                    // Bentuk format DD-MM-YYYY
+                    formattedDate = `${day}-${month}-${year}`;
+                    console.log(`Berhasil memformat tanggal kompleks dari "${visit.date}" menjadi "${formattedDate}"`);
+                  }
                 }
               }
             }
