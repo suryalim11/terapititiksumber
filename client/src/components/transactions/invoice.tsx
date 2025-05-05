@@ -792,7 +792,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   <td colSpan={2}></td>
                   <td className="px-4 py-2 text-right font-semibold text-gray-700">Dibayar:</td>
                   <td className="px-4 py-2 text-right font-semibold text-primary">
-                    {formatPrice((parseFloat(data.transaction.totalAmount.toString()) - parseFloat(data.transaction.creditAmount.toString())).toString())}
+                    {formatPrice(data.transaction.paidAmount?.toString() || "0")}
                   </td>
                 </tr>
                 )}

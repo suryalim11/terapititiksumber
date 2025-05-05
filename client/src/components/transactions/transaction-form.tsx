@@ -360,12 +360,25 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
       
       // Set default paidAmount ke 0 (bisa diubah user) dan creditAmount ke totalAmount
       const currentPaidAmount = form.getValues("paidAmount");
-      if (currentPaidAmount === "0" || !currentPaidAmount) {
+      
+      // Jika belum ada nilai atau nilainya 0, set default
+      if (!currentPaidAmount || currentPaidAmount === "0" || parseFloat(currentPaidAmount) <= 0) {
+        // Default pembayaran sebagian: tidak membayar apa-apa dulu
         form.setValue("paidAmount", "0");
         form.setValue("creditAmount", totalAmount.toString());
+        
+        // Log untuk debugging
+        console.log("Inisialisasi pembayaran kredit - paidAmount:", "0", "creditAmount:", totalAmount);
       } else {
         // Jika user sudah memasukkan nilai, hitung ulang creditAmount
-        handlePaidAmountChange(currentPaidAmount);
+        const paidValue = parseFloat(currentPaidAmount);
+        const remainingCredit = Math.max(0, totalAmount - paidValue);
+        
+        form.setValue("paidAmount", paidValue.toString());
+        form.setValue("creditAmount", remainingCredit.toString());
+        
+        // Log untuk debugging
+        console.log("Update pembayaran kredit - paidAmount:", paidValue, "creditAmount:", remainingCredit);
       }
       
       // Pastikan isPaid disetel ke false untuk transaksi kredit
@@ -374,11 +387,15 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
       console.log("Resetting credit values");
       
       // Jika credit dinonaktifkan, reset nilai
-      form.setValue("paidAmount", calculateTotalPrice().toString());
+      const totalAmount = calculateTotalPrice();
+      form.setValue("paidAmount", totalAmount.toString());
       form.setValue("creditAmount", "0");
       
       // Kembalikan isPaid ke true
       form.setValue("isPaid", true);
+      
+      // Log untuk debugging
+      console.log("Reset ke pembayaran penuh - paidAmount:", totalAmount, "creditAmount:", 0);
     }
   }, [useCredit, cartItems, form]);
 

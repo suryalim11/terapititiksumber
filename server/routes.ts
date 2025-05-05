@@ -1372,6 +1372,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPaid
       });
       
+      // Cetak nilai-nilai penting untuk debugging
+      console.log("Final transaction values before validation:", {
+        totalAmount,
+        isPaid,
+        creditAmount: finalCreditAmount,
+        paidAmount: finalPaidAmount
+      });
+      
       const validatedData = insertTransactionSchema.parse({
         ...restData,
         totalAmount: totalAmount,
