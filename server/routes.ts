@@ -2194,9 +2194,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create data rows
       const rows = report.visits.map((visit, index) => {
+        // Format tanggal sesuai dengan format laporan (DD.MM.YYYY)
+        const dateParts = visit.date.split('-');
+        const formattedDate = dateParts.length === 3 ? 
+          `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}` : // format: DD.MM.YYYY
+          visit.date; // gunakan format asli jika tidak sesuai format yang diharapkan
+          
         const row = [
           index + 1, // Nomor
-          visit.date.split('-')[2], // Tanggal (ambil bagian hari)
+          formattedDate, // Tanggal dengan format DD.MM.YYYY
           visit.patientName,
           visit.patientAddress,
           visit.patientAge,
