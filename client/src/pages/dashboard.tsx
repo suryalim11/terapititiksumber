@@ -500,71 +500,6 @@ export default function Dashboard() {
               <div className="flex items-center gap-2">
                 <Button 
                   variant="outline" 
-                  size="sm"
-                  title="Sinkronisasi Kuota Slot"
-                  disabled={isSyncing}
-                  onClick={() => {
-                    console.log("Memulai sinkronisasi kuota slot...");
-                    setIsSyncing(true);
-                    
-                    fetch('/api/therapy-slots/sync-quota', {
-                      method: 'POST',
-                      credentials: 'include',
-                      headers: {
-                        'Content-Type': 'application/json'
-                      }
-                    })
-                    .then(async res => {
-                      if (res.ok) {
-                        const result = await res.json();
-                        console.log("Hasil sinkronisasi:", result);
-                        
-                        // Tampilkan toast notification jika berhasil
-                        toast({
-                          title: "Sinkronisasi selesai",
-                          description: `Berhasil menyinkronkan ${result.updatedSlots} slot terapi.`,
-                          variant: "default",
-                        });
-                        
-                        // Perbarui data slot setelah sinkronisasi
-                        await refetchSlotsByPeriod();
-                      } else {
-                        const errorText = await res.text();
-                        console.error("Gagal melakukan sinkronisasi:", errorText);
-                        
-                        // Tampilkan toast notification jika gagal
-                        toast({
-                          title: "Sinkronisasi gagal",
-                          description: "Terjadi kesalahan saat menyinkronkan kuota slot terapi.",
-                          variant: "destructive",
-                        });
-                      }
-                    })
-                    .catch(err => {
-                      console.error("Error saat sinkronisasi:", err);
-                      
-                      // Tampilkan toast notification jika terjadi error
-                      toast({
-                        title: "Sinkronisasi gagal",
-                        description: "Terjadi kesalahan pada koneksi atau server.",
-                        variant: "destructive",
-                      });
-                    })
-                    .finally(() => {
-                      setIsSyncing(false);
-                    });
-                  }}
-                  className="h-8 w-8 p-0 rounded-full mr-1"
-                >
-                  {isSyncing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Database className="h-4 w-4" />
-                  )}
-                  <span className="sr-only">Sinkronisasi Kuota</span>
-                </Button>
-                <Button 
-                  variant="outline" 
                   size="sm" 
                   title="Refresh Data"
                   onClick={() => {
@@ -591,10 +526,8 @@ export default function Dashboard() {
               onValueChange={handlePeriodChange}
             >
               <div className="px-4 pt-4">
-                <TabsList className="grid w-full grid-cols-5 mb-4">
+                <TabsList className="grid w-full grid-cols-3 mb-4">
                   <TabsTrigger value="day">Hari Ini</TabsTrigger>
-                  <TabsTrigger value="week">Minggu Ini</TabsTrigger>
-                  <TabsTrigger value="month">Bulan Ini</TabsTrigger>
                   <TabsTrigger value="future">Mendatang</TabsTrigger>
                   <TabsTrigger value="all">Semua Slot</TabsTrigger>
                 </TabsList>

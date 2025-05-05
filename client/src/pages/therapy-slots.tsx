@@ -1512,64 +1512,30 @@ export default function TherapySlots() {
                       <Button 
                         variant="outline" 
                         className="h-12 sm:h-10"
-                        onClick={() => {
-                          console.log("Memulai sinkronisasi kuota slot...");
-                          // Gunakan credentials: 'include' untuk menyertakan cookie sesi
-                          fetch('/api/therapy-slots/sync-quota', {
-                            method: 'POST',
-                            credentials: 'include', // Penting untuk autentikasi
-                            headers: {
-                              'Cache-Control': 'no-cache, no-store, must-revalidate',
-                              'Pragma': 'no-cache',
-                              'Content-Type': 'application/json'
-                            }
-                          })
-                          .then(async res => {
-                            if (res.ok) {
-                              console.log("Sinkronisasi berhasil, respons OK");
-                              const result = await res.json();
-                              console.log("Hasil sinkronisasi:", result);
-                              
-                              // Invalidate all therapy slots queries to force refresh
-                              queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-                              
-                              // Also refresh available slots that might be used in registration form
-                              queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots', 'available-active'] });
-                              
-                              // Refresh data di dashboard dan today slots untuk memastikan kuota terupdate
-                              queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-                              queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
-                              
-                              toast({
-                                title: "Sinkronisasi Berhasil",
-                                description: result.message || "Kuota slot terapi telah disinkronisasi dengan janji temu"
-                              });
-                            } else {
-                              console.error("Sinkronisasi gagal, respons error:", res.status);
-                              const error = await res.json().catch(() => ({ message: "Gagal mendapatkan pesan error" }));
-                              throw new Error(error.message || "Gagal melakukan sinkronisasi kuota");
-                            }
-                          })
-                          .catch(err => {
-                            console.error("Error saat sinkronisasi:", err);
-                            toast({
-                              title: "Gagal Sinkronisasi",
-                              description: err.message,
-                              variant: "destructive"
-                            });
-                          });
-                        }}
-                      >
-                        Sinkronisasi Kuota Slot
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        className="h-12 sm:h-10"
                         onClick={async () => {
                           try {
-                            // Gunakan endpoint yang benar
-                            const response = await fetch('/api/appointments/resync', {
+                            // 1. Sinkronisasi kuota slot terlebih dahulu
+                            console.log("Memulai sinkronisasi kuota slot...");
+                            const quotaResponse = await fetch('/api/therapy-slots/sync-quota', {
+                              method: 'POST',
+                              credentials: 'include',
+                              headers: {
+                                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                'Pragma': 'no-cache',
+                                'Content-Type': 'application/json'
+                              }
+                            });
+                            
+                            if (!quotaResponse.ok) {
+                              const error = await quotaResponse.json().catch(() => ({ message: "Gagal mendapatkan pesan error" }));
+                              throw new Error(error.message || "Gagal melakukan sinkronisasi kuota");
+                            }
+                            
+                            const quotaResult = await quotaResponse.json();
+                            console.log("Hasil sinkronisasi kuota:", quotaResult);
+                            
+                            // 2. Kemudian sinkronisasi data appointment
+                            const appointmentResponse = await fetch('/api/appointments/resync', {
                               method: 'POST',
                               headers: {
                                 'Content-Type': 'application/json'
@@ -1577,40 +1543,17 @@ export default function TherapySlots() {
                               credentials: 'include'
                             });
                             
-                            // Periksa format respons
-                            const contentType = response.headers.get("content-type");
-                            
-                            if (response.ok) {
-                              let result;
-                              if (contentType && contentType.includes("application/json")) {
-                                result = await response.json();
-                                console.log("Hasil sinkronisasi:", result);
-                                
-                                // Refresh data setelah sinkronisasi
-                                queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-                                queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
-                                
-                                toast({
-                                  title: "Sinkronisasi Appointment Berhasil",
-                                  description: `${result.result?.fixed || 0} appointment diperbaiki`
-                                });
-                              } else {
-                                // Jika respons bukan JSON
-                                toast({
-                                  title: "Sinkronisasi Berhasil",
-                                  description: "Data appointment telah disinkronkan"
-                                });
-                              }
-                            } else {
+                            if (!appointmentResponse.ok) {
+                              const contentType = appointmentResponse.headers.get("content-type");
                               let errorMessage = "Gagal melakukan sinkronisasi appointment";
                               
                               if (contentType && contentType.includes("application/json")) {
-                                const errorData = await response.json();
+                                const errorData = await appointmentResponse.json();
                                 if (errorData && errorData.message) {
                                   errorMessage = errorData.message;
                                 }
                               } else {
-                                const errorText = await response.text();
+                                const errorText = await appointmentResponse.text();
                                 if (errorText) {
                                   errorMessage = errorText;
                                 }
@@ -1618,6 +1561,24 @@ export default function TherapySlots() {
                               
                               throw new Error(errorMessage);
                             }
+                            
+                            // 3. Perbarui semua data terkait di UI
+                            queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+                            queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots', 'available-active'] });
+                            queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+                            queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+                            queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
+                            
+                            const appResult = await appointmentResponse.json().catch(() => null);
+                            
+                            // 4. Tampilkan pesan sukses gabungan
+                            toast({
+                              title: "Sinkronisasi Berhasil",
+                              description: `Kuota slot terapi dan data appointment telah diperbarui.
+                                ${quotaResult.updatedSlots || 0} slot diperbarui.
+                                ${appResult?.result?.fixed || 0} appointment diperbaiki.`,
+                            });
+                            
                           } catch (err) {
                             console.error("Error saat sinkronisasi:", err);
                             toast({
@@ -1628,7 +1589,7 @@ export default function TherapySlots() {
                           }
                         }}
                       >
-                        Sinkronisasi Tanggal Appointment
+                        Sinkronisasi Sistem
                       </Button>
                     </div>
                   </div>
