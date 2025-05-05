@@ -1340,18 +1340,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let finalPaidAmount = "0";
       let finalCreditAmount = "0";
       
+      // Ambil nilai paidAmount dari request body jika ada, jika tidak gunakan default 0
+      const providedPaidAmount = paidAmount !== undefined ? paidAmount : (isPaid ? totalAmount : "0");
+      
+      console.log("Provided paidAmount:", providedPaidAmount, "typeof:", typeof providedPaidAmount);
+      
       if (isPaid) {
         // Jika bayar lunas, paidAmount = totalAmount dan creditAmount = 0
         finalPaidAmount = totalAmount;
         finalCreditAmount = "0";
       } else {
         // Jika bayar sebagian, gunakan nilai yang dikirim client
-        finalPaidAmount = paidAmount || "0";
+        finalPaidAmount = providedPaidAmount;
         
         // Untuk creditAmount, hitung selisih antara total dan jumlah yang dibayar
         const totalValue = parseFloat(totalAmount);
-        const paidValue = parseFloat(finalPaidAmount);
+        const paidValue = parseFloat(finalPaidAmount) || 0; // Pastikan nilai valid
         finalCreditAmount = Math.max(0, totalValue - paidValue).toString();
+        
+        console.log("Calculated partial payment:", {
+          totalValue,
+          paidValue,
+          finalCreditAmount
+        });
       }
       
       console.log("Calculated payment values:", {
