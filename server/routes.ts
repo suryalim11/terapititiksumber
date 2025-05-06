@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { requireAuth, requireAdminRole, allowPublicOrAuth } from "./middleware/auth";
 import { z } from "zod";
+import { registerAgusFixRoutes } from "./routes-agus-fix";
 import { 
   insertPatientSchema, 
   insertProductSchema, 
