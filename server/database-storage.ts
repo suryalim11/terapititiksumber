@@ -1232,22 +1232,38 @@ export class DatabaseStorage implements IStorage {
             }
           }
         }
-        // Cek apakah ada item dengan jenis "package" dan descripsi berisi "menggunakan sisa paket"
-        const isUsingExistingPackage = items.some(
-          item => item.type === "package" && 
-          item.description && 
-          item.description.includes("menggunakan sisa paket")
-        );
         
-        if (isUsingExistingPackage) {
-          // Jika transaksi ini adalah penggunaan sesi paket terapi, cari sesi yang terkait
-          // dan kurangi jumlah sesi yang telah digunakan
+        // Penanganan transaksi penggunaan sesi
+        // Cek apakah ada item yang menandakan penggunaan sesi terapi
+        const sessionUsageItems = items.filter(item => {
+          // Berbagai pola yang mungkin menandai penggunaan sesi
+          return (
+            // Pola pertama: package dengan deskripsi "menggunakan sisa paket"
+            (item.type === "package" && item.description && item.description.includes("menggunakan sisa paket")) ||
+            // Pola kedua: session dengan jenis "session-usage"
+            (item.type === "session-usage") ||
+            // Pola ketiga: package dengan jenis "session-usage"
+            (item.type === "package" && item.packageData && item.packageData.isSessionUsage === true) ||
+            // Pola keempat: package dengan harga 0 (umumnya menandakan penggunaan sesi)
+            (item.type === "package" && (parseFloat(item.price) === 0 || item.price === "0"))
+          );
+        });
+        
+        const isSessionUsage = sessionUsageItems.length > 0;
+        
+        if (isSessionUsage) {
+          console.log("Menghapus transaksi penggunaan sesi. Memperbarui status paket terkait...");
+          
+          // Temukan sesi terkait yang perlu diperbarui
           const sessions = await db.query.sessions.findMany({
             where: eq(schema.sessions.transactionId, id)
           });
           
+          // Untuk setiap transaksi penggunaan sesi, kita perlu:
+          // 1. Menemukan paket asli yang terkait
+          // 2. Mengurangi jumlah sesi yang terpakai
           for (const session of sessions) {
-            // Dapatkan sesi asli dari paket
+            // Temukan paket asli berdasarkan patientId dan packageId
             const originalSession = await db.query.sessions.findFirst({
               where: and(
                 eq(schema.sessions.patientId, session.patientId),
@@ -1257,21 +1273,22 @@ export class DatabaseStorage implements IStorage {
             });
             
             if (originalSession) {
-              // Kurangi jumlah sesi yang telah digunakan
+              // Kurangi jumlah sesi yang digunakan (sesi yang akan dihapus mewakili 1 penggunaan)
               const updatedSessionsUsed = Math.max(0, originalSession.sessionsUsed - 1);
-              console.log(`Memperbarui sesi paket ${originalSession.id}: mendecrement sessionsUsed dari ${originalSession.sessionsUsed} menjadi ${updatedSessionsUsed}`);
+              console.log(`Memperbarui paket sesi ${originalSession.id}: mengubah jumlah sesi terpakai dari ${originalSession.sessionsUsed} menjadi ${updatedSessionsUsed}`);
               
+              // Update paket sesi dengan jumlah terpakai yang baru
               await db.update(schema.sessions)
                 .set({ 
                   sessionsUsed: updatedSessionsUsed,
-                  status: "active"  // Pastikan statusnya kembali aktif
+                  status: "active" // Pastikan status kembali aktif (jika sebelumnya completed)
                 })
                 .where(eq(schema.sessions.id, originalSession.id));
+            } else {
+              console.log(`Tidak menemukan paket asli untuk sesi dengan ID ${session.id}`);
             }
-          }
-          
-          // Hapus sesi dari transaksi ini
-          for (const session of sessions) {
+            
+            // Hapus sesi dari transaksi ini
             await db.delete(schema.sessions)
               .where(eq(schema.sessions.id, session.id));
           }
