@@ -89,10 +89,14 @@ export async function fixAgusIsrofinSessionToday() {
       // Perbarui sesi yang ada dengan tanggal terakhir 5 Mei 2025
       const may5Date = new Date('2025-05-05T00:00:00.000Z'); // Mengatur tanggal terakhir ke 5 Mei 2025
       
+      // Tetapkan sessionsUsed ke 7 karena ada 3 pasien duplikat dengan total 7 sesi yang digunakan:
+      // - ID 86: 1 sesi pada 7 April
+      // - ID 261: beberapa sesi termasuk 26 April
+      // - ID 323: 1 sesi pada 5 Mei
       const updatedSessionData = {
         status: "active" as const,
         lastSessionDate: may5Date, // Memperbarui tanggal terakhir ke 5 Mei 2025
-        sessionsUsed: Math.min(packageSession.sessionsUsed, packageSession.totalSessions - 1) // Pastikan masih tersisa sesi
+        sessionsUsed: 7 // Set ke 7 dari total 12 sesi
       };
       
       await db.update(sessions)
