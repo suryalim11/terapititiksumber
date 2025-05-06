@@ -1376,18 +1376,48 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSession(session: InsertSession): Promise<Session> {
-    const wibDate = getWIBDate(new Date());
+    console.log(`Creating new therapy session: patientId=${session.patientId}, packageId=${session.packageId}, totalSessions=${session.totalSessions}`);
     
-    // Tambahkan startDate dengan waktu WIB ke session
-    const result = await db.insert(schema.sessions).values({
-      ...session,
-      startDate: wibDate // startDate adalah field yang valid dalam schema
-    }).returning();
-    
-    return {
-      ...result[0],
-      startDate: getWIBDate(result[0].startDate) // Konversi kembali ke WIB untuk tampilan
-    };
+    try {
+      // Periksa apakah sudah ada sesi aktif untuk paket ini dan pasien yang sama
+      const existingSessions = await db.query.sessions.findMany({
+        where: and(
+          eq(schema.sessions.patientId, session.patientId),
+          eq(schema.sessions.packageId, session.packageId),
+          eq(schema.sessions.status, "active")
+        )
+      });
+
+      if (existingSessions.length > 0) {
+        console.log(`WARNING: Found ${existingSessions.length} existing active sessions for patient ${session.patientId} and package ${session.packageId}`);
+        
+        // Jika ada sesi yang sudah aktif, gunakan sesi tersebut
+        const existingSession = existingSessions[0];
+        console.log(`Using existing session ID: ${existingSession.id}, status: ${existingSession.status}, used: ${existingSession.sessionsUsed}/${existingSession.totalSessions}`);
+        
+        return existingSession;
+      }
+      
+      const wibDate = getWIBDate(new Date());
+      
+      // Tambahkan startDate dengan waktu WIB ke session dan pastikan status diatur active
+      const result = await db.insert(schema.sessions).values({
+        ...session,
+        startDate: wibDate,
+        status: "active", // Pastikan status diatur 'active' secara eksplisit
+        sessionsUsed: 0   // Mulai dengan 0 sesi terpakai
+      }).returning();
+      
+      console.log(`Successfully created new therapy session with ID: ${result[0].id}`);
+      
+      return {
+        ...result[0],
+        startDate: getWIBDate(result[0].startDate)
+      };
+    } catch (error) {
+      console.error(`ERROR creating therapy session: ${error instanceof Error ? error.message : String(error)}`);
+      throw error; // Re-throw the error to be handled by the caller
+    }
   }
 
   async updateSessionUsage(id: number, sessionsUsed?: number): Promise<Session | undefined> {

@@ -1442,28 +1442,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 continue; // Skip creating a new session
               }
               
-              // Membuat sesi paket baru
-              const newSession = await storage.createSession({
-                patientId: validatedData.patientId,
-                transactionId: newTransaction.id,
-                packageId: item.id,
-                totalSessions: package_.sessions
-              });
-              
-              // Update sessionsUsed ke 1 untuk menandai bahwa sesi pertama sudah terpakai saat paket dibeli
-              if (newSession && newSession.id) {
-                // Force update sesi dengan status "active" secara eksplisit
-                await db.update(schema.sessions)
-                  .set({ 
-                    sessionsUsed: 1,
-                    lastSessionDate: new Date(),
-                    status: "active" 
-                  })
-                  .where(eq(schema.sessions.id, newSession.id));
+              try {
+                // Membuat sesi paket baru
+                console.log(`Membuat sesi baru untuk package ${item.id} (${package_.name}) dengan ${package_.sessions} total sesi`);
                 
-                console.log(`Paket terapi baru dibuat dengan ID ${newSession.id} untuk pasien ${validatedData.patientId}, sesi pertama otomatis ditandai terpakai dan status diatur 'active'`);
-              } else {
-                console.error(`Gagal membuat sesi untuk paket ${package_.name} dengan ID ${item.id}`);
+                const newSession = await storage.createSession({
+                  patientId: validatedData.patientId,
+                  transactionId: newTransaction.id,
+                  packageId: item.id,
+                  totalSessions: package_.sessions,
+                  status: "active", // Pastikan status diatur 'active' secara eksplisit
+                  sessionsUsed: 0 // Mulai dengan 0 sesi terpakai
+                });
+                
+                // Periksa apakah sesi berhasil dibuat
+                if (newSession && newSession.id) {
+                  // Perbarui sesi: tandai satu sesi sudah terpakai saat pembelian
+                  const updatedSession = await storage.updateSessionUsage(newSession.id, 1);
+                  
+                  if (updatedSession) {
+                    console.log(`✓ Paket terapi baru dibuat dan diaktifkan dengan ID ${newSession.id} untuk pasien ${validatedData.patientId}`);
+                    console.log(`  Status: ${updatedSession.status}, Sesi terpakai: ${updatedSession.sessionsUsed}/${updatedSession.totalSessions}`);
+                  } else {
+                    console.error(`✗ Berhasil membuat sesi ${newSession.id} tapi gagal mengupdate penggunaan sesi`);
+                  }
+                } else {
+                  console.error(`✗ Gagal membuat sesi untuk paket ${package_.name} dengan ID ${item.id}`);
+                }
+              } catch (sessionError) {
+                console.error(`✗ Error ketika membuat/mengupdate sesi paket: ${sessionError instanceof Error ? sessionError.message : String(sessionError)}`);
               }
             } else {
               console.error(`Paket dengan ID ${item.id} tidak ditemukan di database`);

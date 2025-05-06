@@ -169,6 +169,8 @@ export const insertSessionSchema = createInsertSchema(sessions).pick({
   transactionId: true,
   packageId: true,
   totalSessions: true,
+  status: true,
+  sessionsUsed: true,
 });
 
 // Therapy Schedule Schema (Slot Terapi)
