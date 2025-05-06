@@ -734,8 +734,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Procede to create patient data and appointment only after the registration count is incremented
       if (existingPatient) {
-        console.log(`Pasien dengan nomor telepon ${validatedData.phoneNumber} sudah ada, menggunakan ID: ${existingPatient.id}`);
+        console.log(`Pasien dengan nama ${validatedData.name} dan tanggal lahir ${validatedData.birthDate} sudah ada, menggunakan ID: ${existingPatient.id} (PatientID: ${existingPatient.patientId})`);
         patientToUse = existingPatient;
+        
+        // Periksa apakah perlu memperbarui data pasien yang ada jika ada perubahan
+        let needsUpdate = false;
+        const fieldsToUpdate: Partial<InsertPatient> = {};
+        
+        // Periksa dan perbarui informasi kontak jika berbeda
+        if (existingPatient.phoneNumber !== validatedData.phoneNumber) {
+          fieldsToUpdate.phoneNumber = validatedData.phoneNumber;
+          needsUpdate = true;
+          console.log(`Memperbarui nomor telepon pasien dari ${existingPatient.phoneNumber} menjadi ${validatedData.phoneNumber}`);
+        }
+        
+        // Periksa dan perbarui alamat jika kosong atau berbeda
+        if (!existingPatient.address && validatedData.address) {
+          fieldsToUpdate.address = validatedData.address;
+          needsUpdate = true;
+          console.log(`Memperbarui alamat pasien yang sebelumnya kosong`);
+        }
+        
+        // Periksa dan perbarui email jika kosong atau berbeda
+        if (!existingPatient.email && validatedData.email) {
+          fieldsToUpdate.email = validatedData.email;
+          needsUpdate = true;
+          console.log(`Memperbarui email pasien yang sebelumnya kosong`);
+        }
+        
+        // Lakukan pembaruan jika diperlukan
+        if (needsUpdate) {
+          try {
+            const updatedPatient = await storage.updatePatient(existingPatient.id, fieldsToUpdate);
+            if (updatedPatient) {
+              console.log(`Data pasien ID ${existingPatient.id} berhasil diperbarui`);
+              patientToUse = updatedPatient;
+            }
+          } catch (error) {
+            console.error(`Gagal memperbarui data pasien ID ${existingPatient.id}:`, error);
+            // Lanjutkan meskipun gagal update
+          }
+        }
       } else {
         // Create new patient if doesn't exist
         patientToUse = await storage.createPatient(validatedData);
