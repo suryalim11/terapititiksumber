@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   BarChart3, 
@@ -709,7 +710,11 @@ export default function Dashboard() {
           ) : activePackages.length > 0 ? (
             <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
               {activePackages.map((pkg) => (
-                <div key={pkg.id} className="border rounded-lg p-3 mobile-card">
+                <Link 
+                  key={pkg.id} 
+                  to={`/patients/${pkg.patient?.id}`} 
+                  className="block border rounded-lg p-3 mobile-card hover:shadow-md transition-all hover:border-primary/60 cursor-pointer"
+                >
                   <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 mb-2">
                     <div>
                       <div className="font-medium">{pkg.patient?.name || 'Pasien tidak ditemukan'}</div>
@@ -745,7 +750,7 @@ export default function Dashboard() {
                       </div>
                     )}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
