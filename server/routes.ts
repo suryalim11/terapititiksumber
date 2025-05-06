@@ -23,6 +23,8 @@ import * as schema from "../shared/schema";
 import { handleTherapySlotsBatch } from "./routes/therapy-slots-batch";
 import fixTransactionsTable from "./fix-transactions-schema";
 import { fixMissingPackageSessions } from "./fix-missing-sessions";
+import { db } from "./db";
+import { eq, and, ne, isNotNull, desc, or, isNull, lte, sql } from "drizzle-orm";
 import { fixAgusIsrofinSessions } from "./fix-agus-isrofin";
 import { fixExistingPackages } from "./fix-existing-packages";
 import { mergeAgusIsrofinDirectly } from "./merge-agus-script";
@@ -34,8 +36,6 @@ import multer from "multer";
 import path from "path";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { db } from "./db";
-import { eq, and, ne, isNotNull, desc, or, isNull, lte, sql } from "drizzle-orm";
 import {
   exportData,
   getBackupFiles,
@@ -1424,22 +1424,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // If item is a package and createSession flag is true, create a session
         if (item.type === 'package' && createSession !== false) {
-          const package_ = await storage.getPackage(item.id);
-          
-          if (package_) {
-            // Membuat sesi dengan sessionsUsed=1 untuk menandai bahwa satu sesi sudah terpakai saat paket dibeli
-            const newSession = await storage.createSession({
-              patientId: validatedData.patientId,
-              transactionId: newTransaction.id,
-              packageId: item.id,
-              totalSessions: package_.sessions
-            });
+          try {
+            const package_ = await storage.getPackage(item.id);
             
-            // Update sessionsUsed ke 1 untuk menandai bahwa sesi pertama sudah digunakan
-            if (newSession && newSession.id) {
-              await storage.updateSessionUsage(newSession.id, 1);
-              console.log(`Paket terapi baru dibuat dengan ID ${newSession.id} untuk pasien ${validatedData.patientId}, sesi pertama otomatis ditandai terpakai`);
+            if (package_) {
+              console.log(`Memproses pembuatan paket: ${package_.name} (${package_.sessions} sesi) untuk pasien ID: ${validatedData.patientId}`);
+              
+              // Periksa apakah sudah ada sesi aktif untuk paket ini
+              const existingSessions = await storage.getActiveSessionsByPatient(validatedData.patientId);
+              const existingSession = existingSessions.find(session => 
+                session.packageId === item.id && 
+                session.status === "active"
+              );
+              
+              if (existingSession) {
+                console.log(`Paket yang sama sudah ada dan aktif: ${existingSession.id}. Tidak perlu membuat sesi baru.`);
+                continue; // Skip creating a new session
+              }
+              
+              // Membuat sesi paket baru
+              const newSession = await storage.createSession({
+                patientId: validatedData.patientId,
+                transactionId: newTransaction.id,
+                packageId: item.id,
+                totalSessions: package_.sessions
+              });
+              
+              // Update sessionsUsed ke 1 untuk menandai bahwa sesi pertama sudah terpakai saat paket dibeli
+              if (newSession && newSession.id) {
+                // Force update sesi dengan status "active" secara eksplisit
+                await db.update(schema.sessions)
+                  .set({ 
+                    sessionsUsed: 1,
+                    lastSessionDate: new Date(),
+                    status: "active" 
+                  })
+                  .where(eq(schema.sessions.id, newSession.id));
+                
+                console.log(`Paket terapi baru dibuat dengan ID ${newSession.id} untuk pasien ${validatedData.patientId}, sesi pertama otomatis ditandai terpakai dan status diatur 'active'`);
+              } else {
+                console.error(`Gagal membuat sesi untuk paket ${package_.name} dengan ID ${item.id}`);
+              }
+            } else {
+              console.error(`Paket dengan ID ${item.id} tidak ditemukan di database`);
             }
+          } catch (error) {
+            console.error(`Error saat membuat sesi paket: ${error instanceof Error ? error.message : String(error)}`);
           }
         }
       }
