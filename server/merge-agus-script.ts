@@ -18,21 +18,15 @@ export async function mergeAgusIsrofinDirectly() {
     // 1. Tandai semua sesi aktif dengan ID pasien duplikat sebagai "inactive"
     const deactivateResult = await db.execute(sql`
       UPDATE sessions
-      SET status = 'inactive', 
-          notes = CONCAT(COALESCE(notes, ''), ' Dinonaktifkan pada script merge-agus')
+      SET status = 'inactive'
       WHERE patient_id = ${duplicateId} AND status = 'active'
     `);
     
     console.log("Hasil deaktivasi sesi duplikat:", deactivateResult);
     
-    // 2. Tambahkan catatan ke pasien duplikat
-    await db.execute(sql`
-      UPDATE patients
-      SET notes = CONCAT(COALESCE(notes, ''), '\nID ini duplikat dari pasien ID:${primaryId}. Paket terapi telah dinonaktifkan.')
-      WHERE id = ${duplicateId}
-    `);
-    
-    console.log("Catatan ditambahkan ke pasien duplikat ID:", duplicateId);
+    // 2. Tambahkan catatan ke pasien duplikat - Skipped karena kolom notes tidak ada
+    console.log("Catatan ke pasien duplikat tidak ditambahkan (kolom notes tidak ada di tabel patients)");
+    console.log("Pasien duplikat ID:", duplicateId);
     
     // 3. Perbarui appointment yang masih menggunakan ID duplikat
     const appointmentResult = await db.execute(sql`
