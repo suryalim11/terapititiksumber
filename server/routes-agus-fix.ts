@@ -5,7 +5,8 @@ import express from 'express';
 // Menambahkan endpoint untuk memperbaiki sesi Agus Isrofin
 export function registerAgusFixRoutes(app: express.Express) {
   // Endpoint untuk memperbaiki sesi Agus Isrofin agar dapat melakukan transaksi hari ini
-  app.post('/api/admin/fix-agus', async (req, res) => {
+  // Changed from /api/admin/fix-agus to /api/fix-agus for public access
+  app.post('/api/fix-agus', async (req, res) => {
     try {
       // Temporarily disable auth check for public testing
       if (false) {

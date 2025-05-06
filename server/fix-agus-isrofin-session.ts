@@ -86,9 +86,12 @@ export async function fixAgusIsrofinSessionToday() {
       console.log(`Found existing session (ID: ${packageSession.id}) for package ID ${packageId}`);
       console.log(`Current status: ${packageSession.status}, Sessions used: ${packageSession.sessionsUsed}/${packageSession.totalSessions}`);
       
-      // Perbarui sesi yang ada
+      // Perbarui sesi yang ada dengan tanggal terakhir 5 Mei 2025
+      const may5Date = new Date('2025-05-05T00:00:00.000Z'); // Mengatur tanggal terakhir ke 5 Mei 2025
+      
       const updatedSessionData = {
         status: "active" as const,
+        lastSessionDate: may5Date, // Memperbarui tanggal terakhir ke 5 Mei 2025
         sessionsUsed: Math.min(packageSession.sessionsUsed, packageSession.totalSessions - 1) // Pastikan masih tersisa sesi
       };
       
