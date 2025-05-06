@@ -612,9 +612,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if patient already exists by phone number (dinonaktifkan untuk memungkinkan nomor telepon yang sama)
       const existingPatients = await storage.getAllPatients();
-      // Sebelumnya kami mencari pasien dengan nomor telepon yang sama, sekarang tidak lagi
-      // untuk memungkinkan pendaftaran dengan nomor telepon yang sama
-      const existingPatient = null; // Diubah agar selalu membuat pasien baru
+      
+      // Cari pasien berdasarkan nama dan tanggal lahir yang sama
+      // Ini mencegah duplikasi data pasien lama yang mendaftar kembali
+      let existingPatient = null;
+      if (validatedData.name && validatedData.birthDate) {
+        console.log(`Memverifikasi pasien lama: ${validatedData.name}, tanggal lahir: ${validatedData.birthDate}`);
+        
+        // Normalisasi nama untuk pencarian (lowercase)
+        const normalizedName = validatedData.name.toLowerCase().trim();
+        
+        // Cari pasien dengan nama dan tanggal lahir yang sama
+        existingPatient = existingPatients.find(patient => 
+          patient.name.toLowerCase().trim() === normalizedName && 
+          patient.birthDate === validatedData.birthDate
+        );
+        
+        if (existingPatient) {
+          console.log(`Pasien lama ditemukan: ID ${existingPatient.id}, patientId: ${existingPatient.patientId}`);
+        }
+      }
       
       // Jika ada therapySlotId, periksa apakah pasien sudah punya jadwal di hari yang sama
       if (therapySlotId) {
