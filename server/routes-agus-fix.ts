@@ -7,10 +7,10 @@ export function registerAgusFixRoutes(app: express.Express) {
   // Endpoint untuk memperbaiki sesi Agus Isrofin agar dapat melakukan transaksi hari ini
   app.post('/api/admin/fix-agus', async (req, res) => {
     try {
-      // PENTING: Untuk keperluan testing, kita skip autentikasi sementara
-      // if (!req.isAuthenticated() || !req.user || req.user.role !== 'admin') {
-      //   return res.status(403).json({ message: "Unauthorized, only admin can use this feature" });
-      // }
+      // Temporarily disable auth check for public testing
+      if (false) {
+        return res.status(403).json({ message: "Unauthorized, only admin can use this feature" });
+      }
       
       // Jalankan kedua perbaikan untuk memastikan
       console.log("Running fix for Agus Isrofin packages...");
