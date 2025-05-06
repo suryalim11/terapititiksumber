@@ -1446,25 +1446,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 // Membuat sesi paket baru
                 console.log(`Membuat sesi baru untuk package ${item.id} (${package_.name}) dengan ${package_.sessions} total sesi`);
                 
-                const newSession = await storage.createSession({
+                // Menyiapkan data yang disimpan ke database
+                const sessionData = {
                   patientId: validatedData.patientId,
                   transactionId: newTransaction.id,
                   packageId: item.id,
-                  totalSessions: package_.sessions,
-                  status: "active", // Pastikan status diatur 'active' secara eksplisit
-                  sessionsUsed: 0 // Mulai dengan 0 sesi terpakai
-                });
+                  totalSessions: package_.sessions
+                };
+                
+                // Buat sesi baru dengan metode createSession (metode ini otomatis set status='active' dan sessionsUsed=0)
+                const newSession = await storage.createSession(sessionData);
                 
                 // Periksa apakah sesi berhasil dibuat
                 if (newSession && newSession.id) {
-                  // Perbarui sesi: tandai satu sesi sudah terpakai saat pembelian
+                  console.log(`✓ Paket terapi baru dibuat dengan ID ${newSession.id} untuk pasien ${validatedData.patientId}`);
+                  console.log(`  Status: ${newSession.status}, Sesi awal: ${newSession.sessionsUsed}/${newSession.totalSessions}`);
+                  
+                  // Dalam transaksi, sesi pertama langsung dipakai
+                  console.log(`→ Menandai paket baru dengan pemakaian pertama`);
                   const updatedSession = await storage.updateSessionUsage(newSession.id, 1);
                   
                   if (updatedSession) {
-                    console.log(`✓ Paket terapi baru dibuat dan diaktifkan dengan ID ${newSession.id} untuk pasien ${validatedData.patientId}`);
-                    console.log(`  Status: ${updatedSession.status}, Sesi terpakai: ${updatedSession.sessionsUsed}/${updatedSession.totalSessions}`);
+                    console.log(`✓ Berhasil mencatat pemakaian pertama untuk sesi ${newSession.id}`);
+                    console.log(`  Status sekarang: ${updatedSession.status}, Sesi terpakai: ${updatedSession.sessionsUsed}/${updatedSession.totalSessions}`);
                   } else {
-                    console.error(`✗ Berhasil membuat sesi ${newSession.id} tapi gagal mengupdate penggunaan sesi`);
+                    console.error(`✗ Gagal mencatat pemakaian pertama untuk sesi ${newSession.id}`);
                   }
                 } else {
                   console.error(`✗ Gagal membuat sesi untuk paket ${package_.name} dengan ID ${item.id}`);
