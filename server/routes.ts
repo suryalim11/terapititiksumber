@@ -27,6 +27,7 @@ import { fixMissingPackageSessions } from "./fix-missing-sessions";
 import { db } from "./db";
 import { eq, and, ne, isNotNull, desc, or, isNull, lte, sql } from "drizzle-orm";
 import { fixAgusIsrofinSessions } from "./fix-agus-isrofin";
+import { fixAgusIsrofinSessionToday } from "./fix-agus-isrofin-session";
 import { fixExistingPackages } from "./fix-existing-packages";
 import { mergeAgusIsrofinDirectly } from "./merge-agus-script";
 import adminRoutes from "./routes/admin";
@@ -4880,6 +4881,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Register special fix routes for Agus Isrofin
+  registerAgusFixRoutes(app);
 
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);
