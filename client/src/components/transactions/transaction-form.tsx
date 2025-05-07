@@ -1420,14 +1420,14 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                         <Input
                           type="number"
                           min="0"
-                          max={selectedDebtTransaction.debt_amount}
+                          max={selectedDebtTransaction.debtAmount}
                           value={paymentAmount}
                           onChange={(e) => setPaymentAmount(e.target.value)}
                         />
                         <div className="text-xs text-muted-foreground">
-                          Total utang: {formatPrice(selectedDebtTransaction.debt_amount)}
+                          Total utang: {formatPrice(selectedDebtTransaction.debtAmount)}
                         </div>
-                        {parseFloat(paymentAmount) >= parseFloat(selectedDebtTransaction.debt_amount) && (
+                        {parseFloat(paymentAmount) >= parseFloat(selectedDebtTransaction.debtAmount) && (
                           <div className="text-xs text-green-600">Pembayaran penuh ✓</div>
                         )}
                       </div>
@@ -1889,7 +1889,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                                     onValueChange={(value) => {
                                       const tx = unpaidTransactions.find((t: any) => t.id.toString() === value);
                                       setSelectedDebtTransaction(tx);
-                                      setPaymentAmount(tx?.debt_amount || "0");
+                                      setPaymentAmount(tx?.debtAmount || "0");
                                     }}
                                     value={selectedDebtTransaction?.id?.toString()}
                                   >
@@ -1899,7 +1899,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                                     <SelectContent>
                                       {unpaidTransactions.map((tx: any) => (
                                         <SelectItem key={tx.id} value={tx.id.toString()}>
-                                          #{tx.id} - Utang: {formatPrice(tx.debt_amount)}
+                                          #{tx.id} - Utang: {formatPrice(tx.debtAmount)}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -1913,14 +1913,14 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                                     <Input
                                       type="number"
                                       min="0"
-                                      max={selectedDebtTransaction.debt_amount}
+                                      max={selectedDebtTransaction.debtAmount}
                                       value={paymentAmount}
                                       onChange={(e) => setPaymentAmount(e.target.value)}
                                     />
                                     <div className="text-xs text-muted-foreground">
-                                      Total utang: {formatPrice(selectedDebtTransaction.debt_amount)}
+                                      Total utang: {formatPrice(selectedDebtTransaction.debtAmount)}
                                     </div>
-                                    {parseFloat(paymentAmount) >= parseFloat(selectedDebtTransaction.debt_amount) && (
+                                    {parseFloat(paymentAmount) >= parseFloat(selectedDebtTransaction.debtAmount) && (
                                       <div className="text-xs text-green-600">Pembayaran penuh ✓</div>
                                     )}
                                   </div>
