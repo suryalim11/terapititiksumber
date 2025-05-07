@@ -1494,7 +1494,7 @@ export default function Transactions() {
             description: "Pembayaran hutang telah berhasil diproses",
           });
           // Refresh data transaksi
-          refetch();
+          refetchTransactions();
           // Tutup dialog
           setIsCreditPaymentOpen(false);
         }}
