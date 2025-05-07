@@ -2546,9 +2546,20 @@ export class DatabaseStorage implements IStorage {
         )
       });
       
+      // Ambil pembayaran hutang hari ini
+      const todayDebtPayments = await db.query.debtPayments.findMany({
+        where: and(
+          gte(schema.debtPayments.paymentDate, startOfDay),
+          lte(schema.debtPayments.paymentDate, endOfDay)
+        )
+      });
+      
+      console.log(`getDailyStats: Menemukan ${todayDebtPayments.length} pembayaran hutang hari ini`);
+      
       let incomeToday = 0;
       let productsSold = 0;
       
+      // Hitung income dari transaksi reguler
       for (const transaction of todayTransactions) {
         // Gunakan paidAmount untuk menghitung actual income (uang yang masuk)
         // Jika transaksi kredit, maka paidAmount yang digunakan
@@ -2571,6 +2582,13 @@ export class DatabaseStorage implements IStorage {
             }
           }
         }
+      }
+      
+      // Tambahkan income dari pembayaran hutang
+      for (const payment of todayDebtPayments) {
+        const paymentAmount = Number(payment.amount);
+        incomeToday += paymentAmount;
+        console.log(`getDailyStats: Menambahkan pembayaran hutang ${paymentAmount} ke total income`);
       }
     
       // Count active packages

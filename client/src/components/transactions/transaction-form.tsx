@@ -1208,24 +1208,50 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
               patientId: `P-${patientId}`,
               name: "Pasien",
               phoneNumber: "N/A",
-              email: null,
-              birthDate: null,
-              gender: null,
-              address: null,
-              complaints: null,
+              email: "",
+              birthDate: "",
+              gender: "",
+              address: "",
+              complaints: "",
               therapySlotId: null
             };
           }
           
+          // Pastikan data transaksi baru dari backend terbaca dengan benar
+          let newTransaction: any = {};
+          if (debtPaymentResponse.newTransaction) {
+            if (typeof debtPaymentResponse.newTransaction === 'string') {
+              try {
+                newTransaction = JSON.parse(debtPaymentResponse.newTransaction);
+              } catch (e) {
+                console.error("Error parsing newTransaction string:", e);
+                newTransaction = { id: Date.now() }; // Fallback minimal
+              }
+            } else {
+              newTransaction = debtPaymentResponse.newTransaction;
+            }
+          } else {
+            console.warn("newTransaction data missing in debtPaymentResponse");
+            newTransaction = { id: Date.now() }; // Fallback minimal
+          }
+          
+          console.log("newTransaction for invoice:", newTransaction);
+          
           // Buat data invoice yang lebih lengkap
           const invoiceData = {
             transaction: {
-              ...debtPaymentResponse.newTransaction,
+              id: newTransaction.id || Date.now(),
               // Pastikan transactionId tidak undefined
-              transactionId: debtPaymentResponse.newTransaction.transactionId || `T-${debtPaymentResponse.newTransaction.id}`,
+              transactionId: newTransaction.transactionId || `T-${Date.now()}`,
+              patientId: patientId,
+              totalAmount: newTransaction.totalAmount || form.getValues().totalAmount || "0",
+              paidAmount: newTransaction.paidAmount || form.getValues().totalAmount || "0",
+              creditAmount: newTransaction.creditAmount || "0",
+              debtAmount: newTransaction.debtAmount || "0",
+              createdAt: new Date(),
               // Pastikan metadata pembayaran utang tersedia
               metadata: {
-                ...(debtPaymentResponse.newTransaction.metadata || {}),
+                ...(newTransaction.metadata || {}),
                 isDebtPayment: true,
                 paymentAmount: paymentAmount,
                 debtTransactionId: selectedDebtTransaction.id,
@@ -1240,10 +1266,10 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
             paymentMethod: form.getValues().paymentMethod,
             discount: form.getValues().discount || "0",
             subtotal: subtotal,
-            total: form.getValues().totalAmount || debtPaymentResponse.newTransaction.totalAmount,
+            total: form.getValues().totalAmount || (newTransaction.totalAmount || "0"),
             isPaid: !useCredit,
-            creditAmount: debtPaymentResponse.newTransaction.creditAmount || "0",
-            paidAmount: debtPaymentResponse.newTransaction.paidAmount || form.getValues().totalAmount,
+            creditAmount: newTransaction.creditAmount || "0",
+            paidAmount: newTransaction.paidAmount || form.getValues().totalAmount || "0",
             debtPayment: {
               amount: paymentAmount,
               transactionId: selectedDebtTransaction.id
