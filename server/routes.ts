@@ -1737,10 +1737,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("User tidak terautentikasi, menolak request");
         return res.status(401).json({ message: "Unauthorized, please login first" });
       }
-      console.log("User terautentikasi:", req.user);
+      // Mengurangi output log untuk mengurangi notifikasi yang berlebihan
       
       const { transactionId, amount, paymentMethod, isPaidOff, notes } = req.body;
-      console.log("Data request yang diterima:", { transactionId, amount, paymentMethod, isPaidOff, notes });
       
       // Validate transaction
       if (!transactionId) {
@@ -1748,19 +1747,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Transaction ID is required" });
       }
       
-      console.log(`Mencari transaksi dengan ID: ${transactionId}`);
+      // Mencari transaksi dengan ID yang diberikan
       const transaction = await storage.getTransaction(parseInt(transactionId));
       if (!transaction) {
         console.log(`Transaksi dengan ID: ${transactionId} tidak ditemukan`);
         return res.status(404).json({ message: "Transaction not found" });
       }
-      console.log(`Transaksi ditemukan:`, transaction);
       
       // Ensure transaction has debt
       const totalAmount = parseFloat(transaction.totalAmount);
       const currentPaid = parseFloat(transaction.paidAmount || "0");
       const remainingDebt = totalAmount - currentPaid;
-      console.log(`Analisis utang: Total=${totalAmount}, Dibayar=${currentPaid}, Sisa Utang=${remainingDebt}`);
       
       if (remainingDebt <= 0) {
         console.log("Transaksi tidak memiliki utang yang tersisa");

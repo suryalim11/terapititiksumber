@@ -905,27 +905,39 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                         console.log('Error saat parsing:', e);
                         
                         // Jika tidak bisa di-parse sebagai JSON, gunakan regex fallback untuk string legacy
-                        if (meta.includes('isDebtPayment":true')) {
-                          console.log('Menggunakan regex fallback untuk metadata');
+                        if (meta && meta.includes('isDebtPayment') && meta.includes('true')) {
+                          console.log('Menggunakan regex fallback untuk metadata isDebtPayment');
                           metadataObj = { isDebtPayment: true };
                           
-                          // Extract informasi penting dengan regex
-                          const originalTxIdMatch = meta.match(/"originalTransactionId":"(.+?)"/);
-                          const debtTxIdMatch = meta.match(/"debtTransactionId":(\d+)/);
-                          const paymentAmountMatch = meta.match(/"paymentAmount":"?(\d+\.?\d*)"?/);
-                          const notesMatch = meta.match(/"notes":"(.+?)"/);
+                          // Extract informasi penting dengan regex patterns yang lebih fleksibel
+                          const originalTxIdMatch = meta.match(/"originalTransactionId"\s*:\s*"?([^,}"]+)"?/);
+                          const debtTxIdMatch = meta.match(/"debtTransactionId"\s*:\s*(\d+)/);
+                          const paymentAmountMatch = meta.match(/"paymentAmount"\s*:\s*"?(\d+\.?\d*)"?/);
+                          const notesMatch = meta.match(/"notes"\s*:\s*"([^"]+)"/);
                           
-                          console.log('Regex match results:', {
+                          console.log('Regex match results untuk metadata:', {
                             originalTxIdMatch,
                             debtTxIdMatch,
                             paymentAmountMatch,
-                            notesMatch
+                            notesMatch,
+                            meta
                           });
                           
-                          if (originalTxIdMatch) metadataObj.originalTransactionId = originalTxIdMatch[1];
-                          if (debtTxIdMatch) metadataObj.debtTransactionId = parseInt(debtTxIdMatch[1]);
-                          if (paymentAmountMatch) metadataObj.paymentAmount = paymentAmountMatch[1];
-                          if (notesMatch) metadataObj.notes = notesMatch[1].replace(/\\"/g, '"');
+                          if (originalTxIdMatch && originalTxIdMatch[1]) {
+                            metadataObj.originalTransactionId = originalTxIdMatch[1].trim();
+                          }
+                          
+                          if (debtTxIdMatch && debtTxIdMatch[1]) {
+                            metadataObj.debtTransactionId = parseInt(debtTxIdMatch[1]);
+                          }
+                          
+                          if (paymentAmountMatch && paymentAmountMatch[1]) {
+                            metadataObj.paymentAmount = paymentAmountMatch[1];
+                          }
+                          
+                          if (notesMatch && notesMatch[1]) {
+                            metadataObj.notes = notesMatch[1].replace(/\\"/g, '"');
+                          }
                           
                           console.log('Metadata setelah ekstrak dengan regex:', metadataObj);
                         }
