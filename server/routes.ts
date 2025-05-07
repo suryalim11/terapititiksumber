@@ -1739,7 +1739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       // Mengurangi output log untuk mengurangi notifikasi yang berlebihan
       
-      const { transactionId, amount, paymentMethod, isPaidOff, notes } = req.body;
+      const { transactionId, amount, paymentMethod, isPaidOff, notes, newTransactionData } = req.body;
       
       // Validate transaction
       if (!transactionId) {
@@ -1806,20 +1806,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let updatedTransaction;
       
       try {
-        console.log("Mencoba membuat transaksi pembayaran utang...");
-        newTransaction = await storage.createTransaction({
-          patientId: transaction.patientId,
-          totalAmount: amount,
-          discount: "0",
-          subtotal: amount,
-          paymentMethod: paymentMethod,
-          items: [], // No items for debt payment transaction
-          creditAmount: "0",
-          isPaid: true, // Always paid since it's a debt payment
-          paidAmount: amount,
-          debtAmount: "0",
-          metadata: debtPaymentMetadata // Simpan sebagai string JSON
-        });
+        // Cek apakah ada data transaksi baru (untuk kasus gabungan: bayar utang + beli produk)
+        if (newTransactionData && typeof newTransactionData === 'object' && newTransactionData.items) {
+          console.log("Menerima request pembayaran utang+pembelian gabungan");
+          console.log("Data baru yang akan disimpan:", newTransactionData);
+
+          // Tambahkan informasi pembayaran utang ke metadata
+          const existingMetadata = newTransactionData.metadata || {};
+          const combinedMetadata = JSON.stringify({
+            ...JSON.parse(typeof existingMetadata === 'string' ? existingMetadata : '{}'),
+            isDebtPayment: true,
+            debtTransactionId: transaction.id,
+            originalTransactionId: transaction.transactionId,
+            paymentAmount: amount,
+            notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+          });
+
+          // Simpan transaksi gabungan
+          newTransaction = await storage.createTransaction({
+            ...newTransactionData,
+            patientId: transaction.patientId,
+            metadata: combinedMetadata
+          });
+          
+          console.log("Transaksi gabungan (pembayaran utang + pembelian baru) berhasil dibuat:", newTransaction.id);
+        } else {
+          // Proses normal untuk pembayaran utang saja
+          console.log("Mencoba membuat transaksi pembayaran utang standar...");
+          newTransaction = await storage.createTransaction({
+            patientId: transaction.patientId,
+            totalAmount: amount,
+            discount: "0",
+            subtotal: amount,
+            paymentMethod: paymentMethod,
+            items: [], // No items for debt payment transaction
+            creditAmount: "0",
+            isPaid: true, // Always paid since it's a debt payment
+            paidAmount: amount,
+            debtAmount: "0",
+            metadata: debtPaymentMetadata // Simpan sebagai string JSON
+          });
+        }
         
         console.log("Transaksi berhasil dibuat:", newTransaction.id);
         console.log("ID transaksi baru:", newTransaction.id, "dengan ID publik:", newTransaction.transactionId);
