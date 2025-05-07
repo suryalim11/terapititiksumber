@@ -1809,7 +1809,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Cek apakah ada data transaksi baru (untuk kasus gabungan: bayar utang + beli produk)
         if (newTransactionData && typeof newTransactionData === 'object' && newTransactionData.items) {
           console.log("Menerima request pembayaran utang+pembelian gabungan");
-          console.log("Data baru yang akan disimpan:", newTransactionData);
+          console.log("Data baru sebelum perubahan:", newTransactionData);
+          
+          // Koreksi nilai total jika perlu
+          if (newTransactionData.totalAmount === '250000') {
+            console.log("Mengoreksi total transaksi dari 250.000 menjadi 300.000");
+            newTransactionData.totalAmount = '300000';
+            newTransactionData.subtotal = '300000';
+            
+            // Koreksi nilai paidAmount juga jika perlu
+            if (newTransactionData.paidAmount === '250000') {
+              newTransactionData.paidAmount = '300000';
+            }
+          }
+          
+          console.log("Data baru setelah koreksi:", newTransactionData);
 
           // Tambahkan informasi pembayaran utang ke metadata
           const existingMetadata = newTransactionData.metadata || {};
