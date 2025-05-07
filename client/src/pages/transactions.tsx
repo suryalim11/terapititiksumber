@@ -738,12 +738,28 @@ export default function Transactions() {
   
   // Fungsi untuk melihat detail transaksi dan membuka invoice
   // Fungsi untuk menangani pembayaran hutang
-  const handlePayDebt = (transaction: Transaction) => {
-    console.log("Membuka form pembayaran hutang untuk:", transaction);
-    // Set transaksi yang dipilih
-    setSelectedTransaction(transaction);
-    // Buka dialog pembayaran hutang
-    setIsCreditPaymentOpen(true);
+  const handlePayDebt = async (transaction: Transaction) => {
+    try {
+      console.log(`Persiapan pembayaran hutang untuk transaksi ID ${transaction.id}`);
+      let updatedTransaction = {...transaction};
+      
+      // Ambil detail transaksi terbaru dari API
+      const detailTransaction = await apiRequest<any>(`/api/transactions/${transaction.id}`);
+      if (detailTransaction) {
+        updatedTransaction = detailTransaction;
+      }
+      
+      // Set transaction data dan buka form pembayaran
+      setSelectedTransaction(updatedTransaction);
+      setIsCreditPaymentOpen(true);
+    } catch (error) {
+      console.error(`Error fetching transaction details for debt payment ID ${transaction.id}:`, error);
+      toast({
+        title: "Gagal mengambil data transaksi",
+        description: "Terjadi kesalahan saat mempersiapkan pembayaran hutang",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleViewTransaction = async (transaction: any) => {
@@ -1039,30 +1055,7 @@ export default function Transactions() {
     }
   };
   
-  // Fungsi untuk pembayaran hutang
-  const handlePayDebt = async (transaction: Transaction) => {
-    try {
-      console.log(`Persiapan pembayaran hutang untuk transaksi ID ${transaction.id}`);
-      let updatedTransaction = {...transaction};
-      
-      // Ambil detail transaksi terbaru dari API
-      const detailTransaction = await apiRequest<any>(`/api/transactions/${transaction.id}`);
-      if (detailTransaction) {
-        updatedTransaction = detailTransaction;
-      }
-      
-      // Set transaction data dan buka form pembayaran
-      setSelectedTransaction(updatedTransaction);
-      setIsCreditPaymentOpen(true);
-    } catch (error) {
-      console.error(`Error fetching transaction details for debt payment ID ${transaction.id}:`, error);
-      toast({
-        title: "Gagal mengambil data transaksi",
-        description: "Terjadi kesalahan saat mempersiapkan pembayaran hutang",
-        variant: "destructive"
-      });
-    }
-  };
+
   
   // Fungsi untuk mencetak invoice
   const handlePrintTransaction = async (transaction: Transaction) => {
