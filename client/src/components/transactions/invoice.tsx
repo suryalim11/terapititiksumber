@@ -612,12 +612,72 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       message += `No. Invoice: ${data.transaction.transactionId}\n`;
       message += `Total: ${formatPrice(data.transaction.totalAmount)}\n`;
       
-      // Tambahkan informasi kredit jika transaksi belum lunas
-      if (data.transaction.debtAmount && parseFloat(data.transaction.debtAmount) > 0) {
+      // Cek apakah transaksi ini adalah pembayaran utang dari metadata
+      const isDebtPayment = data.transaction?.metadata && (
+        (typeof data.transaction.metadata === 'object' && data.transaction.metadata?.isDebtPayment) || 
+        (typeof data.transaction.metadata === 'string' && data.transaction.metadata.includes('isDebtPayment'))
+      );
+      
+      // Dapatkan info transaksi asal jika ini adalah pembayaran utang
+      let originalTxId = '';
+      let debtPaymentAmount = '';
+      
+      if (isDebtPayment) {
+        const meta = data.transaction.metadata;
+        if (typeof meta === 'object' && meta !== null) {
+          originalTxId = meta.originalTransactionId || meta.debtTransactionId ? `#${meta.debtTransactionId}` : '';
+          debtPaymentAmount = meta.paymentAmount ? formatPrice(meta.paymentAmount.toString()) : formatPrice(data.transaction.totalAmount);
+        } else if (typeof meta === 'string') {
+          try {
+            const parsed = JSON.parse(meta);
+            originalTxId = parsed.originalTransactionId || (parsed.debtTransactionId ? `#${parsed.debtTransactionId}` : '');
+            debtPaymentAmount = parsed.paymentAmount ? formatPrice(parsed.paymentAmount.toString()) : formatPrice(data.transaction.totalAmount);
+          } catch (e) {
+            // Gunakan regex untuk ekstrak info jika parsing gagal
+            const originalTxIdMatch = meta.match(/"originalTransactionId"\s*:\s*"?([^,}"]+)"?/);
+            const debtTxIdMatch = meta.match(/"debtTransactionId"\s*:\s*(\d+)/);
+            const paymentAmountMatch = meta.match(/"paymentAmount"\s*:\s*"?(\d+\.?\d*)"?/);
+            
+            if (originalTxIdMatch && originalTxIdMatch[1]) {
+              originalTxId = originalTxIdMatch[1].trim();
+            } else if (debtTxIdMatch && debtTxIdMatch[1]) {
+              originalTxId = `#${debtTxIdMatch[1]}`;
+            }
+            
+            if (paymentAmountMatch && paymentAmountMatch[1]) {
+              debtPaymentAmount = formatPrice(paymentAmountMatch[1]);
+            } else {
+              debtPaymentAmount = formatPrice(data.transaction.totalAmount);
+            }
+          }
+        }
+      }
+      
+      // Tambahkan informasi sesuai jenis transaksi (pembayaran utang atau transaksi biasa)
+      if (isDebtPayment) {
+        // Jika ini adalah pembayaran utang (dengan atau tanpa pembelian baru)
+        const hasItems = Array.isArray(data.items) && data.items.length > 0;
+        
+        if (hasItems) {
+          // Transaksi gabungan (pembayaran utang + pembelian baru)
+          message += `\n*PEMBAYARAN UTANG + PEMBELIAN BARU*\n`;
+          message += `Transaksi Asal: ${originalTxId}\n`;
+          message += `Jumlah Pembayaran Utang: ${debtPaymentAmount}\n`;
+          message += `Status: Lunas\n`;
+        } else {
+          // Pembayaran utang saja
+          message += `\n*PEMBAYARAN UTANG*\n`;
+          message += `Transaksi Asal: ${originalTxId}\n`;
+          message += `Jumlah Pembayaran: ${debtPaymentAmount}\n`;
+          message += `Status: Lunas\n`;
+        }
+      } else if (data.transaction.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0) {
+        // Transaksi biasa dengan hutang
         message += `Total Pembayaran: ${formatPrice(data.transaction.totalAmount)}\n`;
         message += `Telah Dibayar: ${formatPrice(data.transaction.paidAmount || "0")}\n`;
         message += `Sisa Hutang: ${formatPrice(data.transaction.debtAmount)}\n`;
-      } else if (data.transaction.paidAmount && parseFloat(data.transaction.paidAmount) > 0) {
+      } else {
+        // Transaksi biasa lunas
         message += `Total Pembayaran: ${formatPrice(data.transaction.totalAmount)}\n`;
         message += `Status: Lunas\n`;
       }
