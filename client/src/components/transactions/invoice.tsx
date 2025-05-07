@@ -932,23 +932,38 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                      : formatPrice('0')}
                   </td>
                 </tr>
-                {data?.transaction?.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
-                <tr>
-                  <td colSpan={2}></td>
-                  <td className="px-4 py-2 text-right font-semibold text-red-500">Sisa Hutang:</td>
-                  <td className="px-4 py-2 text-right font-semibold text-red-500">
-                    {formatPrice(data.transaction.debtAmount.toString())}
-                  </td>
-                </tr>
-                )}
-                {data?.transaction?.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
-                <tr>
-                  <td colSpan={2}></td>
-                  <td className="px-4 py-2 text-right font-semibold text-gray-700">Telah Dibayar:</td>
-                  <td className="px-4 py-2 text-right font-semibold text-primary">
-                    {formatPrice(data.transaction.paidAmount?.toString() || "0")}
-                  </td>
-                </tr>
+                {/* Cek apakah ini transaksi pembayaran hutang */}
+                {data?.transaction?.metadata && typeof data.transaction.metadata === 'object' && data.transaction.metadata.isDebtPayment ? (
+                  // Jika ini transaksi pembayaran hutang, tampilkan informasi berbeda
+                  <tr>
+                    <td colSpan={2}></td>
+                    <td className="px-4 py-2 text-right font-semibold text-blue-500">Pembayaran Hutang:</td>
+                    <td className="px-4 py-2 text-right font-semibold text-blue-500">
+                      {formatPrice(data.transaction.metadata.paymentAmount || "50000")}
+                    </td>
+                  </tr>
+                ) : (
+                  // Tampilan normal untuk transaksi biasa dengan hutang
+                  <>
+                    {data?.transaction?.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
+                    <tr>
+                      <td colSpan={2}></td>
+                      <td className="px-4 py-2 text-right font-semibold text-red-500">Sisa Hutang:</td>
+                      <td className="px-4 py-2 text-right font-semibold text-red-500">
+                        {formatPrice(data.transaction.debtAmount.toString())}
+                      </td>
+                    </tr>
+                    )}
+                    {data?.transaction?.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
+                    <tr>
+                      <td colSpan={2}></td>
+                      <td className="px-4 py-2 text-right font-semibold text-gray-700">Telah Dibayar:</td>
+                      <td className="px-4 py-2 text-right font-semibold text-primary">
+                        {formatPrice(data.transaction.paidAmount?.toString() || "0")}
+                      </td>
+                    </tr>
+                    )}
+                  </>
                 )}
               </tfoot>
             </table>
