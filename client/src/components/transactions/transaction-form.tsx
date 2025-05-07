@@ -1144,8 +1144,53 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
       
       console.log("Submitting final transaction data:", submissionData);
       
-      // Create final transaction
-      await createTransaction.mutateAsync(submissionData);
+      // Cek apakah ini pembayaran utang + pembelian baru sekaligus
+      if (payDebt && selectedDebtTransaction && cartItems.length > 0) {
+        console.log("Mencoba membuat transaksi gabungan: pembayaran utang + pembelian produk/paket baru");
+        
+        // Tambah data pembayaran utang ke request
+        const debtPaymentResponse = await apiRequest("/api/transactions/debt-payment", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            transactionId: selectedDebtTransaction.id,
+            amount: paymentAmount,
+            paymentMethod: values.paymentMethod,
+            isPaidOff: parseFloat(paymentAmount) >= parseFloat(selectedDebtTransaction.debtAmount || "0"),
+            notes: `Pembayaran utang transaksi #${selectedDebtTransaction.transactionId || selectedDebtTransaction.id}`,
+            newTransactionData: submissionData // Kirim data transaksi pembelian baru
+          })
+        });
+        
+        console.log("Combined transaction response:", debtPaymentResponse);
+        
+        // Handle success
+        if (debtPaymentResponse && debtPaymentResponse.success) {
+          setInvoiceData(debtPaymentResponse.newTransaction);
+          setShowInvoice(true);
+          
+          // Invalidate queries
+          queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/transactions/unpaid"] });
+          
+          toast({
+            title: "Transaksi gabungan berhasil",
+            description: "Pembayaran utang dan pembelian baru telah berhasil dicatat.",
+          });
+        } else {
+          toast({
+            title: "Gagal membuat transaksi gabungan",
+            description: debtPaymentResponse?.message || "Terjadi kesalahan saat mencatat transaksi gabungan.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+        }
+      } else {
+        // Transaksi normal (hanya pembelian baru)
+        await createTransaction.mutateAsync(submissionData);
+      }
     } catch (error) {
       console.error("Error creating transaction:", error);
       
