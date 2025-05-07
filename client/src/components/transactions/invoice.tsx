@@ -860,18 +860,38 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               )}
               
               {/* Informasi pembayaran utang jika ini adalah transaksi pembayaran utang */}
-              {data.transaction.metadata?.isDebtPayment && data.transaction.metadata?.debtTransactionId && (
+              {(data.transaction.metadata?.isDebtPayment === true || 
+                (typeof data.transaction.metadata === 'string' && data.transaction.metadata.includes('isDebtPayment":true'))) && (
                 <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
                   <div className="font-medium text-sm mb-2 text-green-700">Informasi Pembayaran Utang:</div>
+                  
+                  {/* Tampilkan ID transaksi asal */}
                   <div className="flex justify-between text-sm mb-1">
                     <span>Transaksi Asal</span>
-                    <span>#{data.transaction.metadata.debtTransactionId}</span>
+                    <span>
+                      {data.transaction.metadata?.debtTransactionId || 
+                      (typeof data.transaction.metadata === 'string' && 
+                        data.transaction.metadata.match(/"debtTransactionId":(\d+)/) ? 
+                        '#' + data.transaction.metadata.match(/"debtTransactionId":(\d+)/)[1] : '-')}
+                    </span>
                   </div>
+                  
+                  {/* Tampilkan jumlah pembayaran yang dilakukan */}
                   <div className="flex justify-between text-sm mb-1">
                     <span>Jumlah Pembayaran</span>
-                    <span>{formatPrice(data.transaction.totalAmount.toString())}</span>
+                    <span className="font-bold text-green-700">{formatPrice(data.transaction.totalAmount.toString())}</span>
                   </div>
-                  <div className="flex justify-between text-sm font-bold text-green-600">
+                  
+                  {/* Tampilkan catatan pembayaran jika ada */}
+                  {data.transaction.metadata?.notes && (
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Catatan</span>
+                      <span>{data.transaction.metadata.notes}</span>
+                    </div>
+                  )}
+                  
+                  {/* Status pembayaran */}
+                  <div className="flex justify-between text-sm font-bold text-green-600 mt-2">
                     <span>Status</span>
                     <span>✓ Lunas</span>
                   </div>
