@@ -1239,36 +1239,86 @@ export class DatabaseStorage implements IStorage {
         throw new Error(`Transaction ${transactionId} not found`);
       }
       
-      // Ambil pembayaran awal
-      const initialPayment = parseFloat(transaction.paidAmount.toString());
+      // Ambil pembayaran awal dari saat transaksi dibuat pertama kali
+      // (transaksi.paidAmount mungkin sudah berubah dari nilai aslinya jika ada update sebelumnya)
+      // Kita perlu melihat nilai pada saat transaksi dibuat
+      const items = transaction.items as any[];
+      let initialPayment = 0;
+      
+      // Hitung pembayaran awal berdasarkan nilai totalAmount dan debtAmount awal
+      const totalAmount = parseFloat(transaction.totalAmount.toString());
+      const originalDebtAmount = parseFloat(transaction.debtAmount.toString());
+      
+      // Jika tidak ada utang awal, berarti semua sudah dibayar di awal
+      if (originalDebtAmount === 0 && transaction.isPaid) {
+        initialPayment = totalAmount;
+      } else {
+        // Jika ada utang, pembayaran awal adalah total dikurangi utang awal
+        initialPayment = Math.max(0, totalAmount - originalDebtAmount);
+      }
       
       // Ambil pembayaran tambahan dari tabel debt_payments
       const payments = await this.getDebtPaymentsByTransaction(transactionId);
       
-      // Hitung total pembayaran dari tabel debt_payments saja
+      // Hitung total pembayaran dari tabel debt_payments
       const debtPaymentsTotal = payments.reduce(
         (sum, payment) => sum + parseFloat(payment.amount.toString()), 
-        0  // Mulai dari 0, tidak menambahkan transaction.paidAmount
+        0
       );
       
       // Total pembayaran: pembayaran awal + pembayaran hutang
       const totalPaid = initialPayment + debtPaymentsTotal;
       
       // Periksa apakah total pembayaran sudah mencapai atau melebihi total transaksi
-      const totalAmount = parseFloat(transaction.totalAmount.toString());
       const isPaid = totalPaid >= totalAmount;
       
       // Hitung jumlah hutang yang tersisa
       const debtAmount = Math.max(0, totalAmount - totalPaid);
       
-      console.log(`[Debt Payment] TransactionID: ${transactionId}, Initial Payment: ${initialPayment}, Debt Payments: ${debtPaymentsTotal}, Total: ${totalPaid}, Required: ${totalAmount}, Remaining Debt: ${debtAmount}`);
+      console.log(`[Debt Payment] TransactionID: ${transactionId}, Initial Payment: ${initialPayment}, Debt Payments: ${debtPaymentsTotal}, Total: ${totalPaid}, Required: ${totalAmount}, Remaining Debt: ${debtAmount}, Is Paid: ${isPaid}`);
       
       // Update status pembayaran dan jumlah hutang
-      return this.updateTransaction(transactionId, {
-        isPaid,
-        paidAmount: totalPaid.toString(),
-        debtAmount: debtAmount.toString()
-      });
+      const updatedTransaction = await db
+        .update(schema.transactions)
+        .set({
+          isPaid,
+          paidAmount: totalPaid.toString(),
+          debtAmount: debtAmount.toString()
+        })
+        .where(eq(schema.transactions.id, transactionId))
+        .returning();
+      
+      if (updatedTransaction.length === 0) {
+        throw new Error(`Failed to update transaction ${transactionId}`);
+      }
+      
+      const result = {
+        ...updatedTransaction[0],
+        createdAt: getWIBDate(updatedTransaction[0].createdAt)
+      };
+      
+      // Parse items dan metadata
+      if (result.items && typeof result.items === 'string') {
+        try {
+          result.items = JSON.parse(result.items);
+        } catch (e) {
+          console.error(`Error parsing items for transaction ${transactionId}:`, e);
+        }
+      }
+      
+      if (result.metadata && typeof result.metadata === 'string') {
+        try {
+          result.metadata = JSON.parse(result.metadata);
+        } catch (e) {
+          console.error(`Error parsing metadata for transaction ${transactionId}:`, e);
+        }
+      }
+      
+      if (!result.metadata) {
+        result.metadata = {};
+      }
+      
+      return result;
     } catch (error) {
       console.error(`Error updating paid status for transaction ${transactionId}:`, error);
       throw error;

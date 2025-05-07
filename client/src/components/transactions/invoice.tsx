@@ -397,28 +397,53 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         
         // Tambahkan informasi kredit jika ini adalah transaksi kredit
         // Gunakan nilai isPaid yang sudah didefinisikan sebelumnya
-        if (!isPaid && data.transaction.creditAmount && data.transaction.paidAmount) {
+        if (!isPaid && data.transaction.debtAmount && parseFloat(data.transaction.debtAmount) > 0) {
           // Buat kotak untuk info kredit
           doc.setFillColor(248, 249, 250); // Light gray background
           doc.setDrawColor(222, 226, 230); // Border color
-          doc.roundedRect(120, y + 2, 75, 25, 2, 2, 'FD');
+          doc.roundedRect(120, y + 2, 75, 37, 2, 2, 'FD');
           
           doc.setTextColor(0, 0, 0);
           doc.setFont("helvetica", "bold");
           doc.setFontSize(9);
-          doc.text("Informasi Kredit:", 125, y + 8);
+          doc.text("Informasi Pembayaran:", 125, y + 8);
           
           doc.setFont("helvetica", "normal");
-          doc.text("Dibayar Dimuka:", 125, y + 15);
-          doc.text(formatPrice(data.transaction.paidAmount.toString()), 190, y + 15, { align: 'right' });
+          doc.text("Total Transaksi:", 125, y + 15);
+          doc.text(formatPrice(data.transaction.totalAmount.toString()), 190, y + 15, { align: 'right' });
+          
+          doc.text("Dibayar:", 125, y + 22);
+          doc.text(formatPrice(data.transaction.paidAmount.toString()), 190, y + 22, { align: 'right' });
           
           doc.setTextColor(220, 53, 69); // Red for debt
-          doc.text("Sisa Hutang:", 125, y + 22);
-          doc.text(formatPrice(data.transaction.creditAmount.toString()), 190, y + 22, { align: 'right' });
+          doc.text("Sisa Hutang:", 125, y + 29);
+          doc.text(formatPrice(data.transaction.debtAmount.toString()), 190, y + 29, { align: 'right' });
           
           // Reset text color
           doc.setTextColor(0, 0, 0);
-          y += 27;
+          y += 39;
+        } else if (isPaid && data.transaction.debtAmount && parseFloat(data.transaction.debtAmount) === 0 && data.transaction.paidAmount && parseFloat(data.transaction.paidAmount) > 0) {
+          // Buat kotak untuk info pembayaran lunas
+          doc.setFillColor(235, 255, 235); // Light green background
+          doc.setDrawColor(200, 240, 200); // Border color
+          doc.roundedRect(120, y + 2, 75, 30, 2, 2, 'FD');
+          
+          doc.setTextColor(0, 100, 0);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.text("Informasi Pembayaran:", 125, y + 8);
+          
+          doc.setFont("helvetica", "normal");
+          doc.text("Total Transaksi:", 125, y + 15);
+          doc.text(formatPrice(data.transaction.totalAmount.toString()), 190, y + 15, { align: 'right' });
+          
+          doc.setFont("helvetica", "bold");
+          doc.text("Dibayar Penuh:", 125, y + 22);
+          doc.text(formatPrice(data.transaction.paidAmount.toString()), 190, y + 22, { align: 'right' });
+          
+          // Reset text color
+          doc.setTextColor(0, 0, 0);
+          y += 32;
         }
         
         // Mulai posisi untuk informasi paket aktif
@@ -567,9 +592,13 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
       message += `Total: ${formatPrice(data.transaction.totalAmount)}\n`;
       
       // Tambahkan informasi kredit jika transaksi belum lunas
-      if (data.transaction.creditAmount && parseFloat(data.transaction.creditAmount) > 0) {
-        message += `Dibayar Dimuka: ${formatPrice(data.transaction.paidAmount || "0")}\n`;
-        message += `Sisa Hutang: ${formatPrice(data.transaction.creditAmount)}\n`;
+      if (data.transaction.debtAmount && parseFloat(data.transaction.debtAmount) > 0) {
+        message += `Total Pembayaran: ${formatPrice(data.transaction.totalAmount)}\n`;
+        message += `Telah Dibayar: ${formatPrice(data.transaction.paidAmount || "0")}\n`;
+        message += `Sisa Hutang: ${formatPrice(data.transaction.debtAmount)}\n`;
+      } else if (data.transaction.paidAmount && parseFloat(data.transaction.paidAmount) > 0) {
+        message += `Total Pembayaran: ${formatPrice(data.transaction.totalAmount)}\n`;
+        message += `Status: Lunas\n`;
       }
       
       message += `\n`;
@@ -715,7 +744,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                 </p>
                 <p className="text-gray-600">
                   <strong>Status:</strong> {" "}
-                  {data.transaction.creditAmount && safeParseFloat(data.transaction.creditAmount) > 0
+                  {data.transaction.debtAmount && safeParseFloat(data.transaction.debtAmount) > 0
                     ? <span className="text-yellow-600">Kredit</span>
                     : data.transaction.isPaid === undefined || data.transaction.isPaid 
                       ? <span className="text-green-600">Lunas</span> 
@@ -787,19 +816,19 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                     {formatPrice(data.transaction.totalAmount.toString())}
                   </td>
                 </tr>
-                {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
+                {data.transaction.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
                 <tr>
                   <td colSpan={2}></td>
-                  <td className="px-4 py-2 text-right font-semibold text-red-500">Kredit:</td>
+                  <td className="px-4 py-2 text-right font-semibold text-red-500">Sisa Hutang:</td>
                   <td className="px-4 py-2 text-right font-semibold text-red-500">
-                    {formatPrice(data.transaction.creditAmount.toString())}
+                    {formatPrice(data.transaction.debtAmount.toString())}
                   </td>
                 </tr>
                 )}
-                {data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
+                {data.transaction.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
                 <tr>
                   <td colSpan={2}></td>
-                  <td className="px-4 py-2 text-right font-semibold text-gray-700">Dibayar Dimuka:</td>
+                  <td className="px-4 py-2 text-right font-semibold text-gray-700">Telah Dibayar:</td>
                   <td className="px-4 py-2 text-right font-semibold text-primary">
                     {formatPrice(data.transaction.paidAmount?.toString() || "0")}
                   </td>
@@ -812,20 +841,20 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
             <div className="border-t border-gray-200 pt-4 mb-4">              
               {/* Informasi kredit jika transaksi belum lunas */}
               {(data.transaction.isPaid === false) && 
-               data.transaction.creditAmount && parseFloat(data.transaction.creditAmount.toString()) > 0 && (
+               data.transaction.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
                 <div className="mt-3 p-3 bg-gray-50 border border-red-200 rounded-md">
-                  <div className="font-medium text-sm mb-2 text-red-700">Informasi Kredit:</div>
+                  <div className="font-medium text-sm mb-2 text-red-700">Informasi Pembayaran:</div>
                   <div className="flex justify-between text-sm mb-1">
                     <span>Total Tagihan</span>
                     <span>{formatPrice(data.transaction.totalAmount.toString())}</span>
                   </div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span>Dibayar Dimuka</span>
+                    <span>Telah Dibayar</span>
                     <span>{formatPrice(data.transaction.paidAmount?.toString() || "0")}</span>
                   </div>
                   <div className="flex justify-between text-sm font-bold text-red-600">
                     <span>Sisa Hutang</span>
-                    <span>{formatPrice(data.transaction.creditAmount.toString())}</span>
+                    <span>{formatPrice(data.transaction.debtAmount.toString())}</span>
                   </div>
                 </div>
               )}
