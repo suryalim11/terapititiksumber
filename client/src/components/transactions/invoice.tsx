@@ -312,9 +312,25 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
             console.log(`Item #${index} diproses:`, JSON.stringify(item));
             
             try {
-              // Dapatkan nama produk/paket
-              // Gunakan String() untuk memastikan nilai tidak undefined bahkan jika null
-              const itemName = String(item.name || `Item #${index+1}`);
+              // Ekstrak nama produk/paket dari berbagai format data yang mungkin
+              let itemName = '';
+              console.log(`Processing invoice PDF item #${index}:`, item);
+              
+              // Coba ekstrak nama item dari berbagai format data yang mungkin
+              if (item.name) {
+                itemName = String(item.name);
+              } else if (item.product && item.product.name) {
+                itemName = String(item.product.name);
+              } else if (item.package && item.package.name) {
+                itemName = String(item.package.name);
+              } else if (item.type === 'package') {
+                itemName = `Paket Terapi #${index+1}`;
+              } else if (item.type === 'product') {
+                itemName = `Produk #${index+1}`;
+              } else {
+                itemName = `Item #${index+1}`;
+              }
+              
               console.log(`Item name untuk #${index}:`, itemName);
               
               // Pastikan quantity dan price ada dan valid
@@ -852,7 +868,20 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   data.items.map((item, index) => (
                     <tr key={index} className="border-b border-gray-200">
                       <td className="px-4 py-2 text-gray-700">
-                        {item.name || `Item #${index+1}`}
+                        {
+                          (() => {
+                            // Debug informasi item
+                            console.log(`Rendering Invoice item #${index}:`, item);
+                            
+                            // Coba ekstrak nama item dari berbagai format data yang mungkin
+                            if (item.name) return item.name;
+                            if (item.product && item.product.name) return item.product.name;
+                            if (item.package && item.package.name) return item.package.name;
+                            if (item.type === 'package') return `Paket Terapi #${index+1}`;
+                            if (item.type === 'product') return `Produk #${index+1}`;
+                            return `Item #${index+1}`;
+                          })()
+                        }
                       </td>
                       <td className="px-4 py-2 text-right text-gray-700">
                         {item.quantity || 1}
