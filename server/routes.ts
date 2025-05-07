@@ -1607,12 +1607,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPaid: true, // Selalu lunas karena ini pembayaran utang
         paidAmount: amount,
         debtAmount: "0",
-        metadata: {
+        metadata: JSON.stringify({
           isDebtPayment: true,
           debtTransactionId: transaction.id,
           originalTransactionId: transaction.transactionId,
+          paymentAmount: amount, // Tambahkan jumlah pembayaran ke metadata agar mudah diidentifikasi
           notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
-        }
+        })
       });
       
       console.log(`Created new transaction for debt payment: ${newTransaction.transactionId}`);
@@ -1780,12 +1781,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPaid: true, // Always paid since it's a debt payment
         paidAmount: amount,
         debtAmount: "0",
-        metadata: {
+        metadata: JSON.stringify({
           isDebtPayment: true,
           debtTransactionId: transaction.id,
           originalTransactionId: transaction.transactionId,
+          paymentAmount: amount, // Tambahkan jumlah pembayaran ke metadata agar mudah diidentifikasi
           notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
-        }
+        })
       });
       
       console.log(`Created new transaction for debt payment: ${newTransaction.transactionId}`);

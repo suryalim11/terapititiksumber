@@ -869,24 +869,42 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   <div className="flex justify-between text-sm mb-1">
                     <span>Transaksi Asal</span>
                     <span>
-                      {data.transaction.metadata?.debtTransactionId || 
-                      (typeof data.transaction.metadata === 'string' && 
-                        data.transaction.metadata.match(/"debtTransactionId":(\d+)/) ? 
-                        '#' + data.transaction.metadata.match(/"debtTransactionId":(\d+)/)[1] : '-')}
+                      {data.transaction.metadata?.debtTransactionId ? 
+                        `#${data.transaction.metadata.debtTransactionId}` : 
+                        typeof data.transaction.metadata === 'string' && 
+                          data.transaction.metadata.match(/"debtTransactionId":(\d+)/) ? 
+                          '#' + data.transaction.metadata.match(/"debtTransactionId":(\d+)/)[1] : 
+                          typeof data.transaction.metadata === 'string' && 
+                          data.transaction.metadata.match(/"originalTransactionId":"(.+?)"/) ?
+                          data.transaction.metadata.match(/"originalTransactionId":"(.+?)"/)[1] : '-'}
                     </span>
                   </div>
                   
                   {/* Tampilkan jumlah pembayaran yang dilakukan */}
                   <div className="flex justify-between text-sm mb-1">
                     <span>Jumlah Pembayaran</span>
-                    <span className="font-bold text-green-700">{formatPrice(data.transaction.totalAmount.toString())}</span>
+                    <span className="font-bold text-green-700 text-lg">
+                      {data.transaction.metadata?.paymentAmount ? 
+                        formatPrice(data.transaction.metadata.paymentAmount.toString()) : 
+                        typeof data.transaction.metadata === 'string' && 
+                          data.transaction.metadata.match(/"paymentAmount":"?(\d+\.?\d*)"?/) ?
+                          formatPrice(data.transaction.metadata.match(/"paymentAmount":"?(\d+\.?\d*)"?/)[1]) :
+                          formatPrice(data.transaction.totalAmount.toString())}
+                    </span>
                   </div>
                   
                   {/* Tampilkan catatan pembayaran jika ada */}
-                  {data.transaction.metadata?.notes && (
+                  {(data.transaction.metadata?.notes || 
+                    (typeof data.transaction.metadata === 'string' && 
+                     data.transaction.metadata.match(/"notes":"(.+?)"/))) && (
                     <div className="flex justify-between text-sm mb-1">
                       <span>Catatan</span>
-                      <span>{data.transaction.metadata.notes}</span>
+                      <span>
+                        {data.transaction.metadata?.notes || 
+                         (typeof data.transaction.metadata === 'string' && 
+                          data.transaction.metadata.match(/"notes":"(.+?)"/) ?
+                          data.transaction.metadata.match(/"notes":"(.+?)"/)[1].replace(/\\"/g, '"') : '')}
+                      </span>
                     </div>
                   )}
                   
