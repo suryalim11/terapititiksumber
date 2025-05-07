@@ -829,6 +829,25 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   </div>
                 </div>
               )}
+              
+              {/* Informasi pembayaran utang jika ini adalah transaksi pembayaran utang */}
+              {data.transaction.metadata?.isDebtPayment && data.transaction.metadata?.debtTransactionId && (
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                  <div className="font-medium text-sm mb-2 text-green-700">Informasi Pembayaran Utang:</div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Transaksi Asal</span>
+                    <span>#{data.transaction.metadata.debtTransactionId}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Jumlah Pembayaran</span>
+                    <span>{formatPrice(data.transaction.totalAmount.toString())}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold text-green-600">
+                    <span>Status</span>
+                    <span>✓ Lunas</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-gray-200 pt-4">
