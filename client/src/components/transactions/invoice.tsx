@@ -883,7 +883,11 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               {/* Informasi pembayaran utang jika ini adalah transaksi pembayaran utang */}
               {data.transaction.metadata && (
                 <>
-                  {console.log("Metadata invoice:", JSON.stringify(data.transaction.metadata))}
+                  {console.log("===== INVOICE DEBUGGING =====")};
+                  {console.log("Metadata type:", typeof data.transaction.metadata)}
+                  {console.log("Metadata content:", data.transaction.metadata)}
+                  {console.log("Metadata stringified:", JSON.stringify(data.transaction.metadata))}
+                  
                   {/* Cek apakah transaksi ini adalah pembayaran utang */}
                   {(() => {
                     // Format data metadata berdasarkan tipenya
@@ -895,10 +899,14 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                       try {
                         metadataObj = JSON.parse(meta);
                         console.log('Berhasil parse metadata dari string:', metadataObj);
+                        console.log('Hasil parse memiliki isDebtPayment?', metadataObj.isDebtPayment);
                       } catch (e) {
                         console.log('Metadata string tidak bisa di-parse sebagai JSON:', meta);
+                        console.log('Error saat parsing:', e);
+                        
                         // Jika tidak bisa di-parse sebagai JSON, gunakan regex fallback untuk string legacy
                         if (meta.includes('isDebtPayment":true')) {
+                          console.log('Menggunakan regex fallback untuk metadata');
                           metadataObj = { isDebtPayment: true };
                           
                           // Extract informasi penting dengan regex
@@ -907,14 +915,25 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                           const paymentAmountMatch = meta.match(/"paymentAmount":"?(\d+\.?\d*)"?/);
                           const notesMatch = meta.match(/"notes":"(.+?)"/);
                           
+                          console.log('Regex match results:', {
+                            originalTxIdMatch,
+                            debtTxIdMatch,
+                            paymentAmountMatch,
+                            notesMatch
+                          });
+                          
                           if (originalTxIdMatch) metadataObj.originalTransactionId = originalTxIdMatch[1];
                           if (debtTxIdMatch) metadataObj.debtTransactionId = parseInt(debtTxIdMatch[1]);
                           if (paymentAmountMatch) metadataObj.paymentAmount = paymentAmountMatch[1];
                           if (notesMatch) metadataObj.notes = notesMatch[1].replace(/\\"/g, '"');
+                          
+                          console.log('Metadata setelah ekstrak dengan regex:', metadataObj);
                         }
                       }
                     } else if (typeof meta === 'object' && meta !== null) {
+                      console.log('Metadata sudah dalam bentuk objek');
                       metadataObj = meta;
+                      console.log('Objek metadata memiliki isDebtPayment?', metadataObj.isDebtPayment);
                     }
                     
                     // Jika ini adalah transaksi pembayaran utang, tampilkan info pembayaran

@@ -1784,6 +1784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       console.log("Creating debt payment transaction with metadata:", debtPaymentMetadata);
+      console.log("Metadata type:", typeof debtPaymentMetadata);
       
       const newTransaction = await storage.createTransaction({
         patientId: transaction.patientId,
@@ -1798,6 +1799,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         debtAmount: "0",
         metadata: debtPaymentMetadata // Simpan sebagai string JSON
       });
+      
+      console.log("New transaction created with metadata type:", typeof newTransaction.metadata);
       
       console.log(`Created new transaction for debt payment: ${newTransaction.transactionId}`);
       
