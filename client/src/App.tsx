@@ -21,6 +21,7 @@ import BackupRestore from "@/pages/backup-restore";
 import DateTest from "@/pages/date-test";
 import TherapySlots from "@/pages/therapy-slots";
 import AdminPage from "@/pages/admin";
+import TestDevPage from "@/pages/test-dev";
 import Layout from "@/components/layout/layout";
 import { AuthProvider } from "@/lib/auth";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -43,6 +44,7 @@ function Router() {
       <ProtectedRoute path="/backup-restore" component={BackupRestore} />
       <ProtectedRoute path="/admin" component={AdminPage} />
       <ProtectedRoute path="/date-test" component={DateTest} />
+      <ProtectedRoute path="/test-dev" component={TestDevPage} />
       <Route path="/login" component={Login} />
       <Route path="/daftar" component={Register} />
       <Route path="/register" component={Register} />

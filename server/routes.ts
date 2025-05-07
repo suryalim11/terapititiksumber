@@ -1774,6 +1774,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create new transaction for debt payment to appear in transaction list
+      // Penting: metadata harus selalu dalam format string
+      const debtPaymentMetadata = JSON.stringify({
+        isDebtPayment: true,
+        debtTransactionId: transaction.id,
+        originalTransactionId: transaction.transactionId, 
+        paymentAmount: amount,
+        notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+      });
+      
+      console.log("Creating debt payment transaction with metadata:", debtPaymentMetadata);
+      
       const newTransaction = await storage.createTransaction({
         patientId: transaction.patientId,
         totalAmount: amount,
@@ -1785,13 +1796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPaid: true, // Always paid since it's a debt payment
         paidAmount: amount,
         debtAmount: "0",
-        metadata: {
-          isDebtPayment: true,
-          debtTransactionId: transaction.id,
-          originalTransactionId: transaction.transactionId, 
-          paymentAmount: amount, // Tambahkan jumlah pembayaran ke metadata agar mudah diidentifikasi
-          notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
-        }
+        metadata: debtPaymentMetadata // Simpan sebagai string JSON
       });
       
       console.log(`Created new transaction for debt payment: ${newTransaction.transactionId}`);
