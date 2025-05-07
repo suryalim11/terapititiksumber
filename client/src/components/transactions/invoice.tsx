@@ -955,13 +955,16 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                         ? metadataObj.paymentAmount.toString()
                         : data.transaction.totalAmount.toString();
                         
+                      // Menentukan jenis transaksi: pembayaran utang biasa atau transaksi gabungan
+                      const isComboTransaction = metadataObj.isDebtPayment === true && data.items && data.items.length > 0;
+                      
                       return (
-                        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
-                          <div className="font-semibold flex items-center text-sm mb-2 text-green-700">
+                        <div className={`mt-3 p-3 ${isComboTransaction ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'} border rounded-md`}>
+                          <div className={`font-semibold flex items-center text-sm mb-2 ${isComboTransaction ? 'text-blue-700' : 'text-green-700'}`}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            Pembayaran Utang
+                            {isComboTransaction ? 'Pembayaran Utang + Pembelian Baru' : 'Pembayaran Utang'}
                           </div>
                           
                           {/* Tampilkan ID transaksi asal */}
@@ -977,11 +980,20 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                           
                           {/* Tampilkan jumlah pembayaran yang dilakukan */}
                           <div className="flex justify-between text-sm mb-1">
-                            <span>Jumlah Pembayaran</span>
-                            <span className="font-bold text-green-700 text-lg">
+                            <span>{isComboTransaction ? 'Jumlah Pembayaran Utang' : 'Jumlah Pembayaran'}</span>
+                            <span className={`font-bold ${isComboTransaction ? 'text-blue-700' : 'text-green-700'} text-lg`}>
                               {formatPrice(paymentAmountValue)}
                             </span>
                           </div>
+                          
+                          {/* Informasi tambahan untuk transaksi gabungan */}
+                          {isComboTransaction && (
+                            <div className="bg-white p-2 rounded-md mt-2 mb-2 border border-blue-100">
+                              <p className="text-blue-800 text-sm font-medium">
+                                Transaksi ini mencakup pembayaran utang dan pembelian baru dalam satu nota.
+                              </p>
+                            </div>
+                          )}
                           
                           {/* Tampilkan catatan pembayaran jika ada */}
                           {metadataObj.notes && (
