@@ -1962,6 +1962,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Transaction not found" });
       }
       
+      // Periksa apakah transaksi ini adalah pembayaran hutang
+      const isDebtPayment = transaction.metadata && (
+        (typeof transaction.metadata === 'object' && transaction.metadata.isDebtPayment) ||
+        (typeof transaction.metadata === 'string' && transaction.metadata.includes('isDebtPayment'))
+      );
+      
+      if (isDebtPayment) {
+        console.log("Menghapus transaksi pembayaran hutang");
+        
+        // Ambil metadata transaksi untuk mendapatkan ID transaksi asli dengan hutang
+        let originalTransactionId: number | null = null;
+        let debtAmount: number = 0;
+        
+        try {
+          let metadata = transaction.metadata;
+          if (typeof metadata === 'string') {
+            metadata = JSON.parse(metadata);
+          }
+          
+          // Ambil ID transaksi asli dari metadata
+          originalTransactionId = metadata.debtTransactionId || null;
+          
+          // Jika ada, ambil jumlah pembayaran
+          debtAmount = parseFloat(metadata.paymentAmount || transaction.totalAmount);
+          
+          console.log(`Transaksi asli yang akan diupdate: ${originalTransactionId}, Jumlah hutang: ${debtAmount}`);
+        } catch (e) {
+          console.error("Error parsing debt payment metadata:", e);
+        }
+        
+        // Jika kita memiliki ID transaksi asli, kembalikan status hutang
+        if (originalTransactionId) {
+          // Temukan transaksi asli
+          const originalTransaction = await storage.getTransaction(originalTransactionId);
+          
+          if (originalTransaction) {
+            console.log("Transaksi asli ditemukan, mengembalikan status hutang");
+            
+            // Hapus debt payment dari tabel debt_payments
+            await db.delete(schema.debtPayments)
+              .where(
+                and(
+                  eq(schema.debtPayments.transactionId, originalTransactionId),
+                  eq(schema.debtPayments.amount, debtAmount.toString())
+                )
+              );
+            
+            // Update status transaksi asli (mengembalikan status isPaid ke false jika perlu)
+            await storage.updateTransactionPaidStatus(originalTransactionId);
+            
+            console.log("Status hutang pada transaksi asli telah dikembalikan");
+          }
+        }
+      }
+      
       // Delete the transaction
       const success = await storage.deleteTransaction(id);
       
