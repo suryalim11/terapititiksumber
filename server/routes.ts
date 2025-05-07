@@ -1730,26 +1730,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint untuk pembayaran utang (dari form transaksi)
   app.post("/api/transactions/debt-payment", async (req: Request, res: Response) => {
     try {
+      console.log("====== DEBT PAYMENT DEBUG ======");
+      console.log("Menerima request pembayaran utang dengan data:", req.body);
+      
       if (!req.isAuthenticated()) {
+        console.log("User tidak terautentikasi, menolak request");
         return res.status(401).json({ message: "Unauthorized, please login first" });
       }
+      console.log("User terautentikasi:", req.user);
       
       const { transactionId, amount, paymentMethod, isPaidOff, notes } = req.body;
+      console.log("Data request yang diterima:", { transactionId, amount, paymentMethod, isPaidOff, notes });
       
       // Validate transaction
       if (!transactionId) {
+        console.log("Transaction ID tidak ditemukan dalam request");
         return res.status(400).json({ message: "Transaction ID is required" });
       }
       
+      console.log(`Mencari transaksi dengan ID: ${transactionId}`);
       const transaction = await storage.getTransaction(parseInt(transactionId));
       if (!transaction) {
+        console.log(`Transaksi dengan ID: ${transactionId} tidak ditemukan`);
         return res.status(404).json({ message: "Transaction not found" });
       }
+      console.log(`Transaksi ditemukan:`, transaction);
       
       // Ensure transaction has debt
       const totalAmount = parseFloat(transaction.totalAmount);
       const currentPaid = parseFloat(transaction.paidAmount || "0");
       const remainingDebt = totalAmount - currentPaid;
+      console.log(`Analisis utang: Total=${totalAmount}, Dibayar=${currentPaid}, Sisa Utang=${remainingDebt}`);
       
       if (remainingDebt <= 0) {
         return res.status(400).json({ message: "Transaction has no remaining debt" });
@@ -1783,26 +1794,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
       });
       
+      console.log("====== METADATA DEBUG ======");
       console.log("Creating debt payment transaction with metadata:", debtPaymentMetadata);
       console.log("Metadata type:", typeof debtPaymentMetadata);
       
-      const newTransaction = await storage.createTransaction({
-        patientId: transaction.patientId,
-        totalAmount: amount,
-        discount: "0",
-        subtotal: amount,
-        paymentMethod: paymentMethod,
-        items: [], // No items for debt payment transaction
-        creditAmount: "0",
-        isPaid: true, // Always paid since it's a debt payment
-        paidAmount: amount,
-        debtAmount: "0",
-        metadata: debtPaymentMetadata // Simpan sebagai string JSON
-      });
+      try {
+        console.log("Mencoba membuat transaksi pembayaran utang...");
+        const newTransaction = await storage.createTransaction({
+          patientId: transaction.patientId,
+          totalAmount: amount,
+          discount: "0",
+          subtotal: amount,
+          paymentMethod: paymentMethod,
+          items: [], // No items for debt payment transaction
+          creditAmount: "0",
+          isPaid: true, // Always paid since it's a debt payment
+          paidAmount: amount,
+          debtAmount: "0",
+          metadata: debtPaymentMetadata // Simpan sebagai string JSON
+        });
+        
+        console.log("Transaksi berhasil dibuat:", newTransaction);
+        console.log("ID transaksi baru:", newTransaction.id, "dengan ID publik:", newTransaction.transactionId);
+        console.log("Metadata pada transaksi baru:", newTransaction.metadata);
+        console.log("Tipe metadata pada transaksi baru:", typeof newTransaction.metadata);
+        
+        if (typeof newTransaction.metadata === 'string') {
+          try {
+            const parsedMeta = JSON.parse(newTransaction.metadata);
+            console.log("Metadata parsing test:", parsedMeta, "isDebtPayment value:", parsedMeta.isDebtPayment);
+          } catch (parseError) {
+            console.log("Metadata tidak bisa di-parse meskipun tipe string:", parseError);
+          }
+        }
+      } catch (createError) {
+        console.error("ERROR: Gagal membuat transaksi pembayaran utang:", createError);
+        throw createError;
+      }
       
-      console.log("New transaction created with metadata type:", typeof newTransaction.metadata);
-      
-      console.log(`Created new transaction for debt payment: ${newTransaction.transactionId}`);
+      console.log(`Created new transaction for debt payment`)
       
       // Record debt payment
       const payment = await storage.createDebtPayment({
