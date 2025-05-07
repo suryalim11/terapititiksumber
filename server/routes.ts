@@ -2024,8 +2024,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 )
               );
             
-            // Update status transaksi asli (mengembalikan status isPaid ke false jika perlu)
-            await storage.updateTransactionPaidStatus(originalTransactionId);
+            // Dapatkan transaksi sebelum diupdate
+            const originalBeforeUpdate = await storage.getTransaction(originalTransactionId);
+            if (originalBeforeUpdate) {
+              // Kurangi jumlah yang sudah dibayar sebesar pembayaran hutang
+              const currentPaid = parseFloat(originalBeforeUpdate.paidAmount || "0");
+              const newPaidAmount = Math.max(0, currentPaid - debtAmount);
+              
+              // Tambahkan kembali debt amount
+              const totalAmount = parseFloat(originalBeforeUpdate.totalAmount || "0");
+              const newDebtAmount = Math.max(0, totalAmount - newPaidAmount);
+              
+              // Update transaksi dengan nilai yang dikoreksi
+              console.log(`Mengembalikan status hutang: paid ${currentPaid} -> ${newPaidAmount}, debt ${originalBeforeUpdate.debtAmount} -> ${newDebtAmount}`);
+              await db.update(schema.transactions)
+                .set({
+                  paidAmount: newPaidAmount.toString(),
+                  debtAmount: newDebtAmount.toString(),
+                  isPaid: newDebtAmount <= 0
+                })
+                .where(eq(schema.transactions.id, originalTransactionId));
+            } else {
+              // Fallback ke metode lama jika tidak bisa mendapatkan transaksi
+              // Update status transaksi asli (mengembalikan status isPaid ke false jika perlu)
+              await storage.updateTransactionPaidStatus(originalTransactionId);
+            }
             
             console.log("Status hutang pada transaksi asli telah dikembalikan");
           }
