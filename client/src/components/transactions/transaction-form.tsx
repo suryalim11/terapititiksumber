@@ -1196,12 +1196,68 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
         
         // Handle success
         if (debtPaymentResponse && debtPaymentResponse.success) {
-          setInvoiceData(debtPaymentResponse.newTransaction);
+          // Cari pasien menggunakan pendekatan yang lebih toleran
+          const patientId = parseInt(String(form.getValues().patientId));
+          let patientForInvoice = patients.find((p) => String(p.id) === String(patientId));
+          
+          // Fallback ke data minimal jika tidak ditemukan
+          if (!patientForInvoice) {
+            console.warn("Creating minimal patient data for invoice since patient not found");
+            patientForInvoice = {
+              id: patientId,
+              patientId: `P-${patientId}`,
+              name: "Pasien",
+              phoneNumber: "N/A",
+              email: null,
+              birthDate: null,
+              gender: null,
+              address: null,
+              complaints: null,
+              therapySlotId: null
+            };
+          }
+          
+          // Buat data invoice yang lebih lengkap
+          const invoiceData = {
+            transaction: {
+              ...debtPaymentResponse.newTransaction,
+              // Pastikan transactionId tidak undefined
+              transactionId: debtPaymentResponse.newTransaction.transactionId || `T-${debtPaymentResponse.newTransaction.id}`,
+              // Pastikan metadata pembayaran utang tersedia
+              metadata: {
+                ...(debtPaymentResponse.newTransaction.metadata || {}),
+                isDebtPayment: true,
+                paymentAmount: paymentAmount,
+                debtTransactionId: selectedDebtTransaction.id,
+                originalTransactionId: selectedDebtTransaction.transactionId || `T-${selectedDebtTransaction.id}`
+              }
+            },
+            patient: patientForInvoice,
+            items: cartItems.map(item => ({
+              ...item,
+              name: item.name || (item.type === 'product' ? 'Produk' : 'Paket Terapi')
+            })),
+            paymentMethod: form.getValues().paymentMethod,
+            discount: form.getValues().discount || "0",
+            subtotal: subtotal,
+            total: form.getValues().totalAmount || debtPaymentResponse.newTransaction.totalAmount,
+            isPaid: !useCredit,
+            creditAmount: debtPaymentResponse.newTransaction.creditAmount || "0",
+            paidAmount: debtPaymentResponse.newTransaction.paidAmount || form.getValues().totalAmount,
+            debtPayment: {
+              amount: paymentAmount,
+              transactionId: selectedDebtTransaction.id
+            }
+          };
+          
+          console.log("Setting invoice data for combined transaction:", invoiceData);
+          setInvoiceData(invoiceData);
           setShowInvoice(true);
           
           // Invalidate queries
           queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
           queryClient.invalidateQueries({ queryKey: ["/api/transactions/unpaid"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] }); // Penting: Invalidate stats untuk memperbarui today's income
           
           toast({
             title: "Transaksi gabungan berhasil",
