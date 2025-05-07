@@ -734,10 +734,14 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               <div className="text-right">
                 <h2 className="text-lg font-semibold">INVOICE</h2>
                 <p className="text-gray-500 text-sm">
-                  {settings.invoicePrefix ? `${settings.invoicePrefix}${data.transaction.transactionId}` : data.transaction.transactionId}
+                  {settings.invoicePrefix && data.transaction?.transactionId 
+                    ? `${settings.invoicePrefix}${data.transaction.transactionId}` 
+                    : data.transaction?.transactionId || 'Unknown ID'}
                 </p>
                 <p className="text-gray-500 text-sm">
-                  {format(new Date(data.transaction.createdAt), "d MMMM yyyy", { locale: id })}
+                  {data.transaction?.createdAt
+                    ? format(new Date(data.transaction.createdAt), "d MMMM yyyy", { locale: id })
+                    : format(new Date(), "d MMMM yyyy", { locale: id })}
                 </p>
               </div>
             </div>
@@ -834,10 +838,12 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   <td colSpan={2}></td>
                   <td className="px-4 py-2 text-right font-semibold text-gray-700">Total:</td>
                   <td className="px-4 py-2 text-right font-semibold text-primary">
-                    {formatPrice(data.transaction.totalAmount.toString())}
+                    {data.transaction?.totalAmount 
+                     ? formatPrice(data.transaction.totalAmount.toString())
+                     : formatPrice('0')}
                   </td>
                 </tr>
-                {data.transaction.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
+                {data.transaction?.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
                 <tr>
                   <td colSpan={2}></td>
                   <td className="px-4 py-2 text-right font-semibold text-red-500">Sisa Hutang:</td>
@@ -846,7 +852,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   </td>
                 </tr>
                 )}
-                {data.transaction.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
+                {data.transaction?.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
                 <tr>
                   <td colSpan={2}></td>
                   <td className="px-4 py-2 text-right font-semibold text-gray-700">Telah Dibayar:</td>
@@ -861,8 +867,8 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
             {/* Informasi pembayaran */}
             <div className="border-t border-gray-200 pt-4 mb-4">              
               {/* Informasi kredit jika transaksi belum lunas */}
-              {(data.transaction.isPaid === false) && 
-               data.transaction.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
+              {(data.transaction?.isPaid === false) && 
+               data.transaction?.debtAmount && parseFloat(data.transaction.debtAmount.toString()) > 0 && (
                 <div className="mt-3 p-3 bg-gray-50 border border-red-200 rounded-md">
                   <div className="font-medium text-sm mb-2 text-red-700">Informasi Pembayaran:</div>
                   <div className="flex justify-between text-sm mb-1">
@@ -881,7 +887,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               )}
               
               {/* Informasi pembayaran utang jika ini adalah transaksi pembayaran utang */}
-              {data.transaction.metadata && (
+              {data.transaction?.metadata && (
                 <>
                   {console.log("===== INVOICE DEBUGGING =====")};
                   {console.log("Metadata type:", typeof data.transaction.metadata)}
