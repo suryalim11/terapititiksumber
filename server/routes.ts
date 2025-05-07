@@ -1811,16 +1811,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log("Menerima request pembayaran utang+pembelian gabungan");
           console.log("Data baru sebelum perubahan:", newTransactionData);
           
-          // Koreksi nilai total jika perlu
-          if (newTransactionData.totalAmount === '250000') {
-            console.log("Mengoreksi total transaksi dari 250.000 menjadi 300.000");
-            newTransactionData.totalAmount = '300000';
-            newTransactionData.subtotal = '300000';
-            
-            // Koreksi nilai paidAmount juga jika perlu
-            if (newTransactionData.paidAmount === '250000') {
-              newTransactionData.paidAmount = '300000';
-            }
+          // Hitung total yang sebenarnya: jumlah hutang yang dibayar + nilai pembelian baru
+          const debtPaymentAmount = parseFloat(amount);
+          const itemsTotal = newTransactionData.items.reduce((sum: number, item: any) => {
+            const itemPrice = parseFloat(item.price || '0');
+            const itemQuantity = parseInt(item.quantity || '1');
+            return sum + (itemPrice * itemQuantity);
+          }, 0);
+          
+          const correctedTotal = debtPaymentAmount + itemsTotal;
+          const originalTotal = parseFloat(newTransactionData.totalAmount || '0');
+          
+          console.log(`Menghitung total transaksi gabungan: Hutang (${debtPaymentAmount}) + Pembelian baru (${itemsTotal}) = ${correctedTotal}`);
+          
+          // Update nilai total dan subtotal
+          newTransactionData.totalAmount = correctedTotal.toString();
+          newTransactionData.subtotal = correctedTotal.toString();
+          
+          // Pastikan paidAmount disesuaikan jika ini transaksi lunas
+          if (newTransactionData.isPaid && !newTransactionData.creditAmount) {
+            newTransactionData.paidAmount = correctedTotal.toString();
           }
           
           console.log("Data baru setelah koreksi:", newTransactionData);
