@@ -796,24 +796,52 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
         // Fallback ke data minimal jika masih tidak ditemukan
         if (!patientForInvoice) {
           console.warn("Creating minimal patient data for invoice since patient not found");
+          // Buat objek Patient yang lengkap untuk menghindari type error
           patientForInvoice = {
             id: patientId,
             patientId: `P-${patientId}`,
             name: "Pasien",
-            phoneNumber: "N/A"
+            phoneNumber: "N/A",
+            email: null,
+            birthDate: null,
+            gender: null,
+            address: null,
+            complaints: null,
+            therapySlotId: null
           };
         }
         
+        // Untuk debugging
+        console.log("Data transaksi dari server:", data);
+        console.log("Cart items untuk invoice:", cartItems);
+        console.log("Patient for invoice:", patientForInvoice);
+        
+        // Perbaiki format data invoice untuk memastikan semua data lengkap
+        const totalAmountValue = form.getValues().totalAmount || data.totalAmount || subtotal;
+        
         const invoiceData = {
-          transaction: data,
+          transaction: {
+            ...data,
+            // Pastikan transactionId tidak undefined
+            transactionId: data.transactionId || `T-${data.id}`,
+            // Pastikan totalAmount tidak undefined
+            totalAmount: data.totalAmount || totalAmountValue,
+            // Format pajak/diskon jika ada
+            items: cartItems
+          },
           patient: patientForInvoice,
-          items: cartItems,
+          items: cartItems.map(item => ({
+            ...item,
+            // Pastikan nama item tidak kosong
+            name: item.name || (item.type === 'product' ? 'Produk' : 'Paket Terapi')
+          })),
           paymentMethod: form.getValues().paymentMethod,
-          discount: form.getValues().discount,
+          discount: form.getValues().discount || "0",
           subtotal: subtotal,
+          total: totalAmountValue, // Tambahkan field total yang terpisah
           isPaid: !useCredit,
-          creditAmount: data.creditAmount,
-          paidAmount: data.paidAmount,
+          creditAmount: data.creditAmount || "0",
+          paidAmount: data.paidAmount || totalAmountValue,
           displayName: searchTerm?.toLowerCase().includes('syafl') 
             ? form.getValues().displayName || "original"
             : "original"

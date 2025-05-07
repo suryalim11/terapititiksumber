@@ -58,6 +58,7 @@ type InvoiceProps = {
     paymentMethod: string;
     discount?: number;
     subtotal?: number;
+    total?: number | string; // Tambahan untuk menyimpan total keseluruhan
     isPaid?: boolean;
     creditAmount?: number | string; 
     paidAmount?: number | string;
@@ -929,7 +930,9 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   <td className="px-4 py-2 text-right font-semibold text-primary">
                     {data?.transaction?.totalAmount 
                      ? formatPrice(data.transaction.totalAmount.toString())
-                     : formatPrice('0')}
+                     : data?.total 
+                       ? formatPrice(data.total.toString())
+                       : formatPrice(data?.subtotal?.toString() || '0')}
                   </td>
                 </tr>
                 {/* Cek apakah ini transaksi pembayaran hutang */}
