@@ -42,6 +42,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import TransactionForm from "@/components/transactions/transaction-form";
 import Invoice from "@/components/transactions/invoice";
+import CreditPaymentForm from "@/components/transactions/credit-payment-form";
 
 type Transaction = {
   id: number;
@@ -98,6 +99,10 @@ export default function Transactions() {
   // State untuk invoice
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
+  
+  // State untuk dialog pembayaran hutang/kredit
+  const [isCreditPaymentOpen, setIsCreditPaymentOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   
   // Fetch patients
   const { data: patients = [] } = useQuery<any[]>({
@@ -490,7 +495,7 @@ export default function Transactions() {
     }
   };
   
-  const setSelectedTransaction = (id: number | null) => {
+  const setTransactionToBeDeleted = (id: number | null) => {
     setTransactionToDelete(id);
   };
   
@@ -732,6 +737,15 @@ export default function Transactions() {
     : [];
   
   // Fungsi untuk melihat detail transaksi dan membuka invoice
+  // Fungsi untuk menangani pembayaran hutang
+  const handlePayDebt = (transaction: Transaction) => {
+    console.log("Membuka form pembayaran hutang untuk:", transaction);
+    // Set transaksi yang dipilih
+    setSelectedTransaction(transaction);
+    // Buka dialog pembayaran hutang
+    setIsCreditPaymentOpen(true);
+  };
+  
   const handleViewTransaction = async (transaction: any) => {
     try {
       console.log("Detail transaksi yang dibuka:", transaction);
@@ -821,7 +835,7 @@ export default function Transactions() {
   
   // Fungsi untuk menghapus transaksi
   const handleDeleteTransaction = (transaction: Transaction) => {
-    setSelectedTransaction(transaction.id);
+    setTransactionToBeDeleted(transaction.id);
     setIsDeleteDialogOpen(true);
   };
   
@@ -1290,6 +1304,17 @@ export default function Transactions() {
                         >
                           Detail
                         </Button>
+                        
+                        {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 && !transaction.isPaid && (
+                          <Button
+                            size="sm"
+                            className="bg-orange-600 hover:bg-orange-700 text-white"
+                            onClick={() => handlePayDebt(transaction)}
+                          >
+                            Bayar Hutang
+                          </Button>
+                        )}
+                        
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
@@ -1375,6 +1400,17 @@ export default function Transactions() {
                       >
                         Detail
                       </Button>
+                      
+                      {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 && !transaction.isPaid && (
+                        <Button
+                          size="sm"
+                          className="bg-orange-600 hover:bg-orange-700 text-white"
+                          onClick={() => handlePayDebt(transaction)}
+                        >
+                          Bayar
+                        </Button>
+                      )}
+                      
                       <Button
                         size="sm"
                         className="bg-green-600 hover:bg-green-700 text-white"
@@ -1387,6 +1423,7 @@ export default function Transactions() {
                           WA
                         </span>
                       </Button>
+                      
                       <Button
                         size="sm"
                         variant="destructive"
@@ -1445,6 +1482,23 @@ export default function Transactions() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Dialog pembayaran hutang/kredit */}
+      <CreditPaymentForm 
+        isOpen={isCreditPaymentOpen}
+        onClose={() => setIsCreditPaymentOpen(false)}
+        transaction={selectedTransaction}
+        onSuccess={() => {
+          toast({
+            title: "Pembayaran Hutang Berhasil",
+            description: "Pembayaran hutang telah berhasil diproses",
+          });
+          // Refresh data transaksi
+          refetch();
+          // Tutup dialog
+          setIsCreditPaymentOpen(false);
+        }}
+      />
     </div>
   );
 }
