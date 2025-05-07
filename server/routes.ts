@@ -1588,8 +1588,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid payment amount" });
       }
       
-      // PERUBAHAN: Tidak perlu membuat transaksi baru untuk pembayaran hutang
-      // Cukup mencatat pembayaran di tabel debt_payments
+      // PERUBAHAN: Buat transaksi baru untuk pembayaran hutang agar tercatat dalam daftar transaksi
+      // Ambil data pasien dari transaksi asal
+      const patient = await storage.getPatient(transaction.patientId);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      // Buat transaksi baru untuk mencatat pembayaran utang
+      const newTransaction = await storage.createTransaction({
+        patientId: transaction.patientId,
+        totalAmount: amount,
+        discount: "0",
+        subtotal: amount,
+        paymentMethod: paymentMethod,
+        items: [], // Transaksi pembayaran utang tidak memiliki item
+        creditAmount: "0",
+        isPaid: true, // Selalu lunas karena ini pembayaran utang
+        paidAmount: amount,
+        debtAmount: "0",
+        metadata: {
+          isDebtPayment: true,
+          debtTransactionId: transaction.id,
+          originalTransactionId: transaction.transactionId,
+          notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+        }
+      });
+      
+      console.log(`Created new transaction for debt payment: ${newTransaction.transactionId}`);
       
       // Create debt payment record
       const payment = await storage.createDebtPayment({
@@ -1613,6 +1639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(201).json({
         success: true,
         payment,
+        newTransaction,
         transaction: updatedTransaction,
         // Gunakan nilai sisa hutang yang dihitung dari transaksi yang diperbarui
         remainingDebt: remainingDebtAfterPayment
@@ -1692,6 +1719,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error processing debt payment:", error);
       return res.status(500).json({ message: "Internal server error", error: String(error) });
+    }
+  });
+  
+  // Endpoint untuk pembayaran utang (dari form transaksi)
+  app.post("/api/transactions/debt-payment", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized, please login first" });
+      }
+      
+      const { transactionId, amount, paymentMethod, isPaidOff, notes } = req.body;
+      
+      // Validate transaction
+      if (!transactionId) {
+        return res.status(400).json({ message: "Transaction ID is required" });
+      }
+      
+      const transaction = await storage.getTransaction(parseInt(transactionId));
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      // Ensure transaction has debt
+      const totalAmount = parseFloat(transaction.totalAmount);
+      const currentPaid = parseFloat(transaction.paidAmount || "0");
+      const remainingDebt = totalAmount - currentPaid;
+      
+      if (remainingDebt <= 0) {
+        return res.status(400).json({ message: "Transaction has no remaining debt" });
+      }
+      
+      // Validate payment amount
+      const paymentAmount = parseFloat(amount);
+      if (isNaN(paymentAmount) || paymentAmount <= 0) {
+        return res.status(400).json({ message: "Invalid payment amount" });
+      }
+      
+      if (paymentAmount > remainingDebt) {
+        return res.status(400).json({ 
+          message: `Payment amount exceeds remaining debt (${remainingDebt})` 
+        });
+      }
+      
+      // Get patient for transaction
+      const patient = await storage.getPatient(transaction.patientId);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      // Create new transaction for debt payment to appear in transaction list
+      const newTransaction = await storage.createTransaction({
+        patientId: transaction.patientId,
+        totalAmount: amount,
+        discount: "0",
+        subtotal: amount,
+        paymentMethod: paymentMethod,
+        items: [], // No items for debt payment transaction
+        creditAmount: "0",
+        isPaid: true, // Always paid since it's a debt payment
+        paidAmount: amount,
+        debtAmount: "0",
+        metadata: {
+          isDebtPayment: true,
+          debtTransactionId: transaction.id,
+          originalTransactionId: transaction.transactionId,
+          notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+        }
+      });
+      
+      console.log(`Created new transaction for debt payment: ${newTransaction.transactionId}`);
+      
+      // Record debt payment
+      const payment = await storage.createDebtPayment({
+        transactionId: parseInt(transactionId),
+        amount: amount,
+        paymentMethod: paymentMethod,
+        notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+      });
+      
+      // Update transaction paid status
+      const updatedTransaction = await storage.updateTransactionPaidStatus(parseInt(transactionId));
+      
+      // Calculate remaining debt after payment
+      const newPaidAmount = parseFloat(updatedTransaction?.paidAmount || "0");
+      const remainingDebtAfterPayment = totalAmount - newPaidAmount;
+      
+      return res.status(201).json({
+        success: true,
+        payment,
+        newTransaction,
+        originalTransaction: updatedTransaction,
+        remainingDebt: remainingDebtAfterPayment
+      });
+    } catch (error) {
+      console.error("Error processing debt payment:", error);
+      return res.status(500).json({ message: "Internal server error" });
     }
   });
   

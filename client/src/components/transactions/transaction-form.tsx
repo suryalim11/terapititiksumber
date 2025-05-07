@@ -1031,7 +1031,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
             transactionId: selectedDebtTransaction.id,
             amount: paymentAmount,
             paymentMethod: values.paymentMethod,
-            isPaidOff: parseFloat(paymentAmount) >= parseFloat(selectedDebtTransaction.debt_amount),
+            isPaidOff: parseFloat(paymentAmount) >= parseFloat(selectedDebtTransaction.debtAmount),
             notes: `Pembayaran utang transaksi #${selectedDebtTransaction.id}`
           })
         });
