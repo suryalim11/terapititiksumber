@@ -2041,9 +2041,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const currentPaid = parseFloat(originalBeforeUpdate.paidAmount || "0");
               const newPaidAmount = Math.max(0, currentPaid - debtAmount);
               
-              // Tambahkan kembali debt amount
+              // Kembalikan nilai debt amount ke nilai asli (creditAmount)
+              const creditAmount = parseFloat(originalBeforeUpdate.creditAmount || "0");
+              
+              // Jika jumlah yang dibayar kurang dari total, berarti masih ada hutang
               const totalAmount = parseFloat(originalBeforeUpdate.totalAmount || "0");
-              const newDebtAmount = Math.max(0, totalAmount - newPaidAmount);
+              const newDebtAmount = creditAmount > 0 ? creditAmount : Math.max(0, totalAmount - newPaidAmount);
               
               // Update transaksi dengan nilai yang dikoreksi
               console.log(`Mengembalikan status hutang: paid ${currentPaid} -> ${newPaidAmount}, debt ${originalBeforeUpdate.debtAmount} -> ${newDebtAmount}`);
@@ -2051,7 +2054,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .set({
                   paidAmount: newPaidAmount.toString(),
                   debtAmount: newDebtAmount.toString(),
-                  isPaid: newDebtAmount <= 0
+                  isPaid: newDebtAmount <= 0 // Transaksi dianggap lunas jika tidak ada hutang
                 })
                 .where(eq(schema.transactions.id, originalTransactionId));
             } else {
