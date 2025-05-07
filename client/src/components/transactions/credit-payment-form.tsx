@@ -81,14 +81,16 @@ export default function CreditPaymentForm({
   // Payment mutation
   const mutation = useMutation({
     mutationFn: async (values) => {
-      return await apiRequest(`/api/transactions/${transaction.id}/debt-payment`, {
+      return await apiRequest(`/api/transactions/debt-payment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          transactionId: transaction.id,
           amount: values.amount,
           paymentMethod: values.paymentMethod,
+          isPaidOff: parseFloat(values.amount) >= remainingDebt,
           notes: values.notes || "Pembayaran hutang",
         }),
       });
