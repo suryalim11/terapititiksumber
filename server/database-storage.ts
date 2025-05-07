@@ -696,6 +696,21 @@ export class DatabaseStorage implements IStorage {
             console.error(`Error parsing items for transaction ${id}:`, parseError);
           }
         }
+        
+        // Parse metadata jika berbentuk string
+        if (result.metadata && typeof result.metadata === 'string') {
+          try {
+            result.metadata = JSON.parse(result.metadata);
+            console.log(`Metadata parsed from string for transaction ${id}:`, result.metadata);
+          } catch (parseError) {
+            console.error(`Error parsing metadata for transaction ${id}:`, parseError);
+          }
+        }
+        
+        // Make sure metadata is not null
+        if (!result.metadata) {
+          result.metadata = {};
+        }
       } else {
         console.log(`No transaction found for ID ${id}`);
       }
@@ -1084,7 +1099,7 @@ export class DatabaseStorage implements IStorage {
         return debtAmount > 0; // Hanya tampilkan jika debtAmount > 0
       });
       
-      // Proses items jika perlu dan ubah format date
+      // Proses items dan metadata jika perlu dan ubah format date
       return realUnpaidTransactions.map(trans => {
         // Parse items jika berbentuk string
         if (trans.items && typeof trans.items === 'string') {
@@ -1093,6 +1108,21 @@ export class DatabaseStorage implements IStorage {
           } catch (parseError) {
             console.error(`Error parsing items for transaction ${trans.id}:`, parseError);
           }
+        }
+        
+        // Parse metadata jika berbentuk string
+        if (trans.metadata && typeof trans.metadata === 'string') {
+          try {
+            trans.metadata = JSON.parse(trans.metadata);
+            console.log(`Parsed metadata for unpaid patient transaction ${trans.id}:`, trans.metadata);
+          } catch (parseError) {
+            console.error(`Error parsing metadata for unpaid patient transaction ${trans.id}:`, parseError);
+          }
+        }
+        
+        // Make sure metadata is not null
+        if (!trans.metadata) {
+          trans.metadata = {};
         }
         
         return {
