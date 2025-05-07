@@ -949,10 +949,20 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                     }
                     
                     // Jika ini adalah transaksi pembayaran utang, tampilkan info pembayaran
-                    if (metadataObj && metadataObj.isDebtPayment === true) {
+                    if (metadataObj && (metadataObj.isDebtPayment === true || data.items.length === 0)) {
+                      // Jika metadata memiliki isDebtPayment atau transaksi tidak memiliki item (indikasi pembayaran utang)
+                      const paymentAmountValue = metadataObj.paymentAmount 
+                        ? metadataObj.paymentAmount.toString()
+                        : data.transaction.totalAmount.toString();
+                        
                       return (
                         <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
-                          <div className="font-semibold text-sm mb-2 text-green-700">Informasi Pembayaran Utang</div>
+                          <div className="font-semibold flex items-center text-sm mb-2 text-green-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Pembayaran Utang
+                          </div>
                           
                           {/* Tampilkan ID transaksi asal */}
                           <div className="flex justify-between text-sm mb-1">
@@ -969,9 +979,7 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                           <div className="flex justify-between text-sm mb-1">
                             <span>Jumlah Pembayaran</span>
                             <span className="font-bold text-green-700 text-lg">
-                              {metadataObj.paymentAmount ? 
-                                formatPrice(metadataObj.paymentAmount.toString()) :
-                                formatPrice(data.transaction.totalAmount.toString())}
+                              {formatPrice(paymentAmountValue)}
                             </span>
                           </div>
                           
@@ -984,9 +992,14 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                           )}
                           
                           {/* Status pembayaran */}
-                          <div className="flex justify-between text-sm font-bold text-green-600 mt-2">
+                          <div className="flex items-center justify-between text-sm font-bold text-green-600 mt-2">
                             <span>Status</span>
-                            <span>✓ Lunas</span>
+                            <span className="flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Lunas
+                            </span>
                           </div>
                         </div>
                       );
