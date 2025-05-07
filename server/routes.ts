@@ -1596,6 +1596,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Buat transaksi baru untuk mencatat pembayaran utang
+      const debtMetadata = {
+        isDebtPayment: true,
+        debtTransactionId: transaction.id,
+        originalTransactionId: transaction.transactionId,
+        paymentAmount: amount,
+        notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+      };
+      
+      console.log('Creating debt payment transaction with metadata:', debtMetadata);
+      
       const newTransaction = await storage.createTransaction({
         patientId: transaction.patientId,
         totalAmount: amount,
@@ -1607,13 +1617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPaid: true, // Selalu lunas karena ini pembayaran utang
         paidAmount: amount,
         debtAmount: "0",
-        metadata: JSON.stringify({
-          isDebtPayment: true,
-          debtTransactionId: transaction.id,
-          originalTransactionId: transaction.transactionId,
-          paymentAmount: amount, // Tambahkan jumlah pembayaran ke metadata agar mudah diidentifikasi
-          notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
-        })
+        metadata: debtMetadata
       });
       
       console.log(`Created new transaction for debt payment: ${newTransaction.transactionId}`);
@@ -1781,13 +1785,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPaid: true, // Always paid since it's a debt payment
         paidAmount: amount,
         debtAmount: "0",
-        metadata: JSON.stringify({
+        metadata: {
           isDebtPayment: true,
           debtTransactionId: transaction.id,
-          originalTransactionId: transaction.transactionId,
+          originalTransactionId: transaction.transactionId, 
           paymentAmount: amount, // Tambahkan jumlah pembayaran ke metadata agar mudah diidentifikasi
           notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
-        })
+        }
       });
       
       console.log(`Created new transaction for debt payment: ${newTransaction.transactionId}`);
