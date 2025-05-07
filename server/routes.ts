@@ -1763,26 +1763,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Analisis utang: Total=${totalAmount}, Dibayar=${currentPaid}, Sisa Utang=${remainingDebt}`);
       
       if (remainingDebt <= 0) {
+        console.log("Transaksi tidak memiliki utang yang tersisa");
         return res.status(400).json({ message: "Transaction has no remaining debt" });
       }
       
       // Validate payment amount
       const paymentAmount = parseFloat(amount);
       if (isNaN(paymentAmount) || paymentAmount <= 0) {
+        console.log("Jumlah pembayaran tidak valid:", amount);
         return res.status(400).json({ message: "Invalid payment amount" });
       }
       
       if (paymentAmount > remainingDebt) {
+        console.log(`Jumlah pembayaran ${paymentAmount} melebihi sisa utang ${remainingDebt}`);
         return res.status(400).json({ 
           message: `Payment amount exceeds remaining debt (${remainingDebt})` 
         });
       }
       
       // Get patient for transaction
+      console.log(`Mencari data pasien dengan ID: ${transaction.patientId}`);
       const patient = await storage.getPatient(transaction.patientId);
       if (!patient) {
+        console.log(`Pasien dengan ID: ${transaction.patientId} tidak ditemukan`);
         return res.status(404).json({ message: "Patient not found" });
       }
+      console.log(`Data pasien ditemukan:`, patient.name);
       
       // Create new transaction for debt payment to appear in transaction list
       // Penting: metadata harus selalu dalam format string
@@ -1794,13 +1800,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
       });
       
-      console.log("====== METADATA DEBUG ======");
+      console.log("====== DEBT TRANSACTION CREATION DEBUG ======");
       console.log("Creating debt payment transaction with metadata:", debtPaymentMetadata);
       console.log("Metadata type:", typeof debtPaymentMetadata);
       
+      let newTransaction;
+      let payment;
+      let updatedTransaction;
+      
       try {
         console.log("Mencoba membuat transaksi pembayaran utang...");
-        const newTransaction = await storage.createTransaction({
+        newTransaction = await storage.createTransaction({
           patientId: transaction.patientId,
           totalAmount: amount,
           discount: "0",
@@ -1814,7 +1824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: debtPaymentMetadata // Simpan sebagai string JSON
         });
         
-        console.log("Transaksi berhasil dibuat:", newTransaction);
+        console.log("Transaksi berhasil dibuat:", newTransaction.id);
         console.log("ID transaksi baru:", newTransaction.id, "dengan ID publik:", newTransaction.transactionId);
         console.log("Metadata pada transaksi baru:", newTransaction.metadata);
         console.log("Tipe metadata pada transaksi baru:", typeof newTransaction.metadata);
@@ -1827,35 +1837,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log("Metadata tidak bisa di-parse meskipun tipe string:", parseError);
           }
         }
+        
+        // Record debt payment in debt_payments table
+        console.log("====== DEBT PAYMENT RECORD DEBUG ======");
+        console.log(`Mencatat pembayaran utang untuk transaksi ${transactionId}`);
+        payment = await storage.createDebtPayment({
+          transactionId: parseInt(transactionId),
+          amount: amount,
+          paymentMethod: paymentMethod,
+          notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
+        });
+        console.log("Pembayaran utang berhasil dicatat:", payment);
+        
+        // Update original transaction paid status
+        console.log("====== TRANSACTION UPDATE DEBUG ======");
+        console.log(`Memperbarui status transaksi ${transactionId}`);
+        updatedTransaction = await storage.updateTransactionPaidStatus(parseInt(transactionId));
+        console.log("Transaksi asli diupdate:", updatedTransaction);
+        
+        // Calculate remaining debt after payment
+        const newPaidAmount = parseFloat(updatedTransaction?.paidAmount || "0");
+        const remainingDebtAfterPayment = totalAmount - newPaidAmount;
+        console.log("Sisa utang setelah pembayaran:", remainingDebtAfterPayment);
+        
+        console.log("====== DEBT PAYMENT SUCCESS ======");
+        return res.status(201).json({
+          success: true,
+          payment,
+          newTransaction,
+          originalTransaction: updatedTransaction,
+          remainingDebt: remainingDebtAfterPayment
+        });
       } catch (createError) {
-        console.error("ERROR: Gagal membuat transaksi pembayaran utang:", createError);
-        throw createError;
+        console.error("ERROR: Gagal memproses pembayaran utang:", createError);
+        return res.status(500).json({ 
+          message: "Gagal memproses pembayaran utang", 
+          error: String(createError) 
+        });
       }
-      
-      console.log(`Created new transaction for debt payment`)
-      
-      // Record debt payment
-      const payment = await storage.createDebtPayment({
-        transactionId: parseInt(transactionId),
-        amount: amount,
-        paymentMethod: paymentMethod,
-        notes: notes || `Pembayaran utang untuk transaksi ${transaction.transactionId}`
-      });
-      
-      // Update transaction paid status
-      const updatedTransaction = await storage.updateTransactionPaidStatus(parseInt(transactionId));
-      
-      // Calculate remaining debt after payment
-      const newPaidAmount = parseFloat(updatedTransaction?.paidAmount || "0");
-      const remainingDebtAfterPayment = totalAmount - newPaidAmount;
-      
-      return res.status(201).json({
-        success: true,
-        payment,
-        newTransaction,
-        originalTransaction: updatedTransaction,
-        remainingDebt: remainingDebtAfterPayment
-      });
     } catch (error) {
       console.error("Error processing debt payment:", error);
       return res.status(500).json({ message: "Internal server error" });
