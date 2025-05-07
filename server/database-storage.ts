@@ -730,7 +730,7 @@ export class DatabaseStorage implements IStorage {
         orderBy: [desc(schema.transactions.createdAt)]
       });
       
-      // Proses data items jika perlu
+      // Proses data items & metadata jika perlu
       return transactions.map(transaction => {
         // Parse items jika berbentuk string
         if (transaction.items && typeof transaction.items === 'string') {
@@ -739,6 +739,21 @@ export class DatabaseStorage implements IStorage {
           } catch (parseError) {
             console.error(`Error parsing items for transaction ${transaction.id}:`, parseError);
           }
+        }
+        
+        // Parse metadata jika berbentuk string
+        if (transaction.metadata && typeof transaction.metadata === 'string') {
+          try {
+            transaction.metadata = JSON.parse(transaction.metadata);
+            console.log(`Parsed metadata for transaction ${transaction.id}:`, transaction.metadata);
+          } catch (parseError) {
+            console.error(`Error parsing metadata for transaction ${transaction.id}:`, parseError);
+          }
+        }
+        
+        // Make sure metadata is not null
+        if (!transaction.metadata) {
+          transaction.metadata = {};
         }
         
         return transaction;
@@ -775,7 +790,7 @@ export class DatabaseStorage implements IStorage {
           orderBy: [desc(schema.transactions.createdAt)]
         });
         
-        // Proses data items jika perlu
+        // Proses data items dan metadata jika perlu
         return transactions.map(transaction => {
           // Parse items jika berbentuk string
           if (transaction.items && typeof transaction.items === 'string') {
@@ -784,6 +799,21 @@ export class DatabaseStorage implements IStorage {
             } catch (parseError) {
               console.error(`Error parsing items for transaction ${transaction.id}:`, parseError);
             }
+          }
+          
+          // Parse metadata jika berbentuk string
+          if (transaction.metadata && typeof transaction.metadata === 'string') {
+            try {
+              transaction.metadata = JSON.parse(transaction.metadata);
+              console.log(`Parsed metadata for patient transaction ${transaction.id}:`, transaction.metadata);
+            } catch (parseError) {
+              console.error(`Error parsing metadata for patient transaction ${transaction.id}:`, parseError);
+            }
+          }
+          
+          // Make sure metadata is not null
+          if (!transaction.metadata) {
+            transaction.metadata = {};
           }
           
           return transaction;
@@ -831,7 +861,7 @@ export class DatabaseStorage implements IStorage {
         .where(inArray(schema.transactions.patientId, relatedPatientIds))
         .orderBy(desc(schema.transactions.createdAt));
       
-      // Process items
+      // Process items and metadata
       const processedTransactions = transactions.map(transaction => {
         // Parse items jika berbentuk string
         if (transaction.items && typeof transaction.items === 'string') {
@@ -840,6 +870,21 @@ export class DatabaseStorage implements IStorage {
           } catch (parseError) {
             console.error(`Error parsing items for transaction ${transaction.id}:`, parseError);
           }
+        }
+        
+        // Parse metadata jika berbentuk string
+        if (transaction.metadata && typeof transaction.metadata === 'string') {
+          try {
+            transaction.metadata = JSON.parse(transaction.metadata);
+            console.log(`Parsed metadata for related patient transaction ${transaction.id}:`, transaction.metadata);
+          } catch (parseError) {
+            console.error(`Error parsing metadata for related patient transaction ${transaction.id}:`, parseError);
+          }
+        }
+        
+        // Make sure metadata is not null
+        if (!transaction.metadata) {
+          transaction.metadata = {};
         }
         
         return transaction;
@@ -966,7 +1011,7 @@ export class DatabaseStorage implements IStorage {
         return debtAmount > 0; // Hanya tampilkan jika debtAmount > 0
       });
       
-      // Proses items jika perlu dan ubah format date
+      // Proses items dan metadata jika perlu dan ubah format date
       return realUnpaidTransactions.map(trans => {
         // Parse items jika berbentuk string
         if (trans.items && typeof trans.items === 'string') {
@@ -975,6 +1020,21 @@ export class DatabaseStorage implements IStorage {
           } catch (parseError) {
             console.error(`Error parsing items for transaction ${trans.id}:`, parseError);
           }
+        }
+        
+        // Parse metadata jika berbentuk string
+        if (trans.metadata && typeof trans.metadata === 'string') {
+          try {
+            trans.metadata = JSON.parse(trans.metadata);
+            console.log(`Parsed metadata for unpaid transaction ${trans.id}:`, trans.metadata);
+          } catch (parseError) {
+            console.error(`Error parsing metadata for unpaid transaction ${trans.id}:`, parseError);
+          }
+        }
+        
+        // Make sure metadata is not null
+        if (!trans.metadata) {
+          trans.metadata = {};
         }
         
         return {
