@@ -1022,6 +1022,10 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
         }
         
         // Create debt payment
+        console.log("Creating debt payment transaction with transaction ID:", selectedDebtTransaction.id);
+        console.log("Payment amount:", paymentAmount);
+        console.log("Original transaction:", selectedDebtTransaction);
+        
         const debtPaymentResponse = await apiRequest("/api/transactions/debt-payment", {
           method: "POST",
           headers: {
@@ -1032,9 +1036,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
             amount: paymentAmount,
             paymentMethod: values.paymentMethod,
             isPaidOff: parseFloat(paymentAmount) >= parseFloat(selectedDebtTransaction.debtAmount),
-            notes: `Pembayaran utang transaksi #${selectedDebtTransaction.id}`
+            notes: `Pembayaran utang transaksi #${selectedDebtTransaction.transactionId || selectedDebtTransaction.id}`
           })
         });
+        
+        console.log("Debt payment response:", debtPaymentResponse);
         
         // Handle success
         queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
