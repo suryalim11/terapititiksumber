@@ -1755,12 +1755,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Ensure transaction has debt
-      const totalAmount = parseFloat(transaction.totalAmount);
-      const currentPaid = parseFloat(transaction.paidAmount || "0");
-      const remainingDebt = totalAmount - currentPaid;
+      const debtAmount = parseFloat(transaction.debtAmount || "0");
       
-      if (remainingDebt <= 0) {
-        console.log("Transaksi tidak memiliki utang yang tersisa");
+      console.log(`Memeriksa hutang transaksi: ID=${transaction.id}, Total=${transaction.totalAmount}, Paid=${transaction.paidAmount}, Debt=${transaction.debtAmount}, isPaid=${transaction.isPaid}`);
+      
+      if (debtAmount <= 0 || transaction.isPaid) {
+        console.log("Transaksi tidak memiliki utang yang tersisa atau sudah dilunasi");
         return res.status(400).json({ message: "Transaction has no remaining debt" });
       }
       
@@ -1771,10 +1771,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid payment amount" });
       }
       
-      if (paymentAmount > remainingDebt) {
-        console.log(`Jumlah pembayaran ${paymentAmount} melebihi sisa utang ${remainingDebt}`);
+      if (paymentAmount > debtAmount) {
+        console.log(`Jumlah pembayaran ${paymentAmount} melebihi sisa utang ${debtAmount}`);
         return res.status(400).json({ 
-          message: `Payment amount exceeds remaining debt (${remainingDebt})` 
+          message: `Payment amount exceeds remaining debt (${debtAmount})` 
         });
       }
       
@@ -1881,6 +1881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Calculate remaining debt after payment
         const newPaidAmount = parseFloat(updatedTransaction?.paidAmount || "0");
+        const totalAmount = parseFloat(updatedTransaction?.totalAmount || "0");
         const remainingDebtAfterPayment = totalAmount - newPaidAmount;
         console.log("Sisa utang setelah pembayaran:", remainingDebtAfterPayment);
         
