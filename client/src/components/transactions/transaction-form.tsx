@@ -1333,11 +1333,11 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                           <div>
                             <span className="font-medium">Transaksi #{tx.id}</span>
                             <div className="text-xs text-muted-foreground">
-                              {tx.created_at ? format(new Date(tx.created_at), 'dd MMM yyyy', { locale: id }) : 'Tanggal tidak tersedia'}
+                              {tx.createdAt ? format(new Date(tx.createdAt), 'dd MMM yyyy', { locale: id }) : 'Tanggal tidak tersedia'}
                             </div>
                             <div className="text-xs">
                               <span className="font-medium text-amber-600">
-                                Utang: {formatPrice(tx.debt_amount)}
+                                Utang: {formatPrice(tx.debtAmount)}
                               </span>
                             </div>
                           </div>
@@ -1350,7 +1350,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                               onClick={() => {
                                 setSelectedDebtTransaction(tx);
                                 setPayDebt(true);
-                                setPaymentAmount(tx.debt_amount);
+                                setPaymentAmount(tx.debtAmount);
                               }}
                             >
                               Bayar sekarang
@@ -1396,7 +1396,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                         onValueChange={(value) => {
                           const tx = unpaidTransactions.find((t: any) => t.id.toString() === value);
                           setSelectedDebtTransaction(tx);
-                          setPaymentAmount(tx?.debt_amount || "0");
+                          setPaymentAmount(tx?.debtAmount || "0");
                         }}
                         value={selectedDebtTransaction?.id?.toString()}
                       >
@@ -1406,7 +1406,7 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
                         <SelectContent>
                           {unpaidTransactions.map((tx: any) => (
                             <SelectItem key={tx.id} value={tx.id.toString()}>
-                              #{tx.id} - Utang: {formatPrice(tx.debt_amount)}
+                              #{tx.id} - Utang: {formatPrice(tx.debtAmount)}
                             </SelectItem>
                           ))}
                         </SelectContent>
