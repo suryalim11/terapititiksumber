@@ -906,6 +906,33 @@ export default function Transactions() {
       message += `Terima kasih telah mengunjungi Klinik Terapi Titik Sumber.\n\n`;
       message += `Berikut adalah detail invoice Anda:\n`;
       message += `No. Invoice: ${updatedTransaction.transactionId}\n`;
+      
+      // Cek apakah transaksi ini adalah pembayaran utang dari metadata
+      const isDebtPayment = updatedTransaction?.metadata && (
+        (typeof updatedTransaction.metadata === 'object' && updatedTransaction.metadata?.isDebtPayment) || 
+        (typeof updatedTransaction.metadata === 'string' && updatedTransaction.metadata.includes('isDebtPayment'))
+      );
+
+      let debtTransactionId = '';
+      let debtAmount = 0;
+      
+      // Jika transaksi pembayaran utang, tampilkan informasi pembayaran hutang
+      if (isDebtPayment) {
+        const meta = updatedTransaction.metadata;
+        try {
+          let metaObj = typeof meta === 'string' ? JSON.parse(meta) : meta;
+          debtTransactionId = metaObj.originalTransactionId || metaObj.debtTransactionId || '';
+          debtAmount = parseFloat(metaObj.debtAmount || '0');
+            
+          message += `Pembayaran Hutang: ${formatPrice(debtAmount.toString())}\n`;
+          if (debtTransactionId) {
+            message += `Untuk Invoice: #${debtTransactionId}\n`;
+          }
+        } catch (e) {
+          console.error("Error parsing metadata:", e);
+        }
+      }
+      
       message += `Total: ${formatPrice(updatedTransaction.totalAmount)}\n\n`;
       
       // Tambahkan informasi pembayaran
@@ -917,6 +944,11 @@ export default function Transactions() {
       // Tambahkan detail item
       message += `Detail Item:\n\n`;
       if (items && items.length > 0) {
+        // Jika ada pembayaran hutang, tambahkan sebagai item pertama
+        if (isDebtPayment && debtAmount > 0) {
+          message += `1 x Pembayaran Hutang ${debtTransactionId ? `(Invoice #${debtTransactionId})` : ''} - ${formatPrice(debtAmount.toString())}\n`;
+        }
+        
         items.forEach((item: any) => {
           const qty = item.quantity || 1;
           const itemName = item.name || "Item"; // Gunakan nilai default jika name tidak ada
