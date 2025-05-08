@@ -181,6 +181,7 @@ export const therapySlots = pgTable("therapy_slots", {
   isActive: boolean("is_active").notNull().default(true), // Status slot (aktif/non-aktif)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   timeSlotKey: text("time_slot_key").notNull(), // Unik key: kombinasi dari date + timeSlot (YYYY-MM-DD_HH:MM-HH:MM)
+  globalQuota: integer("global_quota").notNull().default(0), // Kuota global untuk semua slot dengan timeSlotKey yang sama
 }, (table) => {
   return {
     // Menambah unique constraint pada kombinasi date dan timeSlot
@@ -198,6 +199,7 @@ export const insertTherapySlotSchema = createInsertSchema(therapySlots)
     currentCount: true,
     isActive: true,
     timeSlotKey: true,
+    globalQuota: true,
   })
   .extend({
     // Preprocessor untuk membuat timeSlotKey dari kombinasi date dan timeSlot
