@@ -5313,7 +5313,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Endpoint khusus untuk memperbaiki appointment yang tidak terbuat karena timeout
-  app.post("/api/fix/create-missing-appointment", allowPublicOrAuth, async (req: Request, res: Response) => {
+  // Diakses langsung tanpa middleware autentikasi
+  app.post("/api/fix/create-missing-appointment", async (req: Request, res: Response) => {
     try {
       const { patientName, birthDate, therapySlotId } = req.body;
       
@@ -5368,12 +5369,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Tidak ada appointment yang sudah ada untuk slot ${therapySlotId}. Membuat appointment baru...`);
       
       // Buat appointment baru
+      // Pastikan format data benar
       const appointmentData = {
         patientId: patient.id,
         therapySlotId: therapySlotId,
         notes: "Dibuat ulang setelah timeout",
         status: "Scheduled",
-        date: therapySlot.date, // Gunakan string dari therapySlot
+        date: typeof therapySlot.date === 'string' ? therapySlot.date : (therapySlot.date as Date).toISOString().split('T')[0] + ' 00:00:00', // Format standar 'YYYY-MM-DD 00:00:00'
         timeSlot: therapySlot.timeSlot,
         sessionId: null,
         registrationNumber: null

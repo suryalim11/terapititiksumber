@@ -40,3 +40,11 @@ export function allowPublicOrAuth(req: Request, res: Response, next: NextFunctio
     message: "Anda harus login untuk mengakses halaman ini" 
   });
 }
+
+/**
+ * Middleware untuk endpoint khusus perbaikan appointment
+ * Mengizinkan akses publik (tanpa autentikasi) agar dapat digunakan dari halaman publik
+ */
+export function allowAnyAccess(req: Request, res: Response, next: NextFunction) {
+  return next(); // Selalu lanjutkan tanpa memeriksa autentikasi
+}

@@ -34,7 +34,7 @@ export default function AppointmentFixPage() {
     setResult(null);
 
     try {
-      const response = await fetch("/api/fix/create-missing-appointment", {
+      const response = await fetch("/api/fix/create-missing-appointment?apiKey=terapi-titik-sumber-public", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
