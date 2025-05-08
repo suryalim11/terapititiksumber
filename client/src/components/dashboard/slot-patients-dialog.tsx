@@ -344,20 +344,47 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         const fallbackDate = slotDate || todayString;
         const fallbackTimeSlot = slotTimeSlot || "Data tidak tersedia";
         
+        // Coba cari data slot yang sesuai dari localStorage berdasarkan tanggal dan waktu
+        let actualQuota = 0;
+        let actualCurrentCount = 0;
+        
+        try {
+          // Coba ambil dari localStorage terlebih dahulu jika ada
+          const slotsDataString = localStorage.getItem('slotsData');
+          if (slotsDataString) {
+            const slotsData = JSON.parse(slotsDataString);
+            if (Array.isArray(slotsData) && slotsData.length > 0) {
+              // Cari slot dengan tanggal dan waktu yang sama
+              const matchingSlot = slotsData.find(slot => 
+                slot.date.includes(fallbackDate.split(' ')[0]) && 
+                slot.timeSlot === fallbackTimeSlot
+              );
+              
+              if (matchingSlot) {
+                actualQuota = matchingSlot.maxQuota || 0;
+                actualCurrentCount = matchingSlot.currentCount || 0;
+                console.log(`Menemukan data slot dari cache: kuota=${actualQuota}, terisi=${actualCurrentCount}`);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error mencari data dari cache:", error);
+        }
+        
         // Default slot dengan data dari parameter props
         slotResult = {
           id: Number(slotId),
           date: fallbackDate,
           timeSlot: fallbackTimeSlot,
-          currentCount: 0,
-          maxQuota: 6, // Default kuota standar
+          currentCount: actualCurrentCount,
+          maxQuota: actualQuota > 0 ? actualQuota : 6, // Gunakan kuota actual jika ditemukan, atau default
           isActive: true
         };
         
-        console.log(`Using fallback data - Date: ${fallbackDate}, TimeSlot: ${fallbackTimeSlot}`);
+        console.log(`Using fallback data - Date: ${fallbackDate}, TimeSlot: ${fallbackTimeSlot}, Quota: ${slotResult.maxQuota}, Current: ${slotResult.currentCount}`);
         
         // Set warning tapi tetap tampilkan UI
-        setError(new Error("Data slot tidak dapat diambil dari server. Menggunakan informasi minimal dari parameter."));
+        setError(new Error("Data slot tidak dapat diambil dari server. Menggunakan informasi dari parameter dan cache."));
       }
       
       // Set slot data ke state
@@ -479,14 +506,41 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         
         // Jika tidak ada data di localStorage, buat dari props
         if (slotDate && slotTimeSlot) {
+          // Coba ambil dari slotsData terlebih dahulu untuk dapatkan kuota yang benar
+          let actualQuota = 0;
+          let actualPatients = 0;
+          
+          try {
+            // Coba ambil dari localStorage terlebih dahulu jika ada
+            const slotsDataString = localStorage.getItem('slotsData');
+            if (slotsDataString) {
+              const slotsData = JSON.parse(slotsDataString);
+              if (Array.isArray(slotsData) && slotsData.length > 0) {
+                // Cari slot dengan tanggal dan waktu yang sama
+                const matchingSlot = slotsData.find(slot => 
+                  slot.date.includes(slotDate.split(' ')[0]) && 
+                  slot.timeSlot === slotTimeSlot
+                );
+                
+                if (matchingSlot) {
+                  actualQuota = matchingSlot.maxQuota || 0;
+                  actualPatients = matchingSlot.currentCount || 0;
+                  console.log(`Menemukan data slot dari cache untuk combinedInfo: kuota=${actualQuota}, terisi=${actualPatients}`);
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Error mencari data dari cache untuk combinedInfo:", error);
+          }
+          
           // Buat kombinasi ID untuk tracking
           const newCombinedInfo: CombinedSlotInfo = {
             ids: [Number(slotId)],
             timeSlotKey: `${slotDate}_${slotTimeSlot.replace(/:/g, '').replace('-', '_')}`,
             timeSlot: slotTimeSlot,
             date: slotDate,
-            totalPatients: 0,
-            totalQuota: 6 // nilai default
+            totalPatients: actualPatients,
+            totalQuota: actualQuota > 0 ? actualQuota : 6 // Gunakan kuota actual jika ditemukan, atau default
           };
           
           setCombinedSlotInfo(newCombinedInfo);
