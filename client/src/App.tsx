@@ -14,7 +14,8 @@ import ReportsIndex from "@/pages/reports/index";
 import PatientsDailyReport from "@/pages/reports/patients-daily";
 import Settings from "@/pages/settings";
 import Register from "@/pages/register";
-import RegistrationSuccess from "@/pages/registration-success";
+// import RegistrationSuccess from "@/pages/registration-success";
+import RegistrationSuccess from "@/pages/registration-success-fixed";
 // Import halaman register sederhana untuk testing
 import SimpleRegister from "@/pages/register.simple";
 import Login from "@/pages/login";

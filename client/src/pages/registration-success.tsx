@@ -28,6 +28,8 @@ export default function RegistrationSuccessPage() {
     const sourceParam = params.get('src');
     console.log(`Params: timestamp=${timeParam}, source=${sourceParam}`);
     
+    let isMounted = true; // Flag untuk mencegah state update pada komponen yang unmounted
+    
     // Fungsi untuk mengambil data dari localStorage dengan safe handling
     function loadData() {
       try {
@@ -37,7 +39,7 @@ export default function RegistrationSuccessPage() {
         
         console.log(`Status data di localStorage: ${statusData || 'tidak ada'}`);
         
-        if (savedData) {
+        if (savedData && isMounted) {
           console.log("Data ditemukan di localStorage");
           
           try {
@@ -46,17 +48,20 @@ export default function RegistrationSuccessPage() {
             
             // Pastikan data yang diload valid
             if (parsedData && parsedData.name && parsedData.phoneNumber) {
-              setRegistrationData(parsedData);
-              console.log("Data registrasi berhasil dimuat dari localStorage");
-              
-              // Jika dimuat dari timeout, tambahkan status
-              if (parsedData.fromTimeout) {
-                console.log("PERHATIAN: Data dimuat dari timeout fallback!");
-              }
-              
-              // Jika data complete dari server
-              if (parsedData.isComplete) {
-                console.log("Data pendaftaran lengkap dari server");
+              // Cek jika komponen masih mounted sebelum update state
+              if (isMounted) {
+                setRegistrationData(parsedData);
+                console.log("Data registrasi berhasil dimuat dari localStorage");
+                
+                // Jika dimuat dari timeout, tambahkan status
+                if (parsedData.fromTimeout) {
+                  console.log("PERHATIAN: Data dimuat dari timeout fallback!");
+                }
+                
+                // Jika data complete dari server
+                if (parsedData.isComplete) {
+                  console.log("Data pendaftaran lengkap dari server");
+                }
               }
             } else {
               console.warn("Data registrasi tidak valid:", parsedData);
@@ -70,47 +75,33 @@ export default function RegistrationSuccessPage() {
       } catch (error) {
         console.error("Error loading registration data:", error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
-    // Panggil fungsi untuk load data segera, dengan sedikit delay untuk memastikan localStorage terisi
-    setTimeout(() => {
-      loadData();
-    }, 50);
+    // Load data single-instance function, tanpa multiple timers
+    loadData();
 
-    // Coba lagi dalam 800ms jika tidak ada data (untuk redundansi)
+    // Hanya satu backup timer dengan waktu yang cukup
     const timeoutId = setTimeout(() => {
-      if (!registrationData) {
-        console.log("Mencoba memuat data registrasi lagi setelah 800ms...");
-        loadData();
+      if (isMounted) {
+        // Cek status data langsung dari localStorage, bukan dari state
+        const hasData = localStorage.getItem('registrationData') !== null;
+        if (!hasData) {
+          console.log("Mencoba memuat data registrasi lagi setelah 1 detik...");
+          loadData();
+        }
       }
-    }, 800);
-
-    // Backup plan: jika sampai 2 detik masih belum ada data, coba lagi
-    const lastChanceId = setTimeout(() => {
-      if (!registrationData) {
-        console.log("Mencoba memuat data registrasi untuk terakhir kali setelah 2 detik...");
-        loadData();
-      }
-    }, 2000);
-    
-    // Plan terakhir: jika sampai 5 detik masih belum dapat data, coba menggunakan URL params
-    const ultimateTimeoutId = setTimeout(() => {
-      if (!registrationData) {
-        console.log("DATA TIDAK DITEMUKAN SETELAH 5 DETIK - Plan terakhir");
-        // Simpan status untuk debugging
-        localStorage.setItem('registrationLoadingFailed', 'true');
-        localStorage.setItem('registrationLoadingFailedAt', new Date().toISOString());
-      }
-    }, 5000);
+    }, 1000);
 
     return () => {
+      // Catat bahwa komponen sudah unmounted
+      isMounted = false;
       clearTimeout(timeoutId);
-      clearTimeout(lastChanceId);
-      clearTimeout(ultimateTimeoutId);
     };
-  }, [registrationData]);
+  }, []);
 
   // Tampilkan loading state jika data belum siap
   if (loading) {
@@ -242,7 +233,19 @@ export default function RegistrationSuccessPage() {
                   <div className="flex items-center mb-2 md:mb-0">
                     <CalendarIcon className="mr-2 h-4 w-4 text-blue-700" />
                     <span className="text-blue-900 font-medium">
-                      {format(new Date(registrationData.slotInfo.date), "EEEE, dd MMMM yyyy", { locale: idLocale })}
+                      {(() => {
+                        try {
+                          // Jika tanggal sudah dalam format DD MMM YYYY, tampilkan langsung
+                          if (/^\d{1,2}\s[A-Za-z]{3}\s\d{4}$/.test(registrationData.slotInfo.date)) {
+                            return registrationData.slotInfo.date;
+                          }
+                          // Jika tidak, coba format dengan date-fns
+                          return format(new Date(registrationData.slotInfo.date), "EEEE, dd MMMM yyyy", { locale: idLocale });
+                        } catch (e) {
+                          // Fallback ke tampilan tanggal mentah
+                          return registrationData.slotInfo.date;
+                        }
+                      })()}
                     </span>
                   </div>
                   <div className="flex items-center">
