@@ -179,6 +179,34 @@ export default function RegisterPage() {
       // 2. Masih tersedia (available=true)
       // 3. Slot yang tanggalnya hari ini atau kemudian
       
+      // Gunakan data slot dari respons verifikasi kode pendaftaran jika tersedia
+      if (verificationResponse && 
+          verificationResponse.availableSlots && 
+          Array.isArray(verificationResponse.availableSlots) && 
+          verificationResponse.availableSlots.length > 0) {
+        console.log("Menggunakan data slot terapi dari respons verifikasi kode");
+        console.log("Jumlah slot dari verifikasi:", verificationResponse.availableSlots.length);
+        
+        // Filter slot dengan kuota tersedia
+        const filteredVerificationSlots = verificationResponse.availableSlots.filter(
+          (slot: any) => slot.currentCount < slot.maxQuota
+        );
+        
+        // Urutkan berdasarkan tanggal dan waktu
+        return filteredVerificationSlots.sort((a: any, b: any) => {
+          // Bandingkan tanggal terlebih dahulu
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          if (dateA !== dateB) return dateA - dateB;
+          
+          // Jika tanggal sama, bandingkan jam mulai
+          return a.timeSlot.localeCompare(b.timeSlot);
+        });
+      }
+      
+      // Fallback ke fetch langsung jika tidak ada data di respons verifikasi
+      console.log("Fallback ke fetch langsung untuk slot terapi");
+      
       // Penting: Tambahkan parameter waktu untuk menghindari cache browser dan force refresh
       const timestamp = new Date().getTime();
       const response = await fetch(`/api/therapy-slots?available=true&active=true&_t=${timestamp}`, {
