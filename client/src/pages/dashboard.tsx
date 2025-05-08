@@ -187,6 +187,16 @@ export default function Dashboard() {
         // Ambil semua data dari server
         const rawData = await response.json();
         
+        // Simpan data lengkap slot ke localStorage untuk referensi di seluruh aplikasi
+        try {
+          if (Array.isArray(rawData) && rawData.length > 0) {
+            localStorage.setItem('slotsData', JSON.stringify(rawData));
+            console.log(`Saved ${rawData.length} slots to localStorage from dashboard query`);
+          }
+        } catch (cacheError) {
+          console.error("Error caching slots data:", cacheError);
+        }
+        
         // Verifikasi bahwa rawData adalah array
         if (!Array.isArray(rawData)) {
           console.error('Expected array but got:', typeof rawData, rawData);

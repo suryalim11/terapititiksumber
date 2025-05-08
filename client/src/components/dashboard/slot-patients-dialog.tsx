@@ -371,13 +371,38 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
           console.error("Error mencari data dari cache:", error);
         }
         
+        // Cek juga di combined slots info jika tersedia
+        let quotaFromCombined = 0;
+        let patientsFromCombined = 0;
+        
+        try {
+          const combinedStoredInfo = localStorage.getItem('combinedSlotsInfo');
+          if (combinedStoredInfo) {
+            const combinedData = JSON.parse(combinedStoredInfo);
+            if (combinedData && combinedData[slotId]) {
+              quotaFromCombined = combinedData[slotId].totalQuota || 0;
+              patientsFromCombined = combinedData[slotId].totalPatients || 0;
+              console.log(`Data kuota dari combinedSlotsInfo (fallback): ${quotaFromCombined}, terisi: ${patientsFromCombined}`);
+            }
+          }
+        } catch (error) {
+          console.error("Error getting quota from combinedSlotsInfo (fallback):", error);
+        }
+        
+        // Prioritaskan kuota dari berbagai sumber berdasarkan ketersediaan
+        const bestQuota = quotaFromCombined > 0 ? quotaFromCombined : 
+                         (actualQuota > 0 ? actualQuota : 6); // Default 6 jika tidak ada data
+        
+        const bestCurrentCount = patientsFromCombined > 0 ? patientsFromCombined : 
+                                actualCurrentCount;
+        
         // Default slot dengan data dari parameter props
         slotResult = {
           id: Number(slotId),
           date: fallbackDate,
           timeSlot: fallbackTimeSlot,
-          currentCount: actualCurrentCount,
-          maxQuota: actualQuota > 0 ? actualQuota : 6, // Gunakan kuota actual jika ditemukan, atau default
+          currentCount: bestCurrentCount,
+          maxQuota: bestQuota,
           isActive: true
         };
         
@@ -533,14 +558,39 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
             console.error("Error mencari data dari cache untuk combinedInfo:", error);
           }
           
+          // Cek lagi apakah ada data di combinedSlotsInfo
+          let quotaFromCombined = 0;
+          let patientsFromCombined = 0;
+            
+          try {
+            const combinedStoredInfo = localStorage.getItem('combinedSlotsInfo');
+            if (combinedStoredInfo) {
+              const combinedData = JSON.parse(combinedStoredInfo);
+              if (combinedData && combinedData[slotId]) {
+                quotaFromCombined = combinedData[slotId].totalQuota || 0;
+                patientsFromCombined = combinedData[slotId].totalPatients || 0;
+                console.log(`Data kuota dari combinedSlotsInfo: ${quotaFromCombined}, terisi: ${patientsFromCombined}`);
+              }
+            }
+          } catch (error) {
+            console.error("Error getting quota from combinedSlotsInfo:", error);
+          }
+          
+          // Prioritaskan kuota dari berbagai sumber berdasarkan ketersediaan
+          const bestQuota = quotaFromCombined > 0 ? quotaFromCombined : 
+                           (actualQuota > 0 ? actualQuota : 6); // Default 6 jika tidak ada data
+                           
+          const bestPatients = patientsFromCombined > 0 ? patientsFromCombined : 
+                              actualPatients;
+          
           // Buat kombinasi ID untuk tracking
           const newCombinedInfo: CombinedSlotInfo = {
             ids: [Number(slotId)],
             timeSlotKey: `${slotDate}_${slotTimeSlot.replace(/:/g, '').replace('-', '_')}`,
             timeSlot: slotTimeSlot,
             date: slotDate,
-            totalPatients: actualPatients,
-            totalQuota: actualQuota > 0 ? actualQuota : 6 // Gunakan kuota actual jika ditemukan, atau default
+            totalPatients: bestPatients,
+            totalQuota: bestQuota 
           };
           
           setCombinedSlotInfo(newCombinedInfo);
