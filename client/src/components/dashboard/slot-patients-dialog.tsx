@@ -1170,9 +1170,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }, [appointmentData, processAppointmentData]);
   
-  // Debug flag untuk troubleshooting UI
-  const showDebugInfo = process.env.NODE_ENV === 'development';
-  
+  // Tidak perlu lagi debug flag
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -1180,7 +1178,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
           <DialogHeader className="px-0">
             <DialogTitle className="flex items-center gap-2 text-lg">
               <CalendarIcon className="h-5 w-5 text-primary" />
-              Detail Slot Terapi {slotId ? `(ID: ${slotId})` : ''}
+              Detail Slot Terapi
             </DialogTitle>
             <DialogDescription>
               {slotData 
@@ -1271,25 +1269,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             </div>
           )}
           
-          {/* Debug info */}
-          {showDebugInfo && (
-            <div className="mb-3 p-2 text-xs border rounded bg-yellow-50 text-yellow-900">
-              <p>Debug mode: Dialog state</p>
-              <div className="grid grid-cols-2 gap-x-2">
-                <span>Loading:</span><span>{isLoading ? "Ya" : "Tidak"}</span>
-                <span>Error:</span><span>{error ? "Ya" : "Tidak"}</span>
-                <span>SlotID:</span><span>{slotId || "None"}</span>
-                <span>Slot Data:</span><span>{slotData ? "Loaded" : "Empty"}</span>
-                <span>Appointments:</span><span>{appointmentData?.length || 0}</span>
-              </div>
-              <button 
-                className="mt-1 text-xs px-2 py-0.5 bg-yellow-200 hover:bg-yellow-300 rounded"
-                onClick={refetch}
-              >
-                Refresh Data
-              </button>
-            </div>
-          )}
+        
           
           {/* Loading state */}
           {isLoading && (
