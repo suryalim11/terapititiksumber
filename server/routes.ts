@@ -2679,6 +2679,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Therapy slot ${appointment.therapySlotId} usage decremented after cancellation`);
       }
       
+      // Jika status menjadi Completed, update session usage jika ada sessionId
+      if (status === 'Completed' && appointment.status !== 'Completed' && appointment.sessionId) {
+        // Dapatkan session
+        const session = await storage.getSession(appointment.sessionId);
+        if (session) {
+          // Increment session usage
+          const updatedSession = await storage.updateSessionUsage(appointment.sessionId);
+          console.log(`Session ${appointment.sessionId} usage incremented after appointment completion:`, 
+            updatedSession ? `sessions used: ${updatedSession.sessionsUsed}/${updatedSession.totalSessions}` : 'failed to update');
+        }
+      }
+      
       console.log(`Appointment updated successfully:`, updatedAppointment);
       return res.status(200).json(updatedAppointment);
     } catch (error) {
