@@ -19,6 +19,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatWhatsAppNumber, generateWhatsAppLink } from "@/lib/utils";
 
+// Tambahan interface untuk data combined slot info
+interface CombinedSlotInfo {
+  ids: number[];
+  timeSlotKey: string;
+  timeSlot: string;
+  date: string;
+  totalPatients: number;
+  totalQuota: number;
+}
+
 interface SlotPatientsDialogProps {
   slotId: number | null;
   isOpen: boolean;
@@ -142,7 +152,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const [error, setError] = useState<Error | null>(null);
   const [slotData, setSlotData] = useState<any>(null);
   const [appointmentData, setAppointmentData] = useState<any[]>([]);
-  const [combinedSlotInfo, setCombinedSlotInfo] = useState<{ids: number[], totalPatients: number, totalQuota: number} | null>(null);
+  const [combinedSlotInfo, setCombinedSlotInfo] = useState<CombinedSlotInfo | null>(null);
+  
+  // Hapus state ini karena fitur selalu aktif, tidak perlu toggle lagi
+  // const [showAllSameTimeSlots, setShowAllSameTimeSlots] = useState(false);
   
   // Fungsi untuk melakukan fetch dengan timeout dan retry yang lebih robust
   const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs: number = 8000, retryCount: number = 2): Promise<Response> => {
@@ -668,11 +681,6 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   // Versi simpel ini akan diganti dengan yang memiliki parameter event
   function dummyNavigate() {}
   
-  // Fungsi untuk toggle view mode
-  const toggleViewMode = (checked: boolean) => {
-    setShowAllSameTimeSlots(checked);
-  };
-  
   function navigateToPatientDetail(patient: any) {
     if (!patient || !patient.id) {
       toast({
@@ -1129,13 +1137,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       return [];
     }
     
-    // 0. Filter berdasarkan mode tampilan (universal atau slot saat ini saja)
+    // Tampilkan semua appointment dari semua slot dengan jam yang sama (Tampilan Gabungan)
     let filteredAppointments = appointmentData;
-    
-    // Jika mode tampilan TIDAK universal, filter hanya dari slot saat ini
-    if (!showAllSameTimeSlots) {
-      filteredAppointments = appointmentData.filter(app => !app.fromOtherSlot);
-    }
     
     // 1. Filter hanya appointment aktif
     const activeAppointments = filteredAppointments.filter(app => app && isActiveStatus(app.status));
@@ -1157,7 +1160,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     });
     
     return sortedAppointments;
-  }, [appointmentData, showAllSameTimeSlots]);
+  }, [appointmentData]);
   
   // Debug logging in development - versi sederhana
   useEffect(() => {
