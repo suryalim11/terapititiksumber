@@ -78,10 +78,11 @@ interface TherapySlot {
   date: string;
   timeSlot: string;
   isActive: boolean;
-  maxQuota: number;
+  maxQuota: number;  // Kuota standar slot individu
   currentCount: number;
   percentage?: number;
   createdAt?: string | Date;
+  totalMaxQuota?: number; // Total kuota gabungan dari beberapa slot dengan jam yang sama
 }
 
 export default function Dashboard() {
@@ -270,10 +271,13 @@ export default function Dashboard() {
             };
             
             // Buat slot gabungan dengan informasi terakumulasi
+            // Penting: pertahankan kuota asli dari slot utama untuk tampilan yang konsisten
             const combinedSlot: TherapySlot = {
               ...primarySlot,
               currentCount: totalPatients,
-              maxQuota: totalQuota
+              // Gunakan kuota asli dari slot utama untuk konsistensi dengan setting di Therapy Slots
+              // dan tambahkan property totalMaxQuota untuk menyimpan total kuota dari semua slot
+              totalMaxQuota: totalQuota
             };
             
             uniqueSlots.push(combinedSlot);
@@ -385,9 +389,12 @@ export default function Dashboard() {
         });
         
         // Hitung persentase penggunaan untuk semua slot
+        // Gunakan totalMaxQuota jika tersedia (untuk slot gabungan), atau maxQuota untuk slot individual
         const slotsWithPercentage = sortedSlots.map(slot => ({
           ...slot,
-          percentage: slot.maxQuota ? (slot.currentCount / slot.maxQuota) * 100 : 0
+          percentage: slot.totalMaxQuota 
+            ? (slot.currentCount / slot.totalMaxQuota) * 100 
+            : slot.maxQuota ? (slot.currentCount / slot.maxQuota) * 100 : 0
         }));
         
         // Return hasil yang sudah diproses
