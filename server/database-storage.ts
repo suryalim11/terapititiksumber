@@ -209,20 +209,20 @@ export class DatabaseStorage implements IStorage {
       // Cek apakah kolom time_slot_key sudah ada di database
       let timeSlotKeyExists = false;
       try {
-        const columnCheck = await db.execute(sql`
-          SELECT column_name 
-          FROM information_schema.columns 
-          WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
-        `);
+        const columnCheck = await db.execute(
+          sql`SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
+        );
         timeSlotKeyExists = columnCheck.rows.length > 0;
       } catch (err) {
         console.warn("Error checking for time_slot_key column:", err);
       }
       
       // Check if therapy_slots table is empty
-      const existingSlots = await db.execute(sql`
-        SELECT COUNT(*) FROM therapy_slots
-      `);
+      const existingSlots = await db.execute(
+        sql`SELECT COUNT(*) FROM therapy_slots`
+      );
       
       const slotCount = parseInt(existingSlots.rows[0].count);
       
@@ -1677,6 +1677,19 @@ export class DatabaseStorage implements IStorage {
     let dateString: string;
     
     try {
+      // Periksa apakah kolom time_slot_key ada
+      let timeSlotKeyExists = false;
+      try {
+        const columnCheck = await db.execute(
+          sql`SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
+        );
+        timeSlotKeyExists = columnCheck.rows.length > 0;
+      } catch (err) {
+        console.warn("Error checking for time_slot_key column:", err);
+      }
+      
       // Konversi input ke Date object terlebih dahulu
       let dateObj: Date;
       
@@ -1767,6 +1780,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllTherapySlots(): Promise<TherapySlot[]> {
+    // Periksa apakah kolom time_slot_key ada
+    let timeSlotKeyExists = false;
+    try {
+      const columnCheck = await db.execute(
+        sql`SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
+      );
+      timeSlotKeyExists = columnCheck.rows.length > 0;
+    } catch (err) {
+      console.warn("Error checking for time_slot_key column:", err);
+    }
+    
+    // Log keberadaan kolom
+    console.log(`getAllTherapySlots: time_slot_key column exists: ${timeSlotKeyExists}`);
+    
     const slots = await db.query.therapySlots.findMany({
       orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
     });
@@ -1791,6 +1820,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveTherapySlots(): Promise<TherapySlot[]> {
+    // Periksa apakah kolom time_slot_key ada
+    let timeSlotKeyExists = false;
+    try {
+      const columnCheck = await db.execute(
+        sql`SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
+      );
+      timeSlotKeyExists = columnCheck.rows.length > 0;
+    } catch (err) {
+      console.warn("Error checking for time_slot_key column:", err);
+    }
+    
+    // Log keberadaan kolom
+    console.log(`getActiveTherapySlots: time_slot_key column exists: ${timeSlotKeyExists}`);
+    
     // Perbaikan: mendapatkan semua slot terapi aktif, termasuk hari ini dan yang akan datang
     const today = new Date();
     
@@ -1937,6 +1982,22 @@ export class DatabaseStorage implements IStorage {
 
   async createTherapySlot(slot: InsertTherapySlot): Promise<TherapySlot> {
     try {
+      // Periksa apakah kolom time_slot_key ada
+      let timeSlotKeyExists = false;
+      try {
+        const columnCheck = await db.execute(
+          sql`SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
+        );
+        timeSlotKeyExists = columnCheck.rows.length > 0;
+      } catch (err) {
+        console.warn("Error checking for time_slot_key column:", err);
+      }
+      
+      // Log keberadaan kolom
+      console.log(`createTherapySlot: time_slot_key column exists: ${timeSlotKeyExists}`);
+      
       // Pastikan jika date adalah string, gunakan string tersebut
       // Ini untuk mencegah error "value.toISOString is not a function"
       let dateString: string;
@@ -1964,17 +2025,37 @@ export class DatabaseStorage implements IStorage {
         console.log(`Creating therapy slot with Date object, converted to ISO string: ${dateString}`);
       }
       
+      // Buat time_slot_key dari kombinasi tanggal dan waktu
+      const timeSlotKey = `${dateString}_${slot.timeSlot}`;
+      console.log(`Generated time_slot_key: ${timeSlotKey}`);
+      
       // VALIDASI DUPLIKASI: Periksa apakah sudah ada slot dengan tanggal dan waktu yang sama
-      const existingSlots = await db
-        .select()
-        .from(schema.therapySlots)
-        .where(
-          and(
-            eq(schema.therapySlots.date, dateString),
-            eq(schema.therapySlots.timeSlot, slot.timeSlot),
-            eq(schema.therapySlots.isActive, true)
-          )
-        );
+      let existingSlots;
+      
+      if (timeSlotKeyExists) {
+        // Gunakan time_slot_key untuk pengecekan duplikasi jika kolom tersedia
+        existingSlots = await db
+          .select()
+          .from(schema.therapySlots)
+          .where(
+            and(
+              eq(schema.therapySlots.timeSlotKey, timeSlotKey),
+              eq(schema.therapySlots.isActive, true)
+            )
+          );
+      } else {
+        // Fallback ke pengecekan duplikasi dengan tanggal dan waktu
+        existingSlots = await db
+          .select()
+          .from(schema.therapySlots)
+          .where(
+            and(
+              eq(schema.therapySlots.date, dateString),
+              eq(schema.therapySlots.timeSlot, slot.timeSlot),
+              eq(schema.therapySlots.isActive, true)
+            )
+          );
+      }
       
       if (existingSlots.length > 0) {
         // Slot dengan tanggal dan waktu yang sama sudah ada
@@ -1982,11 +2063,19 @@ export class DatabaseStorage implements IStorage {
         throw new Error(`Duplikasi slot terapi: Slot untuk tanggal ${dateString} dan waktu ${slot.timeSlot} sudah ada (ID: ${existingSlots[0].id}). Gunakan fungsi edit untuk mengubah slot yang sudah ada.`);
       }
       
-      // Jika tidak ada duplikasi, lanjutkan insert
-      const result = await db.insert(schema.therapySlots).values({
+      // Siapkan nilai untuk dimasukkan
+      let insertValues: any = {
         ...slot,
         date: dateString
-      }).returning();
+      };
+      
+      // Tambahkan time_slot_key jika kolom ada
+      if (timeSlotKeyExists) {
+        insertValues.timeSlotKey = timeSlotKey;
+      }
+      
+      // Jika tidak ada duplikasi, lanjutkan insert
+      const result = await db.insert(schema.therapySlots).values(insertValues).returning();
       
       return result[0];
     } catch (error) {
@@ -1997,12 +2086,66 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTherapySlot(id: number, slot: Partial<InsertTherapySlot>): Promise<TherapySlot | undefined> {
-    const result = await db
-      .update(schema.therapySlots)
-      .set(slot)
-      .where(eq(schema.therapySlots.id, id))
-      .returning();
-    return result[0];
+    try {
+      // Periksa apakah kolom time_slot_key ada
+      let timeSlotKeyExists = false;
+      try {
+        const columnCheck = await db.execute(
+          sql`SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
+        );
+        timeSlotKeyExists = columnCheck.rows.length > 0;
+      } catch (err) {
+        console.warn("Error checking for time_slot_key column:", err);
+      }
+      
+      // Log keberadaan kolom
+      console.log(`updateTherapySlot: time_slot_key column exists: ${timeSlotKeyExists}`);
+      
+      // Dapatkan slot terapi yang akan diupdate
+      const existingSlot = await this.getTherapySlot(id);
+      if (!existingSlot) {
+        console.error(`Therapy slot with ID ${id} not found`);
+        return undefined;
+      }
+      
+      // Siapkan nilai untuk diupdate
+      let updateValues: any = {...slot};
+      
+      // Jika ada perubahan date atau timeSlot, perbarui juga time_slot_key
+      if (timeSlotKeyExists && (slot.date || slot.timeSlot)) {
+        const dateToUse = slot.date || existingSlot.date;
+        const timeSlotToUse = slot.timeSlot || existingSlot.timeSlot;
+        
+        // Format tanggal jika perlu
+        let dateString: string;
+        if (typeof dateToUse === 'string') {
+          dateString = dateToUse;
+        } else {
+          // Jika date adalah objek Date, konversi ke string ISO
+          const dateObj = dateToUse as unknown as Date;
+          dateString = dateObj.toISOString().split('T')[0];
+        }
+        
+        // Buat time_slot_key baru
+        const timeSlotKey = `${dateString}_${timeSlotToUse}`;
+        updateValues.timeSlotKey = timeSlotKey;
+        
+        console.log(`Generated new time_slot_key: ${timeSlotKey} for slot ID ${id}`);
+      }
+      
+      const result = await db
+        .update(schema.therapySlots)
+        .set(updateValues)
+        .where(eq(schema.therapySlots.id, id))
+        .returning();
+      
+      return result[0];
+    } catch (error) {
+      console.error(`Error in updateTherapySlot: ${error}`);
+      throw error;
+    }
   }
 
   async incrementTherapySlotUsage(id: number): Promise<TherapySlot | undefined> {

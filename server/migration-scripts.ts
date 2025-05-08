@@ -31,7 +31,7 @@ export async function addTimeSlotKeyColumn() {
       await db.execute(sql`
         UPDATE therapy_slots 
         SET time_slot_key = CONCAT(
-          SUBSTRING(date, 1, 10), 
+          COALESCE(SUBSTRING(date::text, 1, 10), date::text), 
           '_', 
           time_slot
         )
