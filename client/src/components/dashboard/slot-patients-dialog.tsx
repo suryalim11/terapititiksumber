@@ -134,65 +134,75 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   // State untuk dialog pendaftaran pasien
   const [isRegisterPatientOpen, setIsRegisterPatientOpen] = useState(false);
   
-  // Data fetching menggunakan pendekatan alternatif yang lebih ringan
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['/api/therapy-slots', slotId, 'patients'],
+  // Pemisahan data fetching menjadi 2 query terpisah untuk menghindari timeout
+  
+  // Query 1: Dapatkan slot terapi
+  const slotQuery = useQuery({
+    queryKey: ['/api/therapy-slots', slotId],
     queryFn: async () => {
       if (!slotId) return null;
-      if (process.env.NODE_ENV === 'development') {
-        console.log("Fetching patients for therapy slot:", slotId);
+      
+      console.log("Fetching slot data for:", slotId);
+      const response = await fetch(`/api/therapy-slots/${slotId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch slot data');
       }
       
-      try {
-        // Pendekatan baru: Dapatkan slot dan dapatkan appointments secara terpisah
-        // Step 1: Dapatkan informasi slot terapi
-        const slotRes = await fetch(`/api/therapy-slots/${slotId}`);
-        
-        if (!slotRes.ok) {
-          throw new Error('Failed to fetch therapy slot');
-        }
-        
-        const slotData = await slotRes.json();
-        
-        // Step 2: Ambil semua appointments untuk hari ini
-        const timestamp = new Date().getTime();
-        const dateStr = slotData.date.split(' ')[0]; // Ambil tanggal saja dari format "YYYY-MM-DD HH:MM:SS"
-        const appointmentsRes = await fetch(`/api/appointments/date/${dateStr}?_t=${timestamp}`);
-        
-        if (!appointmentsRes.ok) {
-          throw new Error('Failed to fetch appointments');
-        }
-        
-        const appointmentsData = await appointmentsRes.json();
-        
-        // Step 3: Filter appointments yang sesuai dengan slot ini
-        const filteredAppointments = appointmentsData.filter((appointment: any) => 
-          appointment.therapySlotId === slotId
-        );
-        
-        // Step 4: Ambil informasi pasien untuk setiap appointment
-        // Kita sudah memiliki objek pasien di dalam setiap appointment
-        
-        console.log("Data slot:", slotData);
-        console.log("Data appointments untuk slot ini:", filteredAppointments);
-        
-        // Kembalikan dalam format yang sama dengan endpoint asli
-        return {
-          slot: slotData,
-          appointments: filteredAppointments
-        };
-      } catch (error) {
-        console.error("Error fetching patients:", error);
-        throw error;
-      }
+      const data = await response.json();
+      console.log("Slot data:", data);
+      return data;
     },
     enabled: !!slotId && isOpen,
-    refetchOnWindowFocus: true,
-    refetchInterval: false, // Matikan auto-refresh otomatis, gunakan refetch manual saja
-    staleTime: 0, // Consider data always stale to ensure fresh content
-    retry: 1, // Hanya coba ulang 1 kali jika gagal
-    timeout: 10000 // Tambahkan timeout 10 detik untuk mencegah loading tak terbatas
+    retry: 1,
+    staleTime: 5000
   });
+  
+  // Query 2: Dapatkan appointments untuk tanggal slot
+  const appointmentsQuery = useQuery({
+    queryKey: ['/api/appointments/slot', slotId],
+    queryFn: async () => {
+      if (!slotId || !slotQuery.data) return [];
+      
+      // Ekstrak tanggal dari data slot
+      const slotDate = slotQuery.data.date.split(' ')[0];
+      console.log("Fetching appointments for date:", slotDate);
+      
+      const response = await fetch(`/api/appointments/date/${slotDate}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch appointments');
+      }
+      
+      const allAppointments = await response.json();
+      console.log("All appointments:", allAppointments);
+      
+      // Filter hanya appointment untuk slot ini
+      const filteredAppointments = allAppointments.filter(
+        (app: any) => app.therapySlotId === slotId
+      );
+      
+      console.log("Filtered appointments for this slot:", filteredAppointments);
+      return filteredAppointments;
+    },
+    enabled: !!slotId && isOpen && !!slotQuery.data,
+    retry: 1,
+    staleTime: 5000
+  });
+  
+  // Gabungkan hasil kedua query
+  const isLoading = slotQuery.isLoading || appointmentsQuery.isLoading;
+  const error = slotQuery.error || appointmentsQuery.error;
+  const data = slotQuery.data && {
+    slot: slotQuery.data,
+    appointments: appointmentsQuery.data || []
+  };
+  
+  // Refetch function yang memanggil kedua query
+  const refetch = () => {
+    slotQuery.refetch();
+    appointmentsQuery.refetch();
+  };
   
   // Efek untuk memastikan data di-refresh HANYA saat dialog pertama kali dibuka atau slotId berubah
   // Menggunakan ref untuk mencegah multiple refresh
@@ -581,7 +591,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   }
   
   // Prepare data with debugging dan transformasi data (jika diperlukan)
-  const activeAppointments = data?.appointments ? filterActiveAppointments(data.appointments) : [];
+  const activeAppointments = appointmentsQuery.data ? filterActiveAppointments(appointmentsQuery.data) : [];
   
   // Pastikan setiap appointment memiliki objek patient yang lengkap
   const processedAppointments = activeAppointments.map((appointment: any) => {
@@ -608,10 +618,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   
   // Debug logging in development
   if (process.env.NODE_ENV === 'development') {
-    if (data?.appointments?.length > 0) {
-      console.log("Debug - Appointments data:", data.appointments.map((a: any) => `${a.id}: ${a.status}`));
-    }
-    console.log("Debug - Processed appointments:", processedAppointments);
+    console.log("Debug - Active appointments:", activeAppointments);
+    console.log("Debug - Final processed appointments:", processedAppointments);
   }
   
   // Early return
