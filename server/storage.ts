@@ -30,8 +30,8 @@ import memorystore from "memorystore";
 
 const MemoryStore = memorystore(session);
 
-// Always use database storage
-const USE_DATABASE = true;
+// Set USE_DATABASE untuk menentukan apakah menggunakan database atau memory storage
+const USE_DATABASE = process.env.DATABASE_URL ? true : false;
 
 export interface IStorage {
   // Users

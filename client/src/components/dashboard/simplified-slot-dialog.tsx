@@ -34,7 +34,7 @@ export function SimplifiedSlotDialog({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   
   // Local state for slot data
@@ -88,7 +88,7 @@ export function SimplifiedSlotDialog({
   function navigateToPatient(patientId: number) {
     if (!patientId) return;
     onClose();
-    setLocation(`/patients/${patientId}`);
+    navigate(`/patients/${patientId}`);
   }
   
   // Early return
