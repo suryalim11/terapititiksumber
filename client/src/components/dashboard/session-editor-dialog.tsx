@@ -1,20 +1,10 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import React, { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface SessionEditorDialogProps {
   isOpen: boolean;
@@ -37,124 +27,132 @@ export function SessionEditorDialog({
   isOpen,
   onClose,
   session,
-  onSuccess,
+  onSuccess
 }: SessionEditorDialogProps) {
+  const [sessionsUsed, setSessionsUsed] = useState<number>(session?.sessionsUsed || 0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const [newUsageCount, setNewUsageCount] = useState<number>(session.sessionsUsed);
 
-  // Mutation untuk memperbaiki jumlah sesi
-  const fixSessionMutation = useMutation({
-    mutationFn: async (data: { sessionId: number; newUsageCount: number }) => {
-      return await apiRequest<any>("/api/sessions/fix-usage-count", {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Perubahan berhasil",
-        description: data.message || "Jumlah sesi berhasil diperbarui",
-      });
-      // Invalidate queries yang relevan
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/active-packages"] });
-      onSuccess();
-      onClose();
-    },
-    onError: (error) => {
-      toast({
-        title: "Gagal memperbaiki sesi",
-        description: error instanceof Error ? error.message : "Terjadi kesalahan saat memperbaiki jumlah sesi",
-        variant: "destructive",
-      });
-    },
-  });
+  // Reset sessionsUsed when session changes
+  React.useEffect(() => {
+    if (session) {
+      setSessionsUsed(session.sessionsUsed);
+    }
+  }, [session]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validasi
-    if (newUsageCount < 0) {
-      toast({
-        title: "Nilai tidak valid",
-        description: "Jumlah sesi tidak boleh kurang dari 0",
-        variant: "destructive",
-      });
+    if (!session) return;
+
+    // Validasi input
+    if (sessionsUsed < 0) {
+      setError("Jumlah sesi terpakai tidak boleh negatif");
       return;
     }
 
-    if (newUsageCount > session.totalSessions) {
-      toast({
-        title: "Nilai tidak valid",
-        description: `Jumlah sesi tidak boleh lebih dari total sesi (${session.totalSessions})`,
-        variant: "destructive",
-      });
+    if (sessionsUsed > session.totalSessions) {
+      setError(`Jumlah sesi terpakai tidak boleh melebihi total sesi (${session.totalSessions})`);
       return;
     }
 
-    // Panggil mutasi
-    fixSessionMutation.mutate({
-      sessionId: session.id,
-      newUsageCount: newUsageCount,
-    });
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // Kirim request ke API universal
+      const response = await fetch("/api/sessions/fix-usage-count", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          sessionId: session.id,
+          newUsageCount: sessionsUsed
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Gagal memperbarui jumlah sesi terpakai");
+      }
+
+      // Notifikasi sukses
+      toast({
+        title: "Berhasil",
+        description: result.message || `Berhasil memperbarui jumlah sesi terpakai menjadi ${sessionsUsed}`,
+        variant: "default",
+      });
+
+      // Tutup dialog dan refresh data
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Error updating session count:", error);
+      setError(error instanceof Error ? error.message : "Terjadi kesalahan");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Edit Jumlah Sesi Terpakai</DialogTitle>
           <DialogDescription>
-            {session.patient?.name ? `Pasien: ${session.patient.name}` : ""}
-            {session.package?.name ? ` - Paket: ${session.package.name}` : ""}
+            Ubah jumlah sesi yang sudah digunakan pada paket terapi ini.
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="total-sessions">Total Sesi</Label>
-              <Input
-                id="total-sessions"
-                value={session.totalSessions}
-                disabled
-                className="bg-muted"
-              />
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4 py-4">
+            <div className="space-y-1">
+              <Label>Pasien</Label>
+              <div className="text-sm font-medium">
+                {session?.patient?.name || "Tidak diketahui"}
+              </div>
             </div>
-            <div>
-              <Label htmlFor="used-sessions">Sesi Terpakai</Label>
+            
+            <div className="space-y-1">
+              <Label>Paket</Label>
+              <div className="text-sm font-medium">
+                {session?.package?.name || "Tidak diketahui"}
+              </div>
+            </div>
+            
+            <div className="space-y-1">
+              <Label>Total Sesi</Label>
+              <div className="text-sm font-medium">
+                {session?.totalSessions || 0}
+              </div>
+            </div>
+            
+            <div className="space-y-1">
+              <Label htmlFor="sessionsUsed">Jumlah Sesi Terpakai</Label>
               <Input
-                id="used-sessions"
+                id="sessionsUsed"
                 type="number"
                 min={0}
-                max={session.totalSessions}
-                value={newUsageCount}
-                onChange={(e) => setNewUsageCount(parseInt(e.target.value) || 0)}
+                max={session?.totalSessions || 0}
+                value={sessionsUsed}
+                onChange={(e) => setSessionsUsed(parseInt(e.target.value) || 0)}
               />
+              {error && <div className="text-xs text-red-500 mt-1">{error}</div>}
             </div>
           </div>
           
-          <DialogFooter className="flex justify-between sm:justify-between mt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Batal
             </Button>
-            <Button 
-              type="submit" 
-              disabled={fixSessionMutation.isPending}
-              className="flex items-center gap-2"
-            >
-              {fixSessionMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Memproses...
-                </>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses</>
               ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Perbarui Sesi
-                </>
+                "Simpan"
               )}
             </Button>
           </DialogFooter>

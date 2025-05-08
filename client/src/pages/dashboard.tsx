@@ -121,7 +121,6 @@ export default function Dashboard() {
       toast({
         title: "Berhasil",
         description: data.message || "Berhasil memperbaiki data sesi Darukni",
-        variant: "success",
       });
       
       // Refresh packages data

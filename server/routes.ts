@@ -4923,8 +4923,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Endpoint umum untuk memperbaiki jumlah sesi paket terapi yang digunakan
-  // Ini adalah sistem yang lebih fleksibel dan bisa digunakan untuk semua pasien
+  /**
+   * Endpoint universal untuk mengubah jumlah sesi paket terapi yang terpakai
+   * 
+   * Ini adalah solusi jangka panjang yang fleksibel:
+   * 1. Bisa digunakan untuk semua pasien, bukan hanya kasus khusus
+   * 2. Menggantikan tombol-tombol spesifik dengan solusi yang lebih universal
+   * 3. Diakses melalui komponen SessionEditorDialog di dashboard
+   * 4. Dapat diakses tanpa autentikasi untuk memudahkan penggunaan admin
+   */
   app.post("/api/sessions/fix-usage-count", async (req: Request, res: Response) => {
     try {
       const { sessionId, newUsageCount } = req.body;
@@ -4938,6 +4945,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Import fungsi dari fix-darukni-session.ts
       const { fixSessionUsageCount } = await import('./fix-darukni-session');
+      
+      console.log(`Memperbarui sesi ID ${sessionId} dengan jumlah terpakai baru: ${newUsageCount}`);
       
       // Panggil fungsi untuk memperbaiki jumlah sesi
       const result = await fixSessionUsageCount(sessionId, newUsageCount);
