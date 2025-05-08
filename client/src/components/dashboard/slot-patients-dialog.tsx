@@ -1433,8 +1433,46 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                         onClick={() => {
                           // Simpan ID slot ke sessionStorage
                           sessionStorage.setItem('selectedSlotId', String(slotId));
-                          // Redirect ke halaman pendaftaran dengan parameter walk-in dan slotId
-                          navigate(`/register?walkin=true&slotId=${slotId}`);
+                          
+                          // Siapkan parameter untuk pendaftaran
+                          let queryParams = new URLSearchParams();
+                          queryParams.append('walkin', 'true');
+                          queryParams.append('slotId', String(slotId));
+                          
+                          // Jika slotData tersedia dan memiliki timeSlotKey, gunakan itu
+                          if (slotData && slotData.timeSlotKey) {
+                            console.log(`Menggunakan timeSlotKey yang ada: ${slotData.timeSlotKey}`);
+                            queryParams.append('timeSlotKey', slotData.timeSlotKey);
+                          } 
+                          // Jika tidak ada timeSlotKey, tapi ada tanggal dan waktu, generate timeSlotKey
+                          else if (slotData && slotData.date && slotData.timeSlot) {
+                            // Format tanggal ke YYYY-MM-DD
+                            let dateStr;
+                            
+                            if (typeof slotData.date === 'string') {
+                              if (slotData.date.includes('T')) {
+                                dateStr = slotData.date.split('T')[0];
+                              } else if (slotData.date.includes(' ')) {
+                                dateStr = slotData.date.split(' ')[0];
+                              } else {
+                                dateStr = slotData.date;
+                              }
+                            } else {
+                              // Jika tanggal bukan string, konversi ke string
+                              const dateObj = new Date(slotData.date);
+                              dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+                            }
+                            
+                            // Buat timeSlotKey dengan format YYYY-MM-DD_HH:MM-HH:MM
+                            const generatedTimeSlotKey = `${dateStr}_${slotData.timeSlot}`;
+                            console.log(`Generated timeSlotKey: ${generatedTimeSlotKey}`);
+                            
+                            // Tambahkan ke parameter URL
+                            queryParams.append('timeSlotKey', generatedTimeSlotKey);
+                          }
+                          
+                          // Redirect ke halaman pendaftaran dengan parameter
+                          navigate(`/register?${queryParams.toString()}`);
                         }}
                       >
                         <User className="h-3 w-3 mr-1" />
