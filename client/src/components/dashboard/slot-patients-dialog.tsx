@@ -24,10 +24,10 @@ interface SlotPatientsDialogProps {
 }
 
 // Helpers functions outside of component to avoid hooks issues
-function formatDate(dateString?: string): string {
-  if (!dateString) return '-';
+function formatDate(dateInput?: string | Date): string {
+  if (!dateInput) return '-';
   try {
-    const date = new Date(dateString);
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
     return format(date, 'dd MMMM yyyy', { locale: localeId });
   } catch (error) {
     console.error("Error formatting date:", error);
@@ -589,8 +589,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       }
       
       // Format tanggal dan waktu slot terapi
-      const slotDate = data?.slot?.date ? formatDate(data.slot.date) : 'yang telah dijadwalkan';
-      const slotTime = data?.slot?.timeSlot || '';
+      const slotDate = slotData?.date ? formatDate(slotData.date) : (appointment.date ? formatDate(appointment.date) : 'yang telah dijadwalkan');
+      const slotTime = slotData?.timeSlot || appointment.timeSlot || '';
       
       // Membuat template pesan untuk pengingat
       const message = 
