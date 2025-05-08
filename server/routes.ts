@@ -1811,6 +1811,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log("Menerima request pembayaran utang+pembelian gabungan");
           console.log("Data baru sebelum perubahan:", newTransactionData);
           
+          // Periksa dan perbaiki item paket terapi dengan harga 0
+          let items = newTransactionData.items;
+          let updatedPrices = false;
+          
+          for (const item of items) {
+            // Jika item adalah paket terapi dengan harga 0, cari harga yang benar dari database
+            if (item.type === 'package' && (parseFloat(item.price) === 0 || item.price === "0")) {
+              // Kecuali jika ini memang penggunaan paket yang sudah ada
+              if (item.description && item.description.includes("menggunakan sisa paket")) {
+                console.log(`Item paket: Menggunakan sisa paket yang sudah ada, tidak perlu perubahan harga.`);
+                continue;
+              }
+              
+              try {
+                console.log(`Ditemukan paket dengan harga 0 dalam transaksi kombinasi. ID: ${item.id}`);
+                // Ambil harga paket yang benar dari database
+                const packageData = await storage.getPackage(parseInt(item.id));
+                if (packageData) {
+                  console.log(`Harga seharusnya untuk paket ${packageData.name}: ${packageData.price}`);
+                  item.price = packageData.price.toString();
+                  console.log(`Item paket diperbarui dengan harga yang benar: ${item.price}`);
+                  updatedPrices = true;
+                }
+              } catch (e) {
+                console.error(`Error saat memperbaiki harga paket: ${e}`);
+              }
+            }
+          }
+          
           // Hitung total yang sebenarnya: jumlah hutang yang dibayar + nilai pembelian baru
           const debtPaymentAmount = parseFloat(amount);
           const itemsTotal = newTransactionData.items.reduce((sum: number, item: any) => {
@@ -1827,6 +1856,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Update nilai total dan subtotal
           newTransactionData.totalAmount = correctedTotal.toString();
           newTransactionData.subtotal = correctedTotal.toString();
+          
+          // Perbarui array items jika harga paket diperbarui
+          if (updatedPrices) {
+            newTransactionData.items = items;
+            console.log("Items array diperbarui dengan harga paket yang benar");
+          }
           
           // Pastikan paidAmount disesuaikan jika ini transaksi lunas
           if (newTransactionData.isPaid && !newTransactionData.creditAmount) {
@@ -1875,6 +1910,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (item.type === 'package') {
                 try {
                   console.log(`Memproses penggunaan paket dengan ID: ${item.id} untuk pasien: ${transaction.patientId}`);
+                  console.log(`Detail item paket: ${JSON.stringify(item)}`);
+                  
+                  // Pastikan harga paket tidak nol untuk transaksi kombinasi
+                  if (parseFloat(item.price) === 0 || item.price === "0") {
+                    console.log(`Paket dengan harga 0 ditemukan. Ini mungkin penggunaan paket yang sudah ada, bukan pembelian baru.`);
+                    
+                    // Periksa apakah ini penggunaan paket yang ada dari deskripsi
+                    if (item.description && item.description.includes("menggunakan sisa paket")) {
+                      console.log(`Item ini adalah penggunaan paket yang sudah ada, bukan pembelian baru. Melanjutkan...`);
+                      continue;
+                    }
+                    
+                    // Jika bukan penggunaan paket yang ada, ini mungkin bug - ambil harga yang benar dari database
+                    const packageData = await storage.getPackage(parseInt(item.id));
+                    if (packageData) {
+                      console.log(`Harga seharusnya untuk paket ${packageData.name}: ${packageData.price}`);
+                      item.price = packageData.price.toString();
+                      console.log(`Item paket diperbarui dengan harga yang benar: ${item.price}`);
+                    }
+                  }
                   
                   // Cari paket dari database
                   const packageData = await storage.getPackage(parseInt(item.id));
@@ -1884,6 +1939,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                   
                   console.log(`Ditemukan paket: ${packageData.name} dengan ${packageData.sessions} sesi`);
+                  
+                  // Periksa apakah sudah ada sesi aktif untuk paket ini
+                  const activeSessions = await storage.getActiveSessionsByPatient(transaction.patientId);
+                  const existingSession = activeSessions.find(session => 
+                    session.packageId === parseInt(item.id) && 
+                    session.status === "active" &&
+                    session.sessionsUsed < session.totalSessions
+                  );
+                  
+                  if (existingSession) {
+                    console.log(`Pasien sudah memiliki sesi aktif untuk paket ini: ${existingSession.id}`);
+                    console.log(`Sesi yang tersisa: ${existingSession.totalSessions - existingSession.sessionsUsed}`);
+                    
+                    // Opsional: tambahkan sesi ke paket yang ada
+                    // const updatedSession = await storage.updateSession(existingSession.id, {
+                    //   totalSessions: existingSession.totalSessions + packageData.sessions
+                    // });
+                    // console.log(`Sesi diperbarui dengan total: ${updatedSession?.totalSessions}`);
+                    
+                    continue;
+                  }
                   
                   // Buat sesi baru untuk pasien
                   const newSession = await storage.createSession({
