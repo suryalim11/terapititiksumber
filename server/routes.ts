@@ -570,39 +570,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Menerima permintaan POST /api/patients dengan data:", JSON.stringify(req.body, null, 2));
       
-      // Hack: Langsung buat pasien dengan data hardcoded untuk debug
+      // Validasi body request - jika kosong atau tidak valid, kembalikan error
       if (!req.body || Object.keys(req.body).length === 0) {
-        console.log("Request body kosong atau tidak valid, menggunakan data contoh untuk debug");
-        
-        // Coba tangkap data dari raw request
-        let rawBody = '';
-        req.on('data', chunk => {
-          rawBody += chunk.toString();
+        console.log("Error: Request body kosong atau tidak valid");
+        return res.status(400).json({ 
+          success: false, 
+          message: "Data pasien tidak valid. Pastikan semua field yang diperlukan diisi."
         });
-        
-        req.on('end', async () => {
-          console.log("Raw request body:", rawBody);
-          try {
-            const jsonData = JSON.parse(rawBody);
-            console.log("Parsed JSON data:", jsonData);
-          } catch (err) {
-            console.log("Tidak dapat mengurai JSON dari raw body");
-          }
-        });
-        
-        // Data contoh
-        const dummyData = {
-          name: "Pasien Test",
-          phoneNumber: "08123456789",
-          email: null,
-          birthDate: "1990-01-01",
-          gender: "Laki-laki",
-          address: "Alamat Test",
-          complaints: "Keluhan Test"
-        };
-        
-        console.log("Menggunakan data contoh:", dummyData);
-        const validatedData = insertPatientSchema.parse(dummyData);
         console.log("Data pasien tervalidasi:", validatedData);
         const newPatient = await storage.createPatient(validatedData);
         console.log("Pasien baru dibuat:", newPatient);

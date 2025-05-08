@@ -907,13 +907,11 @@ export default function RegisterPage() {
         
         console.log(`Mencoba mengirim data pendaftaran (percobaan ke-${retryCount + 1})`);
         
-        // Gunakan AbortController untuk mengatur timeout pada fetch
-        // Meningkatkan timeout menjadi 30 detik untuk memberikan waktu lebih pada server
-        const controller = new AbortController();
-        timeoutFetch = setTimeout(() => {
-          console.log(`Fetch request timeout, aborting (percobaan ke-${retryCount + 1})`);
-          controller.abort();
-        }, 30000); // Meningkatkan timeout menjadi 30 detik
+        // PERBAIKAN: Hapus AbortController karena menyebabkan race condition
+        // Server mungkin berhasil memproses, tapi client terlanjur abort
+        // Kita mengandalkan timeout navigasi darurat sebagai gantinya
+        console.log(`Mengirim data tanpa AbortController untuk menghindari race condition`);
+        let controller = null;
         
         console.log(`Mengirim data pendaftaran:`, JSON.stringify(dataToSend));
         
@@ -923,8 +921,8 @@ export default function RegisterPage() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify(dataToSend),
-          signal: controller.signal
+          body: JSON.stringify(dataToSend)
+          // Menghapus signal untuk menghindari masalah AbortController
         });
         
         // Membersihkan timer timeout
