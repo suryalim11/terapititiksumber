@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { runMigrations } from "./migration-scripts";
 
 const app = express();
 app.use(express.json());
@@ -45,6 +46,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Jalankan migrasi database sebelum menginisialisasi routes
+  try {
+    console.log('Starting database migration process...');
+    const migrationResult = await runMigrations();
+    console.log('Migration completed with result:', migrationResult);
+  } catch (error) {
+    console.error('Error during database migration:', error);
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

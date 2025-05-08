@@ -206,12 +206,27 @@ export class DatabaseStorage implements IStorage {
   // Initialize default therapy slots
   private async initDefaultTherapySlots() {
     try {
+      // Cek apakah kolom time_slot_key sudah ada di database
+      let timeSlotKeyExists = false;
+      try {
+        const columnCheck = await db.execute(sql`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+        `);
+        timeSlotKeyExists = columnCheck.rows.length > 0;
+      } catch (err) {
+        console.warn("Error checking for time_slot_key column:", err);
+      }
+      
       // Check if therapy_slots table is empty
-      const existingSlots = await db.query.therapySlots.findMany({
-        limit: 1
-      });
-
-      if (existingSlots.length === 0) {
+      const existingSlots = await db.execute(sql`
+        SELECT COUNT(*) FROM therapy_slots
+      `);
+      
+      const slotCount = parseInt(existingSlots.rows[0].count);
+      
+      if (slotCount === 0) {
         console.log("Initializing default therapy slots...");
         // Create therapy slots for the next 7 days
         const today = new Date();
@@ -231,15 +246,35 @@ export class DatabaseStorage implements IStorage {
           // Skip Sundays (0 = Sunday, 1 = Monday, etc.)
           if (slotDate.getDay() === 0) continue;
           
+          // Format the date to YYYY-MM-DD
+          const year = slotDate.getFullYear();
+          const month = String(slotDate.getMonth() + 1).padStart(2, '0');
+          const day = String(slotDate.getDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${day}`;
+          
           // Create all time slots for this day
           for (const slot of timeSlots) {
-            await db.insert(schema.therapySlots).values({
-              date: slotDate,
-              timeSlot: slot.time,
-              maxQuota: slot.quota,
-              currentCount: 0,
-              isActive: true
-            });
+            // Insert values based on whether time_slot_key exists
+            if (timeSlotKeyExists) {
+              // Create timeSlotKey as combination of date and timeSlot
+              const timeSlotKey = `${dateStr}_${slot.time}`;
+              
+              // Insert with timeSlotKey
+              await db.execute(sql`
+                INSERT INTO therapy_slots 
+                (date, time_slot, max_quota, current_count, is_active, time_slot_key)
+                VALUES 
+                (${dateStr}, ${slot.time}, ${slot.quota}, 0, true, ${timeSlotKey})
+              `);
+            } else {
+              // Insert without timeSlotKey
+              await db.execute(sql`
+                INSERT INTO therapy_slots 
+                (date, time_slot, max_quota, current_count, is_active)
+                VALUES 
+                (${dateStr}, ${slot.time}, ${slot.quota}, 0, true)
+              `);
+            }
           }
         }
         console.log("Default therapy slots created!");
