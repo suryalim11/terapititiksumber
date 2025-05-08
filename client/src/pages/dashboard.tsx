@@ -418,9 +418,16 @@ export default function Dashboard() {
         variant: result.connectedCount > 0 ? "default" : "secondary",
       });
       
-      // Refresh data
+      // Refresh semua data terkait
       refetchAppointments();
       refetchPackages();
+      refetchSlotsByPeriod();
+      
+      // Invalidate semua query terkait therapy slots untuk memastikan data diperbarui
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      
+      // Invalidate semua query therapy-slots patient untuk memastikan daftar pasien diperbarui
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots', 'patients'] });
       
     } catch (error) {
       console.error("Error auto-connecting sessions:", error);

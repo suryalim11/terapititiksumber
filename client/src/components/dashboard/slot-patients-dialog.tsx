@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   DropdownMenu, 
@@ -158,6 +158,23 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     refetchInterval: isOpen ? 2000 : false, // Refresh data every 2 seconds when dialog is open
     staleTime: 0 // Consider data always stale to ensure fresh content
   });
+  
+  // Efek untuk memastikan data di-refresh saat dialog dibuka dan slotId berubah
+  useEffect(() => {
+    if (isOpen && slotId) {
+      console.log('Dialog dibuka atau slotId berubah, merefresh data pasien untuk slot:', slotId);
+      
+      // Invalidate query cache untuk memastikan data terbaru
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots', slotId, 'patients'] });
+      
+      // Refresh data secara manual setelah invalidate
+      refetch();
+      
+      // Invalidate tampilan slot pada dashboard
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/slots-by-period'] });
+    }
+  }, [isOpen, slotId, queryClient, refetch]);
   
   // Mutations
   const cancelAppointmentMutation = useMutation({
