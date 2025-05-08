@@ -710,6 +710,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (therapySlot) {
             const slotDate = new Date(therapySlot.date);
             
+            // Validasi waktu terapi (pastikan tidak pendaftaran untuk waktu yang sudah lewat)
+            const now = new Date();
+            const [startHour, startMinute] = therapySlot.timeSlot.split('-')[0].split(':').map(Number);
+            
+            // Set jam dan menit dari timeSlot ke slotDate
+            const slotDateTime = new Date(slotDate);
+            slotDateTime.setHours(startHour, startMinute, 0);
+            
+            // Jika waktu terapi sudah lewat atau kurang dari 30 menit dari sekarang
+            if (slotDateTime < new Date(now.getTime() + 30 * 60000)) {
+              console.log("Menolak pendaftaran: Waktu terapi kurang dari 30 menit dari sekarang atau sudah lewat");
+              console.log("Slot datetime:", slotDateTime);
+              console.log("Current time + 30 min:", new Date(now.getTime() + 30 * 60000));
+              
+              return res.status(400).json({ 
+                message: "Waktu terapi tidak valid. Pendaftaran hanya diperbolehkan minimal 30 menit sebelum jadwal terapi.",
+                code: "INVALID_THERAPY_TIME" 
+              });
+            }
+            
             // Jika pasien sudah ada, periksa apakah mereka memiliki janji di hari yang sama
             if (existingPatient) {
               // Dapatkan semua janji temu pasien yang sudah ada

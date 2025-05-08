@@ -754,6 +754,31 @@ export default function RegisterPage() {
         return;
       }
       
+      // Validasi waktu terapi (pastikan tidak registrasi untuk waktu yang sudah lewat)
+      if (values.therapySlotId && therapySlots) {
+        const selectedSlot = therapySlots.find(slot => slot.id === values.therapySlotId);
+        if (selectedSlot) {
+          const slotDate = new Date(selectedSlot.date);
+          const [startHour, startMinute] = selectedSlot.timeSlot.split('-')[0].split(':').map(Number);
+          
+          // Set jam dan menit dari timeSlot
+          slotDate.setHours(startHour, startMinute, 0);
+          
+          const now = new Date();
+          
+          // Jika waktu terapi sudah lewat (minimal 30 menit dari sekarang)
+          if (slotDate < new Date(now.getTime() + 30 * 60000)) {
+            toast({
+              variant: "destructive",
+              title: "Waktu Terapi Tidak Valid",
+              description: "Maaf, Anda tidak dapat mendaftar untuk sesi yang waktunya kurang dari 30 menit dari sekarang atau sudah lewat. Silakan pilih sesi terapi lain.",
+            });
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
+      
       // Siapkan data dengan timeSlotKey jika tersedia
       const dataToSend = {
         ...values,
