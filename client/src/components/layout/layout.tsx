@@ -64,21 +64,13 @@ function ServerStatusIndicator() {
     const checkServerStatus = async () => {
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
       try {
-        const controller = new AbortController();
+        // Menggunakan timeout sederhana tanpa AbortController
         timeoutId = setTimeout(() => {
-          try {
-            // Cek apakah signal sudah di-abort untuk mencegah error
-            if (!controller.signal.aborted) {
-              controller.abort();
-            }
-          } catch (abortError) {
-            // Kesalahan saat abort controller dapat diabaikan
-            console.log("Abort controller error handled:", abortError);
-          }
+          console.log("Server status check timed out");
+          setServerStatus({ status: 'error' });
         }, 3000);
         
         const response = await fetch('/api/ping', {
-          signal: controller.signal,
           headers: {
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache'
@@ -126,21 +118,17 @@ function ServerStatusIndicator() {
     
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     try {
-      const controller = new AbortController();
+      // Menggunakan timeout sederhana tanpa AbortController
       timeoutId = setTimeout(() => {
-        try {
-          // Cek apakah signal sudah di-abort untuk mencegah error
-          if (!controller.signal.aborted) {
-            controller.abort();
-          }
-        } catch (abortError) {
-          // Kesalahan saat abort controller dapat diabaikan
-          console.log("Abort controller error handled:", abortError);
-        }
+        setServerStatus({ status: 'error' });
+        toast({
+          variant: "destructive",
+          title: "Timeout",
+          description: "Server tidak merespons dalam waktu 3 detik"
+        });
       }, 3000);
       
       const response = await fetch('/api/ping', {
-        signal: controller.signal,
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
