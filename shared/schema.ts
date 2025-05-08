@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, decimal, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, decimal, date, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -180,17 +180,56 @@ export const therapySlots = pgTable("therapy_slots", {
   currentCount: integer("current_count").notNull().default(0), // Jumlah pasien yang sudah mendaftar
   isActive: boolean("is_active").notNull().default(true), // Status slot (aktif/non-aktif)
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  timeSlotKey: text("time_slot_key").notNull(), // Unik key: kombinasi dari date + timeSlot (YYYY-MM-DD_HH:MM-HH:MM)
+}, (table) => {
+  return {
+    // Menambah unique constraint pada kombinasi date dan timeSlot
+    // untuk mencegah duplikasi slot pada waktu yang sama
+    uniqueDateTimeIdx: unique().on(table.date, table.timeSlot),
+    uniqueTimeSlotKeyIndex: unique().on(table.timeSlotKey)
+  };
 });
 
 export const insertTherapySlotSchema = createInsertSchema(therapySlots)
   .pick({
     date: true,
     timeSlot: true,
-    maxQuota: true,
+    maxQuota: true, 
     currentCount: true,
     isActive: true,
+    timeSlotKey: true,
   })
   .extend({
+    // Preprocessor untuk membuat timeSlotKey dari kombinasi date dan timeSlot
+    timeSlotKey: z.preprocess(
+      (val, ctx) => {
+        // Jika nilai timeSlotKey sudah diberikan, gunakan langsung
+        if (val && typeof val === 'string') {
+          return val;
+        }
+        
+        // Cari nilai date dan timeSlot dari konteks
+        const date = ctx.path.includes('date') 
+          ? ctx.data.date 
+          : (typeof ctx.data.date === 'string' ? ctx.data.date : new Date().toISOString().split('T')[0]);
+        
+        const timeSlot = ctx.path.includes('timeSlot')
+          ? ctx.data.timeSlot
+          : (typeof ctx.data.timeSlot === 'string' ? ctx.data.timeSlot : '00:00-00:00');
+        
+        // Format date menjadi YYYY-MM-DD jika masih dalam format lain
+        let formattedDate = date;
+        if (date instanceof Date) {
+          formattedDate = date.toISOString().split('T')[0];
+        } else if (typeof date === 'string' && /\d{4}-\d{2}-\d{2}/.test(date)) {
+          formattedDate = date.split(' ')[0]; // Ambil hanya bagian tanggal jika ada waktu
+        }
+        
+        // Buat timeSlotKey dengan format: YYYY-MM-DD_HH:MM-HH:MM
+        return `${formattedDate}_${timeSlot}`;
+      },
+      z.string()
+    ),
     // Preprocessor untuk mengkonversi string tanggal menjadi string format YYYY-MM-DD
     date: z.preprocess(
       (val) => {
