@@ -652,7 +652,14 @@ export default function Dashboard() {
                                   </span>
                                 </div>
                               </td>
-                              <td className="py-3 text-center">{slot.maxQuota}</td>
+                              <td className="py-3 text-center">
+                                {slot.maxQuota}
+                                {slot.totalMaxQuota && slot.totalMaxQuota !== slot.maxQuota && (
+                                  <span className="text-xs text-muted-foreground ml-1 block">
+                                    (dari total {slot.totalMaxQuota})
+                                  </span>
+                                )}
+                              </td>
                               <td className="py-3 text-center">{slot.currentCount}</td>
                               <td className="py-3 text-right">
                                 <div className="flex items-center justify-end gap-2">
@@ -709,6 +716,11 @@ export default function Dashboard() {
                               <div className="text-sm">
                                 <span className="font-medium">{slot.currentCount}</span>
                                 <span className="text-muted-foreground"> / {slot.maxQuota}</span>
+                                {slot.totalMaxQuota && slot.totalMaxQuota !== slot.maxQuota && (
+                                  <span className="text-xs text-muted-foreground block text-right">
+                                    (dari total {slot.totalMaxQuota})
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
