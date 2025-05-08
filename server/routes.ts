@@ -670,6 +670,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Simpan therapySlotId untuk digunakan nanti
       const therapySlotId = req.body.therapySlotId ? parseInt(req.body.therapySlotId) : null;
       
+      // Simpan timeSlotKey jika tersedia untuk prioritas pencarian slot
+      const timeSlotKey = req.body.timeSlotKey || null;
+      console.log("TimeSlotKey dari form pendaftaran:", timeSlotKey);
+      
       console.log("Data yang akan divalidasi:", patientData);
       const validatedData = insertPatientSchema.parse(patientData);
       console.log("Data pasien tervalidasi:", validatedData);
@@ -845,55 +849,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Pasien baru dibuat:", patientToUse);
       }
       
-      // Jika therapySlotId ada, buat appointment dan perbarui slot terapi
-      if (therapySlotId) {
+      // PRIORITAS 1: Cek apakah timeSlotKey tersedia dari form dan gunakan untuk mencari slot
+      let finalTherapySlotId = therapySlotId; // ID slot akhir yang akan digunakan
+      
+      if (timeSlotKey) {
+        try {
+          console.log(`Mencari slot terapi berdasarkan timeSlotKey dari form: ${timeSlotKey}`);
+          const slotByTimeSlotKey = await storage.getTherapySlotByTimeSlotKey(timeSlotKey);
+          
+          if (slotByTimeSlotKey) {
+            console.log(`Slot ditemukan melalui timeSlotKey: ID=${slotByTimeSlotKey.id}`);
+            finalTherapySlotId = slotByTimeSlotKey.id;
+            
+            // Jika berbeda dengan therapySlotId yang ada, informasikan perubahan
+            if (therapySlotId && finalTherapySlotId !== therapySlotId) {
+              console.log(`Menggunakan slot ID=${finalTherapySlotId} daripada ID asli=${therapySlotId} berdasarkan timeSlotKey`);
+            }
+          } else {
+            console.log(`Tidak menemukan slot berdasarkan timeSlotKey: ${timeSlotKey}, akan menggunakan therapySlotId`);
+          }
+        } catch (timeSlotKeyError) {
+          console.error(`Error saat mencari slot berdasarkan timeSlotKey:`, timeSlotKeyError);
+          // Lanjutkan dengan therapySlotId jika gagal mencari berdasarkan timeSlotKey
+        }
+      }
+      
+      // PRIORITAS 2: Jika tidak ditemukan dengan timeSlotKey, gunakan therapySlotId
+      if (finalTherapySlotId) {
         try {
           // Cek apakah slot terapi valid dan masih tersedia
-          const therapySlot = await storage.getTherapySlot(therapySlotId);
+          const therapySlot = await storage.getTherapySlot(finalTherapySlotId);
           
           if (therapySlot && therapySlot.isActive && therapySlot.currentCount < therapySlot.maxQuota) {
-            console.log(`Slot terapi valid: ID=${therapySlotId}, tanggal=${therapySlot.date}, waktu=${therapySlot.timeSlot}`);
+            console.log(`Slot terapi valid: ID=${finalTherapySlotId}, tanggal=${therapySlot.date}, waktu=${therapySlot.timeSlot}`);
             
-            // Cek apakah ada timeSlotKey, dan jika ada, gunakan untuk menemukan slot yang sesuai
-            if (therapySlot.timeSlotKey) {
+            // Cek sebagai fallback apakah ada timeSlotKey di slot, dan jika ada, gunakan untuk menemukan slot yang sesuai
+            if (therapySlot.timeSlotKey && !timeSlotKey) { // Hanya cek jika timeSlotKey tidak diketahui sebelumnya
               console.log(`Slot ini memiliki timeSlotKey: ${therapySlot.timeSlotKey}`);
               
               // Coba cari slot lain dengan timeSlotKey yang sama tetapi mungkin memiliki ID berbeda
               try {
                 const matchingSlot = await storage.getTherapySlotByTimeSlotKey(therapySlot.timeSlotKey);
                 
-                if (matchingSlot && matchingSlot.id !== therapySlotId) {
-                  console.log(`Ditemukan slot lain dengan timeSlotKey yang sama: ID=${matchingSlot.id} vs ID asli=${therapySlotId}`);
+                if (matchingSlot && matchingSlot.id !== finalTherapySlotId) {
+                  console.log(`Ditemukan slot lain dengan timeSlotKey yang sama: ID=${matchingSlot.id} vs ID asli=${finalTherapySlotId}`);
                   console.log(`Menggunakan slot ID=${matchingSlot.id} untuk konsistensi pendaftaran`);
                   
                   // Gunakan slot yang ditemukan berdasarkan timeSlotKey
-                  therapySlotId = matchingSlot.id;
+                  finalTherapySlotId = matchingSlot.id;
                 }
               } catch (timeSlotKeyError) {
                 console.error(`Error saat mencari slot berdasarkan timeSlotKey:`, timeSlotKeyError);
                 // Lanjutkan dengan slot asli jika terjadi kesalahan
               }
-            } else {
-              console.log(`Slot ini tidak memiliki timeSlotKey, menggunakan ID langsung: ${therapySlotId}`);
+            } else if (!therapySlot.timeSlotKey) {
+              console.log(`Slot ini tidak memiliki timeSlotKey, menggunakan ID langsung: ${finalTherapySlotId}`);
             }
             
             // Cek ulang slot terapi setelah kemungkinan perubahan ID
-            const finalTherapySlot = therapySlotId !== therapySlot.id 
-              ? await storage.getTherapySlot(therapySlotId)
+            const finalTherapySlot = finalTherapySlotId !== therapySlot.id 
+              ? await storage.getTherapySlot(finalTherapySlotId)
               : therapySlot;
             
             if (!finalTherapySlot) {
-              throw new Error(`Slot terapi dengan ID ${therapySlotId} tidak ditemukan setelah resolusi timeSlotKey`);
+              throw new Error(`Slot terapi dengan ID ${finalTherapySlotId} tidak ditemukan setelah resolusi timeSlotKey`);
             }
             
             // Tingkatkan jumlah penggunaan slot terapi
-            await storage.incrementTherapySlotUsage(therapySlotId);
-            console.log(`Slot terapi dengan ID ${therapySlotId} diperbarui: ${finalTherapySlot.currentCount + 1}/${finalTherapySlot.maxQuota}`);
+            await storage.incrementTherapySlotUsage(finalTherapySlotId);
+            console.log(`Slot terapi dengan ID ${finalTherapySlotId} diperbarui: ${finalTherapySlot.currentCount + 1}/${finalTherapySlot.maxQuota}`);
             
             // Buat appointment baru
             const appointmentData = {
               patientId: patientToUse.id,
-              therapySlotId: therapySlotId,
+              therapySlotId: finalTherapySlotId,
               notes: validatedData.complaints,
               status: "Scheduled",
               date: finalTherapySlot.date, // Gunakan langsung dalam format string
