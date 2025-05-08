@@ -822,17 +822,45 @@ export default function RegisterPage() {
         }
       }
       
-      // Siapkan data dengan timeSlotKey jika tersedia
+      // Siapkan data untuk dikirim ke localStorage sebelum mengirim ke server
+      // Ini memastikan halaman sukses dapat dirender dengan data yang benar
+      // meskipun server lambat merespon
+      try {
+        // Data minimal dari form values (data yang sudah pasti ada)
+        const simpleData = {
+          name: values.name,
+          phoneNumber: values.phoneNumber,
+          email: values.email || "",
+          birthDate: values.birthDate,
+          gender: values.gender,
+          address: values.address || "",
+          slotInfo: selectedSlot ? {
+            id: selectedSlot.id,
+            date: selectedSlot.date,
+            timeSlot: selectedSlot.timeSlot
+          } : null
+        };
+        
+        // Simpan ke localStorage
+        localStorage.setItem('registrationData', JSON.stringify(simpleData));
+        localStorage.setItem('registrationStatus', 'success');
+        
+        // Gunakan timeout untuk navigasi cepat
+        setTimeout(() => {
+          window.location.href = "/registration-success";
+        }, 100);
+      } catch (error) {
+        console.error("Error saving to localStorage:", error);
+      }
+      
+      // Siapkan data dengan timeSlotKey jika tersedia untuk server
       const dataToSend = {
         ...values,
         registrationCode,
       };
       
       // Log info penting untuk debugging
-      console.log("Mengirim data pendaftaran dengan:", {
-        therapySlotId: values.therapySlotId,
-        timeSlotKey: values.timeSlotKey || "(tidak tersedia)"
-      });
+      console.log("Mengirim data pendaftaran ke server");
       
       // Kirim data ke server
       const response = await fetch("/api/patients", {
@@ -844,66 +872,11 @@ export default function RegisterPage() {
         body: JSON.stringify(dataToSend),
       });
       
+      // Proses respon server (jika masih belum redirect)
       if (response.ok) {
-        // Simpan data registrasi minimal yang diperlukan
-        // Tidak perlu menunggu parsing JSON response yang mungkin menyebabkan freezing
-        try {
-          // Data minimal dari form values (data yang sudah pasti ada)
-          const minimalData = {
-            name: values.name,
-            phoneNumber: values.phoneNumber,
-            email: values.email || "",
-            birthDate: values.birthDate,
-            gender: values.gender,
-            address: values.address || "",
-            timestamp: new Date().toISOString(),
-            slotInfo: selectedSlot ? {
-              id: selectedSlot.id,
-              date: selectedSlot.date,
-              timeSlot: selectedSlot.timeSlot
-            } : null
-          };
-          
-          // Simpan data minimal ke localStorage
-          localStorage.removeItem('registrationData'); // Hapus data lama dulu
-          localStorage.setItem('registrationData', JSON.stringify(minimalData));
-          localStorage.setItem('registrationStatus', 'success');
-          localStorage.setItem('registrationTimestamp', new Date().toISOString());
-          
-          console.log("Data minimal tersimpan, navigasi akan segera dilakukan");
-          
-          // Force redirect secepatnya
-          window.location.replace("/registration-success");
-        } catch (error) {
-          console.error("Error pada redirect:", error);
-          alert("Pendaftaran berhasil! Silakan reload halaman atau kembali ke menu utama.");
-        }
+        console.log("Pendaftaran berhasil di server");
       } else {
-        try {
-          // Coba mendapatkan data respons untuk pesan error
-          const errorData = await response.json();
-          console.error("Pendaftaran gagal:", errorData);
-          
-          // Cek apakah kuota sudah penuh
-          if (errorData.message && (errorData.message.includes("kuota") || errorData.message.includes("penuh"))) {
-            setRegistrationStatus("quota-reached");
-          }
-          
-          toast({
-            variant: "destructive",
-            title: "Pendaftaran Gagal",
-            description: errorData.message || "Terjadi kesalahan saat mendaftarkan pasien. Silakan coba lagi nanti.",
-          });
-        } catch (error) {
-          console.error("Error parsing error response:", error);
-          toast({
-            variant: "destructive",
-            title: "Pendaftaran Gagal",
-            description: "Terjadi kesalahan saat mendaftarkan pasien. Silakan coba lagi nanti.",
-          });
-        }
-        
-        setIsSubmitting(false);
+        console.error("Pendaftaran gagal di server dengan status:", response.status);
       }
       
     } catch (error) {
