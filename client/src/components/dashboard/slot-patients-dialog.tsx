@@ -166,22 +166,27 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     retry: 1 // Hanya coba ulang 1 kali jika gagal
   });
   
-  // Efek untuk memastikan data di-refresh saat dialog dibuka dan slotId berubah
+  // Efek untuk memastikan data di-refresh HANYA saat dialog pertama kali dibuka atau slotId berubah
+  // Menggunakan ref untuk mencegah multiple refresh
+  const hasRefreshedRef = useRef(false);
+
   useEffect(() => {
     if (isOpen && slotId) {
-      console.log('Dialog dibuka atau slotId berubah, merefresh data pasien untuk slot:', slotId);
-      
-      // Invalidate query cache untuk memastikan data terbaru
-      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots', slotId, 'patients'] });
-      
-      // Refresh data secara manual setelah invalidate
-      refetch();
-      
-      // Invalidate tampilan slot pada dashboard
-      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/slots-by-period'] });
+      // Cek apakah sudah pernah di-refresh untuk dialog ini
+      if (!hasRefreshedRef.current) {
+        console.log('Dialog dibuka atau slotId berubah, merefresh data pasien untuk slot:', slotId);
+        
+        // Tandai bahwa sudah di-refresh
+        hasRefreshedRef.current = true;
+        
+        // Refresh data
+        refetch();
+      }
+    } else if (!isOpen) {
+      // Reset flag saat dialog ditutup
+      hasRefreshedRef.current = false;
     }
-  }, [isOpen, slotId, queryClient, refetch]);
+  }, [isOpen, slotId, refetch]);
   
   // Mutations
   const cancelAppointmentMutation = useMutation({
@@ -206,11 +211,12 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         description: "Janji temu berhasil dibatalkan"
       });
       
-      // Refresh data setelah membatalkan janji
+      // Refresh hanya data yang diperlukan
       refetch();
       
-      // Invalidate all related queries to ensure fresh data everywhere
-      queryClient.invalidateQueries();  // Invalidate all queries to force refresh
+      // Invalidate hanya query terkait secara selektif
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments/date'] });
     },
     onError: (error: Error) => {
       toast({
@@ -248,14 +254,11 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       // Refresh data setelah update status
       refetch();
       
-      // Invalidate all related queries to ensure fresh data everywhere
-      queryClient.invalidateQueries();  // Invalidate all queries to force refresh
-      
-      // Optional: If above is too aggressive, use these specific invalidations instead
-      // queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
-      // queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
-      // queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
-      // queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      // Invalidate hanya query terkait secara selektif
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments/date'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
     },
     onError: (error: Error) => {
       toast({
