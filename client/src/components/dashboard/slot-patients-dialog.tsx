@@ -1234,13 +1234,26 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                       btn.textContent = '⏳ Memeriksa...';
                       btn.disabled = true;
                       
-                      // Manual retry dengan timeout yang sangat singkat
+                      // Manual retry dengan timeout manual
+                      const pingTimeoutId = setTimeout(() => {
+                        toast({
+                          title: "Timeout",
+                          description: "Server tidak merespons dalam waktu 2 detik",
+                          variant: "destructive"
+                        });
+                        // Reset button state jika terjadi timeout
+                        if (btn) {
+                          btn.textContent = originalText;
+                          btn.disabled = false;
+                        }
+                      }, 2000);
+                      
                       fetch(`/api/ping`, { 
-                        signal: AbortSignal.timeout(2000),
                         headers: {
                           'Cache-Control': 'no-cache',
                           'Pragma': 'no-cache'
-                        }
+                        },
+                        credentials: 'include'
                       })
                         .then(res => res.json())
                         .then(data => {
@@ -1263,7 +1276,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                           });
                         })
                         .finally(() => {
-                          // Reset tombol
+                          // Reset tombol dan clear timeout jika belum ter-clear
+                          clearTimeout(pingTimeoutId);
                           if (btn) {
                             btn.textContent = originalText;
                             btn.disabled = false;
@@ -1324,17 +1338,29 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                       setError(null);
                       // Batas waktu lebih pendek untuk retry cepat
                       setTimeout(() => {
-                        // Pertama coba retry dengan timeout diperpendek
+                        // Pertama coba retry dengan timeout manual
                         try {
+                          const retryTimeoutId = setTimeout(() => {
+                            console.log(`Retry timeout for slot ${slotId}`);
+                            toast({
+                              title: "Waktu Habis",
+                              description: "Server tidak merespons dalam waktu 3 detik",
+                              variant: "destructive"
+                            });
+                          }, 3000);
+                          
                           fetch(`/api/therapy-slots/${slotId}`, {
                             headers: {
                               'Accept': 'application/json',
                               'Cache-Control': 'no-cache'
                             },
-                            signal: AbortSignal.timeout(3000) // 3 detik max
+                            credentials: 'include'
                           })
                           .then(res => res.json())
                           .then(data => {
+                            // Clear timeout setelah data berhasil dimuat
+                            clearTimeout(retryTimeoutId);
+                            
                             if (data && data.id === slotId) {
                               setSlotData(data);
                               toast({
@@ -1343,7 +1369,11 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                               });
                             }
                           })
-                          .catch(e => console.error("Quick retry failed:", e));
+                          .catch(e => {
+                            // Clear timeout pada error
+                            clearTimeout(retryTimeoutId);
+                            console.error("Quick retry failed:", e);
+                          });
                         } catch (e) {
                           console.error("Error during quick retry:", e);
                         }
