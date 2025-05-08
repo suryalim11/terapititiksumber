@@ -58,7 +58,8 @@ import {
   RefreshCw,
   Search, 
   Users,
-  User
+  User,
+  WifiOff
 } from "lucide-react";
 
 // Form validation schema
