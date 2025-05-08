@@ -91,6 +91,7 @@ export default function Dashboard() {
   const [isSyncing, setIsSyncing] = useState(false); // State untuk status sinkronisasi
   const [isSessionEditorOpen, setIsSessionEditorOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState<any>(null);
+  const [isAutoConnecting, setIsAutoConnecting] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
