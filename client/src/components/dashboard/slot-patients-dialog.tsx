@@ -201,13 +201,26 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     staleTime: 5000
   });
   
-  // Gabungkan hasil kedua query
+  // Process appointments data to enrich them with patient data
+  const processedAppointments = appointmentsQuery.data ? appointmentsQuery.data.map((app: any) => {
+    try {
+      return {
+        ...app,
+        patient: app.patient || { id: app.patientId, name: 'Pasien #' + app.patientId }
+      };
+    } catch (error) {
+      console.error("Error processing appointment:", error, app);
+      return app;
+    }
+  }) : [];
+
+  // Gabungkan hasil kedua query 
+  // Tetapi dengan struktur yang berbeda untuk pemrosesan yang lebih sederhana
   const isLoading = slotQuery.isLoading || appointmentsQuery.isLoading;
   const error = slotQuery.error || appointmentsQuery.error;
-  const data = slotQuery.data && {
-    slot: slotQuery.data,
-    appointments: appointmentsQuery.data || []
-  };
+  
+  // Simpan slot dan appointment terpisah untuk memudahkan akses
+  const slotData = slotQuery.data;
   
   // Refetch function yang memanggil kedua query
   const refetch = () => {
@@ -664,8 +677,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }, [patientIds.join(','), isOpen]);
   
-  // Pastikan setiap appointment memiliki objek patient yang lengkap
-  const processedAppointments = activeAppointments.map((appointment: any) => {
+  // Fungsi untuk memperkaya data appointment dengan data pasien
+  const enrichAppointment = (appointment: any) => {
     try {
       // Jika appointment sudah memiliki patient object yang valid, gunakan itu
       if (appointment.patient && (appointment.patient.id || appointment.patient.name)) {
@@ -710,7 +723,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         patient: { id: null, name: 'Error Data Pasien', phoneNumber: '-' }
       };
     }
-  });
+  };
   
   // Debug logging in development
   useEffect(() => {
@@ -754,7 +767,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             <div className="text-center py-6 text-destructive">
               <p>Error: {(error as Error).message}</p>
             </div>
-          ) : !data || !data.slot ? (
+          ) : !slotData ? (
             <div className="text-center py-6 text-muted-foreground">
               <p>Data slot tidak tersedia</p>
             </div>
@@ -764,20 +777,20 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
               <div className="rounded-lg bg-muted/50 p-3 border">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="text-muted-foreground">Tanggal:</div>
-                  <div className="font-medium">{formatDate(data.slot.date)}</div>
+                  <div className="font-medium">{formatDate(slotData.date)}</div>
                   
                   <div className="text-muted-foreground">Waktu:</div>
-                  <div className="font-medium">{data.slot.timeSlot || '-'}</div>
+                  <div className="font-medium">{slotData.timeSlot || '-'}</div>
                   
                   <div className="text-muted-foreground">Kuota:</div>
                   <div className="font-medium">
-                    {typeof data.slot.currentCount === 'number' ? data.slot.currentCount : 0}/
-                    {typeof data.slot.maxQuota === 'number' ? data.slot.maxQuota : 0}
+                    {typeof slotData.currentCount === 'number' ? slotData.currentCount : 0}/
+                    {typeof slotData.maxQuota === 'number' ? slotData.maxQuota : 0}
                   </div>
                   
                   <div className="text-muted-foreground">Status:</div>
                   <div>
-                    {data.slot.isActive ? (
+                    {slotData.isActive ? (
                       <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Aktif</Badge>
                     ) : (
                       <Badge variant="destructive">Tidak Aktif</Badge>
@@ -791,8 +804,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-sm font-medium">Daftar Pasien Aktif</h3>
                   {/* Tombol untuk mendaftarkan pasien baru */}
-                  {data.slot && data.slot.isActive && 
-                   data.slot.currentCount < data.slot.maxQuota && (
+                  {slotData && slotData.isActive && 
+                   slotData.currentCount < slotData.maxQuota && (
                     <Button 
                       size="sm" 
                       variant="outline"
