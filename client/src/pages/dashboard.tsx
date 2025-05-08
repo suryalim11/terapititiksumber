@@ -27,7 +27,7 @@ import {
   isSameDayInWIB,
   getStartOfDayWIB
 } from "@/lib/utils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -377,6 +377,41 @@ export default function Dashboard() {
     refetchInterval: 10000,
   });
   
+  // Mutation untuk memperbaiki paket Darukni
+  const fixDarukniMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/fix/darukni-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fix Darukni session');
+      }
+      
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Berhasil',
+        description: data.message || 'Paket Darukni berhasil diperbaiki'
+      });
+      
+      // Refresh data paket aktif
+      refetchPackages();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  });
+  
   // Handle period change
   const handlePeriodChange = (period: string) => {
     // Clear cache for the current period to ensure fresh data
@@ -693,6 +728,26 @@ export default function Dashboard() {
               >
                 <RefreshCw className="h-4 w-4" />
                 <span className="sr-only">Refresh Packages</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => fixDarukniMutation.mutate()}
+                disabled={fixDarukniMutation.isPending}
+                title="Fix Session Darukni"
+                className="text-xs"
+              >
+                {fixDarukniMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Fixing...
+                  </>
+                ) : (
+                  <>
+                    <Database className="h-3 w-3 mr-1" />
+                    Fix Darukni (2/12)
+                  </>
+                )}
               </Button>
             </div>
           </div>

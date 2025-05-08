@@ -4908,6 +4908,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/backup/restore/:filename", restoreData);
   app.post("/api/backup/upload", upload.single('backupFile'), uploadBackup);
   
+  // Endpoint untuk memperbaiki session paket Darukni
+  app.post("/api/fix/darukni-session", requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Import fix function
+      const { fixDarukniSession } = require('./fix-darukni-session');
+      const result = await fixDarukniSession();
+      return res.json(result);
+    } catch (error) {
+      console.error("Error fixing Darukni session:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: `Error: ${error instanceof Error ? error.message : String(error)}`
+      });
+    }
+  });
+  
   // Endpoint khusus untuk pengujian perbaikan sinkronisasi tanggal
   app.post("/api/test/create-appointment", async (req: Request, res: Response) => {
     try {
