@@ -2139,80 +2139,19 @@ export class DatabaseStorage implements IStorage {
 
   async getAppointmentsByTherapySlot(therapySlotId: number): Promise<Appointment[]> {
     try {
-      // Dapatkan data slot terapi untuk menentukan tanggal dan waktu
-      const therapySlot = await this.getTherapySlot(therapySlotId);
-      
-      if (!therapySlot) {
-        console.error(`Therapy slot ${therapySlotId} not found`);
-        return [];
-      }
-      
-      // Ambil semua appointment berdasarkan dua strategi:
-      // 1. Appointment yang secara eksplisit memiliki therapySlotId yang sesuai
-      // 2. Appointment yang memiliki tanggal dan waktu yang sama dengan slot terapi
-      
-      // Strategi 1: Appointment dengan therapySlotId yang cocok
+      // Cara paling sederhana: dapatkan semua appointment berdasarkan therapySlotId yang cocok
       const appointmentsBySlotId = await db.query.appointments.findMany({
         where: eq(schema.appointments.therapySlotId, therapySlotId)
       });
       
-      // Strategi 2: Appointment dengan tanggal dan timeSlot yang cocok tapi mungkin belum memiliki therapySlotId
-      // yang tepat (kasus ini terjadi ketika appointment dibuat dari halaman pendaftaran)
-      
-      // Format tanggal dari slot terapi untuk pencarian
-      let slotDate = '';
-      if (typeof therapySlot.date === 'string') {
-        // Jika tanggal berbentuk string, ambil bagian tanggalnya saja (YYYY-MM-DD)
-        slotDate = therapySlot.date.split('T')[0].split(' ')[0];
-      } else {
-        // Jika tanggal berbentuk Date object, format ke string YYYY-MM-DD
-        slotDate = new Date(therapySlot.date).toISOString().split('T')[0];
-      }
-      
-      // Cari appointment dengan tanggal dan timeSlot yang cocok
-      const appointmentsByDateAndTime = await db.query.appointments.findMany({
-        where: and(
-          // Cari appointment yang tanggalnya sama (hanya bagian tanggal/YYYY-MM-DD)
-          sql`DATE(${schema.appointments.date}) = ${slotDate}`,
-          // Dan timeSlot sama
-          eq(schema.appointments.timeSlot, therapySlot.timeSlot),
-          // Dan belum memiliki therapySlotId yang valid
-          or(
-            sql`${schema.appointments.therapySlotId} IS NULL`,
-            eq(schema.appointments.therapySlotId, 0)
-          )
-        )
-      });
-      
-      // Gabungkan kedua kelompok appointment dan hilangkan duplikat
-      const allAppointmentsMap = new Map();
-      [...appointmentsBySlotId, ...appointmentsByDateAndTime].forEach(appointment => {
-        if (!allAppointmentsMap.has(appointment.id)) {
-          allAppointmentsMap.set(appointment.id, appointment);
-        }
-      });
-      
-      const allAppointmentsForSlot = Array.from(allAppointmentsMap.values());
-      
       // Log untuk debugging
-      console.log(`All appointments for slot ${therapySlotId}:`, 
-        allAppointmentsForSlot.map(a => ({id: a.id, status: a.status}))
+      console.log(`Appointments by therapySlotId ${therapySlotId}:`, 
+        appointmentsBySlotId.map(a => ({id: a.id, status: a.status}))
       );
-      
-      // Auto-fix: Update therapySlotId untuk appointment yang ditemukan berdasarkan tanggal dan waktu
-      // tapi belum memiliki therapySlotId yang tepat
-      for (const appointment of appointmentsByDateAndTime) {
-        if (!appointment.therapySlotId || appointment.therapySlotId !== therapySlotId) {
-          console.log(`Auto-fixing: Menambahkan therapySlotId ${therapySlotId} ke appointment ID ${appointment.id}`);
-          await db.update(schema.appointments)
-            .set({ therapySlotId })
-            .where(eq(schema.appointments.id, appointment.id));
-        }
-      }
       
       // Filter semua status yang aktif (tidak dibatalkan dan dalam status valid)
       const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
-      const nonCancelledAppointments = allAppointmentsForSlot.filter(app => {
+      const nonCancelledAppointments = appointmentsBySlotId.filter(app => {
         // Status yang dibatalkan (Cancelled) secara eksplisit dikeluarkan
         if (app.status === 'Cancelled' || app.status === 'Completed') {
           return false;

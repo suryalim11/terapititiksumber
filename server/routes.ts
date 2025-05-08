@@ -3309,49 +3309,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid slot ID" });
       }
       
+      // Tambahkan log debugging
+      console.log(`[ROUTE] GET /api/therapy-slots/:id/patients - Requested slot ID: ${slotId}`);
+      
       // Dapatkan slot terapi
       const slot = await storage.getTherapySlot(slotId);
       
       if (!slot) {
+        console.log(`[ROUTE] Therapy slot ID ${slotId} not found`);
         return res.status(404).json({ message: "Therapy slot not found" });
       }
       
-      // Dapatkan semua appointment aktif untuk slot terapi ini
-      // getAppointmentsByTherapySlot sudah termasuk filter yang mengecualikan appointment yang dibatalkan
-      const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+      console.log(`[ROUTE] Found therapy slot: ${slot.id}, date: ${slot.date}, timeSlot: ${slot.timeSlot}`);
       
-      // Update slot currentCount untuk menampilkan jumlah yang benar
-      // Update ini hanya untuk respons API, tidak menyimpan ke database
-      slot.currentCount = appointments.length;
-      
-      // Dapatkan informasi pasien dari tiap appointment
-      // Gunakan Map untuk menghindari duplikasi pasien dengan ID yang sama
-      const patientIdsSet = new Set(appointments.map(appointment => appointment.patientId));
-      const patientIds = Array.from(patientIdsSet);
-      const patientMap = new Map();
-      
-      // Ambil data pasien sekali untuk tiap ID unik
-      for (const patientId of patientIds) {
-        const patient = await storage.getPatient(patientId);
-        if (patient) {
-          patientMap.set(patientId, patient);
+      // Dapatkan semua appointment aktif untuk slot terapi ini, ini sudah disederhanakan di database-storage.ts
+      try {
+        const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+        console.log(`[ROUTE] Found ${appointments.length} appointments for slot ID ${slotId}`);
+        
+        // Update slot currentCount untuk menampilkan jumlah yang benar (hanya di respons, bukan di database)
+        slot.currentCount = appointments.length;
+        
+        // Dapatkan informasi pasien dari tiap appointment
+        // Gunakan Map untuk menghindari duplikasi pasien dengan ID yang sama
+        const patientIdsSet = new Set(appointments.map(appointment => appointment.patientId));
+        const patientIds = Array.from(patientIdsSet);
+        console.log(`[ROUTE] Found ${patientIds.length} unique patients in these appointments`);
+        
+        const patientMap = new Map();
+        
+        // Ambil data pasien sekali untuk tiap ID unik
+        for (const patientId of patientIds) {
+          if (!patientId) continue; // Skip jika patientId tidak ada
+          
+          const patient = await storage.getPatient(patientId);
+          if (patient) {
+            patientMap.set(patientId, patient);
+          }
         }
+        
+        const patientsData = appointments.map(appointment => {
+          return {
+            ...appointment,
+            patient: appointment.patientId && patientMap.get(appointment.patientId) 
+              ? patientMap.get(appointment.patientId) 
+              : { name: "Unknown Patient" },
+          };
+        });
+        
+        console.log(`[ROUTE] Successfully prepared response for slot ID ${slotId} with ${patientsData.length} patients`);
+        
+        // Kirim respons dengan data slot dan appointment
+        return res.status(200).json({
+          slot,
+          appointments: patientsData
+        });
+      } catch (appointmentError) {
+        console.error(`[ROUTE] Error getting appointments: ${appointmentError}`);
+        return res.status(500).json({ 
+          message: "Failed to get appointments for therapy slot",
+          error: appointmentError instanceof Error ? appointmentError.message : String(appointmentError)
+        });
       }
-      
-      const patientsData = appointments.map(appointment => {
-        return {
-          ...appointment,
-          patient: patientMap.get(appointment.patientId) || { name: "Unknown Patient" },
-        };
-      });
-      
-      return res.status(200).json({
-        slot,
-        appointments: patientsData
-      });
     } catch (error) {
-      console.error(`Error getting patients for therapy slot: ${error}`);
-      return res.status(500).json({ message: "Failed to get patients for therapy slot" });
+      console.error(`[ROUTE] Error getting patients for therapy slot: ${error}`);
+      return res.status(500).json({ 
+        message: "Failed to get patients for therapy slot",
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 

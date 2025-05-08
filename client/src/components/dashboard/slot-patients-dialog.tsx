@@ -143,11 +143,17 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         console.log("Fetching patients for therapy slot:", slotId);
       }
       try {
-        const res = await fetch(`/api/therapy-slots/${slotId}/patients`);
+        // Tambahkan parameter timestamp untuk menghindari caching
+        const timestamp = new Date().getTime();
+        const res = await fetch(`/api/therapy-slots/${slotId}/patients?_t=${timestamp}`);
+        
         if (!res.ok) {
           throw new Error('Failed to fetch patients');
         }
-        return await res.json();
+        
+        const data = await res.json();
+        console.log("Data pasien untuk slot:", data);
+        return data;
       } catch (error) {
         console.error("Error fetching patients:", error);
         throw error;
@@ -155,8 +161,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     },
     enabled: !!slotId && isOpen,
     refetchOnWindowFocus: true,
-    refetchInterval: isOpen ? 2000 : false, // Refresh data every 2 seconds when dialog is open
-    staleTime: 0 // Consider data always stale to ensure fresh content
+    refetchInterval: false, // Matikan auto-refresh otomatis, gunakan refetch manual saja
+    staleTime: 0, // Consider data always stale to ensure fresh content
+    retry: 1 // Hanya coba ulang 1 kali jika gagal
   });
   
   // Efek untuk memastikan data di-refresh saat dialog dibuka dan slotId berubah
