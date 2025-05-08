@@ -338,13 +338,13 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       if (!slotResult) {
         console.log("Creating minimal slot data fallback for UI");
         
-        // Default slot yang cukup untuk menampilkan UI dasar
+        // Default slot dengan data yang lebih deskriptif
         slotResult = {
           id: Number(slotId),
           date: todayString,
-          timeSlot: "Tidak tersedia",
+          timeSlot: "Data tidak tersedia",
           currentCount: 0,
-          maxQuota: 0,
+          maxQuota: 6, // Default kuota standar
           isActive: true
         };
         
@@ -1191,7 +1191,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             </DialogTitle>
             <DialogDescription>
               {slotData 
-                ? `${formatDate(slotData.date)} · ${slotData.timeSlot || '-'}`
+                ? `${formatDate(slotData.date)} · ${slotData.timeSlot === "Data tidak tersedia" ? "Slot tidak ditemukan" : slotData.timeSlot || '-'}`
                 : "Menampilkan detail slot terapi dan daftar pasien"}
             </DialogDescription>
           </DialogHeader>
@@ -1418,7 +1418,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                   <div className="text-muted-foreground">Kuota:</div>
                   <div className="font-medium">
                     {typeof slotData.currentCount === 'number' ? slotData.currentCount : 0}/
-                    {typeof slotData.maxQuota === 'number' ? slotData.maxQuota : 0}
+                    {typeof slotData.maxQuota === 'number' && slotData.maxQuota > 0 ? slotData.maxQuota : 
+                      (slotData.timeSlot === "Data tidak tersedia" ? "N/A" : 6)}
                   </div>
                   
                   <div className="text-muted-foreground">Status:</div>
@@ -1506,7 +1507,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                 </div>
                 {!processAppointmentData.length ? (
                   <p className="text-center py-4 text-sm text-muted-foreground border rounded">
-                    Belum ada pasien aktif
+                    {slotData && slotData.timeSlot === "Data tidak tersedia" 
+                      ? "Slot tidak ditemukan atau tidak tersedia" 
+                      : "Belum ada pasien aktif"}
                   </p>
                 ) : (
                   <div className="border rounded-md divide-y">
