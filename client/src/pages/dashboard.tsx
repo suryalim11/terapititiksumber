@@ -159,9 +159,6 @@ export default function Dashboard() {
         if (selectedPeriod === 'day') {
           // Untuk hari ini, filter berdasarkan tanggal
           apiUrl = `/api/therapy-slots?date=${formattedToday}`;
-        } else if (selectedPeriod === 'selected-date' && selectedDate) {
-          // Untuk tanggal yang dipilih
-          apiUrl = `/api/therapy-slots?date=${formattedSelectedDate}`;
         } else if (selectedPeriod === 'week') {
           // Untuk minggu ini, ambil semua slot aktif
           apiUrl = `/api/therapy-slots?activeOnly=true`;
@@ -175,7 +172,7 @@ export default function Dashboard() {
           // Ambil semua slot aktif
           apiUrl = `/api/therapy-slots?activeOnly=true`;
         }
-        // Periode "register" sudah dihapus dari UI
+        // Periode "register" dan "selected-date" sudah dihapus dari UI
         
         console.log(`Fetching therapy slots with URL:`, apiUrl);
         
@@ -629,55 +626,11 @@ export default function Dashboard() {
               onValueChange={handlePeriodChange}
             >
               <div className="px-4 pt-4">
-                <TabsList className="grid w-full grid-cols-4 mb-4">
+                <TabsList className="grid w-full grid-cols-3 mb-4">
                   <TabsTrigger value="day">Hari Ini</TabsTrigger>
-                  <TabsTrigger value="selected-date">Tanggal Tertentu</TabsTrigger>
                   <TabsTrigger value="future">Mendatang</TabsTrigger>
                   <TabsTrigger value="all">Semua Slot</TabsTrigger>
                 </TabsList>
-                
-                {/* Date picker for selected-date tab */}
-                {selectedPeriod === 'selected-date' && (
-                  <div className="mb-4 mt-2 flex items-center justify-center">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-[240px] justify-start text-left font-normal",
-                            !selectedDate && "text-muted-foreground"
-                          )}
-                        >
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {selectedDate ? format(selectedDate, "dd MMMM yyyy", { locale: localeId }) : "Pilih tanggal"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <CalendarComponent
-                          mode="single"
-                          selected={selectedDate}
-                          onSelect={setSelectedDate}
-                          initialFocus
-                          footer={
-                            <Button 
-                              onClick={() => {
-                                if (selectedDate) {
-                                  // Invalidate cache and force refetch with new date
-                                  queryClient.invalidateQueries({ queryKey: ['/api/slots-by-period', 'selected-date'] });
-                                  refetchSlotsByPeriod();
-                                }
-                              }}
-                              className="w-full mt-2"
-                              disabled={!selectedDate}
-                            >
-                              Tampilkan Data
-                            </Button>
-                          }
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                )}
               </div>
               
               {/* Tab Pendaftaran telah dihapus */}
