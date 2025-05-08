@@ -3368,12 +3368,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .filter(app => app.patientId && patientMap.has(app.patientId))
           .map(app => {
             const patient = patientMap.get(app.patientId);
+            // Format yang sesuai dengan yang diharapkan di frontend
             return {
-              id: patient.id, // ID pasien, bukan appointment.id!
-              name: patient.name,
-              phoneNumber: patient.phoneNumber,
-              appointmentId: app.id, // ID appointment untuk status updates
+              id: app.id, // ini adalah ID appointment karena frontend mengharapkan appointment objects
+              patientId: patient.id,
               status: app.status,
+              patient: {
+                id: patient.id,
+                name: patient.name,
+                phoneNumber: patient.phoneNumber
+              }
             };
           });
         
