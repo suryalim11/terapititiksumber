@@ -34,21 +34,44 @@ export default function RegistrationSuccessPage() {
       if (savedData && savedStatus === 'success') {
         console.log("Data pendaftaran ditemukan di localStorage");
         
-        // Pulihkan data pendaftaran
-        const data = JSON.parse(savedData);
-        setRegistrationData(data);
-        
-        console.log("Berhasil memulihkan data pendaftaran dari localStorage", data);
-        
-        // Notifikasi sukses
-        toast({
-          title: "Data Pendaftaran Ditemukan",
-          description: "Menampilkan detail pendaftaran Anda.",
-          className: "bg-green-50 border-green-200 text-green-800",
-        });
-        
-        // Nonaktifkan loading state
-        setLoading(false);
+        try {
+          // Pulihkan data pendaftaran
+          const data = JSON.parse(savedData);
+          
+          // Verifikasi data memiliki properti yang dibutuhkan
+          if (!data.name || !data.phoneNumber) {
+            throw new Error("Data pendaftaran tidak lengkap");
+          }
+          
+          // Pastikan data appointment ada
+          if (!data.appointment || !data.appointment.date || !data.appointment.timeSlot) {
+            console.warn("Data appointment tidak lengkap, mencoba mengisi dari data lain");
+            
+            // Coba lengkapi dari selectedSlot jika ada
+            if (data.selectedSlot) {
+              data.appointment = {
+                date: data.selectedSlot.date,
+                timeSlot: data.selectedSlot.timeSlot
+              };
+            }
+          }
+          
+          setRegistrationData(data);
+          console.log("Berhasil memulihkan data pendaftaran dari localStorage", data);
+          
+          // Notifikasi sukses
+          toast({
+            title: "Data Pendaftaran Ditemukan",
+            description: "Menampilkan detail pendaftaran Anda.",
+            className: "bg-green-50 border-green-200 text-green-800",
+          });
+          
+          // Nonaktifkan loading state
+          setLoading(false);
+        } catch (parseError) {
+          console.error("Error parsing registration data:", parseError);
+          throw new Error("Format data pendaftaran tidak valid");
+        }
       } else {
         console.error("Tidak ada data pendaftaran yang valid di localStorage");
         toast({

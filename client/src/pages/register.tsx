@@ -853,11 +853,21 @@ export default function RegisterPage() {
       if (response.ok) {
         console.log("Pendaftaran berhasil:", data);
         
+        // Prepare the data structure for the registration success page
+        const registrationDataForStorage = {
+          ...values, // Form values
+          ...data,   // Server response
+          appointment: {
+            date: selectedSlot ? format(new Date(selectedSlot.date), "yyyy-MM-dd") : undefined,
+            timeSlot: selectedSlot ? selectedSlot.timeSlot : undefined
+          }
+        };
+        
         // Simpan data ke localStorage sebelum navigasi
         try {
-          localStorage.setItem('registrationData', JSON.stringify(data));
+          localStorage.setItem('registrationData', JSON.stringify(registrationDataForStorage));
           localStorage.setItem('registrationStatus', 'success');
-          console.log("Data pendaftaran berhasil disimpan di localStorage");
+          console.log("Data pendaftaran berhasil disimpan di localStorage:", registrationDataForStorage);
           
           // Arahkan ke halaman sukses pendaftaran
           window.location.href = "/registration-success";
