@@ -16,7 +16,9 @@ import {
   Eye,
   EyeOff,
   RefreshCcw,
-  Database
+  Database,
+  Edit3,
+  PencilLine
 } from "lucide-react";
 import { 
   cn, 
@@ -30,6 +32,7 @@ import {
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
+import { SessionEditorDialog } from "@/components/dashboard/session-editor-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -86,6 +89,8 @@ export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>("day"); // Default to "day" view
   const [showBalance, setShowBalance] = useState(false); // Default: hide balance
   const [isSyncing, setIsSyncing] = useState(false); // State untuk status sinkronisasi
+  const [isSessionEditorOpen, setIsSessionEditorOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<any>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
@@ -768,10 +773,9 @@ export default function Dashboard() {
           ) : activePackages.length > 0 ? (
             <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
               {activePackages.map((pkg) => (
-                <Link 
+                <div 
                   key={pkg.id} 
-                  to={`/patients/${pkg.patient?.id}`} 
-                  className="block border rounded-lg p-3 mobile-card hover:shadow-md transition-all hover:border-primary/60 cursor-pointer"
+                  className="border rounded-lg p-3 mobile-card hover:shadow-md transition-all hover:border-primary/60"
                 >
                   <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 mb-2">
                     <div>
@@ -780,35 +784,62 @@ export default function Dashboard() {
                         <span className="hidden md:inline">ID:</span> {pkg.patient?.patientId || 'N/A'}
                       </div>
                     </div>
-                    <div className="bg-primary/10 text-primary px-2 py-1 rounded-md inline-block text-sm font-medium">
-                      {pkg.sessionsUsed}/{pkg.totalSessions} Sesi
-                    </div>
-                  </div>
-                  
-                  <div className="mb-2">
-                    <div className="text-sm mb-1 flex justify-between">
-                      <span>{pkg.package?.name || 'Paket tidak ditemukan'}</span>
-                      <span className="font-medium">{pkg.progress}%</span>
-                    </div>
-                    <Progress 
-                      value={pkg.progress} 
-                      max={100} 
-                      className="h-2 bg-primary/20"
-                      indicatorClassName={pkg.progress >= 90 ? "bg-green-500" : "bg-primary"}
-                    />
-                  </div>
-                  
-                  <div className="flex justify-between items-center text-xs text-muted-foreground mt-2">
-                    <div>
-                      Mulai: {pkg.startDate ? formatDateDDMMYYYY(pkg.startDate) : '-'}
-                    </div>
-                    {pkg.lastSessionDate && (
-                      <div>
-                        Terakhir: {formatDateDDMMYYYY(pkg.lastSessionDate)}
+                    <div className="flex items-center gap-2">
+                      <div className="bg-primary/10 text-primary px-2 py-1 rounded-md inline-block text-sm font-medium">
+                        {pkg.sessionsUsed}/{pkg.totalSessions} Sesi
                       </div>
-                    )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Edit jumlah sesi terpakai"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedSession({
+                            id: pkg.id,
+                            totalSessions: pkg.totalSessions,
+                            sessionsUsed: pkg.sessionsUsed,
+                            patient: pkg.patient,
+                            package: pkg.package
+                          });
+                          setIsSessionEditorOpen(true);
+                        }}
+                        className="h-7 w-7"
+                      >
+                        <PencilLine className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                </Link>
+                  
+                  <Link 
+                    to={`/patients/${pkg.patient?.id}`}
+                    className="block"
+                  >
+                    <div className="mb-2">
+                      <div className="text-sm mb-1 flex justify-between">
+                        <span>{pkg.package?.name || 'Paket tidak ditemukan'}</span>
+                        <span className="font-medium">{pkg.progress}%</span>
+                      </div>
+                      <Progress 
+                        value={pkg.progress} 
+                        max={100} 
+                        className="h-2 bg-primary/20"
+                        indicatorClassName={pkg.progress >= 90 ? "bg-green-500" : "bg-primary"}
+                      />
+                    </div>
+                    
+                    <div className="flex justify-between items-center text-xs text-muted-foreground mt-2">
+                      <div>
+                        Mulai: {pkg.startDate ? formatDateDDMMYYYY(pkg.startDate) : '-'}
+                      </div>
+                      {pkg.lastSessionDate && (
+                        <div>
+                          Terakhir: {formatDateDDMMYYYY(pkg.lastSessionDate)}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                </div>
               ))}
             </div>
           ) : (
@@ -833,6 +864,19 @@ export default function Dashboard() {
         isOpen={isDialogOpen} 
         onClose={handleCloseDialog} 
       />
+
+      {/* Dialog untuk mengedit jumlah sesi paket */}
+      {selectedSession && (
+        <SessionEditorDialog
+          isOpen={isSessionEditorOpen}
+          onClose={() => setIsSessionEditorOpen(false)}
+          session={selectedSession}
+          onSuccess={() => {
+            // Refetch active packages data
+            queryClient.invalidateQueries({ queryKey: ['/api/dashboard/active-packages'] });
+          }}
+        />
+      )}
     </div>
   );
 }
