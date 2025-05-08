@@ -24,6 +24,7 @@ import DateTest from "@/pages/date-test";
 import TherapySlots from "@/pages/therapy-slots";
 import AdminPage from "@/pages/admin";
 import TestDevPage from "@/pages/test-dev";
+import AppointmentFix from "@/pages/appointment-fix";
 import Layout from "@/components/layout/layout";
 import PublicLayout from "@/components/layout/public-layout";
 import { AuthProvider } from "@/lib/auth";
@@ -48,6 +49,7 @@ function AdminApp() {
         <ProtectedRoute path="/settings" component={Settings} />
         <ProtectedRoute path="/backup-restore" component={BackupRestore} />
         <ProtectedRoute path="/admin" component={AdminPage} />
+        <ProtectedRoute path="/appointment-fix" component={AppointmentFix} />
         <ProtectedRoute path="/date-test" component={DateTest} />
         <ProtectedRoute path="/test-dev" component={TestDevPage} />
         <Route path="/login" component={Login} />
