@@ -908,8 +908,8 @@ export default function RegisterPage() {
           body: JSON.stringify(dataToSend)
         });
         
-        // Membersihkan timer abort
-        clearTimeout(abortTimer);
+        // Membersihkan timer timeout
+        if (timeoutId) clearTimeout(timeoutId);
         
         // Jika responsnya OK
         if (response.ok) {
@@ -926,9 +926,6 @@ export default function RegisterPage() {
           } catch (e) {
             console.error("Error saving to localStorage:", e);
           }
-          
-          // Hentikan timeout navigasi darurat
-          clearTimeout(timeoutId);
           
           // Navigasi ke halaman sukses, dengan parameter timestamp untuk menghindari cache
           const timestamp = new Date().getTime();
@@ -973,8 +970,8 @@ export default function RegisterPage() {
           return false; // Retry untuk kesalahan koneksi
         }
       } catch (error: any) {
-        // Membersihkan timer abort
-        clearTimeout(abortTimer);
+        // Membersihkan timer timeout
+        if (timeoutId) clearTimeout(timeoutId);
         
         // Tangkap error dari fetch
         console.error("Error saat melakukan fetch ke server:", error);
