@@ -209,15 +209,15 @@ export class DatabaseStorage implements IStorage {
       // Cek apakah kolom time_slot_key sudah ada di database
       let timeSlotKeyExists = false;
       try {
-        // Use native SQL query approach to avoid potential driver issues
+        // Use direct SQL query with Drizzle's select method
         const result = await db.select({
-          column_name: sql`column_name`
-        }).from(
-          sql`information_schema.columns`
-        ).where(
-          sql`table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
-        );
-        timeSlotKeyExists = result.length > 0;
+          exists: sql`EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+          )`
+        }).execute();
+        
+        timeSlotKeyExists = result[0]?.exists === true;
         console.log(`Time slot key exists: ${timeSlotKeyExists}`);
       } catch (err) {
         console.warn("Error checking for time_slot_key column:", err);
@@ -1686,15 +1686,14 @@ export class DatabaseStorage implements IStorage {
       // Periksa apakah kolom time_slot_key ada
       let timeSlotKeyExists = false;
       try {
-        // Use native SQL query approach to avoid potential driver issues
-        const result = await db.select({
-          column_name: sql`column_name`
-        }).from(
-          sql`information_schema.columns`
-        ).where(
-          sql`table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
+        // Use simple raw SQL query approach to avoid recursion issues
+        const result = await db.execute(
+          sql`SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+          ) as exists`
         );
-        timeSlotKeyExists = result.length > 0;
+        timeSlotKeyExists = result.rows[0].exists === true;
       } catch (err) {
         console.warn("Error checking for time_slot_key column:", err);
       }
@@ -1792,15 +1791,14 @@ export class DatabaseStorage implements IStorage {
     // Periksa apakah kolom time_slot_key ada
     let timeSlotKeyExists = false;
     try {
-      // Use native SQL query approach to avoid potential driver issues
-      const result = await db.select({
-        column_name: sql`column_name`
-      }).from(
-        sql`information_schema.columns`
-      ).where(
-        sql`table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
+      // Use simple raw SQL query approach to avoid recursion issues
+      const result = await db.execute(
+        sql`SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+        ) as exists`
       );
-      timeSlotKeyExists = result.length > 0;
+      timeSlotKeyExists = result.rows[0].exists === true;
     } catch (err) {
       console.warn("Error checking for time_slot_key column:", err);
     }
@@ -1835,12 +1833,14 @@ export class DatabaseStorage implements IStorage {
     // Periksa apakah kolom time_slot_key ada
     let timeSlotKeyExists = false;
     try {
-      const columnCheck = await db.execute(
-        sql`SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
+      // Use simple raw SQL query approach to avoid recursion issues
+      const result = await db.execute(
+        sql`SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+        ) as exists`
       );
-      timeSlotKeyExists = columnCheck.rows.length > 0;
+      timeSlotKeyExists = result.rows[0].exists === true;
     } catch (err) {
       console.warn("Error checking for time_slot_key column:", err);
     }
@@ -1997,12 +1997,14 @@ export class DatabaseStorage implements IStorage {
       // Periksa apakah kolom time_slot_key ada
       let timeSlotKeyExists = false;
       try {
-        const columnCheck = await db.execute(
-          sql`SELECT column_name 
-              FROM information_schema.columns 
-              WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
+        // Use simple raw SQL query approach to avoid recursion issues
+        const result = await db.execute(
+          sql`SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+          ) as exists`
         );
-        timeSlotKeyExists = columnCheck.rows.length > 0;
+        timeSlotKeyExists = result.rows[0].exists === true;
       } catch (err) {
         console.warn("Error checking for time_slot_key column:", err);
       }
@@ -2102,12 +2104,14 @@ export class DatabaseStorage implements IStorage {
       // Periksa apakah kolom time_slot_key ada
       let timeSlotKeyExists = false;
       try {
-        const columnCheck = await db.execute(
-          sql`SELECT column_name 
-              FROM information_schema.columns 
-              WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'`
+        // Use simple raw SQL query approach to avoid recursion issues
+        const result = await db.execute(
+          sql`SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+          ) as exists`
         );
-        timeSlotKeyExists = columnCheck.rows.length > 0;
+        timeSlotKeyExists = result.rows[0].exists === true;
       } catch (err) {
         console.warn("Error checking for time_slot_key column:", err);
       }
