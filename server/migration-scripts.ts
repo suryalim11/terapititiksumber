@@ -1,6 +1,7 @@
 import { db } from './db';
 import { sql } from 'drizzle-orm';
 import { therapySlots } from '@shared/schema';
+import { pool } from './db';
 
 /**
  * Script migrasi untuk menambahkan kolom time_slot_key ke tabel therapy_slots
