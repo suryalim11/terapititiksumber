@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { requireAuth, requireAdminRole, allowPublicOrAuth } from "./middleware/auth";
+import { requireAuth, requireAdminRole, allowPublicOrAuth, allowAnyAccess } from "./middleware/auth";
 import { z } from "zod";
 import { registerAgusFixRoutes } from "./routes-agus-fix";
 import { 
@@ -5314,7 +5314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Endpoint khusus untuk memperbaiki appointment yang tidak terbuat karena timeout
   // Diakses langsung tanpa middleware autentikasi
-  app.post("/api/fix/create-missing-appointment", async (req: Request, res: Response) => {
+  app.post("/api/fix/create-missing-appointment", allowAnyAccess, async (req: Request, res: Response) => {
     try {
       const { patientName, birthDate, therapySlotId } = req.body;
       
