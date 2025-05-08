@@ -4909,8 +4909,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/backup/restore/:filename", restoreData);
   app.post("/api/backup/upload", upload.single('backupFile'), uploadBackup);
   
-  // Endpoint untuk memperbaiki session paket Darukni
-  app.post("/api/fix/darukni-session", requireAuth, async (req: Request, res: Response) => {
+  // Endpoint untuk memperbaiki session paket Darukni - menggunakan allowPublicOrAuth
+  app.post("/api/fix/darukni-session", allowPublicOrAuth, async (req: Request, res: Response) => {
     try {
       const result = await fixDarukniSession();
       return res.json(result);

@@ -13,11 +13,36 @@ export async function fixDarukniSession() {
     // Specific patient ID for Darukni
     const patientName = "Darukni";
     
-    // Find Darukni's patient ID
-    const [patient] = await db
+    // Find Darukni's patient ID - cari dengan nama yang mengandung "Darukni"
+    const patients = await db
       .select()
       .from(schema.patients)
       .where(eq(schema.patients.name, patientName));
+      
+    // Jika tidak ditemukan dengan nama persis, coba cari dengan nama yang mengandung Darukni
+    let patient;
+    if (patients.length > 0) {
+      [patient] = patients;
+    } else {
+      // Log pencarian alternatif
+      console.log("Mencoba pencarian alternatif untuk pasien Darukni...");
+      const allPatients = await db
+        .select()
+        .from(schema.patients);
+      
+      // Filter manual untuk menemukan nama yang mengandung Darukni
+      const darukniPatients = allPatients.filter(p => 
+        p.name.toLowerCase().includes("darukni") || 
+        p.name.toLowerCase().includes("darukni")
+      );
+      
+      console.log(`Menemukan ${darukniPatients.length} pasien dengan nama mengandung Darukni`);
+      
+      if (darukniPatients.length > 0) {
+        patient = darukniPatients[0];
+        console.log(`Menggunakan pasien dengan ID ${patient.id} dan nama ${patient.name}`);
+      }
+    }
     
     if (!patient) {
       console.log(`No patient found with name ${patientName}`);
@@ -50,14 +75,33 @@ export async function fixDarukniSession() {
     
     console.log(`Found ${sessions.length} active sessions for ${patientName}`);
     
-    // Find the specific 12-session package (Darukni's package)
-    const targetSession = sessions.find(s => s.totalSessions === 12);
+    // Log semua sesi yang ditemukan untuk debugging
+    console.log("Found sessions:", sessions.map(s => ({
+      id: s.id,
+      totalSessions: s.totalSessions,
+      sessionsUsed: s.sessionsUsed,
+      status: s.status
+    })));
+    
+    // Find the specific session for Darukni
+    let targetSession;
+    
+    // Coba cari paket 12 sesi dulu
+    targetSession = sessions.find(s => s.totalSessions === 12);
+    
+    // Jika tidak ditemukan, ambil paket dengan total sesi tertinggi
+    if (!targetSession && sessions.length > 0) {
+      console.log("Tidak menemukan paket 12 sesi, mencari paket dengan jumlah sesi tertinggi");
+      targetSession = sessions.reduce((prev, current) => 
+        (prev.totalSessions > current.totalSessions) ? prev : current
+      );
+    }
     
     if (!targetSession) {
-      console.log(`No 12-session package found for ${patientName}`);
+      console.log(`Tidak dapat menemukan paket aktif apapun untuk ${patientName}`);
       return {
         success: false,
-        message: `No 12-session package found for ${patientName}`
+        message: `Tidak dapat menemukan paket aktif apapun untuk ${patientName}`
       };
     }
     
