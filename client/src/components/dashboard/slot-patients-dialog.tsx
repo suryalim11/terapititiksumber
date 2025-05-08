@@ -202,17 +202,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   });
   
   // Process appointments data to enrich them with patient data
-  const processedAppointments = appointmentsQuery.data ? appointmentsQuery.data.map((app: any) => {
-    try {
-      return {
-        ...app,
-        patient: app.patient || { id: app.patientId, name: 'Pasien #' + app.patientId }
-      };
-    } catch (error) {
-      console.error("Error processing appointment:", error, app);
-      return app;
-    }
-  }) : [];
+  // Use the filtered active appointments and enrich them with patient data
+  const processedAppointments = activeAppointments.map(enrichAppointment);
 
   // Gabungkan hasil kedua query 
   // Tetapi dengan struktur yang berbeda untuk pemrosesan yang lebih sederhana
@@ -652,31 +643,6 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const activeAppointments = filterActiveAppointments(slotAppointments);
   console.log(`Appointments aktif untuk slot ini: ${activeAppointments.length}`);
   
-  // Buat fetch semua data pasien sekaligus untuk mengurangi beban server
-  const patientIds = Array.from(new Set(
-    activeAppointments
-      .filter((app: any) => !!app.patientId)
-      .map((app: any) => app.patientId)
-  ));
-  
-  useEffect(() => {
-    // Jika ada patientIds dan dialog terbuka, fetch data pasien
-    if (patientIds.length > 0 && isOpen) {
-      const fetchPatients = async () => {
-        try {
-          const patientPromises = patientIds.map(id => 
-            fetch(`/api/patients/${id}`).then(res => res.json())
-          );
-          await Promise.all(patientPromises);
-        } catch (error) {
-          console.error("Error prefetching patient data:", error);
-        }
-      };
-      
-      fetchPatients();
-    }
-  }, [patientIds.join(','), isOpen]);
-  
   // Fungsi untuk memperkaya data appointment dengan data pasien
   const enrichAppointment = (appointment: any) => {
     try {
@@ -724,6 +690,31 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       };
     }
   };
+  
+  // Buat fetch semua data pasien sekaligus untuk mengurangi beban server
+  const patientIds = Array.from(new Set(
+    activeAppointments
+      .filter((app: any) => !!app.patientId)
+      .map((app: any) => app.patientId)
+  ));
+  
+  useEffect(() => {
+    // Jika ada patientIds dan dialog terbuka, fetch data pasien
+    if (patientIds.length > 0 && isOpen) {
+      const fetchPatients = async () => {
+        try {
+          const patientPromises = patientIds.map(id => 
+            fetch(`/api/patients/${id}`).then(res => res.json())
+          );
+          await Promise.all(patientPromises);
+        } catch (error) {
+          console.error("Error prefetching patient data:", error);
+        }
+      };
+      
+      fetchPatients();
+    }
+  }, [patientIds.join(','), isOpen]);
   
   // Debug logging in development
   useEffect(() => {
