@@ -24,46 +24,64 @@ import TherapySlots from "@/pages/therapy-slots";
 import AdminPage from "@/pages/admin";
 import TestDevPage from "@/pages/test-dev";
 import Layout from "@/components/layout/layout";
+import PublicLayout from "@/components/layout/public-layout";
 import { AuthProvider } from "@/lib/auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 
-function Router() {
+// Aplikasi utama dengan layout admin
+function AdminApp() {
   return (
-    <Switch>
-      <ProtectedRoute path="/" component={Dashboard} />
-      <ProtectedRoute path="/dashboard" component={Dashboard} />
-      <ProtectedRoute path="/patients" component={Patients} />
-      <ProtectedRoute path="/patients/:id" component={PatientDetailMobile} />
-      <ProtectedRoute path="/transactions" component={Transactions} />
-      <ProtectedRoute path="/transactions/new" component={Transactions} />
-      <ProtectedRoute path="/therapy-slots" component={TherapySlots} />
-      <ProtectedRoute path="/products" component={Products} />
-      <Route path="/reports" component={Reports} />
-      <Route path="/reports/index" component={ReportsIndex} />
-      <Route path="/reports/patients-daily" component={PatientsDailyReport} />
-      <ProtectedRoute path="/settings" component={Settings} />
-      <ProtectedRoute path="/backup-restore" component={BackupRestore} />
-      <ProtectedRoute path="/admin" component={AdminPage} />
-      <ProtectedRoute path="/date-test" component={DateTest} />
-      <ProtectedRoute path="/test-dev" component={TestDevPage} />
-      <Route path="/login" component={Login} />
-      <Route path="/daftar" component={Register} />
-      <Route path="/register" component={Register} />
-      <Route path="/registration-success" component={RegistrationSuccess} />
-      <Route path="/register-simple" component={SimpleRegister} />
-      <Route component={NotFound} />
-    </Switch>
+    <Layout>
+      <Switch>
+        <ProtectedRoute path="/" component={Dashboard} />
+        <ProtectedRoute path="/dashboard" component={Dashboard} />
+        <ProtectedRoute path="/patients" component={Patients} />
+        <ProtectedRoute path="/patients/:id" component={PatientDetailMobile} />
+        <ProtectedRoute path="/transactions" component={Transactions} />
+        <ProtectedRoute path="/transactions/new" component={Transactions} />
+        <ProtectedRoute path="/therapy-slots" component={TherapySlots} />
+        <ProtectedRoute path="/products" component={Products} />
+        <ProtectedRoute path="/reports" component={Reports} />
+        <ProtectedRoute path="/reports/index" component={ReportsIndex} />
+        <ProtectedRoute path="/reports/patients-daily" component={PatientsDailyReport} />
+        <ProtectedRoute path="/settings" component={Settings} />
+        <ProtectedRoute path="/backup-restore" component={BackupRestore} />
+        <ProtectedRoute path="/admin" component={AdminPage} />
+        <ProtectedRoute path="/date-test" component={DateTest} />
+        <ProtectedRoute path="/test-dev" component={TestDevPage} />
+        <Route path="/login" component={Login} />
+        <Route component={NotFound} />
+      </Switch>
+    </Layout>
+  );
+}
+
+// Aplikasi publik (pendaftaran pasien)
+function PublicApp() {
+  return (
+    <PublicLayout>
+      <Switch>
+        <Route path="/daftar" component={Register} />
+        <Route path="/register" component={Register} />
+        <Route path="/registration-success" component={RegistrationSuccess} />
+        <Route path="/register-simple" component={SimpleRegister} />
+        <Route component={NotFound} />
+      </Switch>
+    </PublicLayout>
   );
 }
 
 function App() {
+  // Tentukan apakah ini halaman publik berdasarkan URL
+  const isPublicPage = window.location.pathname.includes('/register') || 
+                      window.location.pathname.includes('/daftar') || 
+                      window.location.pathname.includes('/registration-success');
+  
   return (
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
         <AuthProvider>
-          <Layout>
-            <Router />
-          </Layout>
+          {isPublicPage ? <PublicApp /> : <AdminApp />}
         </AuthProvider>
       </HelmetProvider>
       <Toaster />

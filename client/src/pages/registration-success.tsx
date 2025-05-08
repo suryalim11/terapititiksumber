@@ -21,13 +21,23 @@ export default function RegistrationSuccessPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fungsi untuk mengambil data dari localStorage
+    // Fungsi untuk mengambil data dari localStorage dengan safe handling
     function loadData() {
       try {
         const savedData = localStorage.getItem('registrationData');
-        if (savedData) {
-          const data = JSON.parse(savedData);
-          setRegistrationData(data);
+        const statusData = localStorage.getItem('registrationStatus');
+        
+        if (savedData && statusData === 'success') {
+          const parsedData = JSON.parse(savedData);
+          // Pastikan data yang diload valid
+          if (parsedData && parsedData.name && parsedData.phoneNumber) {
+            setRegistrationData(parsedData);
+            console.log("Data registrasi berhasil dimuat dari localStorage");
+          } else {
+            console.warn("Data registrasi tidak valid:", parsedData);
+          }
+        } else {
+          console.warn("Tidak ada data registrasi di localStorage");
         }
       } catch (error) {
         console.error("Error loading registration data:", error);
@@ -39,14 +49,18 @@ export default function RegistrationSuccessPage() {
     // Panggil fungsi untuk load data segera
     loadData();
 
-    // Coba lagi dalam 500ms jika tidak ada data (untuk redundansi)
+    // Coba lagi dalam 800ms jika tidak ada data (untuk redundansi)
     const timeoutId = setTimeout(() => {
       if (!registrationData) {
+        console.log("Mencoba memuat data registrasi lagi...");
         loadData();
       }
-    }, 500);
+    }, 800);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      console.log("Membersihkan timer");
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   // Tampilkan loading state jika data belum siap
