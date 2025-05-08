@@ -517,15 +517,24 @@ export default function Dashboard() {
     },
   ];
   
-  const handleSlotClick = (slotId: number) => {
+  // State tambahan untuk menyimpan tanggal dan waktu slot yang dipilih
+  const [selectedSlotDate, setSelectedSlotDate] = useState<string | undefined>();
+  const [selectedSlotTime, setSelectedSlotTime] = useState<string | undefined>();
+
+  const handleSlotClick = (slotId: number, slotDate?: string, slotTime?: string) => {
     try {
       if (typeof slotId !== 'number' || isNaN(slotId)) {
         console.error("Invalid slot ID:", slotId);
         return;
       }
       
+      // Simpan data slot yang diklik
       setSelectedSlotId(slotId);
+      setSelectedSlotDate(slotDate);
+      setSelectedSlotTime(slotTime);
       setIsDialogOpen(true);
+      
+      console.log(`Slot diklik: ID=${slotId}, Date=${slotDate}, Time=${slotTime}`);
     } catch (error) {
       console.error("Error handling slot click:", error);
     }
@@ -660,7 +669,7 @@ export default function Dashboard() {
                             <tr 
                               key={slot.id} 
                               className="py-2 hover:bg-muted/50 cursor-pointer transition-colors"
-                              onClick={() => handleSlotClick(slot.id)}
+                              onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot)}
                             >
                               <td className="py-3 text-left">
                                 <div className="flex flex-col">

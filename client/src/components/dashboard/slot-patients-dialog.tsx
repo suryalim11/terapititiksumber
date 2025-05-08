@@ -31,6 +31,8 @@ interface CombinedSlotInfo {
 
 interface SlotPatientsDialogProps {
   slotId: number | null;
+  slotDate?: string; // Tambahkan parameter tanggal slot
+  slotTimeSlot?: string; // Tambahkan parameter waktu slot
   isOpen: boolean;
   onClose: () => void;
 }
@@ -135,7 +137,7 @@ function AppointmentStatusChanger({
   );
 }
 
-export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDialogProps) {
+export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onClose }: SlotPatientsDialogProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
