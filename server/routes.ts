@@ -577,10 +577,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: false, 
           message: "Data pasien tidak valid. Pastikan semua field yang diperlukan diisi."
         });
-        console.log("Data pasien tervalidasi:", validatedData);
-        const newPatient = await storage.createPatient(validatedData);
-        console.log("Pasien baru dibuat:", newPatient);
-        return res.status(201).json(newPatient);
       }
       
       console.log("Skema yang diharapkan:", insertPatientSchema.shape);
