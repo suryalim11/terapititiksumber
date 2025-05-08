@@ -1854,6 +1854,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           console.log("Transaksi gabungan (pembayaran utang + pembelian baru) berhasil dibuat:", newTransaction.id);
+          
+          // Eksplisit proses penggunaan paket terapi dalam transaksi gabungan
+          if (newTransaction && newTransaction.items) {
+            console.log("Memproses penggunaan paket dalam transaksi gabungan...");
+            
+            // Parse item jika dalam bentuk string
+            let items = newTransaction.items;
+            if (typeof items === 'string') {
+              try {
+                items = JSON.parse(items);
+              } catch (e) {
+                console.error("Error parsing items in combined transaction:", e);
+                items = [];
+              }
+            }
+            
+            // Proses setiap item paket terapi
+            for (const item of items) {
+              if (item.type === 'package') {
+                try {
+                  console.log(`Memproses penggunaan paket dengan ID: ${item.id} untuk pasien: ${transaction.patientId}`);
+                  
+                  // Cari paket dari database
+                  const packageData = await storage.getPackage(parseInt(item.id));
+                  if (!packageData) {
+                    console.error(`Paket dengan ID ${item.id} tidak ditemukan`);
+                    continue;
+                  }
+                  
+                  console.log(`Ditemukan paket: ${packageData.name} dengan ${packageData.sessions} sesi`);
+                  
+                  // Buat sesi baru untuk pasien
+                  const newSession = await storage.createSession({
+                    patientId: transaction.patientId,
+                    packageId: parseInt(item.id),
+                    transactionId: newTransaction.id,
+                    totalSessions: packageData.sessions,
+                    sessionsUsed: 0,
+                    status: "active",
+                    expiryDate: null // No expiry date
+                  });
+                  
+                  console.log(`Sesi baru dibuat untuk paket ${packageData.name}: ${newSession.id}`);
+                } catch (packageError) {
+                  console.error(`Error saat memproses paket dalam transaksi gabungan: ${packageError}`);
+                }
+              }
+            }
+          }
         } else {
           // Proses normal untuk pembayaran utang saja
           console.log("Mencoba membuat transaksi pembayaran utang standar...");
