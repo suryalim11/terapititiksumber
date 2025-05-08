@@ -656,7 +656,7 @@ export default function Dashboard() {
                                 {slot.maxQuota}
                                 {slot.totalMaxQuota && slot.totalMaxQuota !== slot.maxQuota && (
                                   <span className="text-xs text-muted-foreground ml-1 block">
-                                    (dari total {slot.totalMaxQuota})
+                                    (dari {slot.totalMaxQuota} total)
                                   </span>
                                 )}
                               </td>
@@ -718,7 +718,7 @@ export default function Dashboard() {
                                 <span className="text-muted-foreground"> / {slot.maxQuota}</span>
                                 {slot.totalMaxQuota && slot.totalMaxQuota !== slot.maxQuota && (
                                   <span className="text-xs text-muted-foreground block text-right">
-                                    (dari total {slot.totalMaxQuota})
+                                    (dari {slot.totalMaxQuota} total)
                                   </span>
                                 )}
                               </div>
