@@ -852,22 +852,8 @@ export default function RegisterPage() {
       
       if (response.ok) {
         console.log("Pendaftaran berhasil:", data);
-        console.log("Setting registrationResult:", data);
-        console.log("Setting registrationStatus to 'success'");
         
-        // Periksa isi data registrasi
-        if (!data || !data.id) {
-          console.error("Data registrasi tidak lengkap atau tidak valid:", data);
-          toast({
-            variant: "destructive",
-            title: "Data Tidak Lengkap",
-            description: "Server mengembalikan data yang tidak lengkap. Silakan coba lagi.",
-          });
-          setIsSubmitting(false);
-          return;
-        }
-        
-        // Set data dalam localStorage sebagai cadangan
+        // Simpan data ke localStorage sebelum manipulasi DOM atau state
         try {
           localStorage.setItem('registrationData', JSON.stringify(data));
           localStorage.setItem('registrationStatus', 'success');
@@ -876,59 +862,16 @@ export default function RegisterPage() {
           console.error("Gagal menyimpan data pendaftaran di localStorage:", e);
         }
         
-        // Set data dan status
-        setRegistrationResult(data);
-        setRegistrationStatus("success");
-        
-        // Debug registrationStatus dan registrationResult setelah di-set
-        console.log("registrationStatus after set:", "success");
-        console.log("registrationResult after set:", data);
-        
-        // Tunggu sebentar agar state terupdate, lalu redirect jika perlu
-        setTimeout(() => {
-          // Periksa jika halaman konfirmasi belum muncul (state belum diupdate dengan benar)
-          if (document.getElementById('registration-success-page') === null) {
-            console.log("Halaman konfirmasi belum muncul, melakukan redirect");
-            
-            // Buat URL dengan parameter status=success
-            let successUrl = window.location.pathname;
-            const params = new URLSearchParams(window.location.search);
-            params.set('status', 'success');
-            
-            // Pastikan kode pendaftaran tetap ada
-            if (registrationCode) {
-              params.set('code', registrationCode);
-            }
-            
-            // Tambahkan parameter ke URL
-            successUrl += '?' + params.toString();
-            
-            console.log("Redirecting to:", successUrl);
-            
-            // Lakukan redirect
-            window.location.href = successUrl;
-          }
-        }, 800);
-        
-        // Refresh kuota pendaftaran
-        if (data.registrationInfo) {
-          setCurrentRegistrations(data.registrationInfo.currentRegistrations);
-          setRegistrationLimit(data.registrationInfo.dailyLimit);
-        }
-        
-        // Kompatibilitas dengan format lama - jika tidak ada appointment, tetap tampilkan hasil
-        if (!data.appointment && data.id) {
-          toast({
-            title: "Pendaftaran Berhasil",
-            description: "Data pasien berhasil didaftarkan.",
-            className: "bg-green-50 border-green-200 text-green-800",
-          });
-        }
+        // Gunakan window.location untuk pindah halaman (solusi paling andal)
+        window.location.href = window.location.pathname + 
+          "?status=success&code=" + 
+          (registrationCode || "") + 
+          "&t=" + new Date().getTime();
       } else {
         console.error("Pendaftaran gagal:", data);
         
         // Cek apakah kuota sudah penuh
-        if (data.message && data.message.includes("kuota") || data.message && data.message.includes("penuh")) {
+        if (data.message && (data.message.includes("kuota") || data.message.includes("penuh"))) {
           setRegistrationStatus("quota-reached");
         }
         
@@ -937,7 +880,9 @@ export default function RegisterPage() {
           title: "Pendaftaran Gagal",
           description: data.message || "Terjadi kesalahan saat mendaftarkan pasien. Silakan coba lagi nanti.",
         });
+        setIsSubmitting(false);
       }
+      
     } catch (error) {
       console.error("Error registering patient:", error);
       toast({
@@ -945,7 +890,6 @@ export default function RegisterPage() {
         title: "Koneksi Gagal",
         description: "Terjadi kesalahan saat menghubungi server. Silakan coba lagi nanti.",
       });
-    } finally {
       setIsSubmitting(false);
     }
   };
