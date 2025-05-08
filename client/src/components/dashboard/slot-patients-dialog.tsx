@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   DropdownMenu, 
@@ -501,7 +501,17 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     try {
       event.stopPropagation(); // Mencegah event bubbling ke parent div
       
-      if (!appointment || !appointment.patient || !appointment.patient.phoneNumber) {
+      // Validasi data pasien yang lebih komprehensif
+      if (!appointment || !appointment.patient) {
+        toast({
+          title: "Terjadi kesalahan",
+          description: "Data pasien tidak tersedia.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!appointment.patient.phoneNumber) {
         toast({
           title: "Terjadi kesalahan",
           description: "Nomor telepon pasien tidak tersedia.",
