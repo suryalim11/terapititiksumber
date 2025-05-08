@@ -886,17 +886,17 @@ export default function RegisterPage() {
     
     // Fungsi untuk mencoba mengirim data dengan retry
     const sendRegistrationWithRetry = async () => {
-      // API call untuk mendaftarkan pasien dengan timeout
-      const controller = new AbortController();
-      const signal = controller.signal;
-      
-      // Timer untuk abort
-      const abortTimer = setTimeout(() => {
-        console.log(`Aborting request attempt ${retryCount + 1} after timeout`);
-        controller.abort();
-      }, 7000);
+      // Timer untuk timeout
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
       
       try {
+        // Set timeout untuk request
+        let requestTimedOut = false;
+        timeoutId = setTimeout(() => {
+          console.log(`Request timed out after 7000ms (percobaan ke-${retryCount + 1})`);
+          requestTimedOut = true;
+        }, 7000);
+        
         console.log(`Mencoba mengirim data pendaftaran (percobaan ke-${retryCount + 1})`);
         
         const response = await fetch("/api/patients", {
@@ -905,8 +905,7 @@ export default function RegisterPage() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify(dataToSend),
-          signal
+          body: JSON.stringify(dataToSend)
         });
         
         // Membersihkan timer abort

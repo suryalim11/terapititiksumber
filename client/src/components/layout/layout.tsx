@@ -95,12 +95,7 @@ function ServerStatusIndicator() {
         // Pastikan timeout dibersihkan
         if (timeoutId) clearTimeout(timeoutId);
         
-        // Cek apakah error disebabkan oleh abort
-        const isAbortError = error instanceof DOMException && 
-                            (error.name === 'AbortError' || error.name === 'AbortSignal');
-        if (!isAbortError) {
-          console.error("Error checking server status:", error);
-        }
+        console.error("Error checking server status:", error);
         setServerStatus({ status: 'error' });
       }
     };
@@ -162,12 +157,7 @@ function ServerStatusIndicator() {
     } catch (error) {
       if (timeoutId) clearTimeout(timeoutId);
       
-      // Cek apakah error disebabkan oleh abort
-      const isAbortError = error instanceof DOMException && 
-                          (error.name === 'AbortError' || error.name === 'AbortSignal');
-      if (!isAbortError) {
-        console.error("Error checking server status:", error);
-      }
+      console.error("Error checking server status:", error);
       
       setServerStatus({ status: 'error' });
       toast({
