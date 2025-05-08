@@ -371,16 +371,38 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             const allAppointments = await appointmentsResponse.json();
             
             if (Array.isArray(allAppointments)) {
-              // Filter untuk slot ini
-              appointmentsData = allAppointments.filter((app: any) => {
+              // Filter dengan pendekatan lebih komprehensif
+              // 1. Pertama filter berdasarkan ID slot yang presisi (primary match)
+              const directMatches = allAppointments.filter((app: any) => {
                 if (!app) return false;
-                
-                // Match ID atau waktu slot
-                return (Number(app.therapySlotId) === Number(slotId)) || 
-                      (!app.therapySlotId && app.timeSlot === slotResult.timeSlot);
+                return Number(app.therapySlotId) === Number(slotId);
               });
               
-              console.log(`Found ${appointmentsData.length} appointments for this slot`);
+              // 2. Juga filter berdasarkan jam yang sama (secondary/additional matches)
+              // Ini akan menemukan appointment di slot lain dengan jam yang sama
+              const timeMatches = allAppointments.filter((app: any) => {
+                if (!app) return false;
+                // Hanya ambil yang waktunya sama tetapi bukan di slot ID ini
+                return app.timeSlot === slotResult.timeSlot && 
+                      Number(app.therapySlotId) !== Number(slotId);
+              });
+              
+              // Debug info untuk melihat potensi duplikasi
+              console.log(`Direct matches (by slotId): ${directMatches.length}`);
+              console.log(`Time matches (by timeSlot): ${timeMatches.length}`);
+              
+              // Gabungkan kedua hasil
+              appointmentsData = [...directMatches, ...timeMatches];
+              
+              // Debug untuk melihat hasil akhir
+              console.log(`Total appointments: ${appointmentsData.length}`);
+              
+              // Tambahkan flag untuk membedakan appointment dari slot lain
+              appointmentsData = appointmentsData.map(app => ({
+                ...app,
+                // Tandai appointment yang dari slot lain
+                fromOtherSlot: Number(app.therapySlotId) !== Number(slotId)
+              }));
             }
           } else {
             console.warn("Appointments fetch failed, status:", appointmentsResponse.status);
