@@ -1304,6 +1304,20 @@ export default function RegisterPage() {
                       <AlertDescription className="text-blue-600">
                         <p><strong>Tanggal:</strong> {selectedSlot.date}</p>
                         <p><strong>Jam:</strong> {selectedSlot.timeSlot}</p>
+                        <div className="mt-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            type="button"
+                            onClick={() => {
+                              setSelectedSlot(null);
+                              form.setValue("therapySlotId", undefined);
+                            }}
+                            className="text-blue-700 border-blue-300 hover:bg-blue-50"
+                          >
+                            <RefreshCw className="h-3 w-3 mr-1" /> Ubah Jadwal
+                          </Button>
+                        </div>
                       </AlertDescription>
                     </Alert>
                   </div>
