@@ -36,6 +36,7 @@ import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog"
 import { SessionEditorDialog } from "@/components/dashboard/session-editor-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
 interface DashboardStats {
@@ -609,13 +610,113 @@ export default function Dashboard() {
               onValueChange={handlePeriodChange}
             >
               <div className="px-4 pt-4">
-                <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsList className="grid w-full grid-cols-4 mb-4">
                   <TabsTrigger value="day">Hari Ini</TabsTrigger>
                   <TabsTrigger value="future">Mendatang</TabsTrigger>
                   <TabsTrigger value="all">Semua Slot</TabsTrigger>
+                  <TabsTrigger value="register">Pendaftaran</TabsTrigger>
                 </TabsList>
               </div>
               
+              {/* Tab content for registration */}
+              <TabsContent value="register" className="mt-0">
+                <div className="px-4 py-4">
+                  <div className="rounded-lg border p-4">
+                    <h3 className="text-lg font-medium mb-4">Pendaftaran Pasien</h3>
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Pilih slot terapi yang tersedia untuk mendaftarkan pasien baru atau yang sudah ada.
+                      </p>
+                      
+                      <div className="space-y-3 mt-4">
+                        {isSlotsLoading ? (
+                          <div className="flex justify-center items-center py-6">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                          </div>
+                        ) : slotsByPeriod.length > 0 ? (
+                          <>
+                            <h4 className="text-sm font-medium">Slot Tersedia:</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {slotsByPeriod
+                                .filter((slot: any) => slot.isActive && slot.currentCount < slot.maxQuota)
+                                .map((slot: any) => (
+                                  <Button
+                                    key={slot.id}
+                                    variant="outline"
+                                    className="justify-start h-auto py-3 px-4"
+                                    onClick={() => {
+                                      // Simpan ID slot ke sessionStorage
+                                      sessionStorage.setItem('selectedSlotId', String(slot.id));
+                                      
+                                      // Siapkan parameter untuk pendaftaran
+                                      let queryParams = new URLSearchParams();
+                                      queryParams.append('walkin', 'true');
+                                      queryParams.append('slotId', String(slot.id));
+                                      
+                                      // Jika slot memiliki timeSlotKey, gunakan itu
+                                      if (slot.timeSlotKey) {
+                                        queryParams.append('timeSlotKey', slot.timeSlotKey);
+                                      } else {
+                                        // Generate timeSlotKey from date + timeSlot
+                                        let dateStr = '';
+                                        if (typeof slot.date === 'string') {
+                                          dateStr = slot.date.split(' ')[0]; // Extract YYYY-MM-DD
+                                        } else {
+                                          // Jika tanggal bukan string, konversi ke string
+                                          const dateObj = new Date(slot.date);
+                                          dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+                                        }
+                                        
+                                        // Buat timeSlotKey dengan format YYYY-MM-DD_HH:MM-HH:MM
+                                        const generatedTimeSlotKey = `${dateStr}_${slot.timeSlot}`;
+                                        
+                                        // Tambahkan ke parameter URL
+                                        queryParams.append('timeSlotKey', generatedTimeSlotKey);
+                                      }
+                                      
+                                      // Redirect ke halaman pendaftaran dengan parameter
+                                      window.location.href = `/register?${queryParams.toString()}`;
+                                    }}
+                                  >
+                                    <div className="flex flex-col items-start">
+                                      <div className="font-medium">{slot.timeSlot}</div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {slot.date ? formatDateDDMMYYYY(slot.date) : '-'} · {slot.currentCount}/{slot.maxQuota} terisi
+                                      </div>
+                                      {slot.percentage >= 100 ? (
+                                        <div className="mt-1 inline-flex items-center border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-destructive text-destructive-foreground">
+                                          Penuh
+                                        </div>
+                                      ) : (
+                                        <div className="mt-1 inline-flex items-center border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-primary text-primary-foreground">
+                                          Tersedia
+                                        </div>
+                                      )}
+                                    </div>
+                                  </Button>
+                                ))}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="rounded-lg border border-dashed p-6 text-center">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                              <Calendar className="h-6 w-6 text-primary" />
+                            </div>
+                            <h3 className="mt-4 text-lg font-semibold">
+                              Belum Ada Slot Terapi
+                            </h3>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                              Tidak ada slot terapi tersedia untuk pendaftaran. Kunjungi halaman Therapy Slots untuk mengatur slot terapi baru.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              {/* Tab content for other views */}
               <TabsContent value={selectedPeriod} className="mt-0">
                 
                 {isSlotsLoading ? (
