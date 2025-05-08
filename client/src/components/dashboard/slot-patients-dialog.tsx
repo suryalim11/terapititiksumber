@@ -167,39 +167,23 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     
     for (let attempt = 0; attempt <= retryCount; attempt++) {
       try {
-        // Tambahkan timeout dengan controller
-        const controller = new AbortController();
+        // Pendekatan tanpa AbortController untuk menghindari error "signal is aborted without reason"
         let timeoutId: number | null = null;
         
         // Buat promise timeout yang akan reject jika waktu habis
-        // Promise baru yang hanya bertugas sebagai timer, tidak melakukan abort di dalamnya
         const timeoutPromise = new Promise<Response>((_, reject) => {
           timeoutId = window.setTimeout(() => {
             // Lapor timeout terjadi
             console.log(`⏱️ Request to ${endpoint} timeout after ${timeoutMs}ms`);
             
-            // Reject dengan timeout error (tanpa abort controller)
+            // Reject dengan timeout error
             reject(new Error(`Request timeout (${timeoutMs}ms)`));
           }, timeoutMs);
         });
         
-        // Pisahkan abort controller ke event listener khusus untuk mencegah "signal is aborted without reason"
-        const abortWithTimeout = setTimeout(() => {
-          try {
-            // Coba abort hanya jika belum diproses
-            if (controller && !controller.signal.aborted) {
-              controller.abort();
-              console.log(`Request to ${endpoint} aborted separately`);
-            }
-          } catch (abortError) {
-            console.log("Safe abort error handled:", abortError);
-          }
-        }, timeoutMs + 100); // Sedikit lebih lama dari timeout utama
-        
-        // Buat fetch promise
+        // Buat fetch promise (tanpa signal/controller)
         const fetchPromise = fetch(url, {
           ...options,
-          signal: controller.signal,
           // Hindari cache
           headers: {
             ...options.headers,
@@ -212,9 +196,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         // Race antara fetch dan timeout
         const response = await Promise.race([fetchPromise, timeoutPromise]);
         
-        // Clear semua timeout jika fetch selesai duluan
+        // Clear timeout jika fetch selesai duluan
         if (timeoutId) clearTimeout(timeoutId);
-        clearTimeout(abortWithTimeout); // Bersihkan abort timeout juga
         
         // Cek network apakah offline
         if (!window.navigator.onLine) {
@@ -228,10 +211,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       } catch (err: any) {
         // Pastikan semua timeout dibersihkan untuk mencegah memory leak
         if (timeoutId) clearTimeout(timeoutId);
-        clearTimeout(abortWithTimeout);
         
         lastError = err;
-        const isTimeout = err.name === 'AbortError' || err.message.includes('timeout');
+        const isTimeout = err.message.includes('timeout');
         const waitTime = Math.min(500 * Math.pow(2, attempt), 4000); // Exponential backoff dengan max 4 detik
         
         console.log(
