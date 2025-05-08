@@ -721,7 +721,7 @@ export default function Dashboard() {
                         <div 
                           key={slot.id}
                           className="border rounded-lg p-3 hover:bg-muted/50 cursor-pointer transition-colors mobile-card"
-                          onClick={() => handleSlotClick(slot.id)}
+                          onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot)}
                         >
                           <div className="flex justify-between items-center mb-2">
                             <div>
@@ -928,7 +928,9 @@ export default function Dashboard() {
       
       {/* Dialog untuk melihat pasien yang terdaftar di slot */}
       <SlotPatientsDialog 
-        slotId={selectedSlotId} 
+        slotId={selectedSlotId}
+        slotDate={selectedSlotDate}
+        slotTimeSlot={selectedSlotTime}
         isOpen={isDialogOpen} 
         onClose={handleCloseDialog} 
       />

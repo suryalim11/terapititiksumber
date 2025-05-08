@@ -336,22 +336,28 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         }
       }
       
-      // STEP 3: Jika masih tidak ada data slot, gunakan minimal fallback untuk UI
+      // STEP 3: Jika masih tidak ada data slot, gunakan parameter yang diteruskan untuk membuat data minimal
       if (!slotResult) {
-        console.log("Creating minimal slot data fallback for UI");
+        console.log("Creating minimal slot data fallback using passed parameters");
         
-        // Default slot dengan data yang lebih deskriptif
+        // Gunakan tanggal dan waktu slot yang diteruskan sebagai props jika tersedia
+        const fallbackDate = slotDate || todayString;
+        const fallbackTimeSlot = slotTimeSlot || "Data tidak tersedia";
+        
+        // Default slot dengan data dari parameter props
         slotResult = {
           id: Number(slotId),
-          date: todayString,
-          timeSlot: "Data tidak tersedia",
+          date: fallbackDate,
+          timeSlot: fallbackTimeSlot,
           currentCount: 0,
           maxQuota: 6, // Default kuota standar
           isActive: true
         };
         
+        console.log(`Using fallback data - Date: ${fallbackDate}, TimeSlot: ${fallbackTimeSlot}`);
+        
         // Set warning tapi tetap tampilkan UI
-        setError(new Error("Data slot tidak tersedia. Mencoba menampilkan informasi minimal."));
+        setError(new Error("Data slot tidak dapat diambil dari server. Menggunakan informasi minimal dari parameter."));
       }
       
       // Set slot data ke state
@@ -456,23 +462,41 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
   const hasRefreshedRef = useRef(false);
   const dialogOpenedTimeRef = useRef<number | null>(null);
   
-  // Ambil informasi slot gabungan dari localStorage
+  // Ambil informasi slot gabungan dari localStorage atau buat dari props
   useEffect(() => {
     if (isOpen && slotId) {
       try {
+        // Coba ambil dari localStorage dulu
         const storedCombinedInfo = localStorage.getItem('combinedSlotsInfo');
         if (storedCombinedInfo) {
           const combinedSlotsData = JSON.parse(storedCombinedInfo);
           if (combinedSlotsData && combinedSlotsData[slotId]) {
             setCombinedSlotInfo(combinedSlotsData[slotId]);
-            console.log("Loaded combined slot info:", combinedSlotsData[slotId]);
+            console.log("Loaded combined slot info from localStorage:", combinedSlotsData[slotId]);
+            return;
           }
         }
+        
+        // Jika tidak ada data di localStorage, buat dari props
+        if (slotDate && slotTimeSlot) {
+          // Buat kombinasi ID untuk tracking
+          const newCombinedInfo: CombinedSlotInfo = {
+            ids: [Number(slotId)],
+            timeSlotKey: `${slotDate}_${slotTimeSlot.replace(/:/g, '').replace('-', '_')}`,
+            timeSlot: slotTimeSlot,
+            date: slotDate,
+            totalPatients: 0,
+            totalQuota: 6 // nilai default
+          };
+          
+          setCombinedSlotInfo(newCombinedInfo);
+          console.log("Created combined slot info from props:", newCombinedInfo);
+        }
       } catch (error) {
-        console.error("Error loading combined slots info:", error);
+        console.error("Error processing combined slots info:", error);
       }
     }
-  }, [isOpen, slotId]);
+  }, [isOpen, slotId, slotDate, slotTimeSlot]);
   
   // Logging additional debug info
   useEffect(() => {
