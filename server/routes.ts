@@ -85,6 +85,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error("Error fixing database schema:", error);
   }
   
+  // Endpoint khusus untuk ping - tidak mengakses database untuk ketersediaan tinggi
+  app.get("/api/ping", (req: Request, res: Response) => {
+    res.json({
+      status: "ok",
+      server: "running",
+      timestamp: new Date().toISOString(),
+      uptime: Math.floor((Date.now() - SYSTEM_START_TIME.getTime()) / 1000) // uptime dalam detik
+    });
+  });
+
   // API routes
   const apiRouter = app.route("/api");
   

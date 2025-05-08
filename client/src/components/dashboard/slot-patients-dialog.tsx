@@ -1121,24 +1121,49 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                   variant="outline"
                   className="text-xs"
                   onClick={() => {
-                    // Manual retry dengan timeout yang sangat singkat
-                    fetch(`/api/ping`, { signal: AbortSignal.timeout(2000) })
-                      .then(res => {
-                        if (res.ok) {
-                          toast({
-                            title: "Koneksi Pulih",
-                            description: "Koneksi ke server telah pulih, memuat ulang data..."
-                          });
-                          setTimeout(refetch, 500);
+                    // State loader untuk tombol
+                    const btn = document.activeElement as HTMLButtonElement;
+                    if (btn) {
+                      const originalText = btn.textContent;
+                      btn.textContent = '⏳ Memeriksa...';
+                      btn.disabled = true;
+                      
+                      // Manual retry dengan timeout yang sangat singkat
+                      fetch(`/api/ping`, { 
+                        signal: AbortSignal.timeout(2000),
+                        headers: {
+                          'Cache-Control': 'no-cache',
+                          'Pragma': 'no-cache'
                         }
                       })
-                      .catch(e => {
-                        toast({
-                          title: "Server Masih Down",
-                          description: "Coba beberapa saat lagi atau refresh halaman",
-                          variant: "destructive"
+                        .then(res => res.json())
+                        .then(data => {
+                          if (data && data.status === 'ok') {
+                            toast({
+                              title: "Koneksi Pulih",
+                              description: `Server aktif (uptime: ${Math.floor(data.uptime / 60)} menit)`,
+                            });
+                            setTimeout(() => {
+                              setError(null);
+                              refetch();
+                            }, 500);
+                          }
+                        })
+                        .catch(e => {
+                          toast({
+                            title: "Server Masih Down",
+                            description: "Coba beberapa saat lagi atau refresh halaman",
+                            variant: "destructive"
+                          });
+                        })
+                        .finally(() => {
+                          // Reset tombol
+                          if (btn) {
+                            btn.textContent = originalText;
+                            btn.disabled = false;
+                          }
                         });
-                      });
+                    }
                   }}
                 >
                   Coba Koneksi

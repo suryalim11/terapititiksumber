@@ -16,10 +16,25 @@ import {
   LogOut,
   Database,
   ChevronUp,
+  ServerOff,
+  Server,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from "@/components/ui/tooltip";
+
+// Tipe data untuk status server
+interface ServerStatus {
+  status: 'ok' | 'error' | 'checking';
+  uptime?: number; // dalam detik
+  timestamp?: string;
+}
 
 // Navigation items configuration
 const navItems = [
@@ -35,6 +50,185 @@ const navItems = [
 
 interface LayoutProps {
   children: React.ReactNode;
+}
+
+// Komponen indikator status server
+function ServerStatusIndicator() {
+  const [serverStatus, setServerStatus] = useState<ServerStatus>({
+    status: 'checking'
+  });
+  const { toast } = useToast();
+  
+  // Periksa status server pada awal render dan secara berkala
+  useEffect(() => {
+    const checkServerStatus = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        
+        const response = await fetch('/api/ping', {
+          signal: controller.signal,
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setServerStatus({
+            status: 'ok',
+            uptime: data.uptime,
+            timestamp: data.timestamp
+          });
+        } else {
+          setServerStatus({ status: 'error' });
+        }
+      } catch (error) {
+        setServerStatus({ status: 'error' });
+      }
+    };
+    
+    // Periksa status setiap 30 detik
+    checkServerStatus();
+    const intervalId = setInterval(checkServerStatus, 30000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
+  
+  // Periksa status server lagi ketika ada klik
+  const handleCheckStatus = async () => {
+    setServerStatus({ status: 'checking' });
+    
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await fetch('/api/ping', {
+        signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setServerStatus({
+          status: 'ok',
+          uptime: data.uptime,
+          timestamp: data.timestamp
+        });
+        
+        toast({
+          title: "Server Status",
+          description: `Server berjalan dengan baik (uptime: ${Math.floor(data.uptime / 60)} menit)`,
+        });
+      } else {
+        setServerStatus({ status: 'error' });
+        toast({
+          variant: "destructive",
+          title: "Server Error",
+          description: "Server merespons dengan error"
+        });
+      }
+    } catch (error) {
+      setServerStatus({ status: 'error' });
+      toast({
+        variant: "destructive",
+        title: "Koneksi Terputus",
+        description: "Tidak dapat terhubung ke server"
+      });
+    }
+  };
+  
+  // Render ikon dan teks status yang sesuai
+  const renderStatusContent = () => {
+    switch (serverStatus.status) {
+      case 'ok':
+        return (
+          <>
+            <Server className="h-4 w-4 text-green-500" />
+            <span className="text-xs text-green-600">Server Online</span>
+          </>
+        );
+      case 'error':
+        return (
+          <>
+            <ServerOff className="h-4 w-4 text-red-500" />
+            <span className="text-xs text-red-600">Server Error</span>
+          </>
+        );
+      case 'checking':
+        return (
+          <>
+            <Server className="h-4 w-4 text-amber-500 animate-pulse" />
+            <span className="text-xs text-amber-600">Memeriksa...</span>
+          </>
+        );
+    }
+  };
+  
+  // Format uptime dalam format yang lebih mudah dibaca
+  const formatUptime = (seconds?: number): string => {
+    if (!seconds) return "N/A";
+    
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+  
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <div 
+            onClick={handleCheckStatus}
+            className={cn(
+              "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs cursor-pointer transition-colors",
+              serverStatus.status === 'ok' ? "bg-green-50 hover:bg-green-100" :
+              serverStatus.status === 'error' ? "bg-red-50 hover:bg-red-100" :
+              "bg-amber-50 hover:bg-amber-100"
+            )}
+          >
+            {renderStatusContent()}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <div className="space-y-1">
+            <p className="font-semibold">Status Server</p>
+            <div className="grid grid-cols-2 gap-x-2 text-xs">
+              <span className="text-muted-foreground">Status:</span>
+              <span>{serverStatus.status === 'ok' ? 'Online' : serverStatus.status === 'error' ? 'Error' : 'Checking'}</span>
+              
+              {serverStatus.status === 'ok' && (
+                <>
+                  <span className="text-muted-foreground">Uptime:</span>
+                  <span>{formatUptime(serverStatus.uptime)}</span>
+                  
+                  <span className="text-muted-foreground">Last Check:</span>
+                  <span>{new Date().toLocaleTimeString()}</span>
+                </>
+              )}
+            </div>
+            <p className="pt-1 border-t text-[10px] text-muted-foreground">Klik untuk memeriksa status</p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }
 
 export default function Layout({ children }: LayoutProps) {
@@ -191,6 +385,9 @@ export default function Layout({ children }: LayoutProps) {
           )}
           
           <div className="ml-auto flex items-center gap-2 md:gap-4">
+            {/* Server status indicator */}
+            <ServerStatusIndicator />
+            
             {isAuthenticated && user ? (
               <div className="flex items-center gap-2 md:gap-3">
                 <div className="hidden md:flex items-center gap-2">
