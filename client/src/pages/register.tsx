@@ -844,55 +844,64 @@ export default function RegisterPage() {
         body: JSON.stringify(dataToSend),
       });
       
-      const data: RegistrationResponse = await response.json();
-      
-      console.log("Raw response status:", response.status);
-      console.log("Raw response ok:", response.ok);
-      console.log("Complete response data:", JSON.stringify(data, null, 2));
-      
       if (response.ok) {
-        console.log("Pendaftaran berhasil:", data);
-        
-        // Prepare the data structure for the registration success page
-        const registrationDataForStorage = {
-          ...values, // Form values
-          ...data,   // Server response
-          appointment: {
-            date: selectedSlot ? format(new Date(selectedSlot.date), "yyyy-MM-dd") : undefined,
-            timeSlot: selectedSlot ? selectedSlot.timeSlot : undefined
-          }
-        };
-        
-        // Simpan data ke localStorage sebelum navigasi
         try {
-          localStorage.setItem('registrationData', JSON.stringify(registrationDataForStorage));
+          const data: RegistrationResponse = await response.json();
+          console.log("Complete response data:", JSON.stringify(data, null, 2));
+          
+          // Siapkan data untuk halaman sukses
+          const simpleData = {
+            name: values.name,
+            phoneNumber: values.phoneNumber,
+            email: values.email,
+            birthDate: values.birthDate,
+            gender: values.gender,
+            address: values.address,
+            appointment: {
+              date: selectedSlot ? format(new Date(selectedSlot.date), "yyyy-MM-dd") : null,
+              timeSlot: selectedSlot ? selectedSlot.timeSlot : null
+            }
+          };
+          
+          // Simpan ke localStorage
+          localStorage.setItem('registrationData', JSON.stringify(simpleData));
           localStorage.setItem('registrationStatus', 'success');
-          console.log("Data pendaftaran berhasil disimpan di localStorage:", registrationDataForStorage);
+          console.log("Data sederhana berhasil disimpan:", simpleData);
           
-          // Arahkan ke halaman sukses pendaftaran
-          window.location.href = "/registration-success";
-        } catch (e) {
-          console.error("Gagal menyimpan data pendaftaran di localStorage:", e);
-          
-          // Fallback ke metode redirect lama jika gagal
-          window.location.href = window.location.pathname + 
-            "?status=success&code=" + 
-            (registrationCode || "") + 
-            "&t=" + new Date().getTime();
+          // Gunakan timeout untuk memastikan navigasi terjadi setelah respons selesai diproses
+          setTimeout(() => {
+            console.log("Navigasi ke halaman sukses...");
+            window.location.href = "/registration-success";
+          }, 500);
+        } catch (error) {
+          console.error("Error processing response:", error);
+          alert("Pendaftaran berhasil, tetapi terjadi kesalahan saat memproses respons. Silakan cek halaman pendaftaran kembali.");
         }
       } else {
-        console.error("Pendaftaran gagal:", data);
-        
-        // Cek apakah kuota sudah penuh
-        if (data.message && (data.message.includes("kuota") || data.message.includes("penuh"))) {
-          setRegistrationStatus("quota-reached");
+        try {
+          // Coba mendapatkan data respons untuk pesan error
+          const errorData = await response.json();
+          console.error("Pendaftaran gagal:", errorData);
+          
+          // Cek apakah kuota sudah penuh
+          if (errorData.message && (errorData.message.includes("kuota") || errorData.message.includes("penuh"))) {
+            setRegistrationStatus("quota-reached");
+          }
+          
+          toast({
+            variant: "destructive",
+            title: "Pendaftaran Gagal",
+            description: errorData.message || "Terjadi kesalahan saat mendaftarkan pasien. Silakan coba lagi nanti.",
+          });
+        } catch (error) {
+          console.error("Error parsing error response:", error);
+          toast({
+            variant: "destructive",
+            title: "Pendaftaran Gagal",
+            description: "Terjadi kesalahan saat mendaftarkan pasien. Silakan coba lagi nanti.",
+          });
         }
         
-        toast({
-          variant: "destructive",
-          title: "Pendaftaran Gagal",
-          description: data.message || "Terjadi kesalahan saat mendaftarkan pasien. Silakan coba lagi nanti.",
-        });
         setIsSubmitting(false);
       }
       
@@ -921,12 +930,25 @@ export default function RegisterPage() {
       );
     }
 
+    // Interface untuk data slot terapi
+    interface TherapySlotData {
+      id: number;
+      date: string;
+      timeSlot: string;
+      maxQuota: number;
+      currentCount: number;
+      isActive: boolean;
+      timeSlotKey?: string | null;
+      globalQuota?: number;
+      createdAt?: string;
+    }
+    
     // Fungsi untuk deduplikasi slot dengan timeSlot yang sama
-    const deduplicateSlots = (slots: any[]): any[] => {
+    const deduplicateSlots = (slots: TherapySlotData[]): TherapySlotData[] => {
       // Group slots by date + timeSlot
-      const slotMap: Record<string, any[]> = {};
+      const slotMap: Record<string, TherapySlotData[]> = {};
       
-      slots.forEach((slot: any) => {
+      slots.forEach((slot: TherapySlotData) => {
         const dateStr = format(new Date(slot.date), "yyyy-MM-dd");
         const key = `${dateStr}_${slot.timeSlot}`;
         
@@ -939,7 +961,7 @@ export default function RegisterPage() {
       // For each group, select the best slot (with highest available quota)
       return Object.values(slotMap).map(slotsGroup => {
         // Sort by available capacity (maxQuota - currentCount) in descending order
-        const sortedSlots = [...slotsGroup].sort((a, b) => 
+        const sortedSlots = [...slotsGroup].sort((a: TherapySlotData, b: TherapySlotData) => 
           (b.maxQuota - b.currentCount) - (a.maxQuota - a.currentCount)
         );
         
@@ -958,9 +980,9 @@ export default function RegisterPage() {
     console.log(`Slot setelah deduplikasi: ${uniqueSlots.length}`);
     
     // Kelompokkan slot berdasarkan tanggal
-    const groupedByDate: Record<string, any[]> = {};
+    const groupedByDate: Record<string, TherapySlotData[]> = {};
     
-    uniqueSlots.forEach((slot: any) => {
+    uniqueSlots.forEach((slot: TherapySlotData) => {
       const dateStr = format(new Date(slot.date), "yyyy-MM-dd");
       if (!groupedByDate[dateStr]) {
         groupedByDate[dateStr] = [];
@@ -981,7 +1003,7 @@ export default function RegisterPage() {
                 {formattedDate}
               </h4>
               <div className="grid grid-cols-2 gap-2">
-                {slots.map((slot: any) => (
+                {slots.map((slot: TherapySlotData) => (
                   <div key={slot.id} className="flex">
                     <label
                       htmlFor={`slot-${slot.id}`}

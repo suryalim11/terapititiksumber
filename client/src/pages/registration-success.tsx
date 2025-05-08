@@ -23,82 +23,45 @@ export default function RegistrationSuccessPage() {
 
   useEffect(() => {
     try {
-      // Coba ambil data dari localStorage
+      // Ambil data dari localStorage
       const savedData = localStorage.getItem('registrationData');
       const savedStatus = localStorage.getItem('registrationStatus');
       
-      console.log("Memeriksa data dari localStorage");
-      console.log("Status:", savedStatus);
+      // Log untuk debugging
+      console.log("Status pendaftaran:", savedStatus);
       console.log("Data tersedia:", !!savedData);
       
       if (savedData && savedStatus === 'success') {
-        console.log("Data pendaftaran ditemukan di localStorage");
-        
         try {
-          // Pulihkan data pendaftaran
+          // Parse data
           const data = JSON.parse(savedData);
           
-          // Verifikasi data memiliki properti yang dibutuhkan
-          if (!data.name || !data.phoneNumber) {
-            throw new Error("Data pendaftaran tidak lengkap");
-          }
-          
-          // Pastikan data appointment ada
-          if (!data.appointment || !data.appointment.date || !data.appointment.timeSlot) {
-            console.warn("Data appointment tidak lengkap, mencoba mengisi dari data lain");
-            
-            // Coba lengkapi dari selectedSlot jika ada
-            if (data.selectedSlot) {
-              data.appointment = {
-                date: data.selectedSlot.date,
-                timeSlot: data.selectedSlot.timeSlot
-              };
-            }
-          }
-          
+          // Tampilkan data
           setRegistrationData(data);
-          console.log("Berhasil memulihkan data pendaftaran dari localStorage", data);
+          console.log("Data pendaftaran berhasil dimuat:", data);
           
-          // Notifikasi sukses
-          toast({
-            title: "Data Pendaftaran Ditemukan",
-            description: "Menampilkan detail pendaftaran Anda.",
-            className: "bg-green-50 border-green-200 text-green-800",
-          });
-          
-          // Nonaktifkan loading state
+          // Hapus loading state
           setLoading(false);
+          
         } catch (parseError) {
-          console.error("Error parsing registration data:", parseError);
-          throw new Error("Format data pendaftaran tidak valid");
+          console.error("Error parsing data:", parseError);
+          throw new Error("Format data tidak valid");
         }
       } else {
-        console.error("Tidak ada data pendaftaran yang valid di localStorage");
-        toast({
-          variant: "destructive",
-          title: "Data Tidak Ditemukan",
-          description: "Tidak dapat menemukan data pendaftaran Anda. Silakan mendaftar kembali.",
-        });
+        console.error("Data pendaftaran tidak ditemukan");
         
-        // Redirect ke halaman pendaftaran setelah delay
-        setTimeout(() => {
-          window.location.href = "/register";
-        }, 3000);
+        // Redirect ke halaman pendaftaran
+        alert("Data pendaftaran tidak ditemukan. Halaman akan dialihkan.");
+        window.location.href = "/register";
       }
     } catch (e) {
-      console.error("Error memulihkan data pendaftaran:", e);
-      toast({
-        variant: "destructive",
-        title: "Error Memuat Data",
-        description: "Terjadi kesalahan saat memuat data pendaftaran. Silakan coba lagi.",
-      });
+      console.error("Error:", e);
       
-      // Redirect ke halaman pendaftaran setelah delay
-      setTimeout(() => {
-        window.location.href = "/register";
-      }, 3000);
+      // Redirect ke halaman pendaftaran
+      alert("Terjadi kesalahan. Halaman akan dialihkan.");
+      window.location.href = "/register";
     }
-  }, [toast]);
+  }, []);
 
   // Tampilkan loading state jika data belum siap
   if (loading) {
