@@ -209,9 +209,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         console.log(`✅ Fetch sukses [${attempt + 1}/${retryCount + 1}]: ${endpoint} - Status: ${response.status}`);
         return response;
       } catch (err: any) {
-        // Pastikan semua timeout dibersihkan untuk mencegah memory leak
-        if (timeoutId) clearTimeout(timeoutId);
-        
+        // Timeout sudah dibersihkan di Promise.race
         lastError = err;
         const isTimeout = err.message.includes('timeout');
         const waitTime = Math.min(500 * Math.pow(2, attempt), 4000); // Exponential backoff dengan max 4 detik
@@ -1069,12 +1067,13 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             
             // Jika tidak ada di cache, fetch dengan timeout 5 detik
             return new Promise((resolve) => {
-              const abortController = new AbortController();
-              const timeoutId = setTimeout(() => abortController.abort(), 5000);
+              const timeoutId = setTimeout(() => {
+                console.log(`Patient fetch timeout for ID ${id}`);
+              }, 5000);
               
               fetch(`/api/patients/${id}`, { 
-                signal: abortController.signal,
-                headers: { 'Cache-Control': 'no-cache' }
+                headers: { 'Cache-Control': 'no-cache' },
+                credentials: 'include'
               })
                 .then(res => res.json())
                 .then(data => {
