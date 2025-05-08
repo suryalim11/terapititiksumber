@@ -388,13 +388,11 @@ export default function Dashboard() {
           }
         });
         
-        // Hitung persentase penggunaan untuk semua slot
-        // Gunakan totalMaxQuota jika tersedia (untuk slot gabungan), atau maxQuota untuk slot individual
+        // Hitung persentase penggunaan untuk semua slot berdasarkan maxQuota saja
+        // Tidak lagi menggunakan totalMaxQuota untuk konsistensi dengan tampilan
         const slotsWithPercentage = sortedSlots.map(slot => ({
           ...slot,
-          percentage: slot.totalMaxQuota 
-            ? (slot.currentCount / slot.totalMaxQuota) * 100 
-            : slot.maxQuota ? (slot.currentCount / slot.maxQuota) * 100 : 0
+          percentage: slot.maxQuota ? (slot.currentCount / slot.maxQuota) * 100 : 0
         }));
         
         // Return hasil yang sudah diproses
@@ -654,11 +652,6 @@ export default function Dashboard() {
                               </td>
                               <td className="py-3 text-center">
                                 {slot.maxQuota}
-                                {slot.totalMaxQuota && slot.totalMaxQuota !== slot.maxQuota && (
-                                  <span className="text-xs text-muted-foreground ml-1 block">
-                                    (dari {slot.totalMaxQuota} total)
-                                  </span>
-                                )}
                               </td>
                               <td className="py-3 text-center">{slot.currentCount}</td>
                               <td className="py-3 text-right">
@@ -716,11 +709,6 @@ export default function Dashboard() {
                               <div className="text-sm">
                                 <span className="font-medium">{slot.currentCount}</span>
                                 <span className="text-muted-foreground"> / {slot.maxQuota}</span>
-                                {slot.totalMaxQuota && slot.totalMaxQuota !== slot.maxQuota && (
-                                  <span className="text-xs text-muted-foreground block text-right">
-                                    (dari {slot.totalMaxQuota} total)
-                                  </span>
-                                )}
                               </div>
                             </div>
                           </div>
