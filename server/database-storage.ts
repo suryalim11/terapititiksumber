@@ -2005,6 +2005,19 @@ export class DatabaseStorage implements IStorage {
    */
   async syncTherapySlotQuota(): Promise<{ updatedSlots: number, results: any[] }> {
     try {
+      // Cek apakah kolom global_quota ada
+      let globalQuotaExists = false;
+      try {
+        const columns = await pool.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'therapy_slots' AND column_name = 'global_quota'
+        `);
+        globalQuotaExists = columns.rows.length > 0;
+      } catch (err) {
+        console.warn("Error checking for global_quota column:", err);
+      }
+      
       // Dapatkan semua slot terapi
       const allSlots = await db.query.therapySlots.findMany({
         orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
@@ -2015,69 +2028,146 @@ export class DatabaseStorage implements IStorage {
       
       console.log(`Mulai sinkronisasi ${allSlots.length} slot terapi...`);
       
-      // Untuk setiap slot, hitung ulang kuota berdasarkan jumlah appointment aktif
-      for (const slot of allSlots) {
-        try {
-          // Dapatkan semua appointment untuk slot terapi ini
-          const allAppointmentsForSlot = await db.query.appointments.findMany({
-            where: eq(schema.appointments.therapySlotId, slot.id)
-          });
-          
-          // Log semua appointment yang ditemukan untuk slot ini
-          console.log(`Slot ${slot.id} (${slot.date} ${slot.timeSlot}): ${allAppointmentsForSlot.length} total appointments`);
-          console.log(`Detail appointments:`, allAppointmentsForSlot.map(a => ({ id: a.id, status: a.status })));
-          
-          // Filter hanya appointment aktif (dengan status yang spesifik)
-          const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
-          const activeAppointments = allAppointmentsForSlot.filter(app => {
-            // Status yang dibatalkan (Cancelled) secara eksplisit dikeluarkan
-            if (app.status === 'Cancelled' || app.status === 'Completed') {
-              return false;
-            }
+      // Jika global_quota tersedia, kumpulkan dulu semua timeSlotKey yang unik
+      if (globalQuotaExists) {
+        console.log("Sinkronisasi globalQuota untuk slot terapi berdasarkan timeSlotKey...");
+        
+        // Kumpulkan semua timeSlotKey yang unik dari slot terapi
+        const uniqueTimeSlotKeys = new Set<string>();
+        for (const slot of allSlots) {
+          if (slot.timeSlotKey) {
+            uniqueTimeSlotKeys.add(slot.timeSlotKey);
+          }
+        }
+        
+        console.log(`Ditemukan ${uniqueTimeSlotKeys.size} timeSlotKey unik`);
+        
+        // Untuk setiap timeSlotKey, hitung total appointment aktif
+        for (const timeSlotKey of uniqueTimeSlotKeys) {
+          try {
+            // Dapatkan semua slot dengan timeSlotKey yang sama
+            const slotsWithSameKey = allSlots.filter(s => s.timeSlotKey === timeSlotKey);
             
-            // Hanya sertakan status yang ada di daftar status aktif
-            return activeStatuses.includes(app.status);
-          });
-          
-          const activeCount = activeAppointments.length;
-          console.log(`Slot ${slot.id}: ${activeCount} active appointments, current count in DB: ${slot.currentCount}`);
-          
-          // Jika nilai di database berbeda, update
-          if (slot.currentCount !== activeCount) {
-            console.log(`Sinkronisasi slot ${slot.id}: mengubah currentCount dari ${slot.currentCount} menjadi ${activeCount}`);
-            
-            const updatedSlot = await db
-              .update(schema.therapySlots)
-              .set({ currentCount: activeCount })
-              .where(eq(schema.therapySlots.id, slot.id))
-              .returning();
-            
-            if (updatedSlot.length > 0) {
-              let formattedDate;
-              try {
-                // Gunakan metode yang sama dengan getWIBDate untuk format tanggal yang konsisten
-                const originalDate = new Date(slot.date);
-                const correctedDate = new Date(originalDate.getTime() - (14 * 60 * 60 * 1000));
-                const wibDate = new Date(correctedDate.getTime() + (7 * 60 * 60 * 1000));
-                formattedDate = format(wibDate, 'dd MMMM yyyy');
-              } catch (error) {
-                console.error(`Error formatting date for slot ${slot.id}:`, error);
-                formattedDate = String(slot.date);
+            if (slotsWithSameKey.length > 0) {
+              console.log(`Processing ${slotsWithSameKey.length} slots with timeSlotKey: ${timeSlotKey}`);
+              
+              // Hitung total appointment aktif untuk semua slot dengan timeSlotKey yang sama
+              let totalActiveAppointments = 0;
+              
+              for (const slot of slotsWithSameKey) {
+                // Dapatkan semua appointment untuk slot terapi ini
+                const allAppointmentsForSlot = await db.query.appointments.findMany({
+                  where: eq(schema.appointments.therapySlotId, slot.id)
+                });
+                
+                // Filter hanya appointment aktif
+                const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+                const activeAppointments = allAppointmentsForSlot.filter(app => {
+                  return !['Cancelled', 'Completed'].includes(app.status) && activeStatuses.includes(app.status);
+                });
+                
+                const activeCount = activeAppointments.length;
+                totalActiveAppointments += activeCount;
+                
+                // Update currentCount untuk slot ini
+                if (slot.currentCount !== activeCount) {
+                  console.log(`Updating currentCount for slot ${slot.id} from ${slot.currentCount} to ${activeCount}`);
+                  
+                  await db
+                    .update(schema.therapySlots)
+                    .set({ currentCount: activeCount })
+                    .where(eq(schema.therapySlots.id, slot.id));
+                  
+                  updatedCount++;
+                }
               }
               
+              // Update globalQuota untuk semua slot dengan timeSlotKey yang sama
+              console.log(`Updating globalQuota for timeSlotKey ${timeSlotKey} to ${totalActiveAppointments}`);
+              
+              await db.execute(sql`
+                UPDATE therapy_slots
+                SET global_quota = ${totalActiveAppointments}
+                WHERE time_slot_key = ${timeSlotKey}
+              `);
+              
+              // Tambahkan hasil ke laporan
               results.push({
-                slotId: slot.id,
-                date: formattedDate,
-                timeSlot: slot.timeSlot,
-                oldCount: slot.currentCount,
-                newCount: activeCount
+                timeSlotKey,
+                slots: slotsWithSameKey.map(s => s.id),
+                totalActiveAppointments
               });
-              updatedCount++;
             }
+          } catch (error) {
+            console.error(`Error processing timeSlotKey ${timeSlotKey}:`, error);
+            // Lanjutkan ke timeSlotKey berikutnya
           }
-        } catch (slotError) {
-          console.error(`Error processing slot ${slot.id}:`, slotError);
-          // Lanjutkan ke slot berikutnya meski ada error
+        }
+      } else {
+        // Jika global_quota tidak tersedia, gunakan metode lama (hanya currentCount)
+        // Untuk setiap slot, hitung ulang kuota berdasarkan jumlah appointment aktif
+        for (const slot of allSlots) {
+          try {
+            // Dapatkan semua appointment untuk slot terapi ini
+            const allAppointmentsForSlot = await db.query.appointments.findMany({
+              where: eq(schema.appointments.therapySlotId, slot.id)
+            });
+            
+            // Log semua appointment yang ditemukan untuk slot ini
+            console.log(`Slot ${slot.id} (${slot.date} ${slot.timeSlot}): ${allAppointmentsForSlot.length} total appointments`);
+            
+            // Filter hanya appointment aktif (dengan status yang spesifik)
+            const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+            const activeAppointments = allAppointmentsForSlot.filter(app => {
+              // Status yang dibatalkan (Cancelled) secara eksplisit dikeluarkan
+              if (app.status === 'Cancelled' || app.status === 'Completed') {
+                return false;
+              }
+              
+              // Hanya sertakan status yang ada di daftar status aktif
+              return activeStatuses.includes(app.status);
+            });
+            
+            const activeCount = activeAppointments.length;
+            console.log(`Slot ${slot.id}: ${activeCount} active appointments, current count in DB: ${slot.currentCount}`);
+            
+            // Jika nilai di database berbeda, update
+            if (slot.currentCount !== activeCount) {
+              console.log(`Sinkronisasi slot ${slot.id}: mengubah currentCount dari ${slot.currentCount} menjadi ${activeCount}`);
+              
+              const updatedSlot = await db
+                .update(schema.therapySlots)
+                .set({ currentCount: activeCount })
+                .where(eq(schema.therapySlots.id, slot.id))
+                .returning();
+              
+              if (updatedSlot.length > 0) {
+                let formattedDate;
+                try {
+                  // Gunakan metode yang sama dengan getWIBDate untuk format tanggal yang konsisten
+                  const originalDate = new Date(slot.date);
+                  const correctedDate = new Date(originalDate.getTime() - (14 * 60 * 60 * 1000));
+                  const wibDate = new Date(correctedDate.getTime() + (7 * 60 * 60 * 1000));
+                  formattedDate = format(wibDate, 'dd MMMM yyyy');
+                } catch (error) {
+                  console.error(`Error formatting date for slot ${slot.id}:`, error);
+                  formattedDate = String(slot.date);
+                }
+                
+                results.push({
+                  slotId: slot.id,
+                  date: formattedDate,
+                  timeSlot: slot.timeSlot,
+                  oldCount: slot.currentCount,
+                  newCount: activeCount
+                });
+                updatedCount++;
+              }
+            }
+          } catch (slotError) {
+            console.error(`Error processing slot ${slot.id}:`, slotError);
+            // Lanjutkan ke slot berikutnya meski ada error
+          }
         }
       }
       
@@ -2272,14 +2362,69 @@ export class DatabaseStorage implements IStorage {
     // yang termasuk perhitungan aktual berdasarkan appointment aktif
     const actualCount = currentSlot.currentCount;
     
-    const result = await db
-      .update(schema.therapySlots)
-      .set({ 
-        currentCount: actualCount + 1
-      })
-      .where(eq(schema.therapySlots.id, id))
-      .returning();
-    return result[0];
+    try {
+      // Cek apakah kolom global_quota ada
+      let globalQuotaExists = false;
+      try {
+        const columns = await pool.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'therapy_slots' AND column_name = 'global_quota'
+        `);
+        globalQuotaExists = columns.rows.length > 0;
+      } catch (err) {
+        console.warn("Error checking for global_quota column:", err);
+      }
+      
+      if (globalQuotaExists && currentSlot.timeSlotKey) {
+        // Perbarui globalQuota dan currentCount untuk semua slot dengan timeSlotKey yang sama
+        console.log(`Incrementing globalQuota and currentCount for timeSlotKey: ${currentSlot.timeSlotKey}`);
+        
+        // 1. Dapatkan nilai global quota saat ini dari database
+        const quotaResult = await db.execute(sql`
+          SELECT SUM(current_count) as total_count
+          FROM therapy_slots
+          WHERE time_slot_key = ${currentSlot.timeSlotKey}
+        `);
+        
+        const currentGlobalQuota = parseInt(quotaResult.rows[0]?.total_count || '0');
+        const newGlobalQuota = currentGlobalQuota + 1;
+        
+        // 2. Update global_quota untuk semua slot dengan timeSlotKey yang sama
+        await db.execute(sql`
+          UPDATE therapy_slots
+          SET global_quota = ${newGlobalQuota}
+          WHERE time_slot_key = ${currentSlot.timeSlotKey}
+        `);
+        
+        // 3. Update currentCount hanya untuk slot yang sedang diproses
+        const result = await db
+          .update(schema.therapySlots)
+          .set({ 
+            currentCount: actualCount + 1
+          })
+          .where(eq(schema.therapySlots.id, id))
+          .returning();
+        
+        return {
+          ...result[0],
+          globalQuota: newGlobalQuota
+        };
+      } else {
+        // Jika tidak ada globalQuota, gunakan metode lama
+        const result = await db
+          .update(schema.therapySlots)
+          .set({ 
+            currentCount: actualCount + 1
+          })
+          .where(eq(schema.therapySlots.id, id))
+          .returning();
+        return result[0];
+      }
+    } catch (error) {
+      console.error(`Error in incrementTherapySlotUsage: ${error}`);
+      throw error;
+    }
   }
 
   async decrementTherapySlotUsage(id: number): Promise<TherapySlot | undefined> {
@@ -2294,14 +2439,69 @@ export class DatabaseStorage implements IStorage {
     // Hanya kurangi jika nilai lebih dari 0
     const newCount = Math.max(0, actualCount - 1);
     
-    const result = await db
-      .update(schema.therapySlots)
-      .set({ 
-        currentCount: newCount
-      })
-      .where(eq(schema.therapySlots.id, id))
-      .returning();
-    return result[0];
+    try {
+      // Cek apakah kolom global_quota ada
+      let globalQuotaExists = false;
+      try {
+        const columns = await pool.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'therapy_slots' AND column_name = 'global_quota'
+        `);
+        globalQuotaExists = columns.rows.length > 0;
+      } catch (err) {
+        console.warn("Error checking for global_quota column:", err);
+      }
+      
+      if (globalQuotaExists && currentSlot.timeSlotKey) {
+        // Perbarui globalQuota dan currentCount untuk semua slot dengan timeSlotKey yang sama
+        console.log(`Decrementing globalQuota and currentCount for timeSlotKey: ${currentSlot.timeSlotKey}`);
+        
+        // 1. Dapatkan nilai global quota saat ini dari database
+        const quotaResult = await db.execute(sql`
+          SELECT SUM(current_count) as total_count
+          FROM therapy_slots
+          WHERE time_slot_key = ${currentSlot.timeSlotKey}
+        `);
+        
+        const currentGlobalQuota = parseInt(quotaResult.rows[0]?.total_count || '0');
+        const newGlobalQuota = Math.max(0, currentGlobalQuota - 1);
+        
+        // 2. Update global_quota untuk semua slot dengan timeSlotKey yang sama
+        await db.execute(sql`
+          UPDATE therapy_slots
+          SET global_quota = ${newGlobalQuota}
+          WHERE time_slot_key = ${currentSlot.timeSlotKey}
+        `);
+        
+        // 3. Update currentCount hanya untuk slot yang sedang diproses
+        const result = await db
+          .update(schema.therapySlots)
+          .set({ 
+            currentCount: newCount
+          })
+          .where(eq(schema.therapySlots.id, id))
+          .returning();
+        
+        return {
+          ...result[0],
+          globalQuota: newGlobalQuota
+        };
+      } else {
+        // Jika tidak ada globalQuota, gunakan metode lama
+        const result = await db
+          .update(schema.therapySlots)
+          .set({ 
+            currentCount: newCount
+          })
+          .where(eq(schema.therapySlots.id, id))
+          .returning();
+        return result[0];
+      }
+    } catch (error) {
+      console.error(`Error in decrementTherapySlotUsage: ${error}`);
+      throw error;
+    }
   }
 
   async deactivateTherapySlot(id: number): Promise<boolean> {
