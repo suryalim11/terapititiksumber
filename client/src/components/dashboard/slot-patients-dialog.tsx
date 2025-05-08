@@ -201,10 +201,6 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     staleTime: 5000
   });
   
-  // Process appointments data to enrich them with patient data
-  // Use the filtered active appointments and enrich them with patient data
-  const processedAppointments = activeAppointments.map(enrichAppointment);
-
   // Gabungkan hasil kedua query 
   // Tetapi dengan struktur yang berbeda untuk pemrosesan yang lebih sederhana
   const isLoading = slotQuery.isLoading || appointmentsQuery.isLoading;
@@ -690,6 +686,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       };
     }
   };
+  
+  // Process appointments data to enrich them with patient data
+  const processedAppointments = activeAppointments.map(enrichAppointment);
   
   // Buat fetch semua data pasien sekaligus untuk mengurangi beban server
   const patientIds = Array.from(new Set(
