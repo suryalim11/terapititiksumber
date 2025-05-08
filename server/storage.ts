@@ -30,8 +30,8 @@ import memorystore from "memorystore";
 
 const MemoryStore = memorystore(session);
 
-// Always use database storage
-const USE_DATABASE = true;
+// Temporarily use memory storage until database implementation is complete
+const USE_DATABASE = false;
 
 export interface IStorage {
   // Users
