@@ -174,9 +174,14 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         // Buat promise timeout yang akan reject jika waktu habis
         const timeoutPromise = new Promise<Response>((_, reject) => {
           timeoutId = window.setTimeout(() => {
-            controller.abort();
-            reject(new Error(`Request timeout (${timeoutMs}ms)`));
-            console.log(`⏱️ Request to ${endpoint} aborted after ${timeoutMs}ms`);
+            try {
+              controller.abort();
+              console.log(`⏱️ Request to ${endpoint} aborted after ${timeoutMs}ms`);
+            } catch (abortError) {
+              console.log("Abort controller error handled:", abortError);
+            } finally {
+              reject(new Error(`Request timeout (${timeoutMs}ms)`));
+            }
           }, timeoutMs);
         });
         
@@ -317,8 +322,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                 'Cache-Control': 'no-cache'
               },
             },
-            6000,  // Kurangi timeout menjadi 6 detik
-            1      // Kurangi retry menjadi hanya 1 kali
+            4000,  // Kurangi timeout menjadi 4 detik
+            0      // Kurangi retry menjadi tidak ada
           );
           
           if (slotResponse.ok) {
@@ -328,7 +333,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             console.error("Failed direct slot fetch, status:", slotResponse.status);
           }
         } catch (directFetchError) {
-          console.error("Network error in direct fetch:", directFetchError);
+          console.log("Network error in direct fetch:", directFetchError);
           // Tetap lanjutkan dengan data minimal
         }
       }
