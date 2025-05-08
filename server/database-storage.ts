@@ -2139,41 +2139,125 @@ export class DatabaseStorage implements IStorage {
 
   async getAppointmentsByTherapySlot(therapySlotId: number): Promise<Appointment[]> {
     try {
-      // Cara paling sederhana: dapatkan semua appointment berdasarkan therapySlotId yang cocok
+      // Dapatkan data slot terapi untuk identifikasi tanggal dan waktu
+      const therapySlot = await this.getTherapySlot(therapySlotId);
+      
+      if (!therapySlot) {
+        console.error(`Therapy slot ${therapySlotId} not found`);
+        return [];
+      }
+      
+      console.log(`Found therapy slot: ${therapySlot.id} (${therapySlot.date}, ${therapySlot.timeSlot})`);
+      
+      // Ambil semua appointment yang memiliki therapySlotId yang cocok
       const appointmentsBySlotId = await db.query.appointments.findMany({
         where: eq(schema.appointments.therapySlotId, therapySlotId)
       });
       
-      // Log untuk debugging
-      console.log(`Appointments by therapySlotId ${therapySlotId}:`, 
-        appointmentsBySlotId.map(a => ({id: a.id, status: a.status}))
-      );
+      // Format tanggal dari slot terapi untuk pencarian, memastikan konsistensi format
+      let slotDate = '';
+      if (typeof therapySlot.date === 'string') {
+        // Jika tanggal berbentuk string, ambil bagian tanggalnya saja (YYYY-MM-DD)
+        slotDate = therapySlot.date.split('T')[0].split(' ')[0];
+      } else {
+        // Jika tanggal berbentuk Date object, format ke string YYYY-MM-DD
+        slotDate = new Date(therapySlot.date).toISOString().split('T')[0];
+      }
       
-      // Filter semua status yang aktif (tidak dibatalkan dan dalam status valid)
-      const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
-      const nonCancelledAppointments = appointmentsBySlotId.filter(app => {
-        // Status yang dibatalkan (Cancelled) secara eksplisit dikeluarkan
-        if (app.status === 'Cancelled' || app.status === 'Completed') {
-          return false;
+      console.log(`Looking for appointments with date=${slotDate} and timeSlot=${therapySlot.timeSlot}`);
+      
+      // Ambil juga appointment berdasarkan tanggal dan jam yang sama
+      // Ini penting untuk menangkap appointment yang dibuat via link pendaftaran
+      try {
+        const appointmentsByDateAndTime = await db.query.appointments.findMany({
+          where: and(
+            // Cari appointment yang tanggalnya sama (hanya bagian tanggal/YYYY-MM-DD)
+            // Menggunakan metode pencocokan tanggal yang fleksibel
+            or(
+              sql`DATE(${schema.appointments.date}) = ${slotDate}`,
+              sql`${schema.appointments.date} LIKE ${slotDate + '%'}`
+            ),
+            // Dan timeSlot sama
+            eq(schema.appointments.timeSlot, therapySlot.timeSlot),
+            // Dan bukan therapySlotId yang sama dengan yang sudah ditemukan
+            // untuk menghindari duplikasi
+            or(
+              ne(schema.appointments.therapySlotId, therapySlotId),
+              sql`${schema.appointments.therapySlotId} IS NULL`
+            )
+          )
+        });
+        
+        console.log(`Found ${appointmentsByDateAndTime.length} additional appointments by date/time match`);
+        
+        // Jika ada appointment yang ditemukan berdasarkan tanggal/waktu, 
+        // perbarui therapySlotId-nya secara diam-diam (tidak mengubah respons saat ini)
+        if (appointmentsByDateAndTime.length > 0) {
+          console.log(`Auto-fixing therapySlotId for ${appointmentsByDateAndTime.length} appointments`);
+          for (const app of appointmentsByDateAndTime) {
+            if (!app.therapySlotId || app.therapySlotId !== therapySlotId) {
+              await db.update(schema.appointments)
+                .set({ therapySlotId })
+                .where(eq(schema.appointments.id, app.id));
+              console.log(`Updated appointment ${app.id} with therapySlotId=${therapySlotId}`);
+            }
+          }
+          
+          // Gabungkan hasil dari kedua pencarian
+          const allAppointments = [...appointmentsBySlotId, ...appointmentsByDateAndTime];
+          
+          // Hilangkan duplikasi berdasarkan ID
+          const uniqueAppointments = Array.from(
+            new Map(allAppointments.map(app => [app.id, app])).values()
+          );
+          
+          console.log(`Combined ${appointmentsBySlotId.length} + ${appointmentsByDateAndTime.length} = ${uniqueAppointments.length} unique appointments`);
+          
+          // Filter status aktif
+          const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+          const activeAppointments = uniqueAppointments.filter(app => 
+            !['Cancelled', 'Completed'].includes(app.status) && 
+            activeStatuses.includes(app.status)
+          );
+          
+          console.log(`Found ${activeAppointments.length} active appointments for slot ${therapySlotId}`);
+          
+          // Tambahkan data pasien
+          const appointmentsWithPatients = await Promise.all(
+            activeAppointments.map(async (appointment) => {
+              if (appointment.patientId) {
+                const patient = await this.getPatient(appointment.patientId);
+                if (patient) {
+                  return {
+                    ...appointment,
+                    patient
+                  };
+                }
+              }
+              return appointment;
+            })
+          );
+          
+          return appointmentsWithPatients;
         }
-        
-        // Periksa apakah status termasuk dalam daftar status aktif (exact match)
-        const isActiveStatus = activeStatuses.includes(app.status);
-        
-        // Debug - Tambahkan log untuk mempermudah pelacakan
-        console.log(`Appointment ${app.id} (${app.status}): isActiveStatus=${isActiveStatus}`);
-        
-        return isActiveStatus;
-      });
+      } catch (searchError) {
+        console.error("Error searching appointments by date/time:", searchError);
+        // Lanjutkan dengan appointmentsBySlotId saja jika pencarian tambahan gagal
+      }
       
-      // Log untuk debugging
-      console.log(`Non-cancelled appointments for slot ${therapySlotId}:`, 
-        nonCancelledAppointments.map(a => ({id: a.id, status: a.status}))
+      // Jika tidak ada tambahan, gunakan hasil pencarian berdasarkan therapySlotId saja
+      // Filter status aktif
+      const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+      const activeAppointments = appointmentsBySlotId.filter(app => 
+        !['Cancelled', 'Completed'].includes(app.status) && 
+        activeStatuses.includes(app.status)
       );
       
-      // Tambahkan data pasien untuk setiap appointment
+      console.log(`Found ${activeAppointments.length} active appointments for slot ${therapySlotId}`);
+      
+      // Tambahkan data pasien
       const appointmentsWithPatients = await Promise.all(
-        nonCancelledAppointments.map(async (appointment) => {
+        activeAppointments.map(async (appointment) => {
           if (appointment.patientId) {
             const patient = await this.getPatient(appointment.patientId);
             if (patient) {
