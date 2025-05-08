@@ -142,6 +142,7 @@ export default function RegisterPage() {
   const [registrationLimit, setRegistrationLimit] = useState<number | null>(null);
   const [currentRegistrations, setCurrentRegistrations] = useState<number | null>(null);
   const [expiryTime, setExpiryTime] = useState<Date | null>(null);
+  const [verificationResponse, setVerificationResponse] = useState<any>(null);
   
   // State untuk pencarian pasien
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -568,6 +569,10 @@ export default function RegisterPage() {
       
       if (response.status === 200) {
         console.log("Respons status 200 diterima, menganggap kode valid");
+        
+        // Simpan data untuk digunakan di query therapy slots
+        setVerificationResponse(data);
+        console.log("Menyimpan data verifikasi dengan slot:", data.availableSlots?.length || 0, "slots");
         
         setRegistrationStatus("idle");
         
