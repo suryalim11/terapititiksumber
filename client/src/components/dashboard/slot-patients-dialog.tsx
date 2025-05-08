@@ -134,95 +134,86 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   // State untuk dialog pendaftaran pasien
   const [isRegisterPatientOpen, setIsRegisterPatientOpen] = useState(false);
   
-  // Pemisahan data fetching menjadi 2 query terpisah untuk menghindari timeout
+  // ---- PENDEKATAN LEBIH SEDERHANA DENGAN DIRECT FETCH ----
+  // Gunakan state untuk track data dan loading status, bukan useQuery
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [slotData, setSlotData] = useState<any>(null);
+  const [appointmentData, setAppointmentData] = useState<any[]>([]);
   
-  // Query 1: Dapatkan slot terapi
-  const slotQuery = useQuery({
-    queryKey: ['/api/therapy-slots', slotId],
-    queryFn: async () => {
-      if (!slotId) return null;
+  // Gunakan satu fungsi fetch untuk semua data dengan error handling yang baik
+  const fetchSlotAndAppointments = async () => {
+    // Reset state
+    setIsLoading(true);
+    setError(null);
+    
+    if (!slotId) {
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      // STEP 1: Fetch slot data
+      console.log("Fetching slot data for ID:", slotId);
+      const slotResponse = await fetch(`/api/therapy-slots/${slotId}`);
       
-      console.log("Fetching slot data for:", slotId);
-      const response = await fetch(`/api/therapy-slots/${slotId}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch slot data');
+      if (!slotResponse.ok) {
+        throw new Error(`Error fetching slot: ${slotResponse.status}`);
       }
       
-      const data = await response.json();
-      console.log("Slot data:", data);
-      return data;
-    },
-    enabled: !!slotId && isOpen,
-    retry: 1,
-    staleTime: 5000
-  });
-  
-  // Query 2: Menggunakan endpoint getAppointmentsByDate sebagai alternatif
-  const appointmentsQuery = useQuery({
-    queryKey: ['/api/appointments/slot', slotId],
-    queryFn: async () => {
-      if (!slotId || !slotQuery.data) return [];
+      const slotResult = await slotResponse.json();
+      console.log("Slot data received:", slotResult);
+      setSlotData(slotResult);
       
-      console.log("Fetching appointments for slot:", slotId);
+      if (!slotResult || !slotResult.date) {
+        throw new Error("Invalid slot data received");
+      }
       
-      try {
-        // Ekstrak tanggal dari data slot
-        const slotDate = slotQuery.data.date.split(' ')[0];
-        console.log("Fetching appointments for date:", slotDate);
+      // STEP 2: Use a simple approach - direct fetch by slot ID
+      // Ini jauh lebih sederhana dan reliable
+      console.log("Fetching appointments directly by slot ID");
+      const appointmentsResponse = await fetch(`/api/appointments?therapySlotId=${slotId}`);
+      
+      if (!appointmentsResponse.ok) {
+        console.warn("Direct fetch by slot ID failed, falling back to date-based fetch");
+        // FALLBACK: Use date-based approach if direct fetch fails
+        const slotDate = slotResult.date.split(' ')[0];
+        const dateFallbackResponse = await fetch(`/api/appointments/date/${slotDate}`);
         
-        // Gunakan endpoint date yang lebih ringan dan cepat, lalu filter di client
-        const response = await fetch(`/api/appointments/date/${slotDate}`);
-        
-        if (!response.ok) {
-          throw new Error('Gagal mengambil data appointment');
+        if (!dateFallbackResponse.ok) {
+          throw new Error("Failed to fetch appointments after fallback");
         }
         
-        const allAppointments = await response.json();
-        console.log("All appointments for date:", allAppointments.length);
-        
-        // Filter appointment hanya untuk slot ini
-        const filteredAppointments = allAppointments.filter(
-          (app: any) => app.therapySlotId === slotId || 
-            (app.timeSlot === slotQuery.data?.timeSlot && !app.therapySlotId)
+        const allDateAppointments = await dateFallbackResponse.json();
+        // Filter appointments for this specific slot
+        const filtered = allDateAppointments.filter((app: any) => 
+          app.therapySlotId === slotId || 
+          (app.timeSlot === slotResult.timeSlot && !app.therapySlotId)
         );
-        
-        console.log("Filtered appointments for this slot:", filteredAppointments.length);
-        return filteredAppointments || [];
+        setAppointmentData(filtered || []);
+      } else {
+        // Success with direct fetch
+        const appointmentsResult = await appointmentsResponse.json();
+        setAppointmentData(Array.isArray(appointmentsResult) ? appointmentsResult : []);
       }
-      catch (error) {
-        console.error("Error fetching appointments for slot:", error);
-        // Return empty array on error to keep app working
-        return [];
-      }
-    },
-    enabled: !!slotId && isOpen && !!slotQuery.data,
-    retry: 1,
-    staleTime: 5000,
-    // Make sure we have a default value for empty results
-    initialData: []
-  });
-  
-  // Gabungkan hasil kedua query 
-  // Tetapi dengan struktur yang berbeda untuk pemrosesan yang lebih sederhana
-  // Atur manual status loading untuk kontrol yang lebih baik
-  const isLoading = (slotQuery.isLoading && !slotQuery.data) || (appointmentsQuery.isLoading && appointmentsQuery.data.length === 0);
-  const error = slotQuery.error || appointmentsQuery.error;
-  
-  // Simpan slot dan appointment terpisah untuk memudahkan akses
-  const slotData = slotQuery.data;
-  
-  // Refetch function yang memanggil kedua query
-  const refetch = () => {
-    slotQuery.refetch();
-    appointmentsQuery.refetch();
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError(err instanceof Error ? err : new Error("Unknown error fetching data"));
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  // Efek untuk memastikan data di-refresh HANYA saat dialog pertama kali dibuka atau slotId berubah
-  // Menggunakan ref untuk mencegah multiple refresh
+  // Refetch function - langsung fetch ulang dengan metode baru
+  const refetch = () => {
+    fetchSlotAndAppointments();
+  };
+  
+  // Gunakan ref untuk menghindari multiple refetch
   const hasRefreshedRef = useRef(false);
   const dialogOpenedTimeRef = useRef<number | null>(null);
-
+  
+  // Effect untuk menangani loading data pada saat dialog dibuka
   useEffect(() => {
     if (isOpen && slotId) {
       // Catat waktu dialog dibuka
@@ -230,34 +221,26 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         dialogOpenedTimeRef.current = Date.now();
       }
       
-      // Cek apakah sudah pernah di-refresh untuk dialog ini
+      // Hanya fetch sekali per dialog open
       if (!hasRefreshedRef.current) {
-        console.log('Dialog dibuka atau slotId berubah, merefresh data pasien untuk slot:', slotId);
-        
-        // Tandai bahwa sudah di-refresh
+        console.log('Dialog dibuka dengan slotId:', slotId, '- memulai fetch data');
         hasRefreshedRef.current = true;
-        
-        // Refresh data
-        refetch();
+        fetchSlotAndAppointments();
       }
     } else if (!isOpen) {
       // Reset flag saat dialog ditutup
       hasRefreshedRef.current = false;
       dialogOpenedTimeRef.current = null;
       
-      // Invalidate queries hanya jika dialog dibuka cukup lama (> 5 detik)
-      // untuk menghindari invalidate yang tidak perlu
-      if (dialogOpenedTimeRef.current && (Date.now() - dialogOpenedTimeRef.current > 5000)) {
-        // Invalidate secara selektif untuk mengurangi refresh yang tidak perlu
-        queryClient.invalidateQueries({ 
-          queryKey: ['/api/appointments/date'], 
-          refetchType: 'none' 
-        });
-      }
+      // Reset data saat dialog ditutup untuk menghindari flash data lama
+      setAppointmentData([]);
     }
-  }, [isOpen, slotId, refetch, queryClient]);
+  }, [isOpen, slotId]);
   
-  // Mutations
+  // Kita tidak perlu variabel activeAppointments lagi karena sudah diganti dengan slotActiveAppointments
+  // Dan kita menggunakan enrichAppointment di bawah untuk fungsi yang sama
+  
+  // Mutations - dengan penyederhanaan kode
   const cancelAppointmentMutation = useMutation({
     mutationFn: async (appointmentId: number) => {
       const response = await fetch(`/api/appointments/${appointmentId}/cancel`, {
@@ -280,10 +263,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         description: "Janji temu berhasil dibatalkan"
       });
       
-      // Refresh hanya data yang diperlukan
-      refetch();
+      // Refresh data dengan pendekatan baru
+      fetchSlotAndAppointments();
       
-      // Invalidate hanya query terkait secara selektif
+      // Tetap invalidate queries untuk halaman lain yang terkait
       queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
       queryClient.invalidateQueries({ queryKey: ['/api/appointments/date'] });
     },
@@ -320,10 +303,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         description: `Status janji temu berhasil diubah menjadi "${variables.status}"`
       });
       
-      // Refresh data setelah update status
-      refetch();
+      // Refresh data dengan pendekatan baru
+      fetchSlotAndAppointments();
       
-      // Invalidate hanya query terkait secara selektif
+      // Invalidate queries untuk dashboard dan tampilan lainnya
       queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
       queryClient.invalidateQueries({ queryKey: ['/api/appointments/date'] });
       queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
@@ -626,10 +609,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   // 2. Stabilkan state dengan defaultValue yang konsisten
   // 3. Gunakan pengecekan lebih ketat untuk mencegah error null/undefined
   
-  // Inisialisasi data appointment dari query, pastikan selalu array
+  // Inisialisasi data appointment dari state, pastikan selalu array
   const allAppointmentsForDate = useMemo(() => {
-    return Array.isArray(appointmentsQuery.data) ? appointmentsQuery.data : [];
-  }, [appointmentsQuery.data]);
+    return Array.isArray(appointmentData) ? appointmentData : [];
+  }, [appointmentData]);
   
   // Logging untuk debug yang efisien
   useEffect(() => {
@@ -652,8 +635,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         const matchesSlotId = app.therapySlotId === slotId;
         
         // Fallback ke match berdasarkan waktu slot jika tidak ada therapySlotId
-        const matchesTimeSlot = slotQuery.data && 
-                              app.timeSlot === slotQuery.data.timeSlot && 
+        const matchesTimeSlot = slotData && 
+                              app.timeSlot === slotData.timeSlot && 
                               !app.therapySlotId;
         
         return matchesSlotId || matchesTimeSlot;
@@ -662,10 +645,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       console.error("Error saat memfilter appointment untuk slot:", error);
       return [];
     }
-  }, [allAppointmentsForDate, slotId, slotQuery.data]);
+  }, [allAppointmentsForDate, slotId, slotData]);
   
   // Filter untuk appointment dengan status aktif saja
-  const activeAppointments = useMemo(() => {
+  const slotActiveAppointments = useMemo(() => {
     try {
       return filterActiveAppointments(slotAppointments);
     } catch (error) {
@@ -725,21 +708,21 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   // Process appointments data to enrich them with patient data
   // Gunakan useMemo untuk menghindari pemrosesan ulang yang tidak perlu
   const processedAppointments = useMemo(() => {
-    // Pastikan activeAppointments adalah array
-    if (!Array.isArray(activeAppointments)) return [];
+    // Pastikan slotActiveAppointments adalah array
+    if (!Array.isArray(slotActiveAppointments)) return [];
     
     try {
       // Map data dengan enrichAppointment
-      return activeAppointments.map(enrichAppointment).filter(Boolean);
+      return slotActiveAppointments.map(enrichAppointment).filter(Boolean);
     } catch (error) {
       console.error("Error memproses data appointments:", error);
       return [];
     }
-  }, [activeAppointments]);
+  }, [slotActiveAppointments]);
   
   // Buat fetch semua data pasien sekaligus untuk mengurangi beban server
   const patientIds = Array.from(new Set(
-    activeAppointments
+    slotActiveAppointments
       .filter((app: any) => !!app.patientId)
       .map((app: any) => app.patientId)
   ));
@@ -767,14 +750,14 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     if (process.env.NODE_ENV === 'development') {
       console.log("Total appointments for date:", allAppointmentsForDate.length);
       console.log("Debug - Matched slot appointments:", slotAppointments.length);
-      console.log("Debug - Active appointments:", activeAppointments.length);
+      console.log("Debug - Active appointments:", slotActiveAppointments.length);
       console.log("Debug - Unique patient IDs:", patientIds.length);
       console.log("Debug - Final processed appointments:", processedAppointments.length);
     }
   }, [
     allAppointmentsForDate.length, 
     slotAppointments.length, 
-    activeAppointments.length, 
+    slotActiveAppointments.length, 
     patientIds.length, 
     processedAppointments.length
   ]);
