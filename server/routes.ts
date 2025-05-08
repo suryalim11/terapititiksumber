@@ -2703,12 +2703,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard data
   app.get("/api/dashboard/stats", async (req: Request, res: Response) => {
     try {
-      console.log("Requesting daily stats...");
       const stats = await storage.getDailyStats();
-      console.log("Got daily stats:", stats);
       return res.status(200).json(stats);
     } catch (error) {
-      console.error("Error in /api/dashboard/stats:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });

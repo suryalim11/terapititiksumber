@@ -30,8 +30,8 @@ import memorystore from "memorystore";
 
 const MemoryStore = memorystore(session);
 
-// Temporarily use memory storage until database implementation is complete
-const USE_DATABASE = false;
+// Always use database storage
+const USE_DATABASE = true;
 
 export interface IStorage {
   // Users
@@ -317,18 +317,6 @@ export class MemStorage implements IStorage {
       createdAt: new Date()
     };
     this.users.set(admin2.id, admin2);
-    this.userCurrentId++;
-    
-    // Create aguslim user
-    const admin3: User = {
-      id: 3,
-      username: "aguslim",
-      password: "admin1234", // Password asli yang digunakan sebelumnya
-      name: "Agus Lim",
-      role: "admin",
-      createdAt: new Date()
-    };
-    this.users.set(admin3.id, admin3);
     this.userCurrentId++;
     
     // Create default registration link
@@ -1299,22 +1287,12 @@ export class MemStorage implements IStorage {
     // Count products sold today (from transaction items)
     let productsSold = 0;
     todaysTransactions.forEach(transaction => {
-      try {
-        // Parse items from JSON string
-        const items = typeof transaction.items === 'string' 
-          ? JSON.parse(transaction.items) 
-          : (transaction.items || []);
-        
-        if (Array.isArray(items)) {
-          items.forEach(item => {
-            if (item && item.type === 'product') {
-              productsSold += item.quantity || 1;
-            }
-          });
+      const items = transaction.items as any[];
+      items.forEach(item => {
+        if (item.type === 'product') {
+          productsSold += item.quantity || 1;
         }
-      } catch (error) {
-        console.error('Error parsing transaction items:', error);
-      }
+      });
     });
     
     // Count active therapy packages
@@ -1897,111 +1875,7 @@ export class MemStorage implements IStorage {
       }
     }
     
-    // Buat beberapa paket aktif (therapy sessions)
-    const activeSessions = [
-      {
-        id: 1,
-        patientId: 1,
-        packageId: 2, // Paket 12 Sesi
-        totalSessions: 12,
-        sessionsUsed: 5,
-        transactionId: 1,
-        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 hari yang lalu
-        status: 'active'
-      },
-      {
-        id: 2,
-        patientId: 2,
-        packageId: 2, // Paket 12 Sesi
-        totalSessions: 12,
-        sessionsUsed: 3,
-        transactionId: 2,
-        startDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000), // 20 hari yang lalu
-        status: 'active'
-      },
-      {
-        id: 3,
-        patientId: 3,
-        packageId: 1, // Sesi Tunggal
-        totalSessions: 1,
-        sessionsUsed: 0,
-        transactionId: 3,
-        startDate: new Date(),
-        status: 'active'
-      }
-    ];
-    
-    // Tambahkan sesi terapi ke dalam penyimpanan
-    activeSessions.forEach(session => {
-      this.therapySessions.set(session.id, session);
-    });
-    this.sessionCurrentId = activeSessions.length + 1;
-    
-    // Buat transaksi untuk sesi-sesi tersebut
-    const transactions = [
-      {
-        id: 1,
-        patientId: 1,
-        date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        items: JSON.stringify([
-          { type: "package", id: 2, name: "Paket 12 Sesi", price: "1500000", quantity: 1 }
-        ]),
-        totalAmount: "1500000",
-        paymentMethod: "cash",
-        notes: "Pembayaran paket terapi 12 sesi",
-        isPaid: true,
-        paidAmount: "1500000",
-        debtAmount: "0",
-        creditAmount: "0",
-        createdBy: 1,
-        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        metadata: null
-      },
-      {
-        id: 2,
-        patientId: 2,
-        date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-        items: JSON.stringify([
-          { type: "package", id: 2, name: "Paket 12 Sesi", price: "1500000", quantity: 1 }
-        ]),
-        totalAmount: "1500000",
-        paymentMethod: "transfer",
-        notes: "Pembayaran paket terapi 12 sesi",
-        isPaid: true,
-        paidAmount: "1500000",
-        debtAmount: "0",
-        creditAmount: "0",
-        createdBy: 1,
-        createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-        metadata: null
-      },
-      {
-        id: 3,
-        patientId: 3,
-        date: new Date(),
-        items: JSON.stringify([
-          { type: "package", id: 1, name: "Sesi Tunggal", price: "150000", quantity: 1 }
-        ]),
-        totalAmount: "150000",
-        paymentMethod: "cash",
-        notes: "Pembayaran sesi terapi tunggal",
-        isPaid: true,
-        paidAmount: "150000",
-        debtAmount: "0",
-        creditAmount: "0",
-        createdBy: 1,
-        createdAt: new Date(),
-        metadata: null
-      }
-    ];
-    
-    // Tambahkan transaksi ke dalam penyimpanan
-    transactions.forEach(transaction => {
-      this.transactions.set(transaction.id, transaction);
-    });
-    this.transactionCurrentId = transactions.length + 1;
-    
-    console.log("Data pasien, janji temu, dan paket aktif contoh diinisialisasi");
+    console.log("Data pasien dan janji temu contoh diinisialisasi");
   }
   
   // Method ini sudah tidak diperlukan lagi karena kita membuat link pendaftaran default
