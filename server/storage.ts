@@ -1299,12 +1299,22 @@ export class MemStorage implements IStorage {
     // Count products sold today (from transaction items)
     let productsSold = 0;
     todaysTransactions.forEach(transaction => {
-      const items = transaction.items as any[];
-      items.forEach(item => {
-        if (item.type === 'product') {
-          productsSold += item.quantity || 1;
+      try {
+        // Parse items from JSON string
+        const items = typeof transaction.items === 'string' 
+          ? JSON.parse(transaction.items) 
+          : (transaction.items || []);
+        
+        if (Array.isArray(items)) {
+          items.forEach(item => {
+            if (item && item.type === 'product') {
+              productsSold += item.quantity || 1;
+            }
+          });
         }
-      });
+      } catch (error) {
+        console.error('Error parsing transaction items:', error);
+      }
     });
     
     // Count active therapy packages
