@@ -184,8 +184,98 @@ export async function runMigrations() {
 }
 
 // Export fungsi-fungsi migrator agar bisa dipanggil dari file lain
+/**
+ * Fungsi untuk memperbarui nilai timeSlotKey dan globalQuota untuk semua slot yang masih kosong
+ */
+export async function updateEmptyTimeSlotKeys() {
+  console.log('Starting update for empty time_slot_keys...');
+  
+  try {
+    // 1. Cek slot terapi yang masih memiliki time_slot_key kosong
+    const emptyKeysResult = await db.execute(sql`
+      SELECT id, date, time_slot 
+      FROM therapy_slots 
+      WHERE time_slot_key IS NULL OR time_slot_key = ''
+    `);
+    
+    const emptyCount = emptyKeysResult.rows.length;
+    console.log(`Found ${emptyCount} therapy slots with empty time_slot_key`);
+    
+    if (emptyCount === 0) {
+      return { 
+        success: true, 
+        message: 'No empty time_slot_keys found' 
+      };
+    }
+    
+    // 2. Update nilai time_slot_key untuk setiap slot yang kosong
+    for (const row of emptyKeysResult.rows) {
+      const slotId = row.id;
+      const date = row.date;
+      const timeSlot = row.time_slot;
+      
+      // Ekstrak tanggal dalam format YYYY-MM-DD
+      const dateStr = date instanceof Date 
+        ? date.toISOString().split('T')[0] 
+        : String(date).split(' ')[0].split('T')[0];
+      
+      // Buat time_slot_key
+      const timeSlotKey = `${dateStr}_${timeSlot}`;
+      
+      // Update nilai time_slot_key untuk slot ini
+      await db.execute(sql`
+        UPDATE therapy_slots 
+        SET time_slot_key = ${timeSlotKey}
+        WHERE id = ${slotId}
+      `);
+      
+      console.log(`Updated slot ID ${slotId} with time_slot_key: ${timeSlotKey}`);
+    }
+    
+    // 3. Update nilai global_quota untuk semua time_slot_key yang baru diperbarui
+    console.log('Updating global_quota values for all therapy slots...');
+    
+    // Ambil semua time_slot_key unik
+    const timeSlotKeysResult = await db.execute(sql`
+      SELECT DISTINCT time_slot_key FROM therapy_slots WHERE time_slot_key IS NOT NULL
+    `);
+    
+    // Untuk setiap time_slot_key, hitung total current_count
+    for (const row of timeSlotKeysResult.rows) {
+      const timeSlotKey = row.time_slot_key;
+      
+      // Hitung total current_count untuk time_slot_key ini
+      const countResult = await db.execute(sql`
+        SELECT SUM(current_count) as total_count 
+        FROM therapy_slots 
+        WHERE time_slot_key = ${timeSlotKey}
+      `);
+      
+      const totalCount = countResult.rows[0]?.total_count || 0;
+      
+      // Update global_quota untuk semua slot dengan time_slot_key ini
+      await db.execute(sql`
+        UPDATE therapy_slots 
+        SET global_quota = ${totalCount} 
+        WHERE time_slot_key = ${timeSlotKey}
+      `);
+      
+      console.log(`Updated global_quota to ${totalCount} for slots with time_slot_key: ${timeSlotKey}`);
+    }
+    
+    return { 
+      success: true, 
+      message: `Updated ${emptyCount} slots with time_slot_key and recalculated global_quota values` 
+    };
+  } catch (error) {
+    console.error('Error during time_slot_key update:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
 export const migrator = {
   addTimeSlotKeyColumn,
   addGlobalQuotaColumn,
+  updateEmptyTimeSlotKeys,
   runMigrations
 };
