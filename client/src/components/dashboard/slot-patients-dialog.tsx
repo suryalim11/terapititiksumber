@@ -158,35 +158,37 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     staleTime: 5000
   });
   
-  // Query 2: Dapatkan appointments untuk tanggal slot
+  // Query 2: Dapatkan appointments untuk slot secara langsung dari API endpoint
   const appointmentsQuery = useQuery({
     queryKey: ['/api/appointments/slot', slotId],
     queryFn: async () => {
-      if (!slotId || !slotQuery.data) return [];
+      if (!slotId) return [];
       
-      // Ekstrak tanggal dari data slot
-      const slotDate = slotQuery.data.date.split(' ')[0];
-      console.log("Fetching appointments for date:", slotDate);
+      console.log("Fetching appointments for slot:", slotId);
       
-      const response = await fetch(`/api/appointments/date/${slotDate}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch appointments');
+      try {
+        // Menggunakan endpoint langsung untuk mengurangi beban client
+        const response = await fetch(`/api/therapy-slots/${slotId}/patients`);
+        
+        if (!response.ok) {
+          if (response.status === 504) {
+            throw new Error('Waktu permintaan habis. Silakan gunakan dialog sederhana.');
+          }
+          throw new Error('Gagal mengambil data pasien');
+        }
+        
+        const data = await response.json();
+        console.log("Patient data for slot:", data);
+        return data || [];
       }
-      
-      const allAppointments = await response.json();
-      console.log("All appointments:", allAppointments);
-      
-      // Filter hanya appointment untuk slot ini
-      const filteredAppointments = allAppointments.filter(
-        (app: any) => app.therapySlotId === slotId
-      );
-      
-      console.log("Filtered appointments for this slot:", filteredAppointments);
-      return filteredAppointments;
+      catch (error) {
+        console.error("Error fetching slot patients:", error);
+        // Return empty array on error to keep app working
+        return [];
+      }
     },
-    enabled: !!slotId && isOpen && !!slotQuery.data,
-    retry: 1,
+    enabled: !!slotId && isOpen,
+    retry: 0, // Jangan retry karena bisa menyebabkan timeout berulang
     staleTime: 5000
   });
   
@@ -595,25 +597,50 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   
   // Pastikan setiap appointment memiliki objek patient yang lengkap
   const processedAppointments = activeAppointments.map((appointment: any) => {
-    // Jika appointment sudah memiliki patient object, gunakan itu
-    if (appointment.patient && appointment.patient.id) {
-      return appointment;
-    }
-    
-    // Jika tidak ada patient object tetapi ada patientId, buat objek patient
-    if (appointment.patientId) {
+    try {
+      // Jika appointment sudah memiliki patient object yang valid, gunakan itu
+      if (appointment.patient && (appointment.patient.id || appointment.patient.name)) {
+        return {
+          ...appointment,
+          patient: {
+            ...appointment.patient,
+            // Tambahkan fallback untuk field penting
+            id: appointment.patient.id || appointment.patientId,
+            name: appointment.patient.name || `Pasien #${appointment.patientId || '?'}`,
+            phoneNumber: appointment.patient.phoneNumber || '-'
+          }
+        };
+      }
+      
+      // Jika tidak ada patient object tetapi ada patientId, buat objek patient
+      if (appointment.patientId) {
+        return {
+          ...appointment,
+          patient: {
+            id: appointment.patientId,
+            name: appointment.patientName || `Pasien #${appointment.patientId}`,
+            phoneNumber: appointment.phoneNumber || '-'
+          }
+        };
+      }
+      
+      // Default fallback jika data tidak lengkap
       return {
         ...appointment,
         patient: {
-          id: appointment.patientId,
-          name: appointment.patientName || 'Pasien',
-          phoneNumber: appointment.phoneNumber || '-'
+          id: null,
+          name: 'Pasien tidak diketahui',
+          phoneNumber: '-'
         }
       };
+    } catch (error) {
+      console.error("Error processing appointment data:", error);
+      // Fallback paling aman jika terjadi error saat pemrosesan
+      return {
+        ...appointment,
+        patient: { id: null, name: 'Error Data Pasien', phoneNumber: '-' }
+      };
     }
-    
-    // Default fallback jika data tidak lengkap
-    return appointment;
   });
   
   // Debug logging in development
