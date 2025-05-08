@@ -877,7 +877,7 @@ export default function RegisterPage() {
       // Force navigasi ke halaman sukses
       const timestamp = new Date().getTime();
       window.location.href = `/registration-success?t=${timestamp}&src=timeout`;
-    }, 8000); // 8 detik timeout
+    }, 20000); // 20 detik timeout - lebih lama dari fetch timeout untuk memberi waktu retry
     
     // Implementasi mekanisme retry untuk API call
     const maxRetries = 2;
@@ -888,16 +888,25 @@ export default function RegisterPage() {
     const sendRegistrationWithRetry = async () => {
       // Timer untuk timeout
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      let timeoutFetch: ReturnType<typeof setTimeout> | null = null;
       
       try {
-        // Set timeout untuk request
+        // Set timeout untuk request - meningkatkan timeout menjadi 15000ms (15 detik)
+        // untuk memberikan waktu yang cukup bagi server untuk menemukan pasien lama
         let requestTimedOut = false;
         timeoutId = setTimeout(() => {
-          console.log(`Request timed out after 7000ms (percobaan ke-${retryCount + 1})`);
+          console.log(`Request timed out after 15000ms (percobaan ke-${retryCount + 1})`);
           requestTimedOut = true;
-        }, 7000);
+        }, 15000);
         
         console.log(`Mencoba mengirim data pendaftaran (percobaan ke-${retryCount + 1})`);
+        
+        // Gunakan AbortController untuk mengatur timeout pada fetch
+        const controller = new AbortController();
+        timeoutFetch = setTimeout(() => {
+          console.log(`Fetch request timeout, aborting (percobaan ke-${retryCount + 1})`);
+          controller.abort();
+        }, 15000);
         
         const response = await fetch("/api/patients", {
           method: "POST",
@@ -905,11 +914,13 @@ export default function RegisterPage() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify(dataToSend)
+          body: JSON.stringify(dataToSend),
+          signal: controller.signal
         });
         
         // Membersihkan timer timeout
         if (timeoutId) clearTimeout(timeoutId);
+        if (timeoutFetch) clearTimeout(timeoutFetch);
         
         // Jika responsnya OK
         if (response.ok) {
@@ -972,6 +983,7 @@ export default function RegisterPage() {
       } catch (error: any) {
         // Membersihkan timer timeout
         if (timeoutId) clearTimeout(timeoutId);
+        if (timeoutFetch) clearTimeout(timeoutFetch);
         
         // Tangkap error dari fetch
         console.error("Error saat melakukan fetch ke server:", error);
