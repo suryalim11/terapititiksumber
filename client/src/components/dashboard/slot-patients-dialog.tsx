@@ -141,6 +141,37 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const [slotData, setSlotData] = useState<any>(null);
   const [appointmentData, setAppointmentData] = useState<any[]>([]);
   
+  // Fungsi untuk melakukan fetch dengan timeout dan retry
+  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs: number = 5000, retryCount: number = 1): Promise<Response> => {
+    let lastError;
+    
+    for (let attempt = 0; attempt <= retryCount; attempt++) {
+      try {
+        // Tambahkan timeout
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+        });
+        
+        clearTimeout(id);
+        return response;
+      } catch (err) {
+        lastError = err;
+        console.log(`Fetch attempt ${attempt + 1}/${retryCount + 1} failed:`, err);
+        
+        // Jika ini bukan percobaan terakhir, tunggu sebentar sebelum mencoba lagi
+        if (attempt < retryCount) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    }
+    
+    throw lastError || new Error("Fetch failed after retries");
+  };
+  
   // Gunakan satu fungsi fetch untuk semua data dengan error handling yang baik
   const fetchSlotAndAppointments = async () => {
     // Reset state
@@ -150,6 +181,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     if (!slotId) {
       console.error("fetchSlotAndAppointments called without slotId");
       setIsLoading(false);
+      setError(new Error("Slot ID tidak tersedia"));
       return;
     }
     
@@ -158,22 +190,26 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       const endpoint = `/api/therapy-slots/${slotId}`;
       console.log("Fetching slot data for ID:", slotId, "from endpoint:", endpoint);
       
-      // Gunakan metode fetch dengan timeout untuk mengatasi kebuntuan
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const slotResponse = await fetch(endpoint, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      });
-      
-      // Clear timeout karena request berhasil
-      clearTimeout(timeoutId);
-      
-      console.log("Slot response status:", slotResponse.status);
+      // Gunakan fetch dengan timeout dan retry
+      let slotResponse;
+      try {
+        slotResponse = await fetchWithTimeout(
+          endpoint,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Cache-Control': 'no-cache'
+            },
+          },
+          8000,  // 8 second timeout
+          2      // 2 retries (total 3 attempts)
+        );
+        
+        console.log("Slot response status:", slotResponse.status);
+      } catch (fetchError) {
+        console.error("Network error fetching slot data:", fetchError);
+        throw new Error("Gangguan koneksi jaringan saat mengambil data slot");
+      }
       
       if (!slotResponse.ok) {
         throw new Error(`Error fetching slot: ${slotResponse.status} ${slotResponse.statusText}`);
@@ -185,14 +221,18 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         console.log("Slot data successfully parsed:", slotResult);
       } catch (parseError) {
         console.error("Error parsing slot response:", parseError);
-        const responseText = await slotResponse.text();
-        console.log("Raw response text:", responseText.substring(0, 500));
-        throw new Error("Failed to parse slot data response");
+        try {
+          const responseText = await slotResponse.text();
+          console.log("Raw response text:", responseText.substring(0, 500));
+        } catch (e) {
+          console.error("Could not extract response text:", e);
+        }
+        throw new Error("Gagal menguraikan data slot");
       }
       
       if (!slotResult || !slotResult.date) {
         console.error("Invalid slot data format:", slotResult);
-        throw new Error("Invalid slot data received");
+        throw new Error("Data slot tidak valid atau tidak lengkap");
       }
       
       // Set slot data ke state
@@ -201,27 +241,44 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       
       // STEP 2: Ambil appointment menggunakan slot ID
       // Format tanggal untuk query
-      const slotDate = typeof slotResult.date === 'string' 
-        ? slotResult.date.split(' ')[0] // YYYY-MM-DD dari format "YYYY-MM-DD HH:MM:SS"
-        : new Date(slotResult.date).toISOString().split('T')[0];
+      let slotDate: string;
+      try {
+        slotDate = typeof slotResult.date === 'string' 
+          ? slotResult.date.split(' ')[0] // YYYY-MM-DD dari format "YYYY-MM-DD HH:MM:SS"
+          : new Date(slotResult.date).toISOString().split('T')[0];
+        
+        console.log(`Formatted slot date for appointments query: ${slotDate}`);
+      } catch (dateError) {
+        console.error("Error formatting date:", dateError, "Original date:", slotResult.date);
+        slotDate = new Date().toISOString().split('T')[0]; // Fallback ke hari ini
+        console.log(`Using fallback date: ${slotDate}`);
+      }
       
       console.log(`Fetching appointments for date ${slotDate}`);
       const appointmentsEndpoint = `/api/appointments/date/${slotDate}`;
       
-      const appointmentsController = new AbortController();
-      const appointmentsTimeoutId = setTimeout(() => appointmentsController.abort(), 10000);
-      
-      const appointmentsResponse = await fetch(appointmentsEndpoint, {
-        signal: appointmentsController.signal,
-        headers: {
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      });
-      
-      clearTimeout(appointmentsTimeoutId);
-      
-      console.log("Appointments response status:", appointmentsResponse.status);
+      let appointmentsResponse;
+      try {
+        appointmentsResponse = await fetchWithTimeout(
+          appointmentsEndpoint,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Cache-Control': 'no-cache'
+            },
+          },
+          8000,  // 8 second timeout
+          2      // 2 retries
+        );
+        
+        console.log("Appointments response status:", appointmentsResponse.status);
+      } catch (fetchError) {
+        console.error("Network error fetching appointments:", fetchError);
+        // Meskipun error fetching appointments, kita sudah punya slot data
+        // Jadi sebaiknya tampilkan slot info dengan pesan error untuk appointments
+        setAppointmentData([]);
+        throw new Error("Gangguan koneksi jaringan saat mengambil data janji");
+      }
       
       if (!appointmentsResponse.ok) {
         throw new Error(`Failed to fetch appointments: ${appointmentsResponse.status} ${appointmentsResponse.statusText}`);
@@ -234,9 +291,14 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                    Array.isArray(allDateAppointments) ? allDateAppointments.length : "not an array");
       } catch (parseError) {
         console.error("Error parsing appointments response:", parseError);
-        const responseText = await appointmentsResponse.text();
-        console.log("Raw appointments response:", responseText.substring(0, 500));
-        throw new Error("Failed to parse appointments data");
+        try {
+          const responseText = await appointmentsResponse.text();
+          console.log("Raw appointments response:", responseText.substring(0, 500));
+        } catch (e) {
+          console.error("Could not extract response text:", e);
+        }
+        // Set kosong daripada gagal total
+        allDateAppointments = [];
       }
       
       if (!Array.isArray(allDateAppointments)) {
@@ -248,9 +310,6 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       const filtered = allDateAppointments.filter((app: any) => {
         // Skip null/undefined
         if (!app) return false;
-        
-        // Log untuk debugging
-        console.log(`Appointment ${app.id}: therapySlotId=${app.therapySlotId}, timeSlot=${app.timeSlot}`);
         
         // Match berdasarkan therapySlotId (kriteria utama)
         const matchesId = Number(app.therapySlotId) === Number(slotId);
@@ -275,12 +334,15 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       console.log("Data loading complete");
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(err instanceof Error ? err : new Error("Unknown error fetching data"));
-      // Clear data on error
-      setSlotData(null);
-      setAppointmentData([]);
+      setError(err instanceof Error ? err : new Error("Terjadi kesalahan saat mengambil data"));
+      // Don't clear slotData if we already have it
+      if (!slotData) {
+        setSlotData(null);
+      }
     } finally {
       setIsLoading(false);
+      // Mark the refresh completed
+      hasRefreshedRef.current = true;
     }
   };
   
@@ -843,22 +905,27 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }, [patientIds.join(','), isOpen]);
   
-  // Debug logging in development
+  // Gunakan data yang langsung diambil dari fetch
+  // Kita tidak perlu menggunakan useMemo dan derived states yang kompleks
+  const processAppointmentData = useMemo(() => {
+    if (!appointmentData || !Array.isArray(appointmentData)) {
+      return [];
+    }
+    
+    // Filter hanya appointment aktif
+    return appointmentData.filter(app => app && isActiveStatus(app.status));
+  }, [appointmentData]);
+  
+  // Debug logging in development - versi sederhana
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log("Total appointments for date:", allAppointmentsForDate.length);
-      console.log("Debug - Matched slot appointments:", slotAppointments.length);
-      console.log("Debug - Active appointments:", slotActiveAppointments.length);
-      console.log("Debug - Unique patient IDs:", patientIds.length);
-      console.log("Debug - Final processed appointments:", processedAppointments.length);
+      console.log("Total appointment data:", appointmentData?.length || 0);
+      console.log("Active appointment data:", processAppointmentData.length);
     }
-  }, [
-    allAppointmentsForDate.length, 
-    slotAppointments.length, 
-    slotActiveAppointments.length, 
-    patientIds.length, 
-    processedAppointments.length
-  ]);
+  }, [appointmentData, processAppointmentData]);
+  
+  // Debug flag untuk troubleshooting UI
+  const showDebugInfo = process.env.NODE_ENV === 'development';
   
   return (
     <>
@@ -867,31 +934,80 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
           <DialogHeader className="px-0">
             <DialogTitle className="flex items-center gap-2 text-lg">
               <CalendarIcon className="h-5 w-5 text-primary" />
-              Detail Slot Terapi
+              Detail Slot Terapi {slotId ? `(ID: ${slotId})` : ''}
             </DialogTitle>
             <DialogDescription>
-              Menampilkan detail slot terapi dan daftar pasien yang terdaftar.
+              {slotData 
+                ? `${formatDate(slotData.date)} · ${slotData.timeSlot || '-'}`
+                : "Menampilkan detail slot terapi dan daftar pasien"}
             </DialogDescription>
           </DialogHeader>
           
+          {/* Debug info */}
+          {showDebugInfo && (
+            <div className="mb-3 p-2 text-xs border rounded bg-yellow-50 text-yellow-900">
+              <p>Debug mode: Dialog state</p>
+              <div className="grid grid-cols-2 gap-x-2">
+                <span>Loading:</span><span>{isLoading ? "Ya" : "Tidak"}</span>
+                <span>Error:</span><span>{error ? "Ya" : "Tidak"}</span>
+                <span>SlotID:</span><span>{slotId || "None"}</span>
+                <span>Slot Data:</span><span>{slotData ? "Loaded" : "Empty"}</span>
+                <span>Appointments:</span><span>{appointmentData?.length || 0}</span>
+              </div>
+              <button 
+                className="mt-1 text-xs px-2 py-0.5 bg-yellow-200 hover:bg-yellow-300 rounded"
+                onClick={refetch}
+              >
+                Refresh Data
+              </button>
+            </div>
+          )}
+          
+          {/* Loading state */}
           {isLoading && (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex flex-col justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+              <p className="text-sm text-muted-foreground">Memuat data slot terapi...</p>
             </div>
           )}
           
+          {/* Error state */}
           {!isLoading && error && (
-            <div className="text-center py-6 text-destructive">
-              <p>Error: {(error as Error).message}</p>
+            <div className="p-4 rounded-md border border-destructive/20 bg-destructive/10 text-destructive">
+              <div className="font-medium mb-1">Terjadi kesalahan:</div>
+              <p className="text-sm">{(error as Error).message}</p>
+              
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="mt-3"
+                onClick={() => {
+                  setError(null);
+                  fetchSlotAndAppointments();
+                }}
+              >
+                <span className="mr-2">↺</span> Coba Lagi
+              </Button>
             </div>
           )}
           
+          {/* Empty state */}
           {!isLoading && !error && !slotData && (
-            <div className="text-center py-6 text-muted-foreground">
-              <p>Data slot tidak tersedia</p>
+            <div className="text-center p-6 border rounded-md bg-muted/20">
+              <p className="text-muted-foreground mb-2">Data slot tidak tersedia</p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  fetchSlotAndAppointments();
+                }}
+              >
+                <span className="mr-2">↺</span> Muat Ulang
+              </Button>
             </div>
           )}
           
+          {/* Slot data loaded successfully */}
           {!isLoading && !error && slotData && (
             <div className="space-y-4 mt-2">
               {/* Slot Information */}
@@ -943,13 +1059,13 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                     </Button>
                   )}
                 </div>
-                {!processedAppointments.length ? (
+                {!processAppointmentData.length ? (
                   <p className="text-center py-4 text-sm text-muted-foreground border rounded">
                     Belum ada pasien aktif
                   </p>
                 ) : (
                   <div className="border rounded-md divide-y">
-                    {processedAppointments.map((appointment: any) => (
+                    {processAppointmentData.map((appointment: any) => (
                       <div 
                         key={appointment.id} 
                         className="p-3 text-sm hover:bg-muted/50 transition-colors cursor-pointer"
