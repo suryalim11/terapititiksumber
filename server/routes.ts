@@ -4923,6 +4923,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint umum untuk memperbaiki jumlah sesi paket terapi yang digunakan
+  // Ini adalah sistem yang lebih fleksibel dan bisa digunakan untuk semua pasien
+  app.post("/api/sessions/fix-usage-count", async (req: Request, res: Response) => {
+    try {
+      const { sessionId, newUsageCount } = req.body;
+      
+      if (!sessionId || newUsageCount === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "Parameter sessionId dan newUsageCount harus disediakan"
+        });
+      }
+      
+      // Import fungsi dari fix-darukni-session.ts
+      const { fixSessionUsageCount } = await import('./fix-darukni-session');
+      
+      // Panggil fungsi untuk memperbaiki jumlah sesi
+      const result = await fixSessionUsageCount(sessionId, newUsageCount);
+      return res.json(result);
+      
+    } catch (error) {
+      console.error("Error memperbaiki jumlah sesi paket terapi:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: `Error: ${error instanceof Error ? error.message : String(error)}`
+      });
+    }
+  });
+  
+  // Endpoint untuk mencari pasien dengan berbagai metode
+  app.get("/api/patients/find/:term", requireAdminRole, async (req: Request, res: Response) => {
+    try {
+      const searchTerm = req.params.term;
+      
+      if (!searchTerm) {
+        return res.status(400).json({
+          success: false,
+          message: "Parameter pencarian harus disediakan"
+        });
+      }
+      
+      // Import fungsi dari fix-darukni-session.ts
+      const { findPatientByNameOrId } = await import('./fix-darukni-session');
+      
+      // Cari pasien
+      const patient = await findPatientByNameOrId(searchTerm);
+      
+      if (!patient) {
+        return res.status(404).json({
+          success: false,
+          message: `Tidak menemukan pasien dengan kriteria pencarian: ${searchTerm}`
+        });
+      }
+      
+      return res.json({
+        success: true,
+        patient
+      });
+      
+    } catch (error) {
+      console.error("Error mencari pasien:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: `Error: ${error instanceof Error ? error.message : String(error)}`
+      });
+    }
+  });
+  
   // Endpoint khusus untuk pengujian perbaikan sinkronisasi tanggal
   app.post("/api/test/create-appointment", async (req: Request, res: Response) => {
     try {

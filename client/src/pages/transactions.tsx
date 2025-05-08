@@ -65,6 +65,10 @@ type Transaction = {
     displayName?: 'original' | 'alternative';
     isDebtPayment?: boolean;
     relatedTransactionId?: number;
+    paymentAmount?: string | number;     // Jumlah pembayaran hutang
+    debtTransactionId?: number;          // ID transaksi hutang yang dibayar
+    originalTransactionId?: number;      // ID transaksi asli jika ini adalah pembayaran hutang
+    notes?: string;                     // Catatan tambahan untuk pembayaran hutang
   };
 };
 
@@ -1291,7 +1295,12 @@ export default function Transactions() {
                       <TableCell>{getPatientName(transaction.patientId, transaction)}</TableCell>
                       <TableCell>{formatDate(transaction.createdAt)}</TableCell>
                       <TableCell>{formatPaymentMethod(transaction.paymentMethod)}</TableCell>
-                      <TableCell className="text-right">{formatPrice(transaction.totalAmount)}</TableCell>
+                      <TableCell className="text-right">
+                        {transaction.metadata?.isDebtPayment 
+                          ? formatPrice(transaction.metadata.paymentAmount || transaction.totalAmount) 
+                          : formatPrice(transaction.totalAmount)
+                        }
+                      </TableCell>
                       <TableCell className="text-right">
                         {transaction.creditAmount ? formatPrice(transaction.creditAmount.toString()) : "-"}
                       </TableCell>
@@ -1401,7 +1410,12 @@ export default function Transactions() {
                       <div className="text-sm">{formatPaymentMethod(transaction.paymentMethod)}</div>
                       
                       <div className="text-sm font-medium">Total</div>
-                      <div className="text-sm font-semibold">{formatPrice(transaction.totalAmount)}</div>
+                      <div className="text-sm font-semibold">
+                        {transaction.metadata?.isDebtPayment 
+                          ? formatPrice(transaction.metadata.paymentAmount || transaction.totalAmount) 
+                          : formatPrice(transaction.totalAmount)
+                        }
+                      </div>
                       
                       {transaction.creditAmount && parseFloat(transaction.creditAmount.toString()) > 0 && (
                         <>
