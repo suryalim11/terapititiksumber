@@ -1,7 +1,7 @@
 /**
  * Modul untuk menghubungkan appointment dengan sesi paket terapi pasien secara otomatis
  */
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, asc, or, sql } from "drizzle-orm";
 import { db } from "./db";
 import * as schema from "@shared/schema";
 
@@ -113,7 +113,13 @@ export async function findMatchingTherapySlot(appointmentDate: Date | string, ti
     let dateStr: string;
     if (typeof appointmentDate === 'string') {
       // Jika sudah string, ambil bagian tanggalnya saja (YYYY-MM-DD)
-      dateStr = appointmentDate.split('T')[0].split(' ')[0];
+      if (appointmentDate.includes('T')) {
+        dateStr = appointmentDate.split('T')[0];
+      } else if (appointmentDate.includes(' ')) {
+        dateStr = appointmentDate.split(' ')[0];
+      } else {
+        dateStr = appointmentDate;
+      }
     } else {
       // Jika Date object, convert ke string format YYYY-MM-DD
       dateStr = appointmentDate.toISOString().split('T')[0];
@@ -121,35 +127,44 @@ export async function findMatchingTherapySlot(appointmentDate: Date | string, ti
     
     console.log(`Mencari therapy slot untuk tanggal ${dateStr} dengan waktu ${timeSlot || 'any'}`);
     
-    // Query untuk menemukan therapy slot yang sesuai
-    const queryConditions = [];
-    
-    // Filter berdasarkan tanggal (mencari therapy slot dengan tanggal yang sama)
-    queryConditions.push(sql`DATE(${schema.therapySlots.date}) = ${dateStr}`);
-    
-    // Jika timeSlot ditentukan, tambahkan filter waktu
-    if (timeSlot) {
-      queryConditions.push(eq(schema.therapySlots.timeSlot, timeSlot));
-    }
-    
-    // Cari therapy slot yang aktif
-    queryConditions.push(eq(schema.therapySlots.isActive, true));
-    
-    // Eksekusi query
-    const therapySlots = await db.query.therapySlots.findMany({
-      where: and(...queryConditions),
-      orderBy: [desc(schema.therapySlots.id)] // Ambil yang terbaru jika ada beberapa
+    // Dapatkan semua slot terapi untuk tanggal tersebut
+    const allSlots = await db.query.therapySlots.findMany({
+      where: and(
+        sql`DATE(${schema.therapySlots.date}) = ${dateStr}`,
+        eq(schema.therapySlots.isActive, true)
+      ),
+      orderBy: [asc(schema.therapySlots.id)]
     });
     
-    if (!therapySlots || therapySlots.length === 0) {
-      console.log(`Tidak ditemukan therapy slot untuk tanggal ${dateStr} dengan waktu ${timeSlot || 'any'}`);
+    if (!allSlots || allSlots.length === 0) {
+      console.log(`Tidak ditemukan therapy slot untuk tanggal ${dateStr}`);
       return null;
     }
     
-    console.log(`Ditemukan ${therapySlots.length} therapy slot untuk tanggal ${dateStr}`);
+    console.log(`Ditemukan ${allSlots.length} therapy slot untuk tanggal ${dateStr}`);
     
-    // Ambil therapy slot pertama yang ditemukan (yang paling baru)
-    return therapySlots[0].id;
+    // Jika timeSlot ditentukan, cari slot yang sesuai dengan waktu tersebut
+    if (timeSlot) {
+      const matchingSlots = allSlots.filter(slot => slot.timeSlot === timeSlot);
+      if (matchingSlots.length > 0) {
+        console.log(`Ditemukan ${matchingSlots.length} slot dengan waktu ${timeSlot}`);
+        return matchingSlots[0].id;
+      } else {
+        console.log(`Tidak ditemukan slot dengan waktu ${timeSlot}, mencari alternatif...`);
+      }
+    }
+    
+    // Jika timeSlot tidak ditentukan atau tidak ditemukan slot yang sesuai dengan timeSlot,
+    // coba cari slot berdasarkan slot yang masih memiliki kuota tersedia
+    const slotsWithQuota = allSlots.filter(slot => slot.currentCount < slot.maxQuota);
+    if (slotsWithQuota.length > 0) {
+      console.log(`Ditemukan ${slotsWithQuota.length} slot dengan kuota tersedia`);
+      return slotsWithQuota[0].id;
+    }
+    
+    // Jika tidak ada slot dengan kuota, gunakan slot pertama sebagai fallback
+    console.log(`Tidak ditemukan slot dengan kuota tersedia, menggunakan slot pertama sebagai fallback`);
+    return allSlots[0].id;
     
   } catch (error) {
     console.error(`Error saat mencari therapy slot yang cocok:`, error);
