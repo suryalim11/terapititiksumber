@@ -938,6 +938,34 @@ export class MemStorage implements IStorage {
     return this.therapySlots.get(id);
   }
   
+  async getTherapySlotByTimeSlotKey(timeSlotKey: string): Promise<TherapySlot | undefined> {
+    // Ekstrak tanggal dan waktu dari timeSlotKey
+    const [dateStr, timeSlot] = timeSlotKey.split('_');
+    
+    if (!dateStr || !timeSlot) {
+      console.error(`Format timeSlotKey tidak valid: ${timeSlotKey}`);
+      return undefined;
+    }
+    
+    // Format tanggal dari string ke Date object untuk perbandingan
+    const targetDate = new Date(dateStr);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    // Cari di seluruh therapy slots
+    const matchingSlot = Array.from(this.therapySlots.values()).find(slot => {
+      // Format tanggal slot untuk perbandingan
+      const slotDate = new Date(slot.date);
+      slotDate.setHours(0, 0, 0, 0);
+      
+      // Bandingkan tanggal dan timeSlot
+      return slotDate.getTime() === targetDate.getTime() && 
+             slot.timeSlot === timeSlot &&
+             slot.isActive === true;
+    });
+    
+    return matchingSlot;
+  }
+  
   async getTherapySlotsByDate(date: Date): Promise<TherapySlot[]> {
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
