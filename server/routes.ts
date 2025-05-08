@@ -3466,55 +3466,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[ROUTE] Found therapy slot: ${slot.id}, date: ${slot.date}, timeSlot: ${slot.timeSlot}`);
       
-      // Dapatkan semua appointment aktif untuk slot terapi ini dengan dual search strategy yang ditingkatkan
+      // Dapatkan appointment secara langsung dari database (lebih cepat dan lebih sederhana)
       try {
-        // Gunakan fungsi getAppointmentsByTherapySlot yang sudah diperbarui dengan dual search strategy
-        // Fungsi ini akan mencari appointment dengan therapySlotId yang cocok dan juga berdasarkan tanggal & jam
-        const appointments = await storage.getAppointmentsByTherapySlot(slotId);
-        console.log(`[ROUTE] Found ${appointments.length} appointments for slot ID ${slotId}`);
+        // Cari appointment berdasarkan therapySlotId
+        const directSlotAppointments = await db.query.appointments.findMany({
+          where: eq(schema.appointments.therapySlotId, slotId)
+        });
         
-        // Filter hanya appointment dengan status aktif (bukan cancelled atau completed)
+        // Filter status aktif saja
         const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
-        const activeAppointments = appointments.filter(app => 
+        const activeAppointments = directSlotAppointments.filter(app => 
           activeStatuses.includes(app.status)
         );
         
-        console.log(`[ROUTE] After filtering, found ${activeAppointments.length} active appointments`);
+        console.log(`[ROUTE] Found ${activeAppointments.length} active appointments for slot ID ${slotId}`);
         
-        // Update slot currentCount untuk menampilkan jumlah yang benar (hanya di respons, bukan di database)
+        // Perbarui slot currentCount untuk tampilan saja
         slot.currentCount = activeAppointments.length;
         
-        // Dapatkan informasi pasien dari tiap appointment
-        // Gunakan Map untuk menghindari duplikasi pasien dengan ID yang sama
-        const patientIdsSet = new Set(activeAppointments.map(appointment => appointment.patientId));
-        const patientIds = Array.from(patientIdsSet).filter(id => id !== undefined && id !== null);
-        console.log(`[ROUTE] Found ${patientIds.length} unique patients in these appointments`);
+        // Kumpulkan patientId yang unik
+        const patientIds = [...new Set(
+          activeAppointments
+            .map(app => app.patientId)
+            .filter(id => id !== undefined && id !== null)
+        )];
         
+        console.log(`[ROUTE] Found ${patientIds.length} unique patientIds: ${patientIds.join(', ')}`);
+        
+        // Dapatkan semua pasien sekaligus (lebih efisien)
+        const patients = await Promise.all(
+          patientIds.map(id => storage.getPatient(id))
+        );
+        
+        // Buat map pasien untuk lookup yang cepat
         const patientMap = new Map();
-        
-        // Ambil data pasien sekali untuk tiap ID unik
-        for (const patientId of patientIds) {
-          try {
-            // Jika tidak menemukan pasien dengan ID ini, coba gunakan string
-            const patient = await storage.getPatient(patientId);
-            if (patient) {
-              patientMap.set(patientId, patient);
-            } else {
-              console.log(`[ROUTE] Patient with ID ${patientId} not found`);
-            }
-          } catch (patientError) {
-            console.error(`[ROUTE] Error fetching patient ${patientId}:`, patientError);
+        patients.forEach(patient => {
+          if (patient) {
+            patientMap.set(patient.id, patient);
           }
-        }
+        });
         
-        // Transformasi appointment ke format yang dibutuhkan frontend untuk dialog slot-patients
+        console.log(`[ROUTE] Retrieved ${patientMap.size} patients successfully`);
+        
+        // Persiapkan data untuk respons
         const patientsData = activeAppointments
           .filter(app => app.patientId && patientMap.has(app.patientId))
           .map(app => {
             const patient = patientMap.get(app.patientId);
-            // Format yang sesuai dengan yang diharapkan di frontend
             return {
-              id: app.id, // ini adalah ID appointment karena frontend mengharapkan appointment objects
+              id: app.id, 
               patientId: patient.id,
               status: app.status,
               patient: {
@@ -3525,9 +3525,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             };
           });
         
-        console.log(`[ROUTE] Successfully prepared response for slot ID ${slotId} with ${patientsData.length} patients`);
+        console.log(`[ROUTE] Prepared ${patientsData.length} patient records for response`);
         
-        // Kirim respons dengan data slot dan appointment
+        // Kirim respons
         return res.status(200).json({
           slot,
           appointments: patientsData
