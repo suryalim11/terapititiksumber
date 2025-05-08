@@ -2241,6 +2241,27 @@ export class DatabaseStorage implements IStorage {
     // Status default harus "Active" jika tidak disediakan
     const status = appointment.status || 'Active';
     
+    // Cari session paket terapi pasien yang tersedia jika sessionId belum disediakan
+    if (!appointment.sessionId && appointment.patientId) {
+      try {
+        // Import fungsi connectAppointmentToSession secara dinamis untuk menghindari circular dependency
+        const { findAvailableSessionForPatient } = await import('./appointment-session-connector');
+        
+        // Cari sessionId yang tersedia untuk pasien
+        const availableSessionId = await findAvailableSessionForPatient(appointment.patientId);
+        
+        if (availableSessionId) {
+          console.log(`[APPOINTMENT] Found available session ID ${availableSessionId} for patient ${appointment.patientId}`);
+          appointment.sessionId = availableSessionId;
+        } else {
+          console.log(`[APPOINTMENT] No available session found for patient ${appointment.patientId}`);
+        }
+      } catch (error) {
+        console.error("[APPOINTMENT] Error finding available session:", error);
+        // Lanjutkan pembuatan appointment meskipun pencarian sesi gagal
+      }
+    }
+    
     // Pastikan date menggunakan zona waktu WIB untuk konsistensi
     const result = await db.insert(schema.appointments)
       .values({
@@ -2368,21 +2389,54 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // Jika status baru adalah "Completed" dan ada sessionId, increment session usage
-    if (status === 'Completed' && existingAppointment.status !== 'Completed' && existingAppointment.sessionId) {
-      console.log(`[STATUS UPDATE] Appointment ${id} changed to Completed. Incrementing session ${existingAppointment.sessionId} usage.`);
-      try {
-        // Dapatkan session terlebih dahulu
-        const session = await this.getSession(existingAppointment.sessionId);
-        if (session) {
-          // Increment session usage
-          await this.updateSessionUsage(existingAppointment.sessionId);
-          console.log(`[STATUS UPDATE] Session ${existingAppointment.sessionId} usage updated successfully.`);
-        } else {
-          console.log(`[STATUS UPDATE] Session ${existingAppointment.sessionId} not found for increment.`);
+    // Jika appointment akan berubah status menjadi "Completed"
+    if (status === 'Completed' && existingAppointment.status !== 'Completed') {
+      // Jika sudah ada sessionId, update penggunaan sesi
+      if (existingAppointment.sessionId) {
+        console.log(`[STATUS UPDATE] Appointment ${id} changed to Completed. Incrementing session ${existingAppointment.sessionId} usage.`);
+        try {
+          // Dapatkan session terlebih dahulu
+          const session = await this.getSession(existingAppointment.sessionId);
+          if (session) {
+            // Increment session usage
+            await this.updateSessionUsage(existingAppointment.sessionId);
+            console.log(`[STATUS UPDATE] Session ${existingAppointment.sessionId} usage updated successfully.`);
+          } else {
+            console.log(`[STATUS UPDATE] Session ${existingAppointment.sessionId} not found for increment.`);
+          }
+        } catch (error) {
+          console.error(`[STATUS UPDATE] Error updating session usage for session ${existingAppointment.sessionId}:`, error);
         }
-      } catch (error) {
-        console.error(`[STATUS UPDATE] Error updating session usage for session ${existingAppointment.sessionId}:`, error);
+      } 
+      // Jika belum ada sessionId, coba cari dan hubungkan dengan sesi yang tersedia
+      else if (existingAppointment.patientId) {
+        console.log(`[STATUS UPDATE] Appointment ${id} completed but no session connected. Searching for available session...`);
+        try {
+          // Import fungsi connectAppointmentToSession secara dinamis
+          const { connectAppointmentToSession } = await import('./appointment-session-connector');
+          
+          // Coba hubungkan appointment dengan sesi yang tersedia
+          const connected = await connectAppointmentToSession(id, existingAppointment.patientId);
+          
+          if (connected) {
+            console.log(`[STATUS UPDATE] Successfully connected appointment ${id} to an available session`);
+            
+            // Dapatkan appointment yang sudah diupdate dengan sessionId baru
+            const updatedAppointment = await db.query.appointments.findFirst({
+              where: eq(schema.appointments.id, id)
+            });
+            
+            if (updatedAppointment && updatedAppointment.sessionId) {
+              // Update penggunaan sesi
+              await this.updateSessionUsage(updatedAppointment.sessionId);
+              console.log(`[STATUS UPDATE] Session ${updatedAppointment.sessionId} usage updated after connection`);
+            }
+          } else {
+            console.log(`[STATUS UPDATE] No available session found for patient ${existingAppointment.patientId}`);
+          }
+        } catch (error) {
+          console.error(`[STATUS UPDATE] Error connecting appointment to session:`, error);
+        }
       }
     }
     
