@@ -175,8 +175,12 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
         const timeoutPromise = new Promise<Response>((_, reject) => {
           timeoutId = window.setTimeout(() => {
             try {
-              controller.abort();
-              console.log(`⏱️ Request to ${endpoint} aborted after ${timeoutMs}ms`);
+              // Cek apakah request sudah selesai sebelum melakukan abort
+              // Ini mencegah error "signal is aborted without reason"
+              if (!controller.signal.aborted) {
+                controller.abort();
+                console.log(`⏱️ Request to ${endpoint} aborted after ${timeoutMs}ms`);
+              }
             } catch (abortError) {
               console.log("Abort controller error handled:", abortError);
             } finally {
@@ -514,14 +518,21 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
           // Hindari setTimeout ganda dengan clear sebelumnya jika ada
           if (timeoutId) clearTimeout(timeoutId);
           
-          timeoutId = window.setTimeout(() => {
-            fetchSlotAndAppointments()
-              .catch(err => {
-                console.error("Failed to fetch slot data:", err);
-                setError(new Error("Gagal mengambil data. Silakan coba lagi."));
-                setIsLoading(false);
-              });
+          // Gunakan timeoutId untuk menghindari memory leak
+          const timerId = window.setTimeout(() => {
+            // Pastikan komponen masih ter-mount saat fetch selesai
+            if (hasRefreshedRef.current) {
+              fetchSlotAndAppointments()
+                .catch(err => {
+                  console.error("Failed to fetch slot data:", err);
+                  setError(new Error("Gagal mengambil data. Silakan coba lagi."));
+                  setIsLoading(false);
+                });
+            }
           }, 150);
+          
+          // Simpan ID timeout untuk bisa di-clear jika diperlukan
+          timeoutId = timerId;
         }
       };
       
