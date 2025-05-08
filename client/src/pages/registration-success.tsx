@@ -21,20 +21,48 @@ export default function RegistrationSuccessPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Debug: cek parameter URL saat halaman dimuat
+    console.log("URL params halaman success:", window.location.search);
+    const params = new URLSearchParams(window.location.search);
+    const timeParam = params.get('t');
+    const sourceParam = params.get('src');
+    console.log(`Params: timestamp=${timeParam}, source=${sourceParam}`);
+    
     // Fungsi untuk mengambil data dari localStorage dengan safe handling
     function loadData() {
       try {
+        console.log("Mencoba memuat data dari localStorage...");
         const savedData = localStorage.getItem('registrationData');
         const statusData = localStorage.getItem('registrationStatus');
         
-        if (savedData && statusData === 'success') {
-          const parsedData = JSON.parse(savedData);
-          // Pastikan data yang diload valid
-          if (parsedData && parsedData.name && parsedData.phoneNumber) {
-            setRegistrationData(parsedData);
-            console.log("Data registrasi berhasil dimuat dari localStorage");
-          } else {
-            console.warn("Data registrasi tidak valid:", parsedData);
+        console.log(`Status data di localStorage: ${statusData || 'tidak ada'}`);
+        
+        if (savedData) {
+          console.log("Data ditemukan di localStorage");
+          
+          try {
+            const parsedData = JSON.parse(savedData);
+            console.log("Data berhasil di-parse:", parsedData);
+            
+            // Pastikan data yang diload valid
+            if (parsedData && parsedData.name && parsedData.phoneNumber) {
+              setRegistrationData(parsedData);
+              console.log("Data registrasi berhasil dimuat dari localStorage");
+              
+              // Jika dimuat dari timeout, tambahkan status
+              if (parsedData.fromTimeout) {
+                console.log("PERHATIAN: Data dimuat dari timeout fallback!");
+              }
+              
+              // Jika data complete dari server
+              if (parsedData.isComplete) {
+                console.log("Data pendaftaran lengkap dari server");
+              }
+            } else {
+              console.warn("Data registrasi tidak valid:", parsedData);
+            }
+          } catch (parseError) {
+            console.error("Error parsing data JSON:", parseError);
           }
         } else {
           console.warn("Tidak ada data registrasi di localStorage");
@@ -54,7 +82,7 @@ export default function RegistrationSuccessPage() {
     // Coba lagi dalam 800ms jika tidak ada data (untuk redundansi)
     const timeoutId = setTimeout(() => {
       if (!registrationData) {
-        console.log("Mencoba memuat data registrasi lagi...");
+        console.log("Mencoba memuat data registrasi lagi setelah 800ms...");
         loadData();
       }
     }, 800);
@@ -62,14 +90,25 @@ export default function RegistrationSuccessPage() {
     // Backup plan: jika sampai 2 detik masih belum ada data, coba lagi
     const lastChanceId = setTimeout(() => {
       if (!registrationData) {
-        console.log("Mencoba memuat data registrasi untuk terakhir kali...");
+        console.log("Mencoba memuat data registrasi untuk terakhir kali setelah 2 detik...");
         loadData();
       }
     }, 2000);
+    
+    // Plan terakhir: jika sampai 5 detik masih belum dapat data, coba menggunakan URL params
+    const ultimateTimeoutId = setTimeout(() => {
+      if (!registrationData) {
+        console.log("DATA TIDAK DITEMUKAN SETELAH 5 DETIK - Plan terakhir");
+        // Simpan status untuk debugging
+        localStorage.setItem('registrationLoadingFailed', 'true');
+        localStorage.setItem('registrationLoadingFailedAt', new Date().toISOString());
+      }
+    }, 5000);
 
     return () => {
       clearTimeout(timeoutId);
       clearTimeout(lastChanceId);
+      clearTimeout(ultimateTimeoutId);
     };
   }, [registrationData]);
 
@@ -90,6 +129,19 @@ export default function RegistrationSuccessPage() {
 
   // Jika tidak ada data, tampilkan pesan error
   if (!registrationData) {
+    // Ambil parameter URL untuk debugging
+    const params = new URLSearchParams(window.location.search);
+    const timeParam = params.get('t');
+    const sourceParam = params.get('src');
+    
+    // Cek apakah ada upaya loading yang gagal tercatat
+    const loadingFailed = localStorage.getItem('registrationLoadingFailed');
+    const loadingFailedAt = localStorage.getItem('registrationLoadingFailedAt');
+    
+    // Coba ambil data raw dari localStorage untuk diagnostic
+    const rawStoredData = localStorage.getItem('registrationData');
+    const statusData = localStorage.getItem('registrationStatus');
+    
     return (
       <div className="container max-w-md mx-auto p-4 mt-8">
         <Card className="bg-white shadow-md">
@@ -105,6 +157,24 @@ export default function RegistrationSuccessPage() {
                 Kembali ke Pendaftaran
               </Button>
             </div>
+            
+            {/* Informasi teknis untuk debugging - Hanya tersedia di development */}
+            {process.env.NODE_ENV !== 'production' && (
+              <div className="mt-6 border-t pt-4">
+                <details>
+                  <summary className="text-xs text-gray-500 cursor-pointer">Informasi Debug</summary>
+                  <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                    <p>URL Source: {sourceParam || 'tidak ada'}</p>
+                    <p>Timestamp: {timeParam || 'tidak ada'}</p>
+                    <p>Loading Failed: {loadingFailed || 'false'}</p>
+                    {loadingFailedAt && <p>Failed At: {loadingFailedAt}</p>}
+                    <p>Storage Status: {statusData || 'tidak ada'}</p>
+                    <p>Raw Data: {rawStoredData ? '(data tersedia)' : '(tidak ada data)'}</p>
+                    {rawStoredData && <pre className="mt-2 overflow-auto max-h-32 text-xs p-1 bg-gray-100 rounded">{rawStoredData}</pre>}
+                  </div>
+                </details>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -200,6 +270,31 @@ export default function RegistrationSuccessPage() {
           <Button onClick={() => window.location.href = "/register?code=TTS-A13EWC"} className="w-full sm:w-auto">
             Pendaftaran Baru
           </Button>
+          
+          {/* Debug info - hanya di development */}
+          {process.env.NODE_ENV !== 'production' && (
+            <div className="w-full mt-6 border-t pt-4">
+              <details>
+                <summary className="text-xs text-gray-500 cursor-pointer">Informasi Debug</summary>
+                <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                  <p>Source Data: {registrationData.fromTimeout ? 'Timeout Fallback' : 'Server Response'}</p>
+                  <p>Data Lengkap: {registrationData.isComplete ? 'Ya' : 'Tidak'}</p>
+                  <p>Timestamp: {registrationData.timestamp}</p>
+                  <p>Total Properti: {Object.keys(registrationData).length}</p>
+                  
+                  {/* Tampilkan kunci data yang dikirim */}
+                  <div className="mt-2">
+                    <p className="font-medium">Data Properties:</p>
+                    <ul className="list-disc list-inside">
+                      {Object.keys(registrationData).map(key => (
+                        <li key={key}>{key}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </details>
+            </div>
+          )}
         </CardFooter>
       </Card>
     </div>

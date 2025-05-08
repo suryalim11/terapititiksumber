@@ -798,7 +798,20 @@ export default function RegisterPage() {
     
     // Validasi waktu terapi (pastikan tidak registrasi untuk waktu yang sudah lewat)
     if (values.therapySlotId && therapySlots) {
-      const selectedSlot = therapySlots.find(slot => slot.id === values.therapySlotId);
+      // Definisikan tipe untuk slot
+      interface TherapySlotData {
+        id: number;
+        date: string;
+        timeSlot: string;
+        maxQuota: number;
+        currentCount: number;
+        isActive: boolean;
+        timeSlotKey?: string | null;
+        globalQuota?: number;
+        createdAt?: string;
+      }
+      
+      const selectedSlot = therapySlots.find((slot: TherapySlotData) => slot.id === values.therapySlotId);
       if (selectedSlot) {
         const slotDate = new Date(selectedSlot.date);
         const [startHour, startMinute] = selectedSlot.timeSlot.split('-')[0].split(':').map(Number);
