@@ -837,10 +837,46 @@ export default function RegisterPage() {
       );
     }
 
+    // Fungsi untuk deduplikasi slot dengan timeSlot yang sama
+    const deduplicateSlots = (slots: any[]): any[] => {
+      // Group slots by date + timeSlot
+      const slotMap: Record<string, any[]> = {};
+      
+      slots.forEach((slot: any) => {
+        const dateStr = format(new Date(slot.date), "yyyy-MM-dd");
+        const key = `${dateStr}_${slot.timeSlot}`;
+        
+        if (!slotMap[key]) {
+          slotMap[key] = [];
+        }
+        slotMap[key].push(slot);
+      });
+      
+      // For each group, select the best slot (with highest available quota)
+      return Object.values(slotMap).map(slotsGroup => {
+        // Sort by available capacity (maxQuota - currentCount) in descending order
+        const sortedSlots = [...slotsGroup].sort((a, b) => 
+          (b.maxQuota - b.currentCount) - (a.maxQuota - a.currentCount)
+        );
+        
+        // Return the slot with most available space
+        return sortedSlots[0];
+      });
+    };
+    
+    // Log jumlah slot sebelum deduplikasi
+    console.log(`Slot sebelum deduplikasi: ${therapySlots.length}`);
+    
+    // Deduplikasi slot terlebih dahulu
+    const uniqueSlots = deduplicateSlots(therapySlots);
+    
+    // Log jumlah slot setelah deduplikasi
+    console.log(`Slot setelah deduplikasi: ${uniqueSlots.length}`);
+    
     // Kelompokkan slot berdasarkan tanggal
     const groupedByDate: Record<string, any[]> = {};
     
-    therapySlots.forEach((slot: any) => {
+    uniqueSlots.forEach((slot: any) => {
       const dateStr = format(new Date(slot.date), "yyyy-MM-dd");
       if (!groupedByDate[dateStr]) {
         groupedByDate[dateStr] = [];
