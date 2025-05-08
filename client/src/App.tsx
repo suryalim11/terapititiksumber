@@ -14,6 +14,7 @@ import ReportsIndex from "@/pages/reports/index";
 import PatientsDailyReport from "@/pages/reports/patients-daily";
 import Settings from "@/pages/settings";
 import Register from "@/pages/register";
+import RegistrationSuccess from "@/pages/registration-success";
 // Import halaman register sederhana untuk testing
 import SimpleRegister from "@/pages/register.simple";
 import Login from "@/pages/login";
@@ -48,6 +49,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/daftar" component={Register} />
       <Route path="/register" component={Register} />
+      <Route path="/registration-success" component={RegistrationSuccess} />
       <Route path="/register-simple" component={SimpleRegister} />
       <Route component={NotFound} />
     </Switch>

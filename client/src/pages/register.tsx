@@ -853,20 +853,23 @@ export default function RegisterPage() {
       if (response.ok) {
         console.log("Pendaftaran berhasil:", data);
         
-        // Simpan data ke localStorage sebelum manipulasi DOM atau state
+        // Simpan data ke localStorage sebelum navigasi
         try {
           localStorage.setItem('registrationData', JSON.stringify(data));
           localStorage.setItem('registrationStatus', 'success');
           console.log("Data pendaftaran berhasil disimpan di localStorage");
+          
+          // Arahkan ke halaman sukses pendaftaran
+          window.location.href = "/registration-success";
         } catch (e) {
           console.error("Gagal menyimpan data pendaftaran di localStorage:", e);
+          
+          // Fallback ke metode redirect lama jika gagal
+          window.location.href = window.location.pathname + 
+            "?status=success&code=" + 
+            (registrationCode || "") + 
+            "&t=" + new Date().getTime();
         }
-        
-        // Gunakan window.location untuk pindah halaman (solusi paling andal)
-        window.location.href = window.location.pathname + 
-          "?status=success&code=" + 
-          (registrationCode || "") + 
-          "&t=" + new Date().getTime();
       } else {
         console.error("Pendaftaran gagal:", data);
         
