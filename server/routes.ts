@@ -3783,7 +3783,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Dapatkan semua slot terapi yang tersedia (aktif dan belum penuh)
+      console.log("Fetching therapy slots with params - date: undefined, activeOnly: true, availableOnly: true");
       const allSlots = await storage.getAllTherapySlots();
+      console.log(`Mendapatkan semua slot terapi (default)`);
       
       // Filter slot yang aktif dan belum penuh
       const activeSlots = allSlots.filter(slot => slot.isActive && slot.currentCount < slot.maxQuota);
@@ -3791,6 +3793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter slot untuk tanggal saat ini dan ke depan
       const today = new Date();
       today.setHours(0, 0, 0, 0); // Reset ke awal hari
+      console.log(`Filtering for slots on or after today: ${today.toISOString()}`);
       
       const upcomingSlots = activeSlots.filter(slot => {
         const slotDate = new Date(slot.date);
@@ -3798,8 +3801,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return slotDate.getTime() >= today.getTime();
       });
       
+      // Filter lagi untuk slot yang masih memiliki kuota tersedia
+      console.log(`Filtering for available slots (currentCount < maxQuota)`);
+      const availableSlots = upcomingSlots.filter(slot => {
+        return slot.currentCount < slot.maxQuota;
+      });
+      
       // Urutkan slot berdasarkan tanggal dan waktu
-      upcomingSlots.sort((a, b) => {
+      availableSlots.sort((a, b) => {
         const dateA = new Date(a.date).getTime();
         const dateB = new Date(b.date).getTime();
         if (dateA !== dateB) return dateA - dateB;
@@ -3823,7 +3832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                             (expiryTime.getFullYear() > new Date().getFullYear() + 5);
       
       // Cek apakah ada slot yang tersedia
-      if (upcomingSlots.length === 0) {
+      if (availableSlots.length === 0) {
         return res.status(200).json({ 
           valid: true,
           message: "Link valid, tetapi tidak ada slot terapi yang tersedia",
@@ -3848,10 +3857,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Jika ada slot tersedia, kirimkan dalam respons
+      console.log(`Link valid, mengirimkan ${availableSlots.length} slot terapi yang tersedia`);
       return res.status(200).json({ 
         valid: true,
         message: "Link pendaftaran valid",
-        availableSlots: upcomingSlots,
+        availableSlots: availableSlots,
         hasAvailableSlots: true,
         // Jika link permanen, tampilkan dengan representasi khusus
         ...(isPermanentLink 
