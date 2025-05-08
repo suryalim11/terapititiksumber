@@ -38,6 +38,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 interface DashboardStats {
   patientsToday: number;
@@ -651,18 +653,26 @@ export default function Dashboard() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
-                        <Calendar
+                        <CalendarComponent
                           mode="single"
                           selected={selectedDate}
-                          onSelect={(date) => {
-                            setSelectedDate(date);
-                            if (date) {
-                              // Invalidate cache and force refetch with new date
-                              queryClient.invalidateQueries({ queryKey: ['/api/slots-by-period', 'selected-date'] });
-                              refetchSlotsByPeriod();
-                            }
-                          }}
+                          onSelect={setSelectedDate}
                           initialFocus
+                          footer={
+                            <Button 
+                              onClick={() => {
+                                if (selectedDate) {
+                                  // Invalidate cache and force refetch with new date
+                                  queryClient.invalidateQueries({ queryKey: ['/api/slots-by-period', 'selected-date'] });
+                                  refetchSlotsByPeriod();
+                                }
+                              }}
+                              className="w-full mt-2"
+                              disabled={!selectedDate}
+                            >
+                              Tampilkan Data
+                            </Button>
+                          }
                         />
                       </PopoverContent>
                     </Popover>
