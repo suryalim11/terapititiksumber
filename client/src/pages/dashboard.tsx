@@ -18,7 +18,8 @@ import {
   RefreshCcw,
   Database,
   Edit3,
-  PencilLine
+  PencilLine,
+  Link2
 } from "lucide-react";
 import { 
   cn, 
@@ -393,6 +394,45 @@ export default function Dashboard() {
     // Update selected period
     setSelectedPeriod(period);
   };
+  
+  // Fungsi untuk auto-connect appointment dengan sesi paket terapi
+  const handleAutoConnectSessions = async () => {
+    try {
+      setIsAutoConnecting(true);
+      const response = await fetch('/api/appointments/auto-connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      toast({
+        title: "Auto-Connect Berhasil",
+        description: `${result.connectedCount} appointment berhasil dihubungkan dengan sesi paket terapi.`,
+        variant: result.connectedCount > 0 ? "default" : "secondary",
+      });
+      
+      // Refresh data
+      refetchAppointments();
+      refetchPackages();
+      
+    } catch (error) {
+      console.error("Error auto-connecting sessions:", error);
+      toast({
+        title: "Auto-Connect Gagal",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan saat menghubungkan appointment dengan sesi paket terapi.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAutoConnecting(false);
+    }
+  };
 
   // Dashboard stat cards data
   const statCards = [
@@ -703,6 +743,23 @@ export default function Dashboard() {
                 <span className="sr-only">Refresh Packages</span>
               </Button>
 
+              <Button 
+                variant="outline"
+                size="sm"
+                className="text-xs whitespace-nowrap flex items-center gap-1"
+                onClick={handleAutoConnectSessions}
+                disabled={isAutoConnecting}
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                {isAutoConnecting ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Menghubungkan...</span>
+                  </>
+                ) : (
+                  <span>Auto-Connect Sessions</span>
+                )}
+              </Button>
             </div>
           </div>
           <div className="flex justify-between items-center">
