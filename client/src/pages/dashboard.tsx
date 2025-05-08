@@ -95,6 +95,7 @@ export default function Dashboard() {
   const [isSessionEditorOpen, setIsSessionEditorOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [isAutoConnecting, setIsAutoConnecting] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null); // State untuk tanggal yang dipilih
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
@@ -102,6 +103,9 @@ export default function Dashboard() {
   const todayWIB = getTodayInWIB(); // Dapatkan hari ini dalam timezone WIB
   const formattedToday = dateToWIBDateString(todayWIB); // Format ke YYYY-MM-DD
   console.log(`Today in WIB timezone: ${formattedToday}`);
+  
+  // Format selected date if available
+  const formattedSelectedDate = selectedDate ? dateToWIBDateString(selectedDate) : formattedToday;
   
 
   
@@ -153,6 +157,9 @@ export default function Dashboard() {
         if (selectedPeriod === 'day') {
           // Untuk hari ini, filter berdasarkan tanggal
           apiUrl = `/api/therapy-slots?date=${formattedToday}`;
+        } else if (selectedPeriod === 'selected-date' && selectedDate) {
+          // Untuk tanggal yang dipilih
+          apiUrl = `/api/therapy-slots?date=${formattedSelectedDate}`;
         } else if (selectedPeriod === 'week') {
           // Untuk minggu ini, ambil semua slot aktif
           apiUrl = `/api/therapy-slots?activeOnly=true`;
@@ -301,6 +308,15 @@ export default function Dashboard() {
           filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             const slotDateStr = getSlotDateStr(slot);
             return slotDateStr === todayWIBStr;
+          });
+          
+        } else if (selectedPeriod === 'selected-date' && selectedDate) {
+          // Untuk tanggal yang dipilih, filter berdasarkan tanggal yang dipilih
+          const selectedDateStr = dateToWIBDateString(selectedDate);
+          
+          filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
+            const slotDateStr = getSlotDateStr(slot);
+            return slotDateStr === selectedDateStr;
           });
           
         } else if (selectedPeriod === 'week') {
@@ -611,11 +627,47 @@ export default function Dashboard() {
               onValueChange={handlePeriodChange}
             >
               <div className="px-4 pt-4">
-                <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsList className="grid w-full grid-cols-4 mb-4">
                   <TabsTrigger value="day">Hari Ini</TabsTrigger>
+                  <TabsTrigger value="selected-date">Tanggal Tertentu</TabsTrigger>
                   <TabsTrigger value="future">Mendatang</TabsTrigger>
                   <TabsTrigger value="all">Semua Slot</TabsTrigger>
                 </TabsList>
+                
+                {/* Date picker for selected-date tab */}
+                {selectedPeriod === 'selected-date' && (
+                  <div className="mb-4 mt-2 flex items-center justify-center">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-[240px] justify-start text-left font-normal",
+                            !selectedDate && "text-muted-foreground"
+                          )}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {selectedDate ? format(selectedDate, "dd MMMM yyyy", { locale: localeId }) : "Pilih tanggal"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={(date) => {
+                            setSelectedDate(date);
+                            if (date) {
+                              // Invalidate cache and force refetch with new date
+                              queryClient.invalidateQueries({ queryKey: ['/api/slots-by-period', 'selected-date'] });
+                              refetchSlotsByPeriod();
+                            }
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
               </div>
               
               {/* Tab Pendaftaran telah dihapus */}
