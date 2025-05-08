@@ -49,6 +49,34 @@ function formatDate(dateInput?: string | Date): string {
   }
 }
 
+// Fungsi untuk memastikan format waktu yang benar
+function formatTimeSlot(timeSlot?: string): string {
+  if (!timeSlot) return '-';
+  
+  // Jika format waktu adalah "10:00-00:00", konversi ke format yang lebih masuk akal
+  if (timeSlot.endsWith('-00:00')) {
+    // Coba ekstrak waktu awal dan tambahkan 2 jam sebagai standar durasi terapi
+    try {
+      const startTime = timeSlot.split('-')[0];
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      
+      // Jika waktu awal valid, tambahkan 2 jam untuk waktu akhir
+      if (!isNaN(startHour) && !isNaN(startMinute)) {
+        let endHour = startHour + 2;
+        if (endHour >= 24) endHour = endHour - 24;
+        
+        // Format waktu akhir dengan leading zero jika perlu
+        const endTimeStr = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
+        return `${startTime}-${endTimeStr}`;
+      }
+    } catch (error) {
+      console.error("Error formatting time slot:", error);
+    }
+  }
+  
+  return timeSlot;
+}
+
 function getStatusClass(status?: string): string {
   if (!status) return 'bg-gray-100 text-gray-800';
   
@@ -1321,7 +1349,9 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
             </DialogTitle>
             <DialogDescription>
               {slotData 
-                ? `${formatDate(slotData.date)} · ${slotData.timeSlot === "Data tidak tersedia" ? "Slot tidak ditemukan" : slotData.timeSlot || '-'}`
+                ? `${formatDate(slotData.date)} · ${slotData.timeSlot === "Data tidak tersedia" 
+                   ? "Slot tidak ditemukan" 
+                   : formatTimeSlot(slotData.timeSlot) || '-'}`
                 : "Menampilkan detail slot terapi dan daftar pasien"}
             </DialogDescription>
           </DialogHeader>
@@ -1543,7 +1573,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                   <div className="font-medium">{formatDate(slotData.date)}</div>
                   
                   <div className="text-muted-foreground">Waktu:</div>
-                  <div className="font-medium">{slotData.timeSlot || '-'}</div>
+                  <div className="font-medium">{formatTimeSlot(slotData.timeSlot) || '-'}</div>
                   
                   <div className="text-muted-foreground">Kuota:</div>
                   <div className="font-medium">
@@ -1572,7 +1602,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                     </h3>
                     {combinedSlotInfo && combinedSlotInfo.ids.length > 1 && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        * Menampilkan semua pasien dari {combinedSlotInfo.ids.length} slot pada jam yang sama ({slotData?.timeSlot})
+                        * Menampilkan semua pasien dari {combinedSlotInfo.ids.length} slot pada jam yang sama ({formatTimeSlot(slotData?.timeSlot)})
                       </p>
                     )}
                   </div>
