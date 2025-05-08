@@ -969,11 +969,55 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
                   <td colSpan={2}></td>
                   <td className="px-4 py-2 text-right font-semibold text-gray-700">Total:</td>
                   <td className="px-4 py-2 text-right font-semibold text-primary">
-                    {data?.transaction?.totalAmount 
-                     ? formatPrice(data.transaction.totalAmount.toString())
-                     : data?.total 
-                       ? formatPrice(data.total.toString())
-                       : formatPrice(data?.subtotal?.toString() || '0')}
+                    {/* Periksa apakah ini transaksi kombinasi pembayaran hutang + pembelian */}
+                    {(() => {
+                      const isComboDebtPayment = data.transaction?.metadata && (
+                        (typeof data.transaction.metadata === 'object' && data.transaction.metadata?.isDebtPayment) || 
+                        (typeof data.transaction.metadata === 'string' && data.transaction.metadata.includes('isDebtPayment'))
+                      ) && data.items && data.items.length > 0;
+                      
+                      if (isComboDebtPayment) {
+                        // Untuk transaksi kombinasi, ambil nilai pembayaran hutang dari metadata
+                        let paymentAmount = 0;
+                        const meta = data.transaction.metadata;
+                        
+                        if (typeof meta === 'object' && meta !== null && meta.paymentAmount) {
+                          paymentAmount = safeParseFloat(meta.paymentAmount);
+                        } else if (typeof meta === 'string') {
+                          try {
+                            const parsed = JSON.parse(meta);
+                            if (parsed.paymentAmount) {
+                              paymentAmount = safeParseFloat(parsed.paymentAmount);
+                            }
+                          } catch (e) {
+                            const paymentMatch = meta.match(/"paymentAmount":"?(\d+(?:\.\d+)?)"?/);
+                            if (paymentMatch && paymentMatch[1]) {
+                              paymentAmount = safeParseFloat(paymentMatch[1]);
+                            }
+                          }
+                        }
+                        
+                        // Hitung total item dari pembelian
+                        const itemsTotal = data.items.reduce((sum, item) => {
+                          const itemPrice = safeParseFloat(item.price);
+                          const itemQuantity = item.quantity || 1;
+                          return sum + (itemPrice * itemQuantity);
+                        }, 0);
+                        
+                        // Total yang benar adalah jumlah pembayaran hutang + total pembelian baru
+                        const correctTotal = paymentAmount + itemsTotal;
+                        console.log("Perhitungan total invoice UI: Hutang", paymentAmount, "+ Items", itemsTotal, "=", correctTotal);
+                        
+                        return formatPrice(correctTotal.toString());
+                      } else {
+                        // Gunakan totalAmount dari transaksi sebagai total akhir untuk non-combo
+                        return data?.transaction?.totalAmount 
+                          ? formatPrice(data.transaction.totalAmount.toString())
+                          : data?.total 
+                            ? formatPrice(data.total.toString())
+                            : formatPrice(data?.subtotal?.toString() || '0');
+                      }
+                    })()}
                   </td>
                 </tr>
                 {/* Cek apakah ini transaksi pembayaran hutang */}
