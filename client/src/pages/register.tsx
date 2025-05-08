@@ -317,6 +317,13 @@ export default function RegisterPage() {
           
           console.log("Berhasil memulihkan data pendaftaran dari localStorage", registrationData);
           
+          // Tambahkan toast untuk notifikasi
+          toast({
+            title: "Pendaftaran Berhasil",
+            description: "Data pendaftaran Anda berhasil ditampilkan.",
+            className: "bg-green-50 border-green-200 text-green-800",
+          });
+          
           // Hapus data dari localStorage setelah beberapa saat
           setTimeout(() => {
             localStorage.removeItem('registrationData');
@@ -901,16 +908,7 @@ export default function RegisterPage() {
             // Lakukan redirect
             window.location.href = successUrl;
           }
-        }, 1000);
-        
-        // Force redirect ke halaman sukses
-        setTimeout(() => {
-          if (window.location.href.includes('?code=')) {
-            const successUrl = window.location.href + '&status=success';
-            console.log("Redirecting to success page:", successUrl);
-            window.location.href = successUrl;
-          }
-        }, 500);
+        }, 800);
         
         // Refresh kuota pendaftaran
         if (data.registrationInfo) {
