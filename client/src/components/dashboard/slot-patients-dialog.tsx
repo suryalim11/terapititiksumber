@@ -148,65 +148,131 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     setError(null);
     
     if (!slotId) {
+      console.error("fetchSlotAndAppointments called without slotId");
       setIsLoading(false);
       return;
     }
     
     try {
-      // STEP 1: Fetch slot data
-      console.log("Fetching slot data for ID:", slotId);
-      const slotResponse = await fetch(`/api/therapy-slots/${slotId}`);
+      // STEP 1: Fetch slot data dengan pendekatan direct fetch yang simpel
+      const endpoint = `/api/therapy-slots/${slotId}`;
+      console.log("Fetching slot data for ID:", slotId, "from endpoint:", endpoint);
+      
+      // Gunakan metode fetch dengan timeout untuk mengatasi kebuntuan
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const slotResponse = await fetch(endpoint, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
+      });
+      
+      // Clear timeout karena request berhasil
+      clearTimeout(timeoutId);
+      
+      console.log("Slot response status:", slotResponse.status);
       
       if (!slotResponse.ok) {
-        throw new Error(`Error fetching slot: ${slotResponse.status}`);
+        throw new Error(`Error fetching slot: ${slotResponse.status} ${slotResponse.statusText}`);
       }
       
-      const slotResult = await slotResponse.json();
-      console.log("Slot data received:", slotResult);
+      let slotResult;
+      try {
+        slotResult = await slotResponse.json();
+        console.log("Slot data successfully parsed:", slotResult);
+      } catch (parseError) {
+        console.error("Error parsing slot response:", parseError);
+        const responseText = await slotResponse.text();
+        console.log("Raw response text:", responseText.substring(0, 500));
+        throw new Error("Failed to parse slot data response");
+      }
       
       if (!slotResult || !slotResult.date) {
+        console.error("Invalid slot data format:", slotResult);
         throw new Error("Invalid slot data received");
       }
       
-      // Set slot data terlebih dahulu
+      // Set slot data ke state
+      console.log("Setting slot data to state:", slotResult);
       setSlotData(slotResult);
       
-      // STEP 2: Coba fetch appointments dengan pendekatan yang berbeda
-      console.log("Fetching appointments with improved approach");
-      
+      // STEP 2: Ambil appointment menggunakan slot ID
       // Format tanggal untuk query
       const slotDate = typeof slotResult.date === 'string' 
         ? slotResult.date.split(' ')[0] // YYYY-MM-DD dari format "YYYY-MM-DD HH:MM:SS"
         : new Date(slotResult.date).toISOString().split('T')[0];
       
-      console.log(`Fetching appointments for date: ${slotDate}`);
-      const dateFallbackResponse = await fetch(`/api/appointments/date/${slotDate}`);
+      console.log(`Fetching appointments for date ${slotDate}`);
+      const appointmentsEndpoint = `/api/appointments/date/${slotDate}`;
       
-      if (!dateFallbackResponse.ok) {
-        throw new Error(`Failed to fetch appointments: ${dateFallbackResponse.status}`);
+      const appointmentsController = new AbortController();
+      const appointmentsTimeoutId = setTimeout(() => appointmentsController.abort(), 10000);
+      
+      const appointmentsResponse = await fetch(appointmentsEndpoint, {
+        signal: appointmentsController.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
+      });
+      
+      clearTimeout(appointmentsTimeoutId);
+      
+      console.log("Appointments response status:", appointmentsResponse.status);
+      
+      if (!appointmentsResponse.ok) {
+        throw new Error(`Failed to fetch appointments: ${appointmentsResponse.status} ${appointmentsResponse.statusText}`);
       }
       
-      const allDateAppointments = await dateFallbackResponse.json();
-      console.log(`Got ${allDateAppointments.length} appointments for date ${slotDate}`);
+      let allDateAppointments;
+      try {
+        allDateAppointments = await appointmentsResponse.json();
+        console.log("Successfully parsed appointments data with length:", 
+                   Array.isArray(allDateAppointments) ? allDateAppointments.length : "not an array");
+      } catch (parseError) {
+        console.error("Error parsing appointments response:", parseError);
+        const responseText = await appointmentsResponse.text();
+        console.log("Raw appointments response:", responseText.substring(0, 500));
+        throw new Error("Failed to parse appointments data");
+      }
       
-      // Filter appointments untuk slot ini dengan kriteria yang lebih reliable
+      if (!Array.isArray(allDateAppointments)) {
+        console.error("Appointments data is not an array:", allDateAppointments);
+        allDateAppointments = [];
+      }
+      
+      // Filter appointments untuk slot ini
       const filtered = allDateAppointments.filter((app: any) => {
         // Skip null/undefined
         if (!app) return false;
         
+        // Log untuk debugging
+        console.log(`Appointment ${app.id}: therapySlotId=${app.therapySlotId}, timeSlot=${app.timeSlot}`);
+        
         // Match berdasarkan therapySlotId (kriteria utama)
-        if (app.therapySlotId === slotId) return true;
+        const matchesId = Number(app.therapySlotId) === Number(slotId);
+        if (matchesId) {
+          console.log(`-> Match by ID for appointment ${app.id}`);
+          return true;
+        }
         
         // Fallback untuk appointment tanpa therapySlotId - match berdasarkan waktu
-        if (!app.therapySlotId && app.timeSlot === slotResult.timeSlot) return true;
+        if (!app.therapySlotId && app.timeSlot === slotResult.timeSlot) {
+          console.log(`-> Match by timeSlot for appointment ${app.id}`);
+          return true;
+        }
         
         return false;
       });
       
-      console.log(`Filtered ${filtered.length} appointments for slot ID ${slotId}`);
+      console.log(`Filtered ${filtered.length} appointments for slot ID ${slotId} out of ${allDateAppointments.length} total`);
       
-      // Set appointment data setelah filtering
-      setAppointmentData(filtered || []);
+      // Set appointment data ke state
+      setAppointmentData(filtered);
+      console.log("Data loading complete");
     } catch (err) {
       console.error("Error fetching data:", err);
       setError(err instanceof Error ? err : new Error("Unknown error fetching data"));
@@ -227,6 +293,18 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const hasRefreshedRef = useRef(false);
   const dialogOpenedTimeRef = useRef<number | null>(null);
   
+  // Logging additional debug info
+  useEffect(() => {
+    console.log("Current dialog state:", { 
+      isOpen, 
+      slotId,
+      hasSlotData: !!slotData, 
+      appointmentCount: appointmentData?.length || 0,
+      isLoading,
+      hasError: !!error
+    });
+  }, [isOpen, slotId, slotData, appointmentData, isLoading, error]);
+  
   // Effect untuk menangani loading data pada saat dialog dibuka
   useEffect(() => {
     if (isOpen && slotId) {
@@ -239,15 +317,21 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       if (!hasRefreshedRef.current) {
         console.log('Dialog dibuka dengan slotId:', slotId, '- memulai fetch data');
         hasRefreshedRef.current = true;
-        fetchSlotAndAppointments();
+        // Sedikit delay untuk memastikan dialog sudah terbuka sepenuhnya
+        setTimeout(() => {
+          console.log("Starting data fetch after small delay");
+          fetchSlotAndAppointments();
+        }, 100);
       }
     } else if (!isOpen) {
       // Reset flag saat dialog ditutup
       hasRefreshedRef.current = false;
       dialogOpenedTimeRef.current = null;
       
-      // Reset data saat dialog ditutup untuk menghindari flash data lama
+      // Reset state saat dialog ditutup untuk menghindari flash data lama
       setAppointmentData([]);
+      setSlotData(null);
+      setError(null);
     }
   }, [isOpen, slotId]);
   
