@@ -4492,6 +4492,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint untuk auto-connect appointment dengan sesi terapi
+  app.post("/api/appointments/auto-connect", async (req: Request, res: Response) => {
+    try {
+      // Import module appointment-session-connector
+      const { autoConnectAppointmentsToSessions } = await import('./appointment-session-connector');
+      
+      // Jalankan proses auto-connect
+      const connectedCount = await autoConnectAppointmentsToSessions();
+      
+      return res.status(200).json({
+        success: true,
+        message: `Berhasil menghubungkan ${connectedCount} appointment dengan sesi paket terapi`,
+        connectedCount
+      });
+    } catch (error) {
+      console.error("Error saat auto-connect appointment dengan sesi paket terapi:", error);
+      return res.status(500).json({
+        success: false,
+        message: `Error: ${error instanceof Error ? error.message : String(error)}`
+      });
+    }
+  });
+  
   // Medical History Routes
   app.get("/api/medical-histories/patient/:patientId", async (req: Request, res: Response) => {
     try {
