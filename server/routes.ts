@@ -5311,6 +5311,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Endpoint khusus untuk memperbaiki appointment yang tidak terbuat karena timeout
+  app.post("/api/fix/create-missing-appointment", async (req: Request, res: Response) => {
+    try {
+      const { patientName, birthDate, therapySlotId } = req.body;
+      
+      if (!patientName || !birthDate || !therapySlotId) {
+        return res.status(400).json({ 
+          message: "Perbaikan memerlukan patientName, birthDate, dan therapySlotId",
+          example: {
+            patientName: "Agus lim",
+            birthDate: "1969-01-20",
+            therapySlotId: 442
+          }
+        });
+      }
+      
+      console.log(`Mencoba memperbaiki appointment yang hilang untuk pasien ${patientName} pada slot ${therapySlotId}`);
+      
+      // Cari pasien berdasarkan nama dan tanggal lahir
+      const patients = await storage.getAllPatients();
+      const patient = patients.find(p => 
+        p.name.toLowerCase() === patientName.toLowerCase() && 
+        p.birthDate === birthDate
+      );
+      
+      if (!patient) {
+        return res.status(404).json({ 
+          message: "Pasien tidak ditemukan dengan nama dan tanggal lahir yang diberikan" 
+        });
+      }
+      
+      console.log(`Pasien ditemukan: ID=${patient.id}, Nama=${patient.name}`);
+      
+      // Cek apakah slot terapi valid
+      const therapySlot = await storage.getTherapySlot(therapySlotId);
+      if (!therapySlot) {
+        return res.status(404).json({ message: "Therapy slot tidak ditemukan" });
+      }
+      
+      console.log(`Slot terapi valid: ID=${therapySlotId}, tanggal=${therapySlot.date}, waktu=${therapySlot.timeSlot}`);
+      
+      // Periksa apakah sudah ada appointment yang terbuat
+      const existingAppointments = await storage.getAppointmentsByPatient(patient.id);
+      const hasAppointmentForSlot = existingAppointments.some(app => app.therapySlotId === therapySlotId);
+      
+      if (hasAppointmentForSlot) {
+        return res.status(400).json({ 
+          message: "Pasien sudah memiliki appointment untuk slot terapi ini",
+          patientId: patient.id,
+          therapySlotId
+        });
+      }
+      
+      console.log(`Tidak ada appointment yang sudah ada untuk slot ${therapySlotId}. Membuat appointment baru...`);
+      
+      // Buat appointment baru
+      const appointmentData = {
+        patientId: patient.id,
+        therapySlotId: therapySlotId,
+        notes: "Dibuat ulang setelah timeout",
+        status: "Scheduled",
+        date: therapySlot.date, // Gunakan string dari therapySlot
+        timeSlot: therapySlot.timeSlot,
+        sessionId: null,
+        registrationNumber: null
+      };
+      
+      const appointment = await storage.createAppointment(appointmentData);
+      
+      // Meningkatkan jumlah penggunaan terapi slot
+      await storage.incrementTherapySlotUsage(therapySlotId);
+      
+      console.log(`Berhasil membuat appointment: ID=${appointment.id} untuk pasien ID=${patient.id} pada slot ID=${therapySlotId}`);
+      
+      return res.status(201).json({
+        message: "Appointment berhasil dibuat ulang",
+        patient: {
+          id: patient.id,
+          name: patient.name,
+          phoneNumber: patient.phoneNumber
+        },
+        therapySlot: {
+          id: therapySlot.id,
+          date: therapySlot.date,
+          timeSlot: therapySlot.timeSlot
+        },
+        appointment
+      });
+    } catch (error) {
+      console.error("Error saat memperbaiki appointment yang hilang:", error);
+      return res.status(500).json({ 
+        message: "Terjadi kesalahan saat memperbaiki appointment", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
 
   // Endpoint test untuk pengujian penanganan tanggal
   app.post("/api/test/date-handler", handleDateTest);
