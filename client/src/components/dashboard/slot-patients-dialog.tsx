@@ -218,9 +218,15 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   // Efek untuk memastikan data di-refresh HANYA saat dialog pertama kali dibuka atau slotId berubah
   // Menggunakan ref untuk mencegah multiple refresh
   const hasRefreshedRef = useRef(false);
+  const dialogOpenedTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (isOpen && slotId) {
+      // Catat waktu dialog dibuka
+      if (dialogOpenedTimeRef.current === null) {
+        dialogOpenedTimeRef.current = Date.now();
+      }
+      
       // Cek apakah sudah pernah di-refresh untuk dialog ini
       if (!hasRefreshedRef.current) {
         console.log('Dialog dibuka atau slotId berubah, merefresh data pasien untuk slot:', slotId);
@@ -234,8 +240,19 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     } else if (!isOpen) {
       // Reset flag saat dialog ditutup
       hasRefreshedRef.current = false;
+      dialogOpenedTimeRef.current = null;
+      
+      // Invalidate queries hanya jika dialog dibuka cukup lama (> 5 detik)
+      // untuk menghindari invalidate yang tidak perlu
+      if (dialogOpenedTimeRef.current && (Date.now() - dialogOpenedTimeRef.current > 5000)) {
+        // Invalidate secara selektif untuk mengurangi refresh yang tidak perlu
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/appointments/date'], 
+          refetchType: 'none' 
+        });
+      }
     }
-  }, [isOpen, slotId, refetch]);
+  }, [isOpen, slotId, refetch, queryClient]);
   
   // Mutations
   const cancelAppointmentMutation = useMutation({
@@ -602,7 +619,50 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   }
   
   // Prepare data with debugging dan transformasi data (jika diperlukan)
-  const activeAppointments = appointmentsQuery.data ? filterActiveAppointments(appointmentsQuery.data) : [];
+  // Pada pendekatan baru, kita filter terlebih dahulu appointment berdasarkan slotId 
+  // sebelum kita proses patient data
+  
+  // Sekarang kita punya daftar semua appointment untuk tanggal tertentu
+  const allAppointmentsForDate = appointmentsQuery.data || [];
+  console.log(`Total appointments untuk tanggal ini: ${allAppointmentsForDate.length}`);
+  
+  // Filter appointment hanya untuk slot ini berdasarkan therapySlotId
+  const slotAppointments = allAppointmentsForDate.filter((app: any) => {
+    const matchesSlotId = app.therapySlotId === slotId;
+    const matchesTimeSlot = slotQuery.data && app.timeSlot === slotQuery.data.timeSlot;
+    return matchesSlotId || (matchesTimeSlot && !app.therapySlotId);
+  });
+  
+  console.log(`Appointments yang cocok dengan slot ini: ${slotAppointments.length}`);
+  
+  // Sekarang filter appointment dengan status aktif
+  const activeAppointments = filterActiveAppointments(slotAppointments);
+  console.log(`Appointments aktif untuk slot ini: ${activeAppointments.length}`);
+  
+  // Buat fetch semua data pasien sekaligus untuk mengurangi beban server
+  const patientIds = Array.from(new Set(
+    activeAppointments
+      .filter((app: any) => !!app.patientId)
+      .map((app: any) => app.patientId)
+  ));
+  
+  useEffect(() => {
+    // Jika ada patientIds dan dialog terbuka, fetch data pasien
+    if (patientIds.length > 0 && isOpen) {
+      const fetchPatients = async () => {
+        try {
+          const patientPromises = patientIds.map(id => 
+            fetch(`/api/patients/${id}`).then(res => res.json())
+          );
+          await Promise.all(patientPromises);
+        } catch (error) {
+          console.error("Error prefetching patient data:", error);
+        }
+      };
+      
+      fetchPatients();
+    }
+  }, [patientIds.join(','), isOpen]);
   
   // Pastikan setiap appointment memiliki objek patient yang lengkap
   const processedAppointments = activeAppointments.map((appointment: any) => {
@@ -653,10 +713,21 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   });
   
   // Debug logging in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log("Debug - Active appointments:", activeAppointments);
-    console.log("Debug - Final processed appointments:", processedAppointments);
-  }
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Total appointments for date:", allAppointmentsForDate.length);
+      console.log("Debug - Matched slot appointments:", slotAppointments.length);
+      console.log("Debug - Active appointments:", activeAppointments.length);
+      console.log("Debug - Unique patient IDs:", patientIds.length);
+      console.log("Debug - Final processed appointments:", processedAppointments.length);
+    }
+  }, [
+    allAppointmentsForDate.length, 
+    slotAppointments.length, 
+    activeAppointments.length, 
+    patientIds.length, 
+    processedAppointments.length
+  ]);
   
   // Early return
   if (!isOpen) return null;
