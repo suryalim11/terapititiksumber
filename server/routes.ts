@@ -3322,40 +3322,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[ROUTE] Found therapy slot: ${slot.id}, date: ${slot.date}, timeSlot: ${slot.timeSlot}`);
       
-      // Dapatkan semua appointment aktif untuk slot terapi ini, ini sudah disederhanakan di database-storage.ts
+      // Dapatkan semua appointment aktif untuk slot terapi ini dengan dual search strategy yang ditingkatkan
       try {
+        // Gunakan fungsi getAppointmentsByTherapySlot yang sudah diperbarui dengan dual search strategy
+        // Fungsi ini akan mencari appointment dengan therapySlotId yang cocok dan juga berdasarkan tanggal & jam
         const appointments = await storage.getAppointmentsByTherapySlot(slotId);
         console.log(`[ROUTE] Found ${appointments.length} appointments for slot ID ${slotId}`);
         
+        // Filter hanya appointment dengan status aktif (bukan cancelled atau completed)
+        const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+        const activeAppointments = appointments.filter(app => 
+          activeStatuses.includes(app.status)
+        );
+        
+        console.log(`[ROUTE] After filtering, found ${activeAppointments.length} active appointments`);
+        
         // Update slot currentCount untuk menampilkan jumlah yang benar (hanya di respons, bukan di database)
-        slot.currentCount = appointments.length;
+        slot.currentCount = activeAppointments.length;
         
         // Dapatkan informasi pasien dari tiap appointment
         // Gunakan Map untuk menghindari duplikasi pasien dengan ID yang sama
-        const patientIdsSet = new Set(appointments.map(appointment => appointment.patientId));
-        const patientIds = Array.from(patientIdsSet);
+        const patientIdsSet = new Set(activeAppointments.map(appointment => appointment.patientId));
+        const patientIds = Array.from(patientIdsSet).filter(id => id !== undefined && id !== null);
         console.log(`[ROUTE] Found ${patientIds.length} unique patients in these appointments`);
         
         const patientMap = new Map();
         
         // Ambil data pasien sekali untuk tiap ID unik
         for (const patientId of patientIds) {
-          if (!patientId) continue; // Skip jika patientId tidak ada
-          
-          const patient = await storage.getPatient(patientId);
-          if (patient) {
-            patientMap.set(patientId, patient);
+          try {
+            // Jika tidak menemukan pasien dengan ID ini, coba gunakan string
+            const patient = await storage.getPatient(patientId);
+            if (patient) {
+              patientMap.set(patientId, patient);
+            } else {
+              console.log(`[ROUTE] Patient with ID ${patientId} not found`);
+            }
+          } catch (patientError) {
+            console.error(`[ROUTE] Error fetching patient ${patientId}:`, patientError);
           }
         }
         
-        const patientsData = appointments.map(appointment => {
-          return {
-            ...appointment,
-            patient: appointment.patientId && patientMap.get(appointment.patientId) 
-              ? patientMap.get(appointment.patientId) 
-              : { name: "Unknown Patient" },
-          };
-        });
+        // Transformasi appointment ke format yang dibutuhkan frontend untuk dialog slot-patients
+        const patientsData = activeAppointments
+          .filter(app => app.patientId && patientMap.has(app.patientId))
+          .map(app => {
+            const patient = patientMap.get(app.patientId);
+            return {
+              id: patient.id, // ID pasien, bukan appointment.id!
+              name: patient.name,
+              phoneNumber: patient.phoneNumber,
+              appointmentId: app.id, // ID appointment untuk status updates
+              status: app.status,
+            };
+          });
         
         console.log(`[ROUTE] Successfully prepared response for slot ID ${slotId} with ${patientsData.length} patients`);
         
