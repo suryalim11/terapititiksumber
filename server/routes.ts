@@ -87,12 +87,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Endpoint khusus untuk ping - tidak mengakses database untuk ketersediaan tinggi
   app.get("/api/ping", (req: Request, res: Response) => {
-    res.json({
-      status: "ok",
-      server: "running",
-      timestamp: new Date().toISOString(),
-      uptime: Math.floor((Date.now() - SYSTEM_START_TIME.getTime()) / 1000) // uptime dalam detik
-    });
+    try {
+      const now = new Date();
+      const uptimeSeconds = Math.floor((Date.now() - SYSTEM_START_TIME.getTime()) / 1000);
+      
+      // Format uptime dalam format yang lebih mudah dibaca
+      const uptimeDays = Math.floor(uptimeSeconds / 86400);
+      const uptimeHours = Math.floor((uptimeSeconds % 86400) / 3600);
+      const uptimeMinutes = Math.floor((uptimeSeconds % 3600) / 60);
+      const uptimeRemaining = uptimeSeconds % 60;
+      
+      const uptimeFormatted = uptimeDays > 0 
+        ? `${uptimeDays}d ${uptimeHours}h ${uptimeMinutes}m ${uptimeRemaining}s`
+        : uptimeHours > 0 
+          ? `${uptimeHours}h ${uptimeMinutes}m ${uptimeRemaining}s`
+          : `${uptimeMinutes}m ${uptimeRemaining}s`;
+      
+      // Format waktu dalam WIB
+      const wibTime = new Date(now.getTime());
+      const wibTimeFormatted = wibTime.toLocaleString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      
+      // Info memori
+      const memoryUsage = process.memoryUsage();
+      const memoryUsageMB = {
+        rss: Math.round(memoryUsage.rss / 1024 / 1024 * 100) / 100,
+        heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024 * 100) / 100,
+        heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024 * 100) / 100
+      };
+      
+      res.json({
+        status: "ok",
+        server: "running",
+        timestamp: now.toISOString(),
+        wibTime: wibTimeFormatted,
+        uptime: uptimeSeconds,
+        uptimeFormatted,
+        memory: memoryUsageMB,
+        environment: process.env.NODE_ENV || 'development',
+        version: process.version
+      });
+    } catch (error) {
+      console.error("Error in ping endpoint:", error);
+      res.status(500).json({ 
+        status: "error", 
+        message: "Server internal error",
+        timestamp: new Date().toISOString()
+      });
+    }
   });
 
   // API routes
