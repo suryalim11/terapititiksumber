@@ -404,9 +404,50 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
         // Total akhir
         doc.setFont("helvetica", "bold");
         doc.text("Total:", 140, y + 10, { align: 'right' });
-        // Gunakan totalAmount dari transaksi sebagai total akhir 
-        // (lebih konsisten dan mencegah hasil perhitungan yang berbeda)
-        doc.text(formatPrice(data.transaction.totalAmount.toString()), 195, y + 10, { align: 'right' });
+        // Untuk transaksi pembayaran hutang + pembelian, gunakan jumlah yang tepat
+        // Periksa apakah ini transaksi kombinasi (pembayaran hutang + pembelian)
+        const isComboDebtPayment = data.transaction?.metadata && (
+          (typeof data.transaction.metadata === 'object' && data.transaction.metadata?.isDebtPayment) || 
+          (typeof data.transaction.metadata === 'string' && data.transaction.metadata.includes('isDebtPayment'))
+        ) && data.items && data.items.length > 0;
+        
+        if (isComboDebtPayment) {
+          // Untuk transaksi kombinasi, ambil nilai pembayaran hutang dari metadata
+          let paymentAmount = 0;
+          const meta = data.transaction.metadata;
+          
+          if (typeof meta === 'object' && meta !== null && meta.paymentAmount) {
+            paymentAmount = safeParseFloat(meta.paymentAmount);
+          } else if (typeof meta === 'string') {
+            try {
+              const parsed = JSON.parse(meta);
+              if (parsed.paymentAmount) {
+                paymentAmount = safeParseFloat(parsed.paymentAmount);
+              }
+            } catch (e) {
+              const paymentMatch = meta.match(/"paymentAmount":"?(\d+(?:\.\d+)?)"?/);
+              if (paymentMatch && paymentMatch[1]) {
+                paymentAmount = safeParseFloat(paymentMatch[1]);
+              }
+            }
+          }
+          
+          // Hitung total item dari pembelian
+          const itemsTotal = data.items.reduce((sum, item) => {
+            const itemPrice = safeParseFloat(item.price);
+            const itemQuantity = item.quantity || 1;
+            return sum + (itemPrice * itemQuantity);
+          }, 0);
+          
+          // Total yang benar adalah jumlah pembayaran hutang + total pembelian baru
+          const correctTotal = paymentAmount + itemsTotal;
+          console.log("Perhitungan total invoice: Hutang", paymentAmount, "+ Items", itemsTotal, "=", correctTotal);
+          
+          doc.text(formatPrice(correctTotal.toString()), 195, y + 10, { align: 'right' });
+        } else {
+          // Gunakan totalAmount dari transaksi sebagai total akhir untuk non-combo
+          doc.text(formatPrice(data.transaction.totalAmount.toString()), 195, y + 10, { align: 'right' });
+        }
         y += 10;
         
         // Jika ada kredit, tambahkan ke PDF
