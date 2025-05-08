@@ -198,7 +198,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     },
     enabled: !!slotId && isOpen && !!slotQuery.data,
     retry: 1,
-    staleTime: 5000
+    staleTime: 5000,
+    // Make sure we have a default value for empty results
+    initialData: []
   });
   
   // Gabungkan hasil kedua query 
