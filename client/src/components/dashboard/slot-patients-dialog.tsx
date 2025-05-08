@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +8,6 @@ import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect, useRef } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   DropdownMenu, 
@@ -621,49 +621,58 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }
   
-  // Prepare data with debugging dan transformasi data (jika diperlukan)
-  // Menggunakan useMemo untuk memproses data hanya saat diperlukan
+  // Menerapkan strategi pemrosesan data yang lebih efisien
+  // 1. Gunakan useMemo untuk memproses data hanya saat diperlukan
+  // 2. Stabilkan state dengan defaultValue yang konsisten
+  // 3. Gunakan pengecekan lebih ketat untuk mencegah error null/undefined
   
-  // Sekarang kita punya daftar semua appointment untuk tanggal tertentu
+  // Inisialisasi data appointment dari query, pastikan selalu array
   const allAppointmentsForDate = useMemo(() => {
     return Array.isArray(appointmentsQuery.data) ? appointmentsQuery.data : [];
   }, [appointmentsQuery.data]);
   
-  // Log hanya saat data tersedia
+  // Logging untuk debug yang efisien
   useEffect(() => {
-    if (allAppointmentsForDate.length > 0) {
+    if (isOpen && slotId && allAppointmentsForDate.length >= 0) {
       console.log(`Total appointments untuk tanggal ini: ${allAppointmentsForDate.length}`);
     }
-  }, [allAppointmentsForDate.length]);
+  }, [allAppointmentsForDate.length, isOpen, slotId]);
   
-  // Filter appointment hanya untuk slot ini berdasarkan therapySlotId
+  // Filter appointment untuk slot tertentu dengan useMemo untuk caching
   const slotAppointments = useMemo(() => {
-    if (!slotId || !allAppointmentsForDate.length) return [];
+    // Early return jika tidak ada data atau slotId
+    if (!slotId) return [];
     
-    return allAppointmentsForDate.filter((app: any) => {
-      if (!app) return false;
-      const matchesSlotId = app.therapySlotId === slotId;
-      const matchesTimeSlot = slotQuery.data && app.timeSlot === slotQuery.data.timeSlot;
-      return matchesSlotId || (matchesTimeSlot && !app.therapySlotId);
-    });
+    try {
+      return allAppointmentsForDate.filter((app: any) => {
+        // Skip jika appointment tidak valid
+        if (!app) return false;
+        
+        // Prioritaskan match berdasarkan ID slot
+        const matchesSlotId = app.therapySlotId === slotId;
+        
+        // Fallback ke match berdasarkan waktu slot jika tidak ada therapySlotId
+        const matchesTimeSlot = slotQuery.data && 
+                              app.timeSlot === slotQuery.data.timeSlot && 
+                              !app.therapySlotId;
+        
+        return matchesSlotId || matchesTimeSlot;
+      });
+    } catch (error) {
+      console.error("Error saat memfilter appointment untuk slot:", error);
+      return [];
+    }
   }, [allAppointmentsForDate, slotId, slotQuery.data]);
   
-  // Log slot appointments
-  useEffect(() => {
-    if (slotAppointments.length >= 0) {
-      console.log(`Appointments yang cocok dengan slot ini: ${slotAppointments.length}`);
-    }
-  }, [slotAppointments.length]);
-  
-  // Sekarang filter appointment dengan status aktif
+  // Filter untuk appointment dengan status aktif saja
   const activeAppointments = useMemo(() => {
-    return filterActiveAppointments(slotAppointments);
+    try {
+      return filterActiveAppointments(slotAppointments);
+    } catch (error) {
+      console.error("Error saat memfilter appointment aktif:", error);
+      return [];
+    }
   }, [slotAppointments]);
-  
-  // Log active appointments
-  useEffect(() => {
-    console.log(`Appointments aktif untuk slot ini: ${activeAppointments.length}`);
-  }, [activeAppointments.length]);
   
   // Fungsi untuk memperkaya data appointment dengan data pasien
   const enrichAppointment = (appointment: any) => {
@@ -772,18 +781,17 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   
   return (
     <>
-      {isOpen && (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-4 md:p-6">
-            <DialogHeader className="px-0">
-              <DialogTitle className="flex items-center gap-2 text-lg">
-                <CalendarIcon className="h-5 w-5 text-primary" />
-                Detail Slot Terapi
-              </DialogTitle>
-              <DialogDescription>
-                Menampilkan detail slot terapi dan daftar pasien yang terdaftar.
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-4 md:p-6">
+          <DialogHeader className="px-0">
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <CalendarIcon className="h-5 w-5 text-primary" />
+              Detail Slot Terapi
+            </DialogTitle>
+            <DialogDescription>
+              Menampilkan detail slot terapi dan daftar pasien yang terdaftar.
+            </DialogDescription>
+          </DialogHeader>
           
           {isLoading ? (
             <div className="flex justify-center py-8">
@@ -923,7 +931,6 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
           )}
         </DialogContent>
       </Dialog>
-      )}
 
       {/* Confirmation Dialog */}
       {isConfirmCancelOpen && (
