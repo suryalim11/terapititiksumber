@@ -1,87 +1,89 @@
 import { db } from './db';
-import { eq, and, like, or } from 'drizzle-orm';
 import * as schema from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
 
 /**
- * Script untuk memperbaiki session paket Darukni yang mungkin tidak terupdate dengan benar
+ * Function to fix Darukni session from 1/12 to 2/12
+ * This will update the sessionsUsed field in the specific session for Darukni
  */
 export async function fixDarukniSession() {
+  console.log("Starting Darukni session fix...");
+  
   try {
-    console.log("Mencari session untuk pasien Darukni...");
+    // Specific patient ID for Darukni
+    const patientName = "Darukni";
     
-    // Cari ID pasien Darukni dulu
-    const darukniPatients = await db.select()
+    // Find Darukni's patient ID
+    const [patient] = await db
+      .select()
       .from(schema.patients)
-      .where(
-        or(
-          like(schema.patients.name, '%darukni%'),
-          like(schema.patients.patientId, '%darukni%')
-        )
-      );
+      .where(eq(schema.patients.name, patientName));
     
-    console.log(`Ditemukan ${darukniPatients.length} pasien dengan nama/ID containing "darukni"`);
-    
-    if (darukniPatients.length === 0) {
-      return { 
-        success: false, 
-        message: 'Tidak ditemukan pasien dengan nama Darukni' 
+    if (!patient) {
+      console.log(`No patient found with name ${patientName}`);
+      return {
+        success: false,
+        message: `No patient found with name ${patientName}`
       };
     }
     
-    const patientId = darukniPatients[0].id;
-    console.log(`Menggunakan pasien ID: ${patientId}, nama: ${darukniPatients[0].name}`);
+    console.log(`Found patient with ID ${patient.id} and name ${patient.name}`);
     
-    // Cari session aktif untuk pasien Darukni
-    const sessions = await db.select()
+    // Find active session for Darukni
+    const sessions = await db
+      .select()
       .from(schema.sessions)
       .where(
         and(
-          eq(schema.sessions.patientId, patientId),
-          eq(schema.sessions.status, 'active')
+          eq(schema.sessions.patientId, patient.id),
+          eq(schema.sessions.status, "active")
         )
       );
     
-    console.log(`Ditemukan ${sessions.length} session aktif untuk pasien Darukni`);
-    
-    if (sessions.length === 0) {
-      return { 
-        success: false, 
-        message: 'Tidak ditemukan session aktif untuk pasien Darukni' 
+    if (!sessions || sessions.length === 0) {
+      console.log(`No active sessions found for patient ${patientName}`);
+      return {
+        success: false,
+        message: `No active sessions found for patient ${patientName}`
       };
     }
     
-    // Ambil session pertama (yang paling relevan)
-    const targetSession = sessions[0];
-    console.log(`Target session ID: ${targetSession.id}, sesi saat ini: ${targetSession.sessionsUsed}/${targetSession.totalSessions}`);
+    console.log(`Found ${sessions.length} active sessions for ${patientName}`);
     
-    // Update session: set sessionsUsed = 2
-    const updatedSession = await db
+    // Find the specific 12-session package (Darukni's package)
+    const targetSession = sessions.find(s => s.totalSessions === 12);
+    
+    if (!targetSession) {
+      console.log(`No 12-session package found for ${patientName}`);
+      return {
+        success: false,
+        message: `No 12-session package found for ${patientName}`
+      };
+    }
+    
+    console.log(`Found target session ID ${targetSession.id} with ${targetSession.sessionsUsed}/${targetSession.totalSessions}`);
+    
+    // Update session to set sessionsUsed = 2
+    const [updatedSession] = await db
       .update(schema.sessions)
-      .set({ 
-        sessionsUsed: 2,
-        lastSessionDate: new Date() // Set ke tanggal sekarang
-      })
+      .set({ sessionsUsed: 2 })
       .where(eq(schema.sessions.id, targetSession.id))
       .returning();
     
-    if (updatedSession.length === 0) {
-      console.log('Gagal memperbarui session Darukni');
-      return { success: false, message: 'Gagal memperbarui session Darukni' };
-    }
+    console.log(`Successfully updated session. New value: ${updatedSession.sessionsUsed}/${updatedSession.totalSessions}`);
     
-    console.log(`Berhasil memperbarui session Darukni. Sessions used sekarang: ${updatedSession[0].sessionsUsed}/${updatedSession[0].totalSessions}`);
-    
-    return { 
-      success: true, 
-      message: `Berhasil memperbarui session Darukni. Sessions used sekarang: ${updatedSession[0].sessionsUsed}/${updatedSession[0].totalSessions}`,
-      session: updatedSession[0]
+    return {
+      success: true,
+      message: `Successfully updated Darukni's sessions from ${targetSession.sessionsUsed}/12 to 2/12`,
+      before: targetSession,
+      after: updatedSession
     };
     
   } catch (error) {
-    console.error('Error saat memperbaiki session Darukni:', error);
-    return { 
-      success: false, 
-      message: `Error: ${error instanceof Error ? error.message : String(error)}` 
+    console.error("Error fixing Darukni session:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : String(error)
     };
   }
 }

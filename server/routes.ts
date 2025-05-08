@@ -28,6 +28,7 @@ import { db } from "./db";
 import { eq, and, ne, isNotNull, desc, or, isNull, lte, sql } from "drizzle-orm";
 import { fixAgusIsrofinSessions } from "./fix-agus-isrofin";
 import { fixAgusIsrofinSessionToday } from "./fix-agus-isrofin-session";
+import { fixDarukniSession } from "./fix-darukni-session";
 import { fixExistingPackages } from "./fix-existing-packages";
 import { mergeAgusIsrofinDirectly } from "./merge-agus-script";
 import adminRoutes from "./routes/admin";
@@ -4911,8 +4912,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint untuk memperbaiki session paket Darukni
   app.post("/api/fix/darukni-session", requireAuth, async (req: Request, res: Response) => {
     try {
-      // Import fix function
-      const { fixDarukniSession } = require('./fix-darukni-session');
       const result = await fixDarukniSession();
       return res.json(result);
     } catch (error) {

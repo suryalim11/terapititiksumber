@@ -94,6 +94,44 @@ export default function Dashboard() {
   const formattedToday = dateToWIBDateString(todayWIB); // Format ke YYYY-MM-DD
   console.log(`Today in WIB timezone: ${formattedToday}`);
   
+  // Define mutation for fix Darukni session
+  const fixDarukniMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/fix/darukni-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fix Darukni session');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Show success toast
+      toast({
+        title: "Berhasil",
+        description: data.message || "Berhasil memperbaiki data sesi Darukni",
+        variant: "success",
+      });
+      
+      // Refresh packages data
+      refetchPackages();
+    },
+    onError: (error) => {
+      // Show error toast
+      toast({
+        title: "Gagal memperbaiki sesi Darukni",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    }
+  });
+  
   // Fetch dashboard stats with auto-refresh (every 10 seconds)
   const { data: stats = { patientsToday: 0, incomeToday: 0, productsSold: 0, activePackages: 0 }, refetch: refetchStats } = 
     useQuery<DashboardStats>({
@@ -375,41 +413,6 @@ export default function Dashboard() {
   const { data: activePackages = [], isLoading: isPackagesLoading, refetch: refetchPackages } = useQuery<ActivePackage[]>({
     queryKey: ['/api/dashboard/active-packages'],
     refetchInterval: 10000,
-  });
-  
-  // Mutation untuk memperbaiki paket Darukni
-  const fixDarukniMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/fix/darukni-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to fix Darukni session');
-      }
-      
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: 'Berhasil',
-        description: data.message || 'Paket Darukni berhasil diperbaiki'
-      });
-      
-      // Refresh data paket aktif
-      refetchPackages();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      });
-    }
   });
   
   // Handle period change
