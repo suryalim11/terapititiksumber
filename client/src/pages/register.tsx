@@ -77,6 +77,7 @@ const registerFormSchema = z.object({
     required_error: "Pilih sesi terapi",
     invalid_type_error: "Pilih sesi terapi",
   }).optional(),
+  timeSlotKey: z.string().optional(), // Format YYYY-MM-DD_HH:MM-HH:MM
 });
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
@@ -164,6 +165,7 @@ export default function RegisterPage() {
       gender: "Laki-laki",
       address: "",
       complaints: "",
+      timeSlotKey: undefined,
     },
   });
 
@@ -680,6 +682,18 @@ export default function RegisterPage() {
         return;
       }
       
+      // Siapkan data dengan timeSlotKey jika tersedia
+      const dataToSend = {
+        ...values,
+        registrationCode,
+      };
+      
+      // Log info penting untuk debugging
+      console.log("Mengirim data pendaftaran dengan:", {
+        therapySlotId: values.therapySlotId,
+        timeSlotKey: values.timeSlotKey || "(tidak tersedia)"
+      });
+      
       // Kirim data ke server
       const response = await fetch("/api/patients", {
         method: "POST",
@@ -687,10 +701,7 @@ export default function RegisterPage() {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({
-          ...values,
-          registrationCode,
-        }),
+        body: JSON.stringify(dataToSend),
       });
       
       const data: RegistrationResponse = await response.json();
