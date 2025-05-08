@@ -205,7 +205,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   
   // Gabungkan hasil kedua query 
   // Tetapi dengan struktur yang berbeda untuk pemrosesan yang lebih sederhana
-  const isLoading = slotQuery.isLoading || appointmentsQuery.isLoading;
+  // Atur manual status loading untuk kontrol yang lebih baik
+  const isLoading = (slotQuery.isLoading && !slotQuery.data) || (appointmentsQuery.isLoading && appointmentsQuery.data.length === 0);
   const error = slotQuery.error || appointmentsQuery.error;
   
   // Simpan slot dan appointment terpisah untuk memudahkan akses
@@ -621,25 +622,48 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   }
   
   // Prepare data with debugging dan transformasi data (jika diperlukan)
-  // Pada pendekatan baru, kita filter terlebih dahulu appointment berdasarkan slotId 
-  // sebelum kita proses patient data
+  // Menggunakan useMemo untuk memproses data hanya saat diperlukan
   
   // Sekarang kita punya daftar semua appointment untuk tanggal tertentu
-  const allAppointmentsForDate = appointmentsQuery.data || [];
-  console.log(`Total appointments untuk tanggal ini: ${allAppointmentsForDate.length}`);
+  const allAppointmentsForDate = useMemo(() => {
+    return Array.isArray(appointmentsQuery.data) ? appointmentsQuery.data : [];
+  }, [appointmentsQuery.data]);
+  
+  // Log hanya saat data tersedia
+  useEffect(() => {
+    if (allAppointmentsForDate.length > 0) {
+      console.log(`Total appointments untuk tanggal ini: ${allAppointmentsForDate.length}`);
+    }
+  }, [allAppointmentsForDate.length]);
   
   // Filter appointment hanya untuk slot ini berdasarkan therapySlotId
-  const slotAppointments = allAppointmentsForDate.filter((app: any) => {
-    const matchesSlotId = app.therapySlotId === slotId;
-    const matchesTimeSlot = slotQuery.data && app.timeSlot === slotQuery.data.timeSlot;
-    return matchesSlotId || (matchesTimeSlot && !app.therapySlotId);
-  });
+  const slotAppointments = useMemo(() => {
+    if (!slotId || !allAppointmentsForDate.length) return [];
+    
+    return allAppointmentsForDate.filter((app: any) => {
+      if (!app) return false;
+      const matchesSlotId = app.therapySlotId === slotId;
+      const matchesTimeSlot = slotQuery.data && app.timeSlot === slotQuery.data.timeSlot;
+      return matchesSlotId || (matchesTimeSlot && !app.therapySlotId);
+    });
+  }, [allAppointmentsForDate, slotId, slotQuery.data]);
   
-  console.log(`Appointments yang cocok dengan slot ini: ${slotAppointments.length}`);
+  // Log slot appointments
+  useEffect(() => {
+    if (slotAppointments.length >= 0) {
+      console.log(`Appointments yang cocok dengan slot ini: ${slotAppointments.length}`);
+    }
+  }, [slotAppointments.length]);
   
   // Sekarang filter appointment dengan status aktif
-  const activeAppointments = filterActiveAppointments(slotAppointments);
-  console.log(`Appointments aktif untuk slot ini: ${activeAppointments.length}`);
+  const activeAppointments = useMemo(() => {
+    return filterActiveAppointments(slotAppointments);
+  }, [slotAppointments]);
+  
+  // Log active appointments
+  useEffect(() => {
+    console.log(`Appointments aktif untuk slot ini: ${activeAppointments.length}`);
+  }, [activeAppointments.length]);
   
   // Fungsi untuk memperkaya data appointment dengan data pasien
   const enrichAppointment = (appointment: any) => {
@@ -690,7 +714,19 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   };
   
   // Process appointments data to enrich them with patient data
-  const processedAppointments = activeAppointments.map(enrichAppointment);
+  // Gunakan useMemo untuk menghindari pemrosesan ulang yang tidak perlu
+  const processedAppointments = useMemo(() => {
+    // Pastikan activeAppointments adalah array
+    if (!Array.isArray(activeAppointments)) return [];
+    
+    try {
+      // Map data dengan enrichAppointment
+      return activeAppointments.map(enrichAppointment).filter(Boolean);
+    } catch (error) {
+      console.error("Error memproses data appointments:", error);
+      return [];
+    }
+  }, [activeAppointments]);
   
   // Buat fetch semua data pasien sekaligus untuk mengurangi beban server
   const patientIds = Array.from(new Set(
