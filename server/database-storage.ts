@@ -1680,6 +1680,97 @@ export class DatabaseStorage implements IStorage {
       currentCount: activeCount
     };
   }
+  
+  /**
+   * Mendapatkan therapy slot berdasarkan timeSlotKey
+   * Format timeSlotKey: YYYY-MM-DD_HH:MM-HH:MM (contoh: 2025-05-08_10:00-12:00)
+   */
+  async getTherapySlotByTimeSlotKey(timeSlotKey: string): Promise<TherapySlot | undefined> {
+    try {
+      // Periksa apakah kolom time_slot_key ada
+      let timeSlotKeyExists = false;
+      try {
+        // Use direct pool query which is more reliable
+        const columns = await pool.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+        `);
+        
+        // If we get at least one row, the column exists
+        timeSlotKeyExists = columns.rows.length > 0;
+        console.log(`getTherapySlotByTimeSlotKey: time_slot_key column exists: ${timeSlotKeyExists}`);
+      } catch (err) {
+        console.warn("Error checking for time_slot_key column:", err);
+      }
+      
+      if (!timeSlotKeyExists) {
+        // Jika kolom tidak ada, parse timeSlotKey untuk mendapatkan date dan timeSlot
+        const [dateStr, timeSlot] = timeSlotKey.split('_');
+        
+        if (!dateStr || !timeSlot) {
+          console.error(`Invalid timeSlotKey format: ${timeSlotKey}`);
+          return undefined;
+        }
+        
+        // Cari berdasarkan kombinasi date dan timeSlot
+        const results = await db.query.therapySlots.findMany({
+          where: and(
+            eq(schema.therapySlots.date, dateStr),
+            eq(schema.therapySlots.timeSlot, timeSlot),
+            eq(schema.therapySlots.isActive, true)
+          )
+        });
+        
+        if (results.length === 0) {
+          console.log(`No therapy slot found for date ${dateStr} and timeSlot ${timeSlot}`);
+          return undefined;
+        }
+        
+        // Jika ada beberapa hasil, ambil yang paling awal dibuat (ID terkecil)
+        // Ini untuk konsistensi agar selalu menggunakan slot yang sama
+        const slot = results.sort((a, b) => a.id - b.id)[0];
+        
+        console.log(`Found therapy slot with ID ${slot.id} for timeSlotKey ${timeSlotKey} (using date/timeSlot)`);
+        
+        // Update currentCount dengan jumlah appointment aktif
+        const appointments = await this.getAppointmentsByTherapySlot(slot.id);
+        const activeCount = appointments.filter(app => app.status !== 'Cancelled').length;
+        
+        return {
+          ...slot,
+          currentCount: activeCount
+        };
+      } else {
+        // Jika kolom time_slot_key ada, gunakan untuk pencarian
+        const result = await db.query.therapySlots.findFirst({
+          where: and(
+            eq(schema.therapySlots.timeSlotKey, timeSlotKey),
+            eq(schema.therapySlots.isActive, true)
+          )
+        });
+        
+        if (!result) {
+          console.log(`No therapy slot found for timeSlotKey ${timeSlotKey}`);
+          return undefined;
+        }
+        
+        console.log(`Found therapy slot with ID ${result.id} for timeSlotKey ${timeSlotKey}`);
+        
+        // Update currentCount dengan jumlah appointment aktif
+        const appointments = await this.getAppointmentsByTherapySlot(result.id);
+        const activeCount = appointments.filter(app => app.status !== 'Cancelled').length;
+        
+        return {
+          ...result,
+          currentCount: activeCount
+        };
+      }
+    } catch (error) {
+      console.error(`Error in getTherapySlotByTimeSlotKey: ${error}`);
+      return undefined;
+    }
+  }
 
   async getTherapySlotsByDate(date: Date | string): Promise<TherapySlot[]> {
     // Menggunakan fungsi getWIBDate untuk mendapatkan tanggal dalam zona waktu WIB secara konsisten
@@ -2497,7 +2588,10 @@ export class DatabaseStorage implements IStorage {
     
     // Jika therapySlotId disediakan, gunakan tanggal dari therapy slot untuk konsistensi
     if (appointment.therapySlotId) {
+      // Coba dapatkan slot terapi
       therapySlot = await this.getTherapySlot(appointment.therapySlotId);
+      
+      // Jika slot ditemukan, gunakan informasi dari slot tersebut
       if (therapySlot) {
         // Sudah dipastikan therapySlot.date adalah string
         appointmentDate = therapySlot.date;
@@ -2510,6 +2604,61 @@ export class DatabaseStorage implements IStorage {
           console.warn(`[WARNING] Therapy slot ${therapySlot.id} already at maximum capacity (${currentUsage}/${maxCapacity})`);
           // Tetap lanjutkan, tetapi berikan peringatan
         }
+      }
+    } else if (appointment.date && appointment.timeSlot) {
+      // Jika therapySlotId tidak disediakan tapi date dan timeSlot ada,
+      // gunakan timeSlotKey untuk menemukan slot terapi yang sesuai
+      
+      // Buat timeSlotKey dari tanggal dan waktu
+      let dateStr: string;
+      
+      if (typeof appointment.date === 'string') {
+        // Jika tanggal sudah dalam bentuk string
+        if (appointment.date.includes('T')) {
+          // Format ISO dengan 'T'
+          dateStr = appointment.date.split('T')[0];
+        } else if (appointment.date.includes(' ')) {
+          // Format dengan spasi
+          dateStr = appointment.date.split(' ')[0];
+        } else {
+          // Asumsikan sudah dalam format YYYY-MM-DD
+          dateStr = appointment.date;
+        }
+      } else if (appointment.date instanceof Date) {
+        // Jika tanggal adalah Date object
+        dateStr = format(appointment.date, 'yyyy-MM-dd');
+      } else {
+        // Fallback ke tanggal hari ini jika tidak ada
+        dateStr = format(currentWibDate, 'yyyy-MM-dd');
+      }
+      
+      // Buat timeSlotKey dengan format: YYYY-MM-DD_HH:MM-HH:MM
+      const timeSlotKey = `${dateStr}_${appointment.timeSlot}`;
+      console.log(`[APPOINTMENT] Generated timeSlotKey: ${timeSlotKey}`);
+      
+      // Cari slot terapi berdasarkan timeSlotKey
+      try {
+        const matchingSlot = await this.getTherapySlotByTimeSlotKey(timeSlotKey);
+        
+        if (matchingSlot) {
+          console.log(`[APPOINTMENT] Found matching therapy slot with ID ${matchingSlot.id} using timeSlotKey ${timeSlotKey}`);
+          
+          // Gunakan ID slot terapi yang ditemukan
+          therapySlot = matchingSlot;
+          appointment.therapySlotId = matchingSlot.id;
+          appointmentDate = matchingSlot.date;
+          
+          // Verifikasi kapasitas
+          const currentUsage = matchingSlot.currentCount || 0;
+          const maxCapacity = matchingSlot.maxQuota || 6;
+          if (currentUsage >= maxCapacity) {
+            console.warn(`[WARNING] Therapy slot ${matchingSlot.id} already at maximum capacity (${currentUsage}/${maxCapacity})`);
+          }
+        } else {
+          console.log(`[APPOINTMENT] No matching therapy slot found for timeSlotKey ${timeSlotKey}`);
+        }
+      } catch (error) {
+        console.error(`[ERROR] Error finding therapy slot by timeSlotKey: ${error}`);
       }
     }
     

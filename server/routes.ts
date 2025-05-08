@@ -852,9 +852,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const therapySlot = await storage.getTherapySlot(therapySlotId);
           
           if (therapySlot && therapySlot.isActive && therapySlot.currentCount < therapySlot.maxQuota) {
+            console.log(`Slot terapi valid: ID=${therapySlotId}, tanggal=${therapySlot.date}, waktu=${therapySlot.timeSlot}`);
+            
+            // Cek apakah ada timeSlotKey, dan jika ada, gunakan untuk menemukan slot yang sesuai
+            if (therapySlot.timeSlotKey) {
+              console.log(`Slot ini memiliki timeSlotKey: ${therapySlot.timeSlotKey}`);
+              
+              // Coba cari slot lain dengan timeSlotKey yang sama tetapi mungkin memiliki ID berbeda
+              try {
+                const matchingSlot = await storage.getTherapySlotByTimeSlotKey(therapySlot.timeSlotKey);
+                
+                if (matchingSlot && matchingSlot.id !== therapySlotId) {
+                  console.log(`Ditemukan slot lain dengan timeSlotKey yang sama: ID=${matchingSlot.id} vs ID asli=${therapySlotId}`);
+                  console.log(`Menggunakan slot ID=${matchingSlot.id} untuk konsistensi pendaftaran`);
+                  
+                  // Gunakan slot yang ditemukan berdasarkan timeSlotKey
+                  therapySlotId = matchingSlot.id;
+                }
+              } catch (timeSlotKeyError) {
+                console.error(`Error saat mencari slot berdasarkan timeSlotKey:`, timeSlotKeyError);
+                // Lanjutkan dengan slot asli jika terjadi kesalahan
+              }
+            } else {
+              console.log(`Slot ini tidak memiliki timeSlotKey, menggunakan ID langsung: ${therapySlotId}`);
+            }
+            
+            // Cek ulang slot terapi setelah kemungkinan perubahan ID
+            const finalTherapySlot = therapySlotId !== therapySlot.id 
+              ? await storage.getTherapySlot(therapySlotId)
+              : therapySlot;
+            
+            if (!finalTherapySlot) {
+              throw new Error(`Slot terapi dengan ID ${therapySlotId} tidak ditemukan setelah resolusi timeSlotKey`);
+            }
+            
             // Tingkatkan jumlah penggunaan slot terapi
             await storage.incrementTherapySlotUsage(therapySlotId);
-            console.log(`Slot terapi dengan ID ${therapySlotId} diperbarui: ${therapySlot.currentCount + 1}/${therapySlot.maxQuota}`);
+            console.log(`Slot terapi dengan ID ${therapySlotId} diperbarui: ${finalTherapySlot.currentCount + 1}/${finalTherapySlot.maxQuota}`);
             
             // Buat appointment baru
             const appointmentData = {
@@ -862,8 +896,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               therapySlotId: therapySlotId,
               notes: validatedData.complaints,
               status: "Scheduled",
-              date: therapySlot.date, // Gunakan langsung dalam format string
-              timeSlot: therapySlot.timeSlot,
+              date: finalTherapySlot.date, // Gunakan langsung dalam format string
+              timeSlot: finalTherapySlot.timeSlot,
               sessionId: null,
               registrationNumber: null
             };
@@ -875,9 +909,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             appointmentResponse = {
               ...appointment,
               therapySlotDetails: {
-                date: therapySlot.date,
-                timeSlot: therapySlot.timeSlot,
-                formattedDate: format(new Date(therapySlot.date), 'dd/MM/yyyy')
+                date: finalTherapySlot.date,
+                timeSlot: finalTherapySlot.timeSlot,
+                formattedDate: format(new Date(finalTherapySlot.date), 'dd/MM/yyyy')
               }
             };
           }
