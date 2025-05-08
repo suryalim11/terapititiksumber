@@ -28,6 +28,9 @@ import { db } from "./db";
 import { eq, and, ne, isNotNull, desc, or, isNull, lte, sql } from "drizzle-orm";
 import { fixAgusIsrofinSessions } from "./fix-agus-isrofin";
 import { fixAgusIsrofinSessionToday } from "./fix-agus-isrofin-session";
+
+// Constant untuk server status
+const SYSTEM_START_TIME = new Date();
 import { fixDarukniSession } from "./fix-darukni-session";
 import { fixExistingPackages } from "./fix-existing-packages";
 import { mergeAgusIsrofinDirectly } from "./merge-agus-script";

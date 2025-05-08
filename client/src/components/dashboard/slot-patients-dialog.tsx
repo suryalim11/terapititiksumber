@@ -937,17 +937,97 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       .map((app: any) => app.patientId)
   ));
   
+  // State untuk tracking data pasien dari appointments
+  const [hasEnrichedPatientData, setHasEnrichedPatientData] = useState(false);
+  const patientDataCacheRef = useRef<Record<number, any>>({});
+
+  // Effect untuk fetch pasien dari patientIds saat appointmentData diupdate
+  // dengan mekanisme caching dan fallback untuk ketahanan
   useEffect(() => {
     // Jika ada patientIds dan dialog terbuka, fetch data pasien
     if (patientIds.length > 0 && isOpen) {
+      // Reset flag enrichment
+      setHasEnrichedPatientData(false);
+      
       const fetchPatients = async () => {
         try {
-          const patientPromises = patientIds.map(id => 
-            fetch(`/api/patients/${id}`).then(res => res.json())
-          );
-          await Promise.all(patientPromises);
+          console.log(`Fetching data untuk ${patientIds.length} pasien`);
+          
+          // Menggunakan Promise.allSettled untuk menangani kasus sebagian request gagal
+          const patientPromises = patientIds.map(id => {
+            // Cek cache dulu
+            if (patientDataCacheRef.current[id]) {
+              console.log(`Using cached data for patient ${id}`);
+              return Promise.resolve(patientDataCacheRef.current[id]);
+            }
+            
+            // Jika tidak ada di cache, fetch dengan timeout 5 detik
+            return new Promise((resolve) => {
+              const abortController = new AbortController();
+              const timeoutId = setTimeout(() => abortController.abort(), 5000);
+              
+              fetch(`/api/patients/${id}`, { 
+                signal: abortController.signal,
+                headers: { 'Cache-Control': 'no-cache' }
+              })
+                .then(res => res.json())
+                .then(data => {
+                  clearTimeout(timeoutId);
+                  // Simpan ke cache untuk penggunaan berikutnya
+                  if (data && data.id) {
+                    patientDataCacheRef.current[id] = data;
+                  }
+                  resolve(data);
+                })
+                .catch(err => {
+                  clearTimeout(timeoutId);
+                  console.error(`Error fetching patient ${id}:`, err);
+                  resolve(null); // Resolve null alih-alih reject
+                });
+            });
+          });
+          
+          const patientsResults = await Promise.allSettled(patientPromises);
+          const patientsData = patientsResults
+            .map(result => result.status === 'fulfilled' ? result.value : null)
+            .filter(Boolean);
+          
+          console.log(`Retrieved ${patientsData.length} of ${patientIds.length} patient records`);
+          
+          // Update appointment data dengan informasi pasien
+          if (patientsData.length > 0) {
+            setAppointmentData(prev => 
+              prev.map(app => {
+                // Cari data pasien dari hasil fetch
+                const patientData = patientsData.find(p => p && p.id === app.patientId);
+                
+                // Jika data pasien ditemukan, update appointment
+                // Jika tidak ditemukan, simpan data minimal yang ada di appointment
+                if (patientData) {
+                  return { ...app, patient: patientData };
+                } else if (app.patient && app.patient.id) {
+                  // Jika appointment sudah memiliki data pasien minimal, simpan
+                  return app;
+                } else {
+                  // Fallback dengan data minimal
+                  return { 
+                    ...app, 
+                    patient: { 
+                      id: app.patientId,
+                      name: app.patientName || `Pasien #${app.patientId}`,
+                      phoneNumber: app.phoneNumber || '-'
+                    } 
+                  };
+                }
+              })
+            );
+          }
+          
+          setHasEnrichedPatientData(true);
         } catch (error) {
-          console.error("Error prefetching patient data:", error);
+          console.error("Error enriching patient data:", error);
+          // Tetap tandai bahwa proses enrichment sudah selesai meskipun error
+          setHasEnrichedPatientData(true);
         }
       };
       
@@ -1010,6 +1090,63 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             </DialogDescription>
           </DialogHeader>
           
+          {/* Server error fallback message - tampil saat ada error server/database */}
+          {error && error.message.includes("Internal server error") && (
+            <div className="mb-3 p-3 text-sm border rounded bg-amber-50 text-amber-900">
+              <div className="font-medium mb-1 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="mr-1" viewBox="0 0 16 16">
+                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+                </svg>
+                Koneksi Database Sementara Terputus
+              </div>
+              <p className="text-sm">
+                Server sedang sibuk atau mengalami masalah koneksi ke database. 
+                Data yang tampil mungkin tidak lengkap atau tidak up-to-date.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <Button 
+                  size="sm"
+                  variant="secondary"
+                  className="text-xs"
+                  onClick={() => {
+                    setError(null);
+                    window.location.reload();
+                  }}
+                >
+                  Reload Halaman
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  className="text-xs"
+                  onClick={() => {
+                    // Manual retry dengan timeout yang sangat singkat
+                    fetch(`/api/ping`, { signal: AbortSignal.timeout(2000) })
+                      .then(res => {
+                        if (res.ok) {
+                          toast({
+                            title: "Koneksi Pulih",
+                            description: "Koneksi ke server telah pulih, memuat ulang data..."
+                          });
+                          setTimeout(refetch, 500);
+                        }
+                      })
+                      .catch(e => {
+                        toast({
+                          title: "Server Masih Down",
+                          description: "Coba beberapa saat lagi atau refresh halaman",
+                          variant: "destructive"
+                        });
+                      });
+                  }}
+                >
+                  Coba Koneksi
+                </Button>
+              </div>
+            </div>
+          )}
+          
           {/* Debug info */}
           {showDebugInfo && (
             <div className="mb-3 p-2 text-xs border rounded bg-yellow-50 text-yellow-900">
@@ -1038,23 +1175,72 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             </div>
           )}
           
-          {/* Error state */}
+          {/* Error state - dengan opsi fallback dan informasi tambahan */}
           {!isLoading && error && (
             <div className="p-4 rounded-md border border-destructive/20 bg-destructive/10 text-destructive">
               <div className="font-medium mb-1">Terjadi kesalahan:</div>
               <p className="text-sm">{(error as Error).message}</p>
               
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="mt-3"
-                onClick={() => {
-                  setError(null);
-                  fetchSlotAndAppointments();
-                }}
-              >
-                <span className="mr-2">↺</span> Coba Lagi
-              </Button>
+              <div className="mt-2 text-xs text-muted-foreground">
+                <p>Server mungkin sedang sibuk atau memerlukan waktu untuk merespons.</p>
+                {slotData && (
+                  <p className="mt-1">
+                    Data dasar slot terapi telah dimuat, tetapi data pasien mungkin tidak lengkap.
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex gap-2 mt-3">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setError(null);
+                    fetchSlotAndAppointments();
+                  }}
+                >
+                  <span className="mr-2">↺</span> Coba Lagi
+                </Button>
+                
+                {error.message.includes("timeout") && (
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => {
+                      // Reset error tapi jangan reset slot data jika sudah ada
+                      setError(null);
+                      // Batas waktu lebih pendek untuk retry cepat
+                      setTimeout(() => {
+                        // Pertama coba retry dengan timeout diperpendek
+                        try {
+                          fetch(`/api/therapy-slots/${slotId}`, {
+                            headers: {
+                              'Accept': 'application/json',
+                              'Cache-Control': 'no-cache'
+                            },
+                            signal: AbortSignal.timeout(3000) // 3 detik max
+                          })
+                          .then(res => res.json())
+                          .then(data => {
+                            if (data && data.id === slotId) {
+                              setSlotData(data);
+                              toast({
+                                title: "Data Dimuat",
+                                description: "Data slot terapi berhasil dimuat",
+                              });
+                            }
+                          })
+                          .catch(e => console.error("Quick retry failed:", e));
+                        } catch (e) {
+                          console.error("Error during quick retry:", e);
+                        }
+                      }, 500);
+                    }}
+                  >
+                    <span className="mr-2">⚡</span> Retry Cepat
+                  </Button>
+                )}
+              </div>
             </div>
           )}
           
