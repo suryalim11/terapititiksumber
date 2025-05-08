@@ -1419,12 +1419,9 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                   <div>
                     <h3 className="text-sm font-medium flex items-center gap-2">
                       Daftar Pasien
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
-                        Tampilan Gabungan
-                      </Badge>
                     </h3>
                     {combinedSlotInfo && combinedSlotInfo.ids.length > 1 && (
-                      <p className="text-xs text-green-600 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         * Menampilkan semua pasien dari {combinedSlotInfo.ids.length} slot pada jam yang sama ({slotData?.timeSlot})
                       </p>
                     )}
