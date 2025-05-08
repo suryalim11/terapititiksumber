@@ -3425,6 +3425,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Internal server error" });
     }
   });
+  
+  // Endpoint untuk memperbarui time_slot_key yang kosong
+  app.post("/api/therapy-slots/update-time-slot-keys", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated() || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      console.log("Memulai update time_slot_key yang kosong...");
+      
+      // Import dan gunakan fungsi dari migration-scripts
+      const { updateEmptyTimeSlotKeys } = require('./migration-scripts');
+      const updateResult = await updateEmptyTimeSlotKeys();
+      
+      return res.status(200).json({
+        success: updateResult.success,
+        message: updateResult.message || updateResult.error,
+        details: updateResult
+      });
+    } catch (error) {
+      console.error("Error saat memperbarui time_slot_key:", error);
+      return res.status(500).json({ message: "Internal server error", error: String(error) });
+    }
+  });
 
   // Endpoint untuk mendapatkan daftar pasien berdasarkan slot terapi
   app.get("/api/therapy-slots/:id/patients", async (req: Request, res: Response) => {

@@ -2001,6 +2001,76 @@ export class DatabaseStorage implements IStorage {
   }
   
   /**
+   * Mendapatkan therapy slot berdasarkan timeSlotKey
+   * Format timeSlotKey: YYYY-MM-DD_HH:MM-HH:MM (contoh: 2025-05-08_10:00-12:00)
+   */
+  async getTherapySlotByTimeSlotKey(timeSlotKey: string): Promise<TherapySlot | undefined> {
+    try {
+      console.log(`Mencari therapy slot dengan timeSlotKey: ${timeSlotKey}`);
+      
+      // Periksa apakah kolom time_slot_key ada
+      let timeSlotKeyExists = false;
+      try {
+        const columns = await pool.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+        `);
+        timeSlotKeyExists = columns.rows.length > 0;
+      } catch (err) {
+        console.warn("Error checking for time_slot_key column:", err);
+      }
+      
+      if (timeSlotKeyExists) {
+        // Jika kolom time_slot_key ada, cari berdasarkan timeSlotKey
+        console.log(`Mencari slot dengan time_slot_key = ${timeSlotKey}`);
+        
+        const slot = await db.query.therapySlots.findFirst({
+          where: and(
+            eq(schema.therapySlots.timeSlotKey, timeSlotKey),
+            eq(schema.therapySlots.isActive, true)
+          )
+        });
+        
+        if (slot) {
+          console.log(`Ditemukan slot dengan ID ${slot.id} untuk timeSlotKey ${timeSlotKey}`);
+          return slot;
+        }
+      } else {
+        // Jika kolom time_slot_key tidak ada, ekstrak tanggal dan waktu dari timeSlotKey
+        const [dateStr, timeSlot] = timeSlotKey.split('_');
+        
+        if (!dateStr || !timeSlot) {
+          console.error(`Format timeSlotKey tidak valid: ${timeSlotKey}`);
+          return undefined;
+        }
+        
+        console.log(`Mencari slot dengan date = ${dateStr} dan timeSlot = ${timeSlot}`);
+        
+        // Cari berdasarkan tanggal dan timeSlot
+        const slot = await db.query.therapySlots.findFirst({
+          where: and(
+            eq(schema.therapySlots.date, dateStr),
+            eq(schema.therapySlots.timeSlot, timeSlot),
+            eq(schema.therapySlots.isActive, true)
+          )
+        });
+        
+        if (slot) {
+          console.log(`Ditemukan slot dengan ID ${slot.id} untuk tanggal ${dateStr} dan waktu ${timeSlot}`);
+          return slot;
+        }
+      }
+      
+      console.log(`Tidak ditemukan slot aktif dengan timeSlotKey ${timeSlotKey}`);
+      return undefined;
+    } catch (error) {
+      console.error(`Error dalam getTherapySlotByTimeSlotKey untuk ${timeSlotKey}:`, error);
+      return undefined;
+    }
+  }
+  
+  /**
    * Fungsi untuk menyinkronkan kuota slot terapi di database dengan jumlah appointment aktual
    */
   async syncTherapySlotQuota(): Promise<{ updatedSlots: number, results: any[] }> {
