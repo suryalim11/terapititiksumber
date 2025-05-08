@@ -171,8 +171,8 @@ export default function RegisterPage() {
   });
 
   // Mendapatkan data slot terapi yang tersedia
-  const { data: therapySlots, isLoading: isLoadingSlots, refetch: refetchTherapySlots } = useQuery({
-    queryKey: ['/api/therapy-slots', 'available-active'],
+  const { data: therapySlots, isLoading: isLoadingSlots, refetch: refetchTherapySlots, error: therapySlotsError } = useQuery({
+    queryKey: ['/api/therapy-slots', 'available-active', verificationResponse ? 'from-verification' : 'api-direct'],
     queryFn: async () => {
       console.log("Mengambil slot terapi untuk form pendaftaran");
       // Pastikan hanya menampilkan slot yang:
@@ -188,10 +188,19 @@ export default function RegisterPage() {
         console.log("Menggunakan data slot terapi dari respons verifikasi kode");
         console.log("Jumlah slot dari verifikasi:", verificationResponse.availableSlots.length);
         
+        // Tampilkan sampel data untuk debugging
+        console.log("Sampel data slot dari verifikasi:", 
+          JSON.stringify(verificationResponse.availableSlots.slice(0, 2)));
+        
         // Filter slot dengan kuota tersedia
         const filteredVerificationSlots = verificationResponse.availableSlots.filter(
           (slot: any) => slot.currentCount < slot.maxQuota
         );
+        console.log("Slot terapi yang tersedia setelah filter:", filteredVerificationSlots.length);
+        
+        if (filteredVerificationSlots.length === 0) {
+          throw new Error("Tidak ada slot terapi yang tersedia saat ini");
+        }
         
         // Urutkan berdasarkan tanggal dan waktu
         return filteredVerificationSlots.sort((a: any, b: any) => {
@@ -210,41 +219,69 @@ export default function RegisterPage() {
       
       // Penting: Tambahkan parameter waktu untuk menghindari cache browser dan force refresh
       const timestamp = new Date().getTime();
-      const response = await fetch(`/api/therapy-slots?available=true&active=true&_t=${timestamp}`, {
-        credentials: 'include', // Tambahkan credentials untuk mendukung cookies
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      });
+      const randomStr = Math.random().toString(36).substring(2, 15);
+      const cacheBuster = `_t=${timestamp}&_r=${randomStr}`;
       
-      if (!response.ok) {
-        console.error(`Error fetching therapy slots: ${response.status} - ${response.statusText}`);
-        throw new Error('Gagal mengambil data slot terapi');
-      }
-      
-      const data = await response.json();
-      console.log("Slot terapi yang diterima di form pendaftaran:", data.length, "slot");
-      
-      // Filter lagi di client-side untuk memastikan tidak ada slot dengan kuota penuh
-      const filteredSlots = data.filter((slot: any) => slot.currentCount < slot.maxQuota);
-      console.log("Slot terapi setelah filter kuota:", filteredSlots.length, "slot");
-      
-      // Urutkan berdasarkan tanggal dan waktu
-      return filteredSlots.sort((a: any, b: any) => {
-        // Bandingkan tanggal terlebih dahulu
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        if (dateA !== dateB) return dateA - dateB;
+      try {
+        const response = await fetch(`/api/therapy-slots?available=true&active=true&${cacheBuster}`, {
+          credentials: 'include', // Tambahkan credentials untuk mendukung cookies
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         
-        // Jika tanggal sama, bandingkan jam mulai
-        return a.timeSlot.localeCompare(b.timeSlot);
-      });
+        if (!response.ok) {
+          console.error(`Error fetching therapy slots: ${response.status} - ${response.statusText}`);
+          throw new Error(`Gagal mengambil data slot terapi: ${response.status} - ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log("Slot terapi yang diterima di form pendaftaran:", data.length, "slot");
+        
+        if (!Array.isArray(data)) {
+          console.error("Respons API bukan array:", typeof data);
+          throw new Error("Format data slot terapi tidak valid");
+        }
+        
+        if (data.length === 0) {
+          console.log("Tidak ada slot terapi yang tersedia dari API");
+          throw new Error("Tidak ada slot terapi yang tersedia saat ini");
+        }
+        
+        // Filter lagi di client-side untuk memastikan tidak ada slot dengan kuota penuh
+        const filteredSlots = data.filter((slot: any) => slot.currentCount < slot.maxQuota);
+        console.log("Slot terapi setelah filter kuota:", filteredSlots.length, "slot");
+        
+        if (filteredSlots.length === 0) {
+          throw new Error("Semua slot terapi sudah penuh");
+        }
+        
+        // Urutkan berdasarkan tanggal dan waktu
+        return filteredSlots.sort((a: any, b: any) => {
+          // Bandingkan tanggal terlebih dahulu
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          if (dateA !== dateB) return dateA - dateB;
+          
+          // Jika tanggal sama, bandingkan jam mulai
+          return a.timeSlot.localeCompare(b.timeSlot);
+        });
+      } catch (error) {
+        console.error("Error dalam mengambil atau memproses data slot terapi:", error);
+        throw error;
+      }
     },
-    enabled: registrationStatus === "idle" && !!registrationCode,
+    // Aktifkan query ketika status idle (siap untuk pendaftaran) dan kode pendaftaran sudah ada
+    // ATAU ketika ada respons verifikasi yang valid dengan availableSlots
+    enabled: (registrationStatus === "idle" && !!registrationCode) || 
+             (!!verificationResponse && Array.isArray(verificationResponse.availableSlots)),
     refetchInterval: 30000, // Mempersingkat interval refresh menjadi 30 detik
     refetchOnWindowFocus: true, // Refresh saat window kembali difokuskan
-    staleTime: 10000 // Data dianggap stale setelah 10 detik
+    staleTime: 10000, // Data dianggap stale setelah 10 detik
+    retry: 2, // Coba ulang 2 kali jika gagal
+    retryDelay: 1000, // Jeda 1 detik antar percobaan
   });
 
   // Parse the URL for registration code and patientId - untuk link permanen dan navigasi dari halaman detail pasien
