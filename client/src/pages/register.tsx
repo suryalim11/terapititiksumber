@@ -146,8 +146,9 @@ export default function RegisterPage() {
   const [expiryTime, setExpiryTime] = useState<Date | null>(null);
   const [verificationResponse, setVerificationResponse] = useState<any>(null);
   
-  // State untuk pencarian pasien
+  // State untuk pencarian pasien dan status koneksi
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [patientFound, setPatientFound] = useState<boolean>(false);
   const [foundPatient, setFoundPatient] = useState<any>(null);
@@ -877,88 +878,159 @@ export default function RegisterPage() {
       window.location.href = `/registration-success?t=${timestamp}&src=timeout`;
     }, 8000); // 8 detik timeout
     
-    // API call untuk mendaftarkan pasien dengan timeout
-    const controller = new AbortController();
-    const signal = controller.signal;
+    // Implementasi mekanisme retry untuk API call
+    const maxRetries = 2;
+    let retryCount = 0;
+    let success = false;
     
-    // Coba dengan batas waktu 7 detik
-    setTimeout(() => controller.abort(), 7000);
-    
-    try {
-      const response = await fetch("/api/patients", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(dataToSend),
-        signal
-      });
+    // Fungsi untuk mencoba mengirim data dengan retry
+    const sendRegistrationWithRetry = async () => {
+      // API call untuk mendaftarkan pasien dengan timeout
+      const controller = new AbortController();
+      const signal = controller.signal;
       
-      // Hentikan timeout karena sudah mendapat respons
-      clearTimeout(timeoutId);
+      // Timer untuk abort
+      const abortTimer = setTimeout(() => {
+        console.log(`Aborting request attempt ${retryCount + 1} after timeout`);
+        controller.abort();
+      }, 7000);
       
-      // Jika responsnya OK
-      if (response.ok) {
-        console.log("Pendaftaran berhasil di server");
+      try {
+        console.log(`Mencoba mengirim data pendaftaran (percobaan ke-${retryCount + 1})`);
         
-        try {
-          // Simpan di localStorage
-          localStorage.setItem('registrationData', JSON.stringify({
-            ...simpleData,
-            isComplete: true
-          }));
-          localStorage.setItem('registrationStatus', 'success');
-        } catch (e) {
-          console.error("Error saving to localStorage:", e);
-        }
-        
-        // Navigasi ke halaman sukses, dengan parameter timestamp untuk menghindari cache
-        const timestamp = new Date().getTime();
-        window.location.href = `/registration-success?t=${timestamp}&src=success`;
-      } else {
-        // Handle error dari server
-        let errorMessage = "Terjadi kesalahan saat mendaftarkan pasien.";
-        
-        try {
-          // Coba parse JSON error, jika ada
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-          
-          // Cek untuk kuota penuh
-          if (errorMessage.includes("kuota") || errorMessage.includes("penuh")) {
-            setRegistrationStatus("quota-reached");
-          }
-        } catch (e) {
-          console.error("Error parsing error response:", e);
-        }
-        
-        // Tampilkan error
-        toast({
-          variant: "destructive",
-          title: "Pendaftaran Gagal",
-          description: errorMessage,
+        const response = await fetch("/api/patients", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(dataToSend),
+          signal
         });
         
-        setIsSubmitting(false);
-        setRegistrationStatus("error");
+        // Membersihkan timer abort
+        clearTimeout(abortTimer);
+        
+        // Jika responsnya OK
+        if (response.ok) {
+          console.log("Pendaftaran berhasil di server");
+          success = true;
+          
+          try {
+            // Simpan di localStorage
+            localStorage.setItem('registrationData', JSON.stringify({
+              ...simpleData,
+              isComplete: true
+            }));
+            localStorage.setItem('registrationStatus', 'success');
+          } catch (e) {
+            console.error("Error saving to localStorage:", e);
+          }
+          
+          // Hentikan timeout navigasi darurat
+          clearTimeout(timeoutId);
+          
+          // Navigasi ke halaman sukses, dengan parameter timestamp untuk menghindari cache
+          const timestamp = new Date().getTime();
+          window.location.href = `/registration-success?t=${timestamp}&src=success`;
+          return true;
+        } else {
+          // Handle error dari server
+          let errorMessage = "Terjadi kesalahan saat mendaftarkan pasien.";
+          
+          try {
+            // Coba parse JSON error, jika ada
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+            
+            // Cek untuk kuota penuh
+            if (errorMessage.includes("kuota") || errorMessage.includes("penuh")) {
+              setRegistrationStatus("quota-reached");
+              success = true; // Tidak perlu retry untuk kesalahan kuota
+              return true;
+            }
+          } catch (e) {
+            console.error("Error parsing error response:", e);
+          }
+          
+          console.log(`Respon error dari server: ${errorMessage}`);
+          
+          // Jika bukan masalah koneksi, tidak perlu retry
+          if (response.status !== 0 && response.status !== 408 && response.status !== 504 && response.status !== 503) {
+            // Tampilkan error
+            toast({
+              variant: "destructive",
+              title: "Pendaftaran Gagal",
+              description: errorMessage,
+            });
+            
+            setIsSubmitting(false);
+            setRegistrationStatus("error");
+            success = true; // Tidak perlu retry untuk kesalahan validasi
+            return true;
+          }
+          
+          return false; // Retry untuk kesalahan koneksi
+        }
+      } catch (error: any) {
+        // Membersihkan timer abort
+        clearTimeout(abortTimer);
+        
+        // Tangkap error dari fetch
+        console.error("Error saat melakukan fetch ke server:", error);
+        
+        // Jika bukan error timeout atau aborted, tidak perlu retry
+        if (error.name !== 'AbortError' && !error.message?.includes('timeout') && !error.message?.includes('network')) {
+          toast({
+            variant: "destructive",
+            title: "Kesalahan",
+            description: "Terjadi kesalahan yang tidak terduga. Silakan coba lagi nanti.",
+          });
+          
+          setIsSubmitting(false);
+          setRegistrationStatus("error");
+          success = true; // Tidak perlu retry untuk kesalahan non-koneksi
+          return true;
+        }
+        
+        console.log("Kesalahan koneksi, akan mencoba lagi");
+        return false; // Retry untuk kesalahan koneksi
       }
-    } catch (error) {
-      // Tangkap error dari fetch
-      console.error("Error saat melakukan fetch ke server:", error);
+    };
+    
+    // Eksekusi fungsi retry
+    while (retryCount < maxRetries && !success) {
+      const result = await sendRegistrationWithRetry();
+      if (result) {
+        break;
+      }
       
-      // Bersihkan timeout jika masih aktif
-      clearTimeout(timeoutId);
+      retryCount++;
+      if (retryCount < maxRetries && !success) {
+        console.log(`Menunggu sebelum mencoba lagi... (${retryCount}/${maxRetries})`);
+        // Tunggu sejenak sebelum retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    // Jika setelah semua percobaan masih gagal
+    if (!success) {
+      console.log("Semua percobaan gagal, tampilkan pesan error");
+      
+      // Bersihkan timeout navigasi darurat (biarkan berjalan sesuai jadwal)
       
       // Tampilkan error
       toast({
         variant: "destructive",
         title: "Kesalahan Koneksi",
-        description: "Gagal terhubung ke server. Mohon periksa koneksi internet Anda.",
+        description: "Gagal terhubung ke server setelah beberapa percobaan. Mohon periksa koneksi internet Anda.",
       });
       
       setIsSubmitting(false);
       setRegistrationStatus("error");
+      
+      // Catatan: Kita tidak menghentikan timeoutId untuk navigasi darurat
+      // sehingga jika server sebenarnya berhasil memproses data, halaman sukses masih bisa ditampilkan
     }
   };
 
@@ -1092,11 +1164,54 @@ export default function RegisterPage() {
     );
   }
 
+  // Fungsi untuk mengecek status koneksi internet
+  const checkNetworkConnection = () => {
+    return navigator.onLine;
+  };
+  
+  // Tampilkan peringatan jika koneksi terputus
+  useEffect(() => {
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast({
+        variant: "destructive",
+        title: "Koneksi Terputus",
+        description: "Anda sedang offline. Mohon pastikan koneksi internet aktif untuk pendaftaran.",
+      });
+    };
+    
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast({
+        title: "Koneksi Tersambung",
+        description: "Anda kembali online. Silakan lanjutkan pendaftaran.",
+      });
+      
+      // Setelah online kembali, coba muat ulang data slot terapi
+      if (registrationCode) {
+        console.log("Koneksi kembali tersambung, memuat ulang data slot terapi");
+        refetchTherapySlots();
+      }
+    };
+    
+    // Periksa status koneksi saat pertama kali component mount
+    setIsOnline(navigator.onLine);
+    
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [registrationCode]);
+  
   // Debug check untuk render success page
   console.log("DEBUG RENDER CONDITION:", { 
     registrationStatus, 
     hasRegistrationResult: !!registrationResult,
-    resultContent: registrationResult 
+    resultContent: registrationResult,
+    isOnline: checkNetworkConnection()
   });
   
   if (registrationStatus === "success" && registrationResult) {
@@ -1290,6 +1405,17 @@ export default function RegisterPage() {
       <div className="max-w-3xl mx-auto">
         <Card className="bg-white shadow-md">
           <CardHeader className="bg-teal-50 border-b border-teal-100">
+            {!isOnline && (
+              <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 text-red-800">
+                <WifiOff className="h-4 w-4 mr-2" />
+                <AlertTitle>Koneksi Internet Terputus</AlertTitle>
+                <AlertDescription>
+                  Anda sedang dalam mode offline. Formulir pendaftaran membutuhkan koneksi internet aktif.
+                  Mohon aktifkan kembali koneksi internet Anda untuk melanjutkan.
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <CardTitle className="text-2xl font-bold text-center text-teal-800">Pendaftaran Terapi Titik Sumber</CardTitle>
             <CardDescription className="text-center text-teal-600">
               Silakan isi formulir di bawah ini untuk mendaftar sebagai pasien
