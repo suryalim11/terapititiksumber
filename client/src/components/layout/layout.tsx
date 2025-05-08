@@ -67,7 +67,10 @@ function ServerStatusIndicator() {
         const controller = new AbortController();
         timeoutId = setTimeout(() => {
           try {
-            controller.abort();
+            // Cek apakah signal sudah di-abort untuk mencegah error
+            if (!controller.signal.aborted) {
+              controller.abort();
+            }
           } catch (abortError) {
             // Kesalahan saat abort controller dapat diabaikan
             console.log("Abort controller error handled:", abortError);
@@ -79,7 +82,9 @@ function ServerStatusIndicator() {
           headers: {
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache'
-          }
+          },
+          // Pastikan credential disertakan
+          credentials: 'include'
         });
         
         if (timeoutId) clearTimeout(timeoutId);
@@ -124,7 +129,10 @@ function ServerStatusIndicator() {
       const controller = new AbortController();
       timeoutId = setTimeout(() => {
         try {
-          controller.abort();
+          // Cek apakah signal sudah di-abort untuk mencegah error
+          if (!controller.signal.aborted) {
+            controller.abort();
+          }
         } catch (abortError) {
           // Kesalahan saat abort controller dapat diabaikan
           console.log("Abort controller error handled:", abortError);
@@ -136,7 +144,9 @@ function ServerStatusIndicator() {
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
-        }
+        },
+        // Pastikan credential disertakan
+        credentials: 'include'
       });
       
       if (timeoutId) clearTimeout(timeoutId);
