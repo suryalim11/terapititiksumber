@@ -319,6 +319,18 @@ export class MemStorage implements IStorage {
     this.users.set(admin2.id, admin2);
     this.userCurrentId++;
     
+    // Create aguslim user
+    const admin3: User = {
+      id: 3,
+      username: "aguslim",
+      password: "admin123456", // In a real app, would be hashed
+      name: "Agus Lim",
+      role: "admin",
+      createdAt: new Date()
+    };
+    this.users.set(admin3.id, admin3);
+    this.userCurrentId++;
+    
     // Create default registration link
     const now = new Date();
     const expiryTime = new Date(now);
