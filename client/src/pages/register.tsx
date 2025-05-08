@@ -140,7 +140,7 @@ export default function RegisterPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [registrationCode, setRegistrationCode] = useState<string | null>(null);
-  const [registrationStatus, setRegistrationStatus] = useState<"idle" | "success" | "error" | "quota-reached" | "expired">("idle");
+  const [registrationStatus, setRegistrationStatus] = useState<"idle" | "submitting" | "success" | "error" | "quota-reached" | "expired">("idle");
   const [registrationLimit, setRegistrationLimit] = useState<number | null>(null);
   const [currentRegistrations, setCurrentRegistrations] = useState<number | null>(null);
   const [expiryTime, setExpiryTime] = useState<Date | null>(null);
@@ -769,7 +769,7 @@ export default function RegisterPage() {
     }
   };
 
-  // Handling form submission
+  // Handling form submission with improved navigation
   const onSubmit = async (values: RegisterFormValues) => {
     console.log("Form submitted with values:", values);
     setIsSubmitting(true);
@@ -822,71 +822,110 @@ export default function RegisterPage() {
         }
       }
       
-      // Siapkan data untuk dikirim ke localStorage sebelum mengirim ke server
-      // Ini memastikan halaman sukses dapat dirender dengan data yang benar
-      // meskipun server lambat merespon
-      try {
-        // Data minimal dari form values (data yang sudah pasti ada)
-        const simpleData = {
-          name: values.name,
-          phoneNumber: values.phoneNumber,
-          email: values.email || "",
-          birthDate: values.birthDate,
-          gender: values.gender,
-          address: values.address || "",
-          slotInfo: selectedSlot ? {
-            id: selectedSlot.id,
-            date: selectedSlot.date,
-            timeSlot: selectedSlot.timeSlot
-          } : null
-        };
-        
-        // Simpan ke localStorage
-        localStorage.setItem('registrationData', JSON.stringify(simpleData));
-        localStorage.setItem('registrationStatus', 'success');
-        
-        // Gunakan timeout untuk navigasi cepat
-        setTimeout(() => {
-          window.location.href = "/registration-success";
-        }, 100);
-      } catch (error) {
-        console.error("Error saving to localStorage:", error);
-      }
+      // PENDEKATAN BARU: Kirim data ke server dulu, lalu simpan hasil ke localStorage setelah berhasil
       
-      // Siapkan data dengan timeSlotKey jika tersedia untuk server
+      // Siapkan data untuk server
       const dataToSend = {
         ...values,
         registrationCode,
       };
       
-      // Log info penting untuk debugging
       console.log("Mengirim data pendaftaran ke server");
       
-      // Kirim data ke server
-      const response = await fetch("/api/patients", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(dataToSend),
-      });
-      
-      // Proses respon server (jika masih belum redirect)
-      if (response.ok) {
-        console.log("Pendaftaran berhasil di server");
-      } else {
-        console.error("Pendaftaran gagal di server dengan status:", response.status);
+      // Lakukan pengiriman data ke server
+      try {
+        // Update UI
+        setRegistrationStatus("submitting");
+        
+        // API call untuk mendaftarkan pasien
+        const response = await fetch("/api/patients", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(dataToSend),
+        });
+        
+        // Jika responsnya OK
+        if (response.ok) {
+          console.log("Pendaftaran berhasil di server");
+          
+          // Data minimal untuk halaman sukses
+          const simpleData = {
+            name: values.name,
+            phoneNumber: values.phoneNumber,
+            email: values.email || "",
+            birthDate: values.birthDate,
+            gender: values.gender,
+            address: values.address || "",
+            slotInfo: selectedSlot ? {
+              id: selectedSlot.id,
+              date: selectedSlot.date,
+              timeSlot: selectedSlot.timeSlot
+            } : null,
+            timestamp: new Date().toISOString()
+          };
+          
+          // Simpan di localStorage
+          localStorage.setItem('registrationData', JSON.stringify(simpleData));
+          localStorage.setItem('registrationStatus', 'success');
+          
+          // Navigasi ke halaman sukses, dengan parameter timestamp untuk menghindari cache
+          const timestamp = new Date().getTime();
+          window.location.href = `/registration-success?t=${timestamp}`;
+          
+        } else {
+          // Handle error dari server
+          let errorMessage = "Terjadi kesalahan saat mendaftarkan pasien.";
+          
+          try {
+            // Coba parse JSON error, jika ada
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+            
+            // Cek untuk kuota penuh
+            if (errorMessage.includes("kuota") || errorMessage.includes("penuh")) {
+              setRegistrationStatus("quota-reached");
+            }
+          } catch (e) {
+            console.error("Error parsing error response:", e);
+          }
+          
+          // Tampilkan error
+          toast({
+            variant: "destructive",
+            title: "Pendaftaran Gagal",
+            description: errorMessage,
+          });
+          
+          setIsSubmitting(false);
+          setRegistrationStatus("error");
+        }
+        
+      } catch (error) {
+        console.error("Network error during registration:", error);
+        
+        toast({
+          variant: "destructive",
+          title: "Koneksi Gagal",
+          description: "Terjadi masalah koneksi saat mengirim data. Silakan periksa koneksi internet Anda dan coba lagi.",
+        });
+        
+        setIsSubmitting(false);
+        setRegistrationStatus("error");
       }
-      
     } catch (error) {
-      console.error("Error registering patient:", error);
+      console.error("Error in form submission:", error);
+      
       toast({
         variant: "destructive",
-        title: "Koneksi Gagal",
-        description: "Terjadi kesalahan saat menghubungi server. Silakan coba lagi nanti.",
+        title: "Kesalahan Sistem",
+        description: "Terjadi kesalahan saat memproses pendaftaran. Silakan coba lagi nanti.",
       });
+      
       setIsSubmitting(false);
+      setRegistrationStatus("error");
     }
   };
 

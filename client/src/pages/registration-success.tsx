@@ -46,8 +46,10 @@ export default function RegistrationSuccessPage() {
       }
     }
 
-    // Panggil fungsi untuk load data segera
-    loadData();
+    // Panggil fungsi untuk load data segera, dengan sedikit delay untuk memastikan localStorage terisi
+    setTimeout(() => {
+      loadData();
+    }, 50);
 
     // Coba lagi dalam 800ms jika tidak ada data (untuk redundansi)
     const timeoutId = setTimeout(() => {
@@ -57,11 +59,19 @@ export default function RegistrationSuccessPage() {
       }
     }, 800);
 
+    // Backup plan: jika sampai 2 detik masih belum ada data, coba lagi
+    const lastChanceId = setTimeout(() => {
+      if (!registrationData) {
+        console.log("Mencoba memuat data registrasi untuk terakhir kali...");
+        loadData();
+      }
+    }, 2000);
+
     return () => {
-      console.log("Membersihkan timer");
       clearTimeout(timeoutId);
+      clearTimeout(lastChanceId);
     };
-  }, []);
+  }, [registrationData]);
 
   // Tampilkan loading state jika data belum siap
   if (loading) {
