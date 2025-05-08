@@ -865,19 +865,25 @@ export default function RegisterPage() {
     };
     
     // Setup timeout untuk navigasi darurat jika server terlalu lama merespon
+    // Meningkatkan timeout menjadi 45 detik untuk memberikan lebih banyak waktu ke server
     const timeoutId = setTimeout(() => {
       console.log("Timeout terjadi! Melakukan navigasi darurat");
-      // Simpan data minimal dan tandai sebagai timeout
+      
+      // Simpan data lengkap untuk bisa diperiksa nanti
       localStorage.setItem('registrationData', JSON.stringify({
         ...simpleData,
-        fromTimeout: true
+        fullSubmission: dataToSend,
+        fromTimeout: true,
+        timestamp: new Date().toISOString()
       }));
+      
+      // Tandai status sebagai pending untuk pemeriksaan di halaman sukses
       localStorage.setItem('registrationStatus', 'pending');
       
-      // Force navigasi ke halaman sukses
+      // Force navigasi ke halaman sukses dengan parameter tambahan untuk tracking
       const timestamp = new Date().getTime();
-      window.location.href = `/registration-success?t=${timestamp}&src=timeout`;
-    }, 20000); // 20 detik timeout - lebih lama dari fetch timeout untuk memberi waktu retry
+      window.location.href = `/registration-success?t=${timestamp}&src=timeout&retry=true`;
+    }, 45000); // 45 detik timeout - jauh lebih lama untuk memberi waktu server memproses
     
     // Implementasi mekanisme retry untuk API call
     const maxRetries = 2;
@@ -902,11 +908,14 @@ export default function RegisterPage() {
         console.log(`Mencoba mengirim data pendaftaran (percobaan ke-${retryCount + 1})`);
         
         // Gunakan AbortController untuk mengatur timeout pada fetch
+        // Meningkatkan timeout menjadi 30 detik untuk memberikan waktu lebih pada server
         const controller = new AbortController();
         timeoutFetch = setTimeout(() => {
           console.log(`Fetch request timeout, aborting (percobaan ke-${retryCount + 1})`);
           controller.abort();
-        }, 15000);
+        }, 30000); // Meningkatkan timeout menjadi 30 detik
+        
+        console.log(`Mengirim data pendaftaran:`, JSON.stringify(dataToSend));
         
         const response = await fetch("/api/patients", {
           method: "POST",
@@ -925,23 +934,56 @@ export default function RegisterPage() {
         // Jika responsnya OK
         if (response.ok) {
           console.log("Pendaftaran berhasil di server");
-          success = true;
           
           try {
-            // Simpan di localStorage
+            // Ambil data respons dari server
+            const responseData = await response.json();
+            console.log("Data respons dari server:", responseData);
+            
+            if (responseData && responseData.id) {
+              console.log("ID pasien dari server:", responseData.id);
+              
+              // Simpan data lengkap di localStorage
+              localStorage.setItem('registrationData', JSON.stringify({
+                ...simpleData,
+                ...responseData,
+                isComplete: true,
+                serverResponse: true
+              }));
+              localStorage.setItem('registrationStatus', 'success');
+              
+              // Set success true setelah mendapatkan data dari server
+              success = true;
+              
+              // Tambahkan delay kecil untuk memastikan data disimpan
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Navigasi ke halaman sukses, dengan parameter timestamp untuk menghindari cache
+              const timestamp = new Date().getTime();
+              window.location.href = `/registration-success?t=${timestamp}&src=success&id=${responseData.id}`;
+              return true;
+            } else {
+              console.error("Respons sukses tapi tidak ada ID pasien:", responseData);
+              throw new Error("Data pasien tidak lengkap");
+            }
+          } catch (e) {
+            console.error("Error parsing respons atau saving to localStorage:", e);
+            
+            // Simpan data minimal dan tandai sebagai success meskipun ada error parsing
             localStorage.setItem('registrationData', JSON.stringify({
               ...simpleData,
-              isComplete: true
+              isComplete: true,
+              parsingError: true
             }));
             localStorage.setItem('registrationStatus', 'success');
-          } catch (e) {
-            console.error("Error saving to localStorage:", e);
+            
+            success = true;
+            
+            // Navigasi ke halaman sukses dengan parameter error
+            const timestamp = new Date().getTime();
+            window.location.href = `/registration-success?t=${timestamp}&src=success&parse_error=true`;
+            return true;
           }
-          
-          // Navigasi ke halaman sukses, dengan parameter timestamp untuk menghindari cache
-          const timestamp = new Date().getTime();
-          window.location.href = `/registration-success?t=${timestamp}&src=success`;
-          return true;
         } else {
           // Handle error dari server
           let errorMessage = "Terjadi kesalahan saat mendaftarkan pasien.";
