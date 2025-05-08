@@ -141,35 +141,56 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const [slotData, setSlotData] = useState<any>(null);
   const [appointmentData, setAppointmentData] = useState<any[]>([]);
   
-  // Fungsi untuk melakukan fetch dengan timeout dan retry
-  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs: number = 5000, retryCount: number = 1): Promise<Response> => {
+  // Fungsi untuk melakukan fetch dengan timeout dan retry yang lebih robust
+  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs: number = 8000, retryCount: number = 2): Promise<Response> => {
     let lastError;
     
     for (let attempt = 0; attempt <= retryCount; attempt++) {
       try {
         // Tambahkan timeout
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeoutMs);
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+          console.log(`Request to ${url} aborted due to timeout (${timeoutMs}ms)`);
+        }, timeoutMs);
         
         const response = await fetch(url, {
           ...options,
           signal: controller.signal,
+          // Hindari cache
+          headers: {
+            ...options.headers,
+            'Cache-Control': 'no-cache, no-store',
+            'Pragma': 'no-cache',
+          },
+          credentials: 'include'
         });
         
-        clearTimeout(id);
+        clearTimeout(timeoutId);
+        
+        // Log response untuk debugging
+        console.log(`Fetch attempt ${attempt + 1} to ${url} - Status: ${response.status}`);
+        
         return response;
-      } catch (err) {
+      } catch (err: any) {
         lastError = err;
-        console.log(`Fetch attempt ${attempt + 1}/${retryCount + 1} failed:`, err);
+        const isTimeout = err.name === 'AbortError';
+        const waitTime = Math.min(1000 * (attempt + 1), 3000); // Progressive backoff
+        
+        console.log(
+          `Fetch attempt ${attempt + 1}/${retryCount + 1} to ${url} failed:`, 
+          isTimeout ? 'Request timed out' : err
+        );
         
         // Jika ini bukan percobaan terakhir, tunggu sebentar sebelum mencoba lagi
         if (attempt < retryCount) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log(`Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
     }
     
-    throw lastError || new Error("Fetch failed after retries");
+    throw lastError || new Error(`Fetch failed after ${retryCount + 1} attempts`);
   };
   
   // Gunakan satu fungsi fetch untuk semua data dengan error handling yang baik
@@ -367,34 +388,63 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     });
   }, [isOpen, slotId, slotData, appointmentData, isLoading, error]);
   
-  // Effect untuk menangani loading data pada saat dialog dibuka
+  // Effect untuk menangani loading data pada saat dialog dibuka dengan pendekatan state-based
   useEffect(() => {
+    // Handler fungsi untuk clean up timeout
+    let timeoutId: number | null = null;
+    
     if (isOpen && slotId) {
-      // Catat waktu dialog dibuka
-      if (dialogOpenedTimeRef.current === null) {
-        dialogOpenedTimeRef.current = Date.now();
-      }
+      // Reset error saat dialog dibuka
+      setError(null);
+      setIsLoading(true);
       
-      // Hanya fetch sekali per dialog open
-      if (!hasRefreshedRef.current) {
-        console.log('Dialog dibuka dengan slotId:', slotId, '- memulai fetch data');
-        hasRefreshedRef.current = true;
-        // Sedikit delay untuk memastikan dialog sudah terbuka sepenuhnya
-        setTimeout(() => {
-          console.log("Starting data fetch after small delay");
-          fetchSlotAndAppointments();
-        }, 100);
-      }
+      // Catat waktu dialog dibuka untuk analytics
+      dialogOpenedTimeRef.current = Date.now();
+      
+      // Fungsi kecil untuk fetch data dengan proteksi
+      const loadData = () => {
+        console.log(`Dialog dibuka: loading data untuk slot ID ${slotId}`);
+        
+        // Gunakan flag untuk menghindari multiple fetch
+        if (!hasRefreshedRef.current) {
+          hasRefreshedRef.current = true;
+          
+          // Sedikit delay untuk memastikan dialog sudah terbuka
+          // Hindari setTimeout ganda dengan clear sebelumnya jika ada
+          if (timeoutId) clearTimeout(timeoutId);
+          
+          timeoutId = window.setTimeout(() => {
+            fetchSlotAndAppointments()
+              .catch(err => {
+                console.error("Failed to fetch slot data:", err);
+                setError(new Error("Gagal mengambil data. Silakan coba lagi."));
+                setIsLoading(false);
+              });
+          }, 150);
+        }
+      };
+      
+      // Mulai proses load data
+      loadData();
     } else if (!isOpen) {
-      // Reset flag saat dialog ditutup
+      // Reset semua state saat dialog ditutup
       hasRefreshedRef.current = false;
       dialogOpenedTimeRef.current = null;
       
-      // Reset state saat dialog ditutup untuk menghindari flash data lama
+      // Clear timeout jika ada
+      if (timeoutId) clearTimeout(timeoutId);
+      
+      // Reset state UI untuk memastikan tidak ada data yang muncul sebentar saat dialog dibuka lagi
       setAppointmentData([]);
       setSlotData(null);
       setError(null);
+      setIsLoading(false);
     }
+    
+    // Cleanup pada unmount
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [isOpen, slotId]);
   
   // Kita tidak perlu variabel activeAppointments lagi karena sudah diganti dengan slotActiveAppointments
@@ -905,15 +955,32 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }, [patientIds.join(','), isOpen]);
   
-  // Gunakan data yang langsung diambil dari fetch
-  // Kita tidak perlu menggunakan useMemo dan derived states yang kompleks
+  // Proses dan enrich data appointment dengan informasi lengkap
   const processAppointmentData = useMemo(() => {
     if (!appointmentData || !Array.isArray(appointmentData)) {
       return [];
     }
     
-    // Filter hanya appointment aktif
-    return appointmentData.filter(app => app && isActiveStatus(app.status));
+    // 1. Filter hanya appointment aktif
+    const activeAppointments = appointmentData.filter(app => app && isActiveStatus(app.status));
+    console.log("Active appointment count:", activeAppointments.length);
+    
+    // 2. Urutkan berdasarkan status dan nama pasien (jika tersedia)
+    const sortedAppointments = [...activeAppointments].sort((a, b) => {
+      // Status: Active lebih dulu, lalu Scheduled/Confirmed
+      const statusA = (a.status || '').toLowerCase();
+      const statusB = (b.status || '').toLowerCase();
+      
+      if (statusA === 'active' && statusB !== 'active') return -1;
+      if (statusA !== 'active' && statusB === 'active') return 1;
+      
+      // Urutkan berdasarkan nama pasien
+      const nameA = (a.patient?.name || '').toLowerCase();
+      const nameB = (b.patient?.name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+    
+    return sortedAppointments;
   }, [appointmentData]);
   
   // Debug logging in development - versi sederhana
