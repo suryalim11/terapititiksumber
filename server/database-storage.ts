@@ -228,7 +228,9 @@ export class DatabaseStorage implements IStorage {
       try {
         const countResult = await pool.query(`SELECT COUNT(*) FROM therapy_slots`);
         slotCount = parseInt(countResult.rows[0].count || '0');
-      const slotCount = parseInt(result[0]?.count?.toString() || '0');
+      } catch (error) {
+        console.warn("Error checking therapy slot count:", error);
+      }
       
       if (slotCount === 0) {
         console.log("Initializing default therapy slots...");
