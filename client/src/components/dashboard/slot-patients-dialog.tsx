@@ -1378,7 +1378,21 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
               {/* Appointments List */}
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium">Daftar Pasien Aktif</h3>
+                  <div>
+                    <h3 className="text-sm font-medium flex items-center gap-2">
+                      Daftar Pasien Aktif
+                      {processAppointmentData.some(app => app.fromOtherSlot) && (
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
+                          Tampilan Universal
+                        </Badge>
+                      )}
+                    </h3>
+                    {processAppointmentData.some(app => app.fromOtherSlot) && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        * Menampilkan semua pasien pada jam yang sama ({slotData?.timeSlot})
+                      </p>
+                    )}
+                  </div>
                   {/* Tombol untuk mendaftarkan pasien baru */}
                   {slotData && slotData.isActive && 
                    slotData.currentCount < slotData.maxQuota && (
@@ -1407,17 +1421,29 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                     {processAppointmentData.map((appointment: any) => (
                       <div 
                         key={appointment.id} 
-                        className="p-3 text-sm hover:bg-muted/50 transition-colors cursor-pointer"
+                        className={`p-3 text-sm hover:bg-muted/50 transition-colors cursor-pointer ${appointment.fromOtherSlot ? 'border-l-4 border-amber-400' : ''}`}
                         onClick={() => navigateToPatientDetail(appointment.patient)}
                       >
                         <div className="font-medium flex items-center justify-between">
-                          <span>{appointment.patient?.name || 'Pasien tidak diketahui'}</span>
+                          <div className="flex items-center gap-2">
+                            <span>{appointment.patient?.name || 'Pasien tidak diketahui'}</span>
+                            {appointment.fromOtherSlot && (
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                                Slot #{appointment.therapySlotId}
+                              </Badge>
+                            )}
+                          </div>
                           <Badge className={getStatusClass(appointment.status)}>
                             {appointment.status || 'Unknown'}
                           </Badge>
                         </div>
                         <div className="text-muted-foreground text-xs mt-1 mb-2">
                           {appointment.patient?.phoneNumber || '-'}
+                          {appointment.fromOtherSlot && (
+                            <span className="ml-2 text-amber-600">
+                              • Jam yang sama, slot berbeda
+                            </span>
+                          )}
                         </div>
                         
                         {/* Action buttons - mobile friendly layout */}
