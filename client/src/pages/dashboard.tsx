@@ -763,10 +763,10 @@ export default function Dashboard() {
                                       max={100} 
                                       className={cn(
                                         "h-2",
-                                        slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 75 ? "bg-amber-200" : "bg-primary/20")
+                                        slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 0 ? "bg-primary/20" : "bg-slate-200")
                                       )}
                                       indicatorClassName={
-                                        slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 75 ? "bg-amber-500" : "bg-primary")
+                                        slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 0 ? "bg-primary" : "bg-primary/0")
                                       }
                                     />
                                   </div>
@@ -805,7 +805,7 @@ export default function Dashboard() {
                             <div className="flex items-center gap-2">
                               <div className={cn(
                                 "w-2 h-2 rounded-full",
-                                slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 75 ? "bg-amber-500" : "bg-emerald-500")
+                                slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 0 ? "bg-primary" : "bg-slate-300")
                               )}></div>
                               <div className="text-sm">
                                 <span className="font-medium">{slot.currentCount}</span>
@@ -829,10 +829,10 @@ export default function Dashboard() {
                               max={100} 
                               className={cn(
                                 "h-2 w-full",
-                                slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 75 ? "bg-amber-200" : "bg-primary/20")
+                                slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 0 ? "bg-primary/20" : "bg-slate-200")
                               )}
                               indicatorClassName={
-                                slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 75 ? "bg-amber-500" : "bg-primary")
+                                slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 0 ? "bg-primary" : "bg-primary/0")
                               }
                             />
                           </div>
