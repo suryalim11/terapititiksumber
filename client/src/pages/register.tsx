@@ -803,10 +803,34 @@ export default function RegisterPage() {
       
       const data: RegistrationResponse = await response.json();
       
+      console.log("Raw response status:", response.status);
+      console.log("Raw response ok:", response.ok);
+      console.log("Complete response data:", JSON.stringify(data, null, 2));
+      
       if (response.ok) {
         console.log("Pendaftaran berhasil:", data);
+        console.log("Setting registrationResult:", data);
+        console.log("Setting registrationStatus to 'success'");
+        
+        // Periksa isi data registrasi
+        if (!data || !data.id) {
+          console.error("Data registrasi tidak lengkap atau tidak valid:", data);
+          toast({
+            variant: "destructive",
+            title: "Data Tidak Lengkap",
+            description: "Server mengembalikan data yang tidak lengkap. Silakan coba lagi.",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Set data dan status
         setRegistrationResult(data);
         setRegistrationStatus("success");
+        
+        // Debug registrationStatus dan registrationResult setelah di-set
+        console.log("registrationStatus after set:", "success");
+        console.log("registrationResult after set:", data);
         
         // Refresh kuota pendaftaran
         if (data.registrationInfo) {
@@ -965,7 +989,17 @@ export default function RegisterPage() {
     );
   }
 
+  // Debug check untuk render success page
+  console.log("DEBUG RENDER CONDITION:", { 
+    registrationStatus, 
+    hasRegistrationResult: !!registrationResult,
+    resultContent: registrationResult 
+  });
+  
   if (registrationStatus === "success" && registrationResult) {
+    // Debug registrationResult untuk memastikan data lengkap
+    console.log("Rendering success page with data:", registrationResult);
+    
     return (
       <div className="container max-w-2xl mx-auto p-4">
         <Card className="bg-white shadow-md">
