@@ -2368,6 +2368,24 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
+    // Jika status baru adalah "Completed" dan ada sessionId, increment session usage
+    if (status === 'Completed' && existingAppointment.status !== 'Completed' && existingAppointment.sessionId) {
+      console.log(`[STATUS UPDATE] Appointment ${id} changed to Completed. Incrementing session ${existingAppointment.sessionId} usage.`);
+      try {
+        // Dapatkan session terlebih dahulu
+        const session = await this.getSession(existingAppointment.sessionId);
+        if (session) {
+          // Increment session usage
+          await this.updateSessionUsage(existingAppointment.sessionId);
+          console.log(`[STATUS UPDATE] Session ${existingAppointment.sessionId} usage updated successfully.`);
+        } else {
+          console.log(`[STATUS UPDATE] Session ${existingAppointment.sessionId} not found for increment.`);
+        }
+      } catch (error) {
+        console.error(`[STATUS UPDATE] Error updating session usage for session ${existingAppointment.sessionId}:`, error);
+      }
+    }
+    
     // Update status janji temu
     const result = await db
       .update(schema.appointments)
