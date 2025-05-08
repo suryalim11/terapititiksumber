@@ -163,42 +163,56 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       
       const slotResult = await slotResponse.json();
       console.log("Slot data received:", slotResult);
-      setSlotData(slotResult);
       
       if (!slotResult || !slotResult.date) {
         throw new Error("Invalid slot data received");
       }
       
-      // STEP 2: Use a simple approach - direct fetch by slot ID
-      // Ini jauh lebih sederhana dan reliable
-      console.log("Fetching appointments directly by slot ID");
-      const appointmentsResponse = await fetch(`/api/appointments?therapySlotId=${slotId}`);
+      // Set slot data terlebih dahulu
+      setSlotData(slotResult);
       
-      if (!appointmentsResponse.ok) {
-        console.warn("Direct fetch by slot ID failed, falling back to date-based fetch");
-        // FALLBACK: Use date-based approach if direct fetch fails
-        const slotDate = slotResult.date.split(' ')[0];
-        const dateFallbackResponse = await fetch(`/api/appointments/date/${slotDate}`);
-        
-        if (!dateFallbackResponse.ok) {
-          throw new Error("Failed to fetch appointments after fallback");
-        }
-        
-        const allDateAppointments = await dateFallbackResponse.json();
-        // Filter appointments for this specific slot
-        const filtered = allDateAppointments.filter((app: any) => 
-          app.therapySlotId === slotId || 
-          (app.timeSlot === slotResult.timeSlot && !app.therapySlotId)
-        );
-        setAppointmentData(filtered || []);
-      } else {
-        // Success with direct fetch
-        const appointmentsResult = await appointmentsResponse.json();
-        setAppointmentData(Array.isArray(appointmentsResult) ? appointmentsResult : []);
+      // STEP 2: Coba fetch appointments dengan pendekatan yang berbeda
+      console.log("Fetching appointments with improved approach");
+      
+      // Format tanggal untuk query
+      const slotDate = typeof slotResult.date === 'string' 
+        ? slotResult.date.split(' ')[0] // YYYY-MM-DD dari format "YYYY-MM-DD HH:MM:SS"
+        : new Date(slotResult.date).toISOString().split('T')[0];
+      
+      console.log(`Fetching appointments for date: ${slotDate}`);
+      const dateFallbackResponse = await fetch(`/api/appointments/date/${slotDate}`);
+      
+      if (!dateFallbackResponse.ok) {
+        throw new Error(`Failed to fetch appointments: ${dateFallbackResponse.status}`);
       }
+      
+      const allDateAppointments = await dateFallbackResponse.json();
+      console.log(`Got ${allDateAppointments.length} appointments for date ${slotDate}`);
+      
+      // Filter appointments untuk slot ini dengan kriteria yang lebih reliable
+      const filtered = allDateAppointments.filter((app: any) => {
+        // Skip null/undefined
+        if (!app) return false;
+        
+        // Match berdasarkan therapySlotId (kriteria utama)
+        if (app.therapySlotId === slotId) return true;
+        
+        // Fallback untuk appointment tanpa therapySlotId - match berdasarkan waktu
+        if (!app.therapySlotId && app.timeSlot === slotResult.timeSlot) return true;
+        
+        return false;
+      });
+      
+      console.log(`Filtered ${filtered.length} appointments for slot ID ${slotId}`);
+      
+      // Set appointment data setelah filtering
+      setAppointmentData(filtered || []);
     } catch (err) {
       console.error("Error fetching data:", err);
       setError(err instanceof Error ? err : new Error("Unknown error fetching data"));
+      // Clear data on error
+      setSlotData(null);
+      setAppointmentData([]);
     } finally {
       setIsLoading(false);
     }
@@ -776,19 +790,25 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
             </DialogDescription>
           </DialogHeader>
           
-          {isLoading ? (
+          {isLoading && (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : error ? (
+          )}
+          
+          {!isLoading && error && (
             <div className="text-center py-6 text-destructive">
               <p>Error: {(error as Error).message}</p>
             </div>
-          ) : !slotData ? (
+          )}
+          
+          {!isLoading && !error && !slotData && (
             <div className="text-center py-6 text-muted-foreground">
               <p>Data slot tidak tersedia</p>
             </div>
-          ) : (
+          )}
+          
+          {!isLoading && !error && slotData && (
             <div className="space-y-4 mt-2">
               {/* Slot Information */}
               <div className="rounded-lg bg-muted/50 p-3 border">
