@@ -774,154 +774,174 @@ export default function RegisterPage() {
     console.log("Form submitted with values:", values);
     setIsSubmitting(true);
     
-    try {
-      // Validasi jika kode pendaftaran tidak ada
-      if (!registrationCode) {
-        toast({
-          variant: "destructive",
-          title: "Kode Pendaftaran Tidak Valid",
-          description: "Kode pendaftaran tidak tersedia. Silakan reload halaman atau gunakan link yang valid.",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Validasi slot terapi jika dibutuhkan (tidak untuk pasien walk-in dari admin)
-      if (!isWalkInMode && !values.therapySlotId) {
-        toast({
-          variant: "destructive",
-          title: "Sesi Terapi Belum Dipilih",
-          description: "Silakan pilih sesi terapi yang tersedia.",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Validasi waktu terapi (pastikan tidak registrasi untuk waktu yang sudah lewat)
-      if (values.therapySlotId && therapySlots) {
-        const selectedSlot = therapySlots.find(slot => slot.id === values.therapySlotId);
-        if (selectedSlot) {
-          const slotDate = new Date(selectedSlot.date);
-          const [startHour, startMinute] = selectedSlot.timeSlot.split('-')[0].split(':').map(Number);
-          
-          // Set jam dan menit dari timeSlot
-          slotDate.setHours(startHour, startMinute, 0);
-          
-          const now = new Date();
-          
-          // Jika waktu terapi sudah lewat (minimal 30 menit dari sekarang)
-          if (slotDate < new Date(now.getTime() + 30 * 60000)) {
-            toast({
-              variant: "destructive",
-              title: "Waktu Terapi Tidak Valid",
-              description: "Maaf, Anda tidak dapat mendaftar untuk sesi yang waktunya kurang dari 30 menit dari sekarang atau sudah lewat. Silakan pilih sesi terapi lain.",
-            });
-            setIsSubmitting(false);
-            return;
-          }
-        }
-      }
-      
-      // PENDEKATAN BARU: Kirim data ke server dulu, lalu simpan hasil ke localStorage setelah berhasil
-      
-      // Siapkan data untuk server
-      const dataToSend = {
-        ...values,
-        registrationCode,
-      };
-      
-      console.log("Mengirim data pendaftaran ke server");
-      
-      // Lakukan pengiriman data ke server
-      try {
-        // Update UI
-        setRegistrationStatus("submitting");
+    // Validasi jika kode pendaftaran tidak ada
+    if (!registrationCode) {
+      toast({
+        variant: "destructive",
+        title: "Kode Pendaftaran Tidak Valid",
+        description: "Kode pendaftaran tidak tersedia. Silakan reload halaman atau gunakan link yang valid.",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Validasi slot terapi jika dibutuhkan (tidak untuk pasien walk-in dari admin)
+    if (!isWalkInMode && !values.therapySlotId) {
+      toast({
+        variant: "destructive",
+        title: "Sesi Terapi Belum Dipilih",
+        description: "Silakan pilih sesi terapi yang tersedia.",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Validasi waktu terapi (pastikan tidak registrasi untuk waktu yang sudah lewat)
+    if (values.therapySlotId && therapySlots) {
+      const selectedSlot = therapySlots.find(slot => slot.id === values.therapySlotId);
+      if (selectedSlot) {
+        const slotDate = new Date(selectedSlot.date);
+        const [startHour, startMinute] = selectedSlot.timeSlot.split('-')[0].split(':').map(Number);
         
-        // API call untuk mendaftarkan pasien
-        const response = await fetch("/api/patients", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(dataToSend),
-        });
+        // Set jam dan menit dari timeSlot
+        slotDate.setHours(startHour, startMinute, 0);
         
-        // Jika responsnya OK
-        if (response.ok) {
-          console.log("Pendaftaran berhasil di server");
-          
-          // Data minimal untuk halaman sukses
-          const simpleData = {
-            name: values.name,
-            phoneNumber: values.phoneNumber,
-            email: values.email || "",
-            birthDate: values.birthDate,
-            gender: values.gender,
-            address: values.address || "",
-            slotInfo: selectedSlot ? {
-              id: selectedSlot.id,
-              date: selectedSlot.date,
-              timeSlot: selectedSlot.timeSlot
-            } : null,
-            timestamp: new Date().toISOString()
-          };
-          
-          // Simpan di localStorage
-          localStorage.setItem('registrationData', JSON.stringify(simpleData));
-          localStorage.setItem('registrationStatus', 'success');
-          
-          // Navigasi ke halaman sukses, dengan parameter timestamp untuk menghindari cache
-          const timestamp = new Date().getTime();
-          window.location.href = `/registration-success?t=${timestamp}`;
-          
-        } else {
-          // Handle error dari server
-          let errorMessage = "Terjadi kesalahan saat mendaftarkan pasien.";
-          
-          try {
-            // Coba parse JSON error, jika ada
-            const errorData = await response.json();
-            errorMessage = errorData.message || errorMessage;
-            
-            // Cek untuk kuota penuh
-            if (errorMessage.includes("kuota") || errorMessage.includes("penuh")) {
-              setRegistrationStatus("quota-reached");
-            }
-          } catch (e) {
-            console.error("Error parsing error response:", e);
-          }
-          
-          // Tampilkan error
+        const now = new Date();
+        
+        // Jika waktu terapi sudah lewat (minimal 30 menit dari sekarang)
+        if (slotDate < new Date(now.getTime() + 30 * 60000)) {
           toast({
             variant: "destructive",
-            title: "Pendaftaran Gagal",
-            description: errorMessage,
+            title: "Waktu Terapi Tidak Valid",
+            description: "Maaf, Anda tidak dapat mendaftar untuk sesi yang waktunya kurang dari 30 menit dari sekarang atau sudah lewat. Silakan pilih sesi terapi lain.",
           });
-          
           setIsSubmitting(false);
-          setRegistrationStatus("error");
+          return;
+        }
+      }
+    }
+    
+    // Siapkan data untuk server
+    const dataToSend = {
+      ...values,
+      registrationCode,
+    };
+    
+    console.log("Mengirim data pendaftaran ke server");
+    
+    // Update UI status
+    setRegistrationStatus("submitting");
+    
+    // Siapkan data sederhana terlebih dahulu sebagai fallback
+    const simpleData = {
+      name: values.name,
+      phoneNumber: values.phoneNumber,
+      email: values.email || "",
+      birthDate: values.birthDate,
+      gender: values.gender,
+      address: values.address || "",
+      slotInfo: selectedSlot ? {
+        id: selectedSlot.id,
+        date: selectedSlot.date,
+        timeSlot: selectedSlot.timeSlot
+      } : null,
+      timestamp: new Date().toISOString(),
+      isComplete: false // Tandai bahwa ini belum complete dari server
+    };
+    
+    // Setup timeout untuk navigasi darurat jika server terlalu lama merespon
+    const timeoutId = setTimeout(() => {
+      console.log("Timeout terjadi! Melakukan navigasi darurat");
+      // Simpan data minimal dan tandai sebagai timeout
+      localStorage.setItem('registrationData', JSON.stringify({
+        ...simpleData,
+        fromTimeout: true
+      }));
+      localStorage.setItem('registrationStatus', 'pending');
+      
+      // Force navigasi ke halaman sukses
+      const timestamp = new Date().getTime();
+      window.location.href = `/registration-success?t=${timestamp}&src=timeout`;
+    }, 8000); // 8 detik timeout
+    
+    // API call untuk mendaftarkan pasien dengan timeout
+    const controller = new AbortController();
+    const signal = controller.signal;
+    
+    // Coba dengan batas waktu 7 detik
+    setTimeout(() => controller.abort(), 7000);
+    
+    try {
+      const response = await fetch("/api/patients", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(dataToSend),
+        signal
+      });
+      
+      // Hentikan timeout karena sudah mendapat respons
+      clearTimeout(timeoutId);
+      
+      // Jika responsnya OK
+      if (response.ok) {
+        console.log("Pendaftaran berhasil di server");
+        
+        try {
+          // Simpan di localStorage
+          localStorage.setItem('registrationData', JSON.stringify({
+            ...simpleData,
+            isComplete: true
+          }));
+          localStorage.setItem('registrationStatus', 'success');
+        } catch (e) {
+          console.error("Error saving to localStorage:", e);
         }
         
-      } catch (error) {
-        console.error("Network error during registration:", error);
+        // Navigasi ke halaman sukses, dengan parameter timestamp untuk menghindari cache
+        const timestamp = new Date().getTime();
+        window.location.href = `/registration-success?t=${timestamp}&src=success`;
+      } else {
+        // Handle error dari server
+        let errorMessage = "Terjadi kesalahan saat mendaftarkan pasien.";
         
+        try {
+          // Coba parse JSON error, jika ada
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+          
+          // Cek untuk kuota penuh
+          if (errorMessage.includes("kuota") || errorMessage.includes("penuh")) {
+            setRegistrationStatus("quota-reached");
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        
+        // Tampilkan error
         toast({
           variant: "destructive",
-          title: "Koneksi Gagal",
-          description: "Terjadi masalah koneksi saat mengirim data. Silakan periksa koneksi internet Anda dan coba lagi.",
+          title: "Pendaftaran Gagal",
+          description: errorMessage,
         });
         
         setIsSubmitting(false);
         setRegistrationStatus("error");
       }
     } catch (error) {
-      console.error("Error in form submission:", error);
+      // Tangkap error dari fetch
+      console.error("Error saat melakukan fetch ke server:", error);
       
+      // Bersihkan timeout jika masih aktif
+      clearTimeout(timeoutId);
+      
+      // Tampilkan error
       toast({
         variant: "destructive",
-        title: "Kesalahan Sistem",
-        description: "Terjadi kesalahan saat memproses pendaftaran. Silakan coba lagi nanti.",
+        title: "Kesalahan Koneksi",
+        description: "Gagal terhubung ke server. Mohon periksa koneksi internet Anda.",
       });
       
       setIsSubmitting(false);
