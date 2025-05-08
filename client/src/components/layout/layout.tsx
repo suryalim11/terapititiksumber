@@ -62,9 +62,17 @@ function ServerStatusIndicator() {
   // Periksa status server pada awal render dan secara berkala
   useEffect(() => {
     const checkServerStatus = async () => {
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        timeoutId = setTimeout(() => {
+          try {
+            controller.abort();
+          } catch (abortError) {
+            // Kesalahan saat abort controller dapat diabaikan
+            console.log("Abort controller error handled:", abortError);
+          }
+        }, 3000);
         
         const response = await fetch('/api/ping', {
           signal: controller.signal,
@@ -74,7 +82,7 @@ function ServerStatusIndicator() {
           }
         });
         
-        clearTimeout(timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
         
         if (response.ok) {
           const data = await response.json();
@@ -87,6 +95,15 @@ function ServerStatusIndicator() {
           setServerStatus({ status: 'error' });
         }
       } catch (error) {
+        // Pastikan timeout dibersihkan
+        if (timeoutId) clearTimeout(timeoutId);
+        
+        // Cek apakah error disebabkan oleh abort
+        const isAbortError = error instanceof DOMException && 
+                            (error.name === 'AbortError' || error.name === 'AbortSignal');
+        if (!isAbortError) {
+          console.error("Error checking server status:", error);
+        }
         setServerStatus({ status: 'error' });
       }
     };
@@ -102,9 +119,17 @@ function ServerStatusIndicator() {
   const handleCheckStatus = async () => {
     setServerStatus({ status: 'checking' });
     
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      timeoutId = setTimeout(() => {
+        try {
+          controller.abort();
+        } catch (abortError) {
+          // Kesalahan saat abort controller dapat diabaikan
+          console.log("Abort controller error handled:", abortError);
+        }
+      }, 3000);
       
       const response = await fetch('/api/ping', {
         signal: controller.signal,
@@ -114,7 +139,7 @@ function ServerStatusIndicator() {
         }
       });
       
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
@@ -137,6 +162,15 @@ function ServerStatusIndicator() {
         });
       }
     } catch (error) {
+      if (timeoutId) clearTimeout(timeoutId);
+      
+      // Cek apakah error disebabkan oleh abort
+      const isAbortError = error instanceof DOMException && 
+                          (error.name === 'AbortError' || error.name === 'AbortSignal');
+      if (!isAbortError) {
+        console.error("Error checking server status:", error);
+      }
+      
       setServerStatus({ status: 'error' });
       toast({
         variant: "destructive",
