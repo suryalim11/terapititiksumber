@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import { CalendarIcon, Loader2, User } from "lucide-react";
 import { format } from "date-fns";
 import { id } from 'date-fns/locale';
@@ -34,7 +34,7 @@ export function SimplifiedSlotDialog({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [, navigate] = useNavigate();
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   
   // Local state for slot data

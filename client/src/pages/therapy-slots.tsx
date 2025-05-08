@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { CreateBatchDialog } from "@/components/therapy-slots/create-batch-dialog";
+import { SimplifiedSlotDialog } from "@/components/dashboard/simplified-slot-dialog";
 import {
   Card,
   CardContent,
@@ -1648,7 +1649,7 @@ export default function TherapySlots() {
                             <Calendar
                               mode="single"
                               selected={customDateStart || undefined}
-                              onSelect={setCustomDateStart}
+                              onSelect={(date) => setCustomDateStart(date)}
                               initialFocus
                             />
                           </PopoverContent>
@@ -1665,7 +1666,7 @@ export default function TherapySlots() {
                             <Calendar
                               mode="single"
                               selected={customDateEnd || undefined}
-                              onSelect={setCustomDateEnd}
+                              onSelect={(date) => setCustomDateEnd(date)}
                               initialFocus
                               disabled={(date) => customDateStart ? date < customDateStart : false}
                             />
