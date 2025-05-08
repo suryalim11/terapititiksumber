@@ -223,10 +223,11 @@ export class DatabaseStorage implements IStorage {
         console.warn("Error checking for time_slot_key column:", err);
       }
       
-      // Check if therapy_slots table is empty
-      const result = await db.select({
-        count: sql`COUNT(*)`
-      }).from(schema.therapySlots);
+      // Check if therapy_slots table is empty - use direct query to avoid Drizzle ORM issues
+      let slotCount = 0;
+      try {
+        const countResult = await pool.query(`SELECT COUNT(*) FROM therapy_slots`);
+        slotCount = parseInt(countResult.rows[0].count || '0');
       const slotCount = parseInt(result[0]?.count?.toString() || '0');
       
       if (slotCount === 0) {
@@ -1686,14 +1687,15 @@ export class DatabaseStorage implements IStorage {
       // Periksa apakah kolom time_slot_key ada
       let timeSlotKeyExists = false;
       try {
-        // Use simple raw SQL query approach to avoid recursion issues
-        const result = await db.execute(
-          sql`SELECT EXISTS (
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
-          ) as exists`
-        );
-        timeSlotKeyExists = result.rows[0].exists === true;
+        // Use direct pool query which is more reliable
+        const columns = await pool.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+        `);
+        
+        // If we get at least one row, the column exists
+        timeSlotKeyExists = columns.rows.length > 0;
       } catch (err) {
         console.warn("Error checking for time_slot_key column:", err);
       }
@@ -1791,14 +1793,15 @@ export class DatabaseStorage implements IStorage {
     // Periksa apakah kolom time_slot_key ada
     let timeSlotKeyExists = false;
     try {
-      // Use simple raw SQL query approach to avoid recursion issues
-      const result = await db.execute(
-        sql`SELECT EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
-        ) as exists`
-      );
-      timeSlotKeyExists = result.rows[0].exists === true;
+      // Use direct pool query which is more reliable
+      const columns = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+      `);
+      
+      // If we get at least one row, the column exists
+      timeSlotKeyExists = columns.rows.length > 0;
     } catch (err) {
       console.warn("Error checking for time_slot_key column:", err);
     }
@@ -1833,14 +1836,15 @@ export class DatabaseStorage implements IStorage {
     // Periksa apakah kolom time_slot_key ada
     let timeSlotKeyExists = false;
     try {
-      // Use simple raw SQL query approach to avoid recursion issues
-      const result = await db.execute(
-        sql`SELECT EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
-        ) as exists`
-      );
-      timeSlotKeyExists = result.rows[0].exists === true;
+      // Use direct pool query which is more reliable
+      const columns = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+      `);
+      
+      // If we get at least one row, the column exists
+      timeSlotKeyExists = columns.rows.length > 0;
     } catch (err) {
       console.warn("Error checking for time_slot_key column:", err);
     }
@@ -1997,14 +2001,15 @@ export class DatabaseStorage implements IStorage {
       // Periksa apakah kolom time_slot_key ada
       let timeSlotKeyExists = false;
       try {
-        // Use simple raw SQL query approach to avoid recursion issues
-        const result = await db.execute(
-          sql`SELECT EXISTS (
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
-          ) as exists`
-        );
-        timeSlotKeyExists = result.rows[0].exists === true;
+        // Use direct pool query which is more reliable
+        const columns = await pool.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
+        `);
+        
+        // If we get at least one row, the column exists
+        timeSlotKeyExists = columns.rows.length > 0;
       } catch (err) {
         console.warn("Error checking for time_slot_key column:", err);
       }
