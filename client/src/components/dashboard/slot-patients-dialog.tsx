@@ -733,22 +733,20 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     processedAppointments.length
   ]);
   
-  // Early return
-  if (!isOpen) return null;
-
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-4 md:p-6">
-          <DialogHeader className="px-0">
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <CalendarIcon className="h-5 w-5 text-primary" />
-              Detail Slot Terapi
-            </DialogTitle>
-            <DialogDescription>
-              Menampilkan detail slot terapi dan daftar pasien yang terdaftar.
-            </DialogDescription>
-          </DialogHeader>
+      {isOpen && (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-4 md:p-6">
+            <DialogHeader className="px-0">
+              <DialogTitle className="flex items-center gap-2 text-lg">
+                <CalendarIcon className="h-5 w-5 text-primary" />
+                Detail Slot Terapi
+              </DialogTitle>
+              <DialogDescription>
+                Menampilkan detail slot terapi dan daftar pasien yang terdaftar.
+              </DialogDescription>
+            </DialogHeader>
           
           {isLoading ? (
             <div className="flex justify-center py-8">
@@ -888,33 +886,36 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
           )}
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Confirmation Dialog */}
-      <AlertDialog open={isConfirmCancelOpen} onOpenChange={setIsConfirmCancelOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Konfirmasi Pembatalan</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin membatalkan janji temu pasien ini?
-              {selectedAppointment && (
-                <div className="mt-2 p-2 border rounded-md bg-muted">
-                  <p className="font-medium">{selectedAppointment.patient?.name || 'Pasien tidak diketahui'}</p>
-                  <p className="text-sm text-muted-foreground">{selectedAppointment.patient?.phoneNumber || '-'}</p>
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmCancelAppointment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {cancelAppointmentMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Ya, Batalkan Janji
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {isConfirmCancelOpen && (
+        <AlertDialog open={isConfirmCancelOpen} onOpenChange={setIsConfirmCancelOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Konfirmasi Pembatalan</AlertDialogTitle>
+              <AlertDialogDescription>
+                Apakah Anda yakin ingin membatalkan janji temu pasien ini?
+                {selectedAppointment && (
+                  <div className="mt-2 p-2 border rounded-md bg-muted">
+                    <p className="font-medium">{selectedAppointment.patient?.name || 'Pasien tidak diketahui'}</p>
+                    <p className="text-sm text-muted-foreground">{selectedAppointment.patient?.phoneNumber || '-'}</p>
+                  </div>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Batal</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmCancelAppointment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {cancelAppointmentMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Ya, Batalkan Janji
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }
