@@ -296,6 +296,42 @@ export default function RegisterPage() {
     // Mendukung parameter "code" dan "kode" untuk backward compatibility
     const code = params.get("code") || params.get("kode");
     
+    // Cek apakah ada parameter 'status=success' di URL
+    const urlStatus = params.get('status');
+    
+    // Jika status=success, coba pulihkan data dari localStorage
+    if (urlStatus === 'success') {
+      console.log("Status success terdeteksi di URL, mencoba memulihkan data pendaftaran");
+      
+      try {
+        const savedData = localStorage.getItem('registrationData');
+        const savedStatus = localStorage.getItem('registrationStatus');
+        
+        if (savedData && savedStatus === 'success') {
+          console.log("Data pendaftaran ditemukan di localStorage");
+          
+          // Pulihkan data pendaftaran
+          const registrationData = JSON.parse(savedData);
+          setRegistrationResult(registrationData);
+          setRegistrationStatus('success');
+          
+          console.log("Berhasil memulihkan data pendaftaran dari localStorage", registrationData);
+          
+          // Hapus data dari localStorage setelah beberapa saat
+          setTimeout(() => {
+            localStorage.removeItem('registrationData');
+            localStorage.removeItem('registrationStatus');
+          }, 5000);
+          
+          return; // Keluar dari useEffect karena halaman konfirmasi akan ditampilkan
+        } else {
+          console.log("Tidak ada data pendaftaran yang valid di localStorage");
+        }
+      } catch (e) {
+        console.error("Error memulihkan data pendaftaran:", e);
+      }
+    }
+    
     // Mendapatkan slotId dari URL jika ada (parameter dari admin untuk pasien walk-in)
     const slotIdParam = params.get("slotId");
     if (slotIdParam) {
@@ -824,6 +860,15 @@ export default function RegisterPage() {
           return;
         }
         
+        // Set data dalam localStorage sebagai cadangan
+        try {
+          localStorage.setItem('registrationData', JSON.stringify(data));
+          localStorage.setItem('registrationStatus', 'success');
+          console.log("Data pendaftaran berhasil disimpan di localStorage");
+        } catch (e) {
+          console.error("Gagal menyimpan data pendaftaran di localStorage:", e);
+        }
+        
         // Set data dan status
         setRegistrationResult(data);
         setRegistrationStatus("success");
@@ -831,6 +876,41 @@ export default function RegisterPage() {
         // Debug registrationStatus dan registrationResult setelah di-set
         console.log("registrationStatus after set:", "success");
         console.log("registrationResult after set:", data);
+        
+        // Tunggu sebentar agar state terupdate, lalu redirect jika perlu
+        setTimeout(() => {
+          // Periksa jika halaman konfirmasi belum muncul (state belum diupdate dengan benar)
+          if (document.getElementById('registration-success-page') === null) {
+            console.log("Halaman konfirmasi belum muncul, melakukan redirect");
+            
+            // Buat URL dengan parameter status=success
+            let successUrl = window.location.pathname;
+            const params = new URLSearchParams(window.location.search);
+            params.set('status', 'success');
+            
+            // Pastikan kode pendaftaran tetap ada
+            if (registrationCode) {
+              params.set('code', registrationCode);
+            }
+            
+            // Tambahkan parameter ke URL
+            successUrl += '?' + params.toString();
+            
+            console.log("Redirecting to:", successUrl);
+            
+            // Lakukan redirect
+            window.location.href = successUrl;
+          }
+        }, 1000);
+        
+        // Force redirect ke halaman sukses
+        setTimeout(() => {
+          if (window.location.href.includes('?code=')) {
+            const successUrl = window.location.href + '&status=success';
+            console.log("Redirecting to success page:", successUrl);
+            window.location.href = successUrl;
+          }
+        }, 500);
         
         // Refresh kuota pendaftaran
         if (data.registrationInfo) {
@@ -1001,7 +1081,7 @@ export default function RegisterPage() {
     console.log("Rendering success page with data:", registrationResult);
     
     return (
-      <div className="container max-w-2xl mx-auto p-4">
+      <div id="registration-success-page" className="container max-w-2xl mx-auto p-4">
         <Card className="bg-white shadow-md">
           <CardHeader className="bg-green-50 border-b border-green-100">
             <div className="flex justify-center mb-4">
