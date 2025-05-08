@@ -1259,6 +1259,11 @@ export default function TherapySlots() {
                                 <TableCell>{slot.timeSlot}</TableCell>
                                 <TableCell>
                                   {slot.currentCount} / {slot.maxQuota}
+                                  {slot.totalMaxQuota && slot.totalMaxQuota !== slot.maxQuota && (
+                                    <span className="text-xs text-muted-foreground ml-1 block">
+                                      (dari {slot.totalMaxQuota} total)
+                                    </span>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   {slot.isActive ? (
@@ -1325,6 +1330,11 @@ export default function TherapySlots() {
                                 </div>
                                 <div className="mt-2 text-sm text-gray-500">
                                   Kuota: {slot.currentCount} / {slot.maxQuota}
+                                  {slot.totalMaxQuota && slot.totalMaxQuota !== slot.maxQuota && (
+                                    <span className="text-xs text-muted-foreground ml-1 block">
+                                      (dari {slot.totalMaxQuota} total)
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <div className="p-4 bg-gray-50 flex flex-wrap gap-2">
@@ -1723,6 +1733,11 @@ export default function TherapySlots() {
                               <TableCell>{slot.timeSlot}</TableCell>
                               <TableCell>
                                 {slot.currentCount} / {slot.maxQuota}
+                                {slot.totalMaxQuota && slot.totalMaxQuota !== slot.maxQuota && (
+                                  <span className="text-xs text-muted-foreground ml-1 block">
+                                    (dari {slot.totalMaxQuota} total)
+                                  </span>
+                                )}
                               </TableCell>
                               <TableCell>
                                 {slot.isActive ? (
