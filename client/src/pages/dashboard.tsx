@@ -99,42 +99,7 @@ export default function Dashboard() {
   const formattedToday = dateToWIBDateString(todayWIB); // Format ke YYYY-MM-DD
   console.log(`Today in WIB timezone: ${formattedToday}`);
   
-  // Define mutation for fix Darukni session
-  const fixDarukniMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/fix/darukni-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fix Darukni session');
-      }
-      
-      return response.json();
-    },
-    onSuccess: (data) => {
-      // Show success toast
-      toast({
-        title: "Berhasil",
-        description: data.message || "Berhasil memperbaiki data sesi Darukni",
-      });
-      
-      // Refresh packages data
-      refetchPackages();
-    },
-    onError: (error) => {
-      // Show error toast
-      toast({
-        title: "Gagal memperbaiki sesi Darukni",
-        description: error instanceof Error ? error.message : "Terjadi kesalahan",
-        variant: "destructive",
-      });
-    }
-  });
+
   
   // Fetch dashboard stats with auto-refresh (every 10 seconds)
   const { data: stats = { patientsToday: 0, incomeToday: 0, productsSold: 0, activePackages: 0 }, refetch: refetchStats } = 
@@ -736,26 +701,7 @@ export default function Dashboard() {
                 <RefreshCw className="h-4 w-4" />
                 <span className="sr-only">Refresh Packages</span>
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => fixDarukniMutation.mutate()}
-                disabled={fixDarukniMutation.isPending}
-                title="Fix Session Darukni"
-                className="text-xs"
-              >
-                {fixDarukniMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Fixing...
-                  </>
-                ) : (
-                  <>
-                    <Database className="h-3 w-3 mr-1" />
-                    Fix Darukni (2/12)
-                  </>
-                )}
-              </Button>
+
             </div>
           </div>
           <div className="flex justify-between items-center">
