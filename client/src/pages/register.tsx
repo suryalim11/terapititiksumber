@@ -50,10 +50,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   AlertCircle, 
+  AlertTriangle,
   CalendarIcon, 
   Clock, 
   CheckCircle, 
   MapPin,
+  RefreshCw,
   Search, 
   Users,
   User
@@ -1320,6 +1322,33 @@ export default function RegisterPage() {
                             {isLoadingSlots ? (
                               <div className="flex justify-center p-4">
                                 <div className="animate-spin w-8 h-8 border-4 border-teal-400 border-t-transparent rounded-full"></div>
+                              </div>
+                            ) : therapySlotsError ? (
+                              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
+                                <AlertCircle className="h-5 w-5 text-red-500 mx-auto mb-2" />
+                                <h4 className="text-red-800 font-medium mb-1">Gagal memuat slot terapi</h4>
+                                <p className="text-red-600 text-sm">
+                                  {therapySlotsError instanceof Error 
+                                    ? therapySlotsError.message 
+                                    : "Terjadi kesalahan saat memuat data slot terapi"}
+                                </p>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="mt-2 border-red-300 text-red-700 hover:bg-red-100" 
+                                  onClick={() => refetchTherapySlots()}
+                                >
+                                  <RefreshCw className="h-3 w-3 mr-1" /> Coba Lagi
+                                </Button>
+                              </div>
+                            ) : !therapySlots || therapySlots.length === 0 ? (
+                              <div className="bg-amber-50 border border-amber-200 rounded-md p-4 text-center">
+                                <AlertTriangle className="h-5 w-5 text-amber-500 mx-auto mb-2" />
+                                <h4 className="text-amber-800 font-medium mb-1">Tidak ada slot terapi yang tersedia</h4>
+                                <p className="text-amber-700 text-sm">
+                                  Saat ini semua sesi terapi sudah penuh atau belum tersedia. 
+                                  Silakan coba lagi nanti atau hubungi klinik untuk informasi lebih lanjut.
+                                </p>
                               </div>
                             ) : (
                               renderSlotsByDateGroups()
