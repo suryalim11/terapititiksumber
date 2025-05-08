@@ -2884,6 +2884,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
+    console.log("DatabaseStorage.createAppointment dipanggil dengan:", JSON.stringify(appointment, null, 2));
+    
+    // Tambahkan validasi data awal untuk memastikan data lengkap
+    if (!appointment.patientId || !appointment.therapySlotId) {
+      console.error("ERROR: Data appointment tidak lengkap:", JSON.stringify(appointment, null, 2));
+      throw new Error("Data appointment tidak lengkap: patientId dan therapySlotId diperlukan");
+    }
+    
     // Generate registration number with WIB time if not provided
     const currentWibDate = getWIBDate(new Date());
     let regNum = appointment.registrationNumber;

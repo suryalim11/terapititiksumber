@@ -872,6 +872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (therapySlot && therapySlot.isActive && therapySlot.currentCount < therapySlot.maxQuota) {
             console.log(`Slot terapi valid: ID=${finalTherapySlotId}, tanggal=${therapySlot.date}, waktu=${therapySlot.timeSlot}`);
+            console.log(`Detail slot terapi: isActive=${therapySlot.isActive}, currentCount=${therapySlot.currentCount}, maxQuota=${therapySlot.maxQuota}`);
             
             // Cek sebagai fallback apakah ada timeSlotKey di slot, dan jika ada, gunakan untuk menemukan slot yang sesuai
             if (therapySlot.timeSlotKey && !timeSlotKey) { // Hanya cek jika timeSlotKey tidak diketahui sebelumnya
@@ -921,8 +922,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               registrationNumber: null
             };
             
+            console.log("Data appointment yang akan dibuat:", JSON.stringify(appointmentData, null, 2));
+            console.log(`Pastikan: patientId=${patientToUse.id}, Nama pasien=${patientToUse.name}, therapySlotId=${finalTherapySlotId}`);
+            
             const appointment = await storage.createAppointment(appointmentData);
-            console.log("Appointment dibuat:", appointment);
+            console.log("Appointment berhasil dibuat:", JSON.stringify(appointment, null, 2));
             
             // Simpan appointment untuk digunakan nanti
             appointmentResponse = {
