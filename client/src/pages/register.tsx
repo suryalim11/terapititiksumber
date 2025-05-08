@@ -845,37 +845,38 @@ export default function RegisterPage() {
       });
       
       if (response.ok) {
+        // Simpan data registrasi minimal yang diperlukan
+        // Tidak perlu menunggu parsing JSON response yang mungkin menyebabkan freezing
         try {
-          const data: RegistrationResponse = await response.json();
-          console.log("Complete response data:", JSON.stringify(data, null, 2));
-          
-          // Siapkan data untuk halaman sukses
-          const simpleData = {
+          // Data minimal dari form values (data yang sudah pasti ada)
+          const minimalData = {
             name: values.name,
             phoneNumber: values.phoneNumber,
-            email: values.email,
+            email: values.email || "",
             birthDate: values.birthDate,
             gender: values.gender,
-            address: values.address,
-            appointment: {
-              date: selectedSlot ? format(new Date(selectedSlot.date), "yyyy-MM-dd") : null,
-              timeSlot: selectedSlot ? selectedSlot.timeSlot : null
-            }
+            address: values.address || "",
+            timestamp: new Date().toISOString(),
+            slotInfo: selectedSlot ? {
+              id: selectedSlot.id,
+              date: selectedSlot.date,
+              timeSlot: selectedSlot.timeSlot
+            } : null
           };
           
-          // Simpan ke localStorage
-          localStorage.setItem('registrationData', JSON.stringify(simpleData));
+          // Simpan data minimal ke localStorage
+          localStorage.removeItem('registrationData'); // Hapus data lama dulu
+          localStorage.setItem('registrationData', JSON.stringify(minimalData));
           localStorage.setItem('registrationStatus', 'success');
-          console.log("Data sederhana berhasil disimpan:", simpleData);
+          localStorage.setItem('registrationTimestamp', new Date().toISOString());
           
-          // Gunakan timeout untuk memastikan navigasi terjadi setelah respons selesai diproses
-          setTimeout(() => {
-            console.log("Navigasi ke halaman sukses...");
-            window.location.href = "/registration-success";
-          }, 500);
+          console.log("Data minimal tersimpan, navigasi akan segera dilakukan");
+          
+          // Force redirect secepatnya
+          window.location.replace("/registration-success");
         } catch (error) {
-          console.error("Error processing response:", error);
-          alert("Pendaftaran berhasil, tetapi terjadi kesalahan saat memproses respons. Silakan cek halaman pendaftaran kembali.");
+          console.error("Error pada redirect:", error);
+          alert("Pendaftaran berhasil! Silakan reload halaman atau kembali ke menu utama.");
         }
       } else {
         try {
