@@ -134,7 +134,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   // State untuk dialog pendaftaran pasien
   const [isRegisterPatientOpen, setIsRegisterPatientOpen] = useState(false);
   
-  // Data fetching
+  // Data fetching menggunakan pendekatan alternatif yang lebih ringan
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/therapy-slots', slotId, 'patients'],
     queryFn: async () => {
@@ -142,18 +142,45 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       if (process.env.NODE_ENV === 'development') {
         console.log("Fetching patients for therapy slot:", slotId);
       }
+      
       try {
-        // Tambahkan parameter timestamp untuk menghindari caching
-        const timestamp = new Date().getTime();
-        const res = await fetch(`/api/therapy-slots/${slotId}/patients?_t=${timestamp}`);
+        // Pendekatan baru: Dapatkan slot dan dapatkan appointments secara terpisah
+        // Step 1: Dapatkan informasi slot terapi
+        const slotRes = await fetch(`/api/therapy-slots/${slotId}`);
         
-        if (!res.ok) {
-          throw new Error('Failed to fetch patients');
+        if (!slotRes.ok) {
+          throw new Error('Failed to fetch therapy slot');
         }
         
-        const data = await res.json();
-        console.log("Data pasien untuk slot:", data);
-        return data;
+        const slotData = await slotRes.json();
+        
+        // Step 2: Ambil semua appointments untuk hari ini
+        const timestamp = new Date().getTime();
+        const dateStr = slotData.date.split(' ')[0]; // Ambil tanggal saja dari format "YYYY-MM-DD HH:MM:SS"
+        const appointmentsRes = await fetch(`/api/appointments/date/${dateStr}?_t=${timestamp}`);
+        
+        if (!appointmentsRes.ok) {
+          throw new Error('Failed to fetch appointments');
+        }
+        
+        const appointmentsData = await appointmentsRes.json();
+        
+        // Step 3: Filter appointments yang sesuai dengan slot ini
+        const filteredAppointments = appointmentsData.filter((appointment: any) => 
+          appointment.therapySlotId === slotId
+        );
+        
+        // Step 4: Ambil informasi pasien untuk setiap appointment
+        // Kita sudah memiliki objek pasien di dalam setiap appointment
+        
+        console.log("Data slot:", slotData);
+        console.log("Data appointments untuk slot ini:", filteredAppointments);
+        
+        // Kembalikan dalam format yang sama dengan endpoint asli
+        return {
+          slot: slotData,
+          appointments: filteredAppointments
+        };
       } catch (error) {
         console.error("Error fetching patients:", error);
         throw error;
@@ -163,7 +190,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     refetchOnWindowFocus: true,
     refetchInterval: false, // Matikan auto-refresh otomatis, gunakan refetch manual saja
     staleTime: 0, // Consider data always stale to ensure fresh content
-    retry: 1 // Hanya coba ulang 1 kali jika gagal
+    retry: 1, // Hanya coba ulang 1 kali jika gagal
+    timeout: 10000 // Tambahkan timeout 10 detik untuk mencegah loading tak terbatas
   });
   
   // Efek untuk memastikan data di-refresh HANYA saat dialog pertama kali dibuka atau slotId berubah
@@ -552,12 +580,38 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     }
   }
   
-  // Prepare data
+  // Prepare data with debugging dan transformasi data (jika diperlukan)
   const activeAppointments = data?.appointments ? filterActiveAppointments(data.appointments) : [];
   
+  // Pastikan setiap appointment memiliki objek patient yang lengkap
+  const processedAppointments = activeAppointments.map((appointment: any) => {
+    // Jika appointment sudah memiliki patient object, gunakan itu
+    if (appointment.patient && appointment.patient.id) {
+      return appointment;
+    }
+    
+    // Jika tidak ada patient object tetapi ada patientId, buat objek patient
+    if (appointment.patientId) {
+      return {
+        ...appointment,
+        patient: {
+          id: appointment.patientId,
+          name: appointment.patientName || 'Pasien',
+          phoneNumber: appointment.phoneNumber || '-'
+        }
+      };
+    }
+    
+    // Default fallback jika data tidak lengkap
+    return appointment;
+  });
+  
   // Debug logging in development
-  if (process.env.NODE_ENV === 'development' && data?.appointments?.length > 0) {
-    console.log("Debug - Appointments data:", data.appointments.map((a: any) => `${a.id}: ${a.status}`));
+  if (process.env.NODE_ENV === 'development') {
+    if (data?.appointments?.length > 0) {
+      console.log("Debug - Appointments data:", data.appointments.map((a: any) => `${a.id}: ${a.status}`));
+    }
+    console.log("Debug - Processed appointments:", processedAppointments);
   }
   
   // Early return
@@ -640,13 +694,13 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                     </Button>
                   )}
                 </div>
-                {!activeAppointments.length ? (
+                {!processedAppointments.length ? (
                   <p className="text-center py-4 text-sm text-muted-foreground border rounded">
                     Belum ada pasien aktif
                   </p>
                 ) : (
                   <div className="border rounded-md divide-y">
-                    {activeAppointments.map((appointment: any) => (
+                    {processedAppointments.map((appointment: any) => (
                       <div 
                         key={appointment.id} 
                         className="p-3 text-sm hover:bg-muted/50 transition-colors cursor-pointer"
