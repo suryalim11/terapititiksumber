@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, CalendarIcon, ShoppingCart, X, Ban, CheckCircle, ChevronDown, User, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -140,6 +142,8 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const [error, setError] = useState<Error | null>(null);
   const [slotData, setSlotData] = useState<any>(null);
   const [appointmentData, setAppointmentData] = useState<any[]>([]);
+  // Toggle untuk menampilkan pasien dari slot lain dengan waktu yang sama
+  const [showAllSameTimeSlots, setShowAllSameTimeSlots] = useState(true);
   
   // Fungsi untuk melakukan fetch dengan timeout dan retry yang lebih robust
   const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs: number = 8000, retryCount: number = 2): Promise<Response> => {
@@ -646,6 +650,11 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   // Versi simpel ini akan diganti dengan yang memiliki parameter event
   function dummyNavigate() {}
   
+  // Fungsi untuk toggle view mode
+  const toggleViewMode = (checked: boolean) => {
+    setShowAllSameTimeSlots(checked);
+  };
+  
   function navigateToPatientDetail(patient: any) {
     if (!patient || !patient.id) {
       toast({
@@ -1102,8 +1111,16 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       return [];
     }
     
+    // 0. Filter berdasarkan mode tampilan (universal atau slot saat ini saja)
+    let filteredAppointments = appointmentData;
+    
+    // Jika mode tampilan TIDAK universal, filter hanya dari slot saat ini
+    if (!showAllSameTimeSlots) {
+      filteredAppointments = appointmentData.filter(app => !app.fromOtherSlot);
+    }
+    
     // 1. Filter hanya appointment aktif
-    const activeAppointments = appointmentData.filter(app => app && isActiveStatus(app.status));
+    const activeAppointments = filteredAppointments.filter(app => app && isActiveStatus(app.status));
     console.log("Active appointment count:", activeAppointments.length);
     
     // 2. Urutkan berdasarkan status dan nama pasien (jika tersedia)
@@ -1122,7 +1139,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
     });
     
     return sortedAppointments;
-  }, [appointmentData]);
+  }, [appointmentData, showAllSameTimeSlots]);
   
   // Debug logging in development - versi sederhana
   useEffect(() => {
@@ -1393,24 +1410,38 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                       </p>
                     )}
                   </div>
-                  {/* Tombol untuk mendaftarkan pasien baru */}
-                  {slotData && slotData.isActive && 
-                   slotData.currentCount < slotData.maxQuota && (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="h-8 px-2 text-xs bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
-                      onClick={() => {
-                        // Simpan ID slot ke sessionStorage
-                        sessionStorage.setItem('selectedSlotId', String(slotId));
-                        // Redirect ke halaman pendaftaran dengan parameter walk-in dan slotId
-                        navigate(`/register?walkin=true&slotId=${slotId}`);
-                      }}
-                    >
-                      <User className="h-3 w-3 mr-1" />
-                      Daftarkan Pasien
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {/* Toggle switch untuk tampilan universal */}
+                    <div className="flex items-center">
+                      <Switch
+                        id="universal-view"
+                        checked={showAllSameTimeSlots}
+                        onCheckedChange={toggleViewMode}
+                        className="scale-75 data-[state=checked]:bg-amber-500"
+                      />
+                      <Label htmlFor="universal-view" className="text-xs ml-1">
+                        {showAllSameTimeSlots ? "Tampilan Universal" : "Slot Ini Saja"}
+                      </Label>
+                    </div>
+                    {/* Tombol untuk mendaftarkan pasien baru */}
+                    {slotData && slotData.isActive && 
+                    slotData.currentCount < slotData.maxQuota && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="h-8 px-2 text-xs bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
+                        onClick={() => {
+                          // Simpan ID slot ke sessionStorage
+                          sessionStorage.setItem('selectedSlotId', String(slotId));
+                          // Redirect ke halaman pendaftaran dengan parameter walk-in dan slotId
+                          navigate(`/register?walkin=true&slotId=${slotId}`);
+                        }}
+                      >
+                        <User className="h-3 w-3 mr-1" />
+                        Daftarkan Pasien
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 {!processAppointmentData.length ? (
                   <p className="text-center py-4 text-sm text-muted-foreground border rounded">
