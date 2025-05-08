@@ -142,8 +142,7 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const [error, setError] = useState<Error | null>(null);
   const [slotData, setSlotData] = useState<any>(null);
   const [appointmentData, setAppointmentData] = useState<any[]>([]);
-  // Toggle untuk menampilkan pasien dari slot lain dengan waktu yang sama
-  const [showAllSameTimeSlots, setShowAllSameTimeSlots] = useState(true);
+  const [combinedSlotInfo, setCombinedSlotInfo] = useState<{ids: number[], totalPatients: number, totalQuota: number} | null>(null);
   
   // Fungsi untuk melakukan fetch dengan timeout dan retry yang lebih robust
   const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs: number = 8000, retryCount: number = 2): Promise<Response> => {
@@ -441,6 +440,24 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
   const hasRefreshedRef = useRef(false);
   const dialogOpenedTimeRef = useRef<number | null>(null);
   
+  // Ambil informasi slot gabungan dari localStorage
+  useEffect(() => {
+    if (isOpen && slotId) {
+      try {
+        const storedCombinedInfo = localStorage.getItem('combinedSlotsInfo');
+        if (storedCombinedInfo) {
+          const combinedSlotsData = JSON.parse(storedCombinedInfo);
+          if (combinedSlotsData && combinedSlotsData[slotId]) {
+            setCombinedSlotInfo(combinedSlotsData[slotId]);
+            console.log("Loaded combined slot info:", combinedSlotsData[slotId]);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading combined slots info:", error);
+      }
+    }
+  }, [isOpen, slotId]);
+  
   // Logging additional debug info
   useEffect(() => {
     console.log("Current dialog state:", { 
@@ -449,9 +466,10 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
       hasSlotData: !!slotData, 
       appointmentCount: appointmentData?.length || 0,
       isLoading,
-      hasError: !!error
+      hasError: !!error,
+      combinedInfo: combinedSlotInfo
     });
-  }, [isOpen, slotId, slotData, appointmentData, isLoading, error]);
+  }, [isOpen, slotId, slotData, appointmentData, isLoading, error, combinedSlotInfo]);
   
   // Effect untuk menangani loading data pada saat dialog dibuka dengan pendekatan state-based
   useEffect(() => {
@@ -1397,32 +1415,18 @@ export function SlotPatientsDialog({ slotId, isOpen, onClose }: SlotPatientsDial
                 <div className="flex justify-between items-center mb-2">
                   <div>
                     <h3 className="text-sm font-medium flex items-center gap-2">
-                      Daftar Pasien Aktif
-                      {processAppointmentData.some(app => app.fromOtherSlot) && (
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                          Tampilan Universal
-                        </Badge>
-                      )}
+                      Daftar Pasien
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                        Tampilan Gabungan
+                      </Badge>
                     </h3>
-                    {processAppointmentData.some(app => app.fromOtherSlot) && (
-                      <p className="text-xs text-amber-600 mt-1">
-                        * Menampilkan semua pasien pada jam yang sama ({slotData?.timeSlot})
+                    {combinedSlotInfo && combinedSlotInfo.ids.length > 1 && (
+                      <p className="text-xs text-green-600 mt-1">
+                        * Menampilkan semua pasien dari {combinedSlotInfo.ids.length} slot pada jam yang sama ({slotData?.timeSlot})
                       </p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Toggle switch untuk tampilan universal */}
-                    <div className="flex items-center">
-                      <Switch
-                        id="universal-view"
-                        checked={showAllSameTimeSlots}
-                        onCheckedChange={toggleViewMode}
-                        className="scale-75 data-[state=checked]:bg-amber-500"
-                      />
-                      <Label htmlFor="universal-view" className="text-xs ml-1">
-                        {showAllSameTimeSlots ? "Tampilan Universal" : "Slot Ini Saja"}
-                      </Label>
-                    </div>
                     {/* Tombol untuk mendaftarkan pasien baru */}
                     {slotData && slotData.isActive && 
                     slotData.currentCount < slotData.maxQuota && (

@@ -219,7 +219,7 @@ export default function Dashboard() {
         });
         console.log(`After ID deduplication: ${filteredSlots.length} slots remaining`);
         
-        // Deduplikasi berdasarkan tanggal+waktu, tetapi mempertahankan yang memiliki pasien
+        // PERUBAHAN: Gabungkan slot dengan waktu yang sama dan akumulasikan jumlah pasien
         const dateTimeMap = new Map<string, TherapySlot[]>();
         
         // Pertama, kelompokkan slot berdasarkan kombinasi tanggal+waktu
@@ -237,29 +237,51 @@ export default function Dashboard() {
           }
         });
         
-        // Kemudian, untuk setiap kelompok dengan > 1 slot, pilih yang terbaik
+        // Untuk setiap kelompok dengan waktu yang sama, gabungkan menjadi satu slot dengan jumlah pasien terakumulasi
         const uniqueSlots: TherapySlot[] = [];
+        const combinedSlotsInfo: Record<string, {ids: number[], totalPatients: number, totalQuota: number}> = {};
         
         dateTimeMap.forEach((slots: TherapySlot[], key: string) => {
+          // Jika hanya 1 slot untuk kombinasi ini, gunakan langsung
           if (slots.length === 1) {
-            // Jika hanya 1 slot untuk kombinasi ini, gunakan langsung
             uniqueSlots.push(slots[0]);
           } else {
-            // Jika ada beberapa slot untuk kombinasi yang sama, pilih yang memiliki paling banyak pasien
-            // Ini mencegah kita kehilangan data pasien yang sudah terdaftar di slot tersebut
-            slots.sort((a: TherapySlot, b: TherapySlot) => {
-              // Prioritaskan slot dengan pasien lebih banyak
-              if (a.currentCount !== b.currentCount) {
-                return b.currentCount - a.currentCount;
-              }
-              // Jika jumlah pasien sama, pilih ID yang lebih besar (biasanya lebih baru)
-              return b.id - a.id;
+            // Gabungkan informasi dari semua slot dengan waktu yang sama
+            // Pilih slot dengan ID terbesar sebagai representasi utama
+            slots.sort((a: TherapySlot, b: TherapySlot) => b.id - a.id);
+            const primarySlot = slots[0];
+            
+            // Hitung total pasien dan kuota dari semua slot dengan waktu yang sama
+            let totalPatients = 0;
+            let totalQuota = 0;
+            const slotIds: number[] = [];
+            
+            slots.forEach(slot => {
+              totalPatients += slot.currentCount;
+              totalQuota += slot.maxQuota;
+              slotIds.push(slot.id);
             });
             
-            // Ambil yang terbaik (dengan pasien terbanyak atau ID terbaru)
-            uniqueSlots.push(slots[0]);
+            // Catat informasi gabungan slot untuk digunakan di dialog pasien
+            combinedSlotsInfo[primarySlot.id] = {
+              ids: slotIds,
+              totalPatients,
+              totalQuota
+            };
+            
+            // Buat slot gabungan dengan informasi terakumulasi
+            const combinedSlot: TherapySlot = {
+              ...primarySlot,
+              currentCount: totalPatients,
+              maxQuota: totalQuota
+            };
+            
+            uniqueSlots.push(combinedSlot);
           }
         });
+        
+        // Simpan informasi slot gabungan ke localStorage untuk diakses di komponen dialog
+        localStorage.setItem('combinedSlotsInfo', JSON.stringify(combinedSlotsInfo));
         
         console.log(`After date+time deduplication: ${uniqueSlots.length} slots remaining`);
         
