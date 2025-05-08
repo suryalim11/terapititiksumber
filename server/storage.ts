@@ -150,6 +150,7 @@ export interface IStorage {
   
   // Therapy Slots
   getTherapySlot(id: number): Promise<TherapySlot | undefined>;
+  getTherapySlotByTimeSlotKey(timeSlotKey: string): Promise<TherapySlot | undefined>;
   getTherapySlotsByDate(date: Date): Promise<TherapySlot[]>;
   getAllTherapySlots(): Promise<TherapySlot[]>;
   getActiveTherapySlots(): Promise<TherapySlot[]>;

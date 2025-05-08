@@ -2450,36 +2450,57 @@ export class DatabaseStorage implements IStorage {
         // Perbarui globalQuota dan currentCount untuk semua slot dengan timeSlotKey yang sama
         console.log(`Incrementing globalQuota and currentCount for timeSlotKey: ${currentSlot.timeSlotKey}`);
         
-        // 1. Dapatkan nilai global quota saat ini dari database
-        const quotaResult = await db.execute(sql`
-          SELECT SUM(current_count) as total_count
-          FROM therapy_slots
-          WHERE time_slot_key = ${currentSlot.timeSlotKey}
-        `);
-        
-        const currentGlobalQuota = parseInt(quotaResult.rows[0]?.total_count || '0');
-        const newGlobalQuota = currentGlobalQuota + 1;
-        
-        // 2. Update global_quota untuk semua slot dengan timeSlotKey yang sama
-        await db.execute(sql`
-          UPDATE therapy_slots
-          SET global_quota = ${newGlobalQuota}
-          WHERE time_slot_key = ${currentSlot.timeSlotKey}
-        `);
-        
-        // 3. Update currentCount hanya untuk slot yang sedang diproses
-        const result = await db
+        // 1. Update currentCount hanya untuk slot yang sedang diproses
+        await db
           .update(schema.therapySlots)
           .set({ 
             currentCount: actualCount + 1
           })
-          .where(eq(schema.therapySlots.id, id))
-          .returning();
+          .where(eq(schema.therapySlots.id, id));
         
-        return {
-          ...result[0],
-          globalQuota: newGlobalQuota
-        };
+        // 2. Dapatkan semua slot dengan timeSlotKey yang sama
+        const allRelatedSlots = await db.query.therapySlots.findMany({
+          where: eq(schema.therapySlots.timeSlotKey, currentSlot.timeSlotKey)
+        });
+        
+        // 3. Hitung total appointment aktif untuk semua slot dengan timeSlotKey yang sama
+        let totalActiveAppointments = 0;
+        const allSlotIds = allRelatedSlots.map(s => s.id);
+        
+        // Definisikan status yang dianggap aktif
+        const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+        
+        // Query untuk mengambil semua appointment aktif untuk semua slot
+        let allActiveApps = 0;
+        for (const slotId of allSlotIds) {
+          const appointments = await db.query.appointments.findMany({
+            where: eq(schema.appointments.therapySlotId, slotId)
+          });
+          
+          // Filter hanya appointment aktif
+          const activeAppointments = appointments.filter(app => 
+            !['Cancelled', 'Completed'].includes(app.status) && 
+            activeStatuses.includes(app.status)
+          );
+          
+          allActiveApps += activeAppointments.length;
+        }
+        
+        // Tambahkan 1 untuk appointment baru yang kita tambahkan saat ini
+        totalActiveAppointments = allActiveApps;
+        
+        console.log(`Found ${totalActiveAppointments} total active appointments across ${allRelatedSlots.length} slots with same timeSlotKey`);
+        
+        // 4. Update global_quota untuk semua slot dengan timeSlotKey yang sama
+        await db.execute(sql`
+          UPDATE therapy_slots
+          SET global_quota = ${totalActiveAppointments}
+          WHERE time_slot_key = ${currentSlot.timeSlotKey}
+        `);
+        
+        // 5. Dapatkan slot yang sudah diperbarui
+        const updatedSlot = await this.getTherapySlot(id);
+        return updatedSlot;
       } else {
         // Jika tidak ada globalQuota, gunakan metode lama
         const result = await db
@@ -2527,36 +2548,56 @@ export class DatabaseStorage implements IStorage {
         // Perbarui globalQuota dan currentCount untuk semua slot dengan timeSlotKey yang sama
         console.log(`Decrementing globalQuota and currentCount for timeSlotKey: ${currentSlot.timeSlotKey}`);
         
-        // 1. Dapatkan nilai global quota saat ini dari database
-        const quotaResult = await db.execute(sql`
-          SELECT SUM(current_count) as total_count
-          FROM therapy_slots
-          WHERE time_slot_key = ${currentSlot.timeSlotKey}
-        `);
-        
-        const currentGlobalQuota = parseInt(quotaResult.rows[0]?.total_count || '0');
-        const newGlobalQuota = Math.max(0, currentGlobalQuota - 1);
-        
-        // 2. Update global_quota untuk semua slot dengan timeSlotKey yang sama
-        await db.execute(sql`
-          UPDATE therapy_slots
-          SET global_quota = ${newGlobalQuota}
-          WHERE time_slot_key = ${currentSlot.timeSlotKey}
-        `);
-        
-        // 3. Update currentCount hanya untuk slot yang sedang diproses
-        const result = await db
+        // 1. Update currentCount hanya untuk slot yang sedang diproses
+        await db
           .update(schema.therapySlots)
           .set({ 
             currentCount: newCount
           })
-          .where(eq(schema.therapySlots.id, id))
-          .returning();
+          .where(eq(schema.therapySlots.id, id));
         
-        return {
-          ...result[0],
-          globalQuota: newGlobalQuota
-        };
+        // 2. Dapatkan semua slot dengan timeSlotKey yang sama
+        const allRelatedSlots = await db.query.therapySlots.findMany({
+          where: eq(schema.therapySlots.timeSlotKey, currentSlot.timeSlotKey)
+        });
+        
+        // 3. Hitung total appointment aktif untuk semua slot dengan timeSlotKey yang sama
+        let totalActiveAppointments = 0;
+        const allSlotIds = allRelatedSlots.map(s => s.id);
+        
+        // Definisikan status yang dianggap aktif
+        const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+        
+        // Query untuk mengambil semua appointment aktif untuk semua slot
+        let allActiveApps = 0;
+        for (const slotId of allSlotIds) {
+          const appointments = await db.query.appointments.findMany({
+            where: eq(schema.appointments.therapySlotId, slotId)
+          });
+          
+          // Filter hanya appointment aktif
+          const activeAppointments = appointments.filter(app => 
+            !['Cancelled', 'Completed'].includes(app.status) && 
+            activeStatuses.includes(app.status)
+          );
+          
+          allActiveApps += activeAppointments.length;
+        }
+        
+        totalActiveAppointments = allActiveApps;
+        
+        console.log(`Found ${totalActiveAppointments} total active appointments across ${allRelatedSlots.length} slots with same timeSlotKey`);
+        
+        // 4. Update global_quota untuk semua slot dengan timeSlotKey yang sama
+        await db.execute(sql`
+          UPDATE therapy_slots
+          SET global_quota = ${totalActiveAppointments}
+          WHERE time_slot_key = ${currentSlot.timeSlotKey}
+        `);
+        
+        // 5. Dapatkan slot yang sudah diperbarui
+        const updatedSlot = await this.getTherapySlot(id);
+        return updatedSlot;
       } else {
         // Jika tidak ada globalQuota, gunakan metode lama
         const result = await db
