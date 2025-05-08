@@ -39,6 +39,7 @@ export default function AppointmentFixPage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Menambahkan ini untuk mengirim cookie/session
         body: JSON.stringify({
           patientName: formData.patientName,
           birthDate: formData.birthDate,

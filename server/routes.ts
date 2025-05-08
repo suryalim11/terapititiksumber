@@ -5313,7 +5313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Endpoint khusus untuk memperbaiki appointment yang tidak terbuat karena timeout
-  app.post("/api/fix/create-missing-appointment", async (req: Request, res: Response) => {
+  app.post("/api/fix/create-missing-appointment", allowPublicOrAuth, async (req: Request, res: Response) => {
     try {
       const { patientName, birthDate, therapySlotId } = req.body;
       
