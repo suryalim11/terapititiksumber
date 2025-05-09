@@ -16,6 +16,30 @@ function formatBirthDate(dateStr: string) {
   }
 }
 
+/**
+ * Fungsi untuk memperbaiki format time slot yang salah (10:00-00:00)
+ * @param timeSlot waktu dalam format "HH:MM-HH:MM"
+ * @returns waktu yang sudah diperbaiki
+ */
+function fixTimeSlotFormat(timeSlot: string): string {
+  if (!timeSlot) return "";
+  
+  // Jika formatnya sudah benar, langsung kembalikan
+  if (!timeSlot.endsWith("-00:00")) return timeSlot;
+  
+  // Ekstrak waktu awal
+  const startTime = timeSlot.split("-")[0];
+  
+  // Cek pola dan perbaiki berdasarkan waktu mulai
+  switch (startTime) {
+    case "10:00": return "10:00-12:00";
+    case "13:00": return "13:00-15:00";
+    case "15:00": return "15:00-17:00";
+    case "17:00": return "17:00-19:00";
+    default: return timeSlot; // Jika tidak ada pola yang cocok, kembalikan aslinya
+  }
+}
+
 export default function RegistrationSuccessPage() {
   const [registrationData, setRegistrationData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -251,24 +275,7 @@ export default function RegistrationSuccessPage() {
                   <div className="flex items-center">
                     <Clock className="mr-2 h-4 w-4 text-blue-700" />
                     <span className="text-blue-900 font-medium">
-                      {(() => {
-                        // Perbaiki tampilan waktu jika formatnya seperti "10:00-00:00"
-                        const timeSlot = registrationData.slotInfo.timeSlot;
-                        
-                        // Cek pola waktu yang salah (10:00-00:00)
-                        if (timeSlot && timeSlot.endsWith("-00:00")) {
-                          // Ambil waktu awal dari time slot
-                          const startTime = timeSlot.split("-")[0];
-                          // Cek apakah ini pola waktu yang bisa diperbaiki, dan tentukan akhirnya
-                          if (startTime === "10:00") return "10:00-12:00";
-                          if (startTime === "13:00") return "13:00-15:00"; 
-                          if (startTime === "15:00") return "15:00-17:00";
-                          if (startTime === "17:00") return "17:00-19:00";
-                        }
-                        
-                        // Jika tidak ada pola yang cocok, tampilkan apa adanya
-                        return timeSlot;
-                      })()}
+                      {fixTimeSlotFormat(registrationData.slotInfo.timeSlot)}
                     </span>
                   </div>
                 </div>
@@ -281,9 +288,7 @@ export default function RegistrationSuccessPage() {
                 <li>Mohon datang 15 menit sebelum jadwal terapi</li>
                 <li>Lakukan konfirmasi kehadiran melalui WhatsApp</li>
                 <li>Bawa kartu identitas untuk verifikasi</li>
-                {registrationData.slotInfo && registrationData.slotInfo.timeSlot && registrationData.slotInfo.timeSlot.endsWith("-00:00") && (
-                  <li className="text-orange-600 font-medium">Mohon perhatikan jam terapi yang sudah diperbaiki pada Detail Jadwal Terapi di atas</li>
-                )}
+                {/* Peringatan tentang format waktu sudah tidak diperlukan karena format sudah otomatis diperbaiki */}
               </ul>
             </div>
           </div>
