@@ -789,7 +789,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       setSelectedAppointment(appointment);
       setIsConfirmCancelOpen(true);
     } catch (error) {
-      console.error("Error handling cancel appointment:", error);
+      // Silent error handling with user feedback
       toast({
         title: "Terjadi kesalahan", 
         description: "Gagal memproses pembatalan. Silakan coba lagi.",
