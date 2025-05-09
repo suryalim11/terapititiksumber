@@ -3422,42 +3422,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Mendapatkan slot terapi untuk hari ini:", today.toISOString());
       
-      // Mendapatkan semua slot terapi untuk hari ini
-      const slots = await storage.getTherapySlotsByDate(today);
+      // OPTIMASI: Gunakan satu query SQL untuk mendapatkan semua slot beserta appointment count-nya
+      const startTime = Date.now();
       
-      console.log(`Ditemukan ${slots.length} slot terapi untuk hari ini`);
-      
-      // Untuk setiap slot, dapatkan jumlah appointment aktif (bukan yang dibatalkan)
-      for (const slot of slots) {
-        // Mendapatkan appointment aktif untuk slot ini (semua appointment)
-        const allAppointments = await storage.getAppointmentsByTherapySlot(slot.id);
+      try {
+        // Format tanggal untuk query SQL
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}%`;
         
-        console.log(`Slot ${slot.id} (${slot.timeSlot}): Total ${allAppointments.length} appointment`);
+        // Gunakan satu SQL query yang mengambil slot terapi untuk hari ini beserta appointment count
+        const query = `
+          SELECT 
+            ts.id, 
+            ts.date, 
+            ts.time_slot AS "timeSlot", 
+            ts.max_quota AS "maxQuota", 
+            ts.current_count AS "currentCount", 
+            ts.is_active AS "isActive",
+            ts.created_at AS "createdAt",
+            ts.time_slot_key AS "timeSlotKey",
+            ts.global_quota AS "globalQuota",
+            COUNT(CASE WHEN a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') THEN 1 END) AS "activeAppointments"
+          FROM 
+            therapy_slots ts
+          LEFT JOIN 
+            appointments a ON ts.id = a.therapy_slot_id
+          WHERE 
+            CAST(ts.date AS TEXT) LIKE $1
+            AND ts.is_active = true
+          GROUP BY 
+            ts.id
+          ORDER BY 
+            ts.time_slot
+        `;
         
-        // Status yang dianggap aktif (tidak selesai atau dibatalkan)
-        const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+        console.log("Executing optimized today-slots query with date:", todayStr);
         
-        // Filter untuk mendapatkan hanya appointment yang aktif
-        const activeAppointments = allAppointments.filter(app => {
-          // Cek status appointment
-          const isActiveStatus = activeStatuses.includes(app.status);
-          console.log(`Appointment ${app.id} (${app.status}): isActiveStatus=${isActiveStatus}`);
-          return isActiveStatus;
-        });
+        const result = await pool.query(query, [todayStr]);
         
-        console.log(`Slot ${slot.id}: ${activeAppointments.length} appointment aktif dari ${allAppointments.length} total`);
+        const endTime = Date.now();
+        console.log(`Today slots query completed in ${endTime - startTime}ms, found ${result.rows.length} slots`);
         
-        // Update currentCount untuk menampilkan jumlah pasien yang benar-benar aktif
-        slot.currentCount = activeAppointments.length;
+        // Transformasi hasil dan konversi tipe data
+        const slots = result.rows.map(slot => ({
+          ...slot,
+          maxQuota: parseInt(slot.maxQuota),
+          currentCount: parseInt(slot.activeAppointments) || 0, // Gunakan hasil COUNT dari SQL
+          isActive: slot.isActive === true || slot.isActive === 't',
+          globalQuota: slot.globalQuota ? parseInt(slot.globalQuota) : null,
+          // Tambahkan persentase pengisian
+          percentage: (parseInt(slot.activeAppointments || '0') * 100 / parseInt(slot.maxQuota))
+        }));
+        
+        console.log(`Returning ${slots.length} slot terapi untuk hari ini`);
+        return res.status(200).json(slots);
+      } catch (error) {
+        console.error("Error in optimized today-slots query:", error);
+        
+        // Fallback ke metode tradisional jika query optimized gagal
+        console.log("Falling back to traditional today-slots method");
+        
+        // Mendapatkan semua slot terapi untuk hari ini menggunakan storage
+        const slots = await storage.getTherapySlotsByDate(today);
+        
+        console.log(`Ditemukan ${slots.length} slot terapi untuk hari ini (fallback method)`);
+        
+        // Untuk setiap slot, dapatkan jumlah appointment aktif (bukan yang dibatalkan)
+        for (const slot of slots) {
+          // Mendapatkan appointment aktif untuk slot ini (semua appointment)
+          const allAppointments = await storage.getAppointmentsByTherapySlot(slot.id);
+          
+          console.log(`Slot ${slot.id} (${slot.timeSlot}): Total ${allAppointments.length} appointment`);
+          
+          // Status yang dianggap aktif (tidak selesai atau dibatalkan)
+          const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
+          
+          // Filter untuk mendapatkan hanya appointment yang aktif
+          const activeAppointments = allAppointments.filter(app => {
+            // Cek status appointment
+            const isActiveStatus = activeStatuses.includes(app.status);
+            return isActiveStatus;
+          });
+          
+          console.log(`Slot ${slot.id}: ${activeAppointments.length} appointment aktif dari ${allAppointments.length} total`);
+          
+          // Update currentCount untuk menampilkan jumlah pasien yang benar-benar aktif
+          slot.currentCount = activeAppointments.length;
+        }
+        
+        // Menambahkan persentase pengisian
+        const slotsWithPercentage = slots.map(slot => ({
+          ...slot,
+          percentage: (slot.currentCount * 100 / slot.maxQuota)
+        }));
+        
+        return res.status(200).json(slotsWithPercentage);
       }
-      
-      // Menambahkan persentase pengisian
-      const slotsWithPercentage = slots.map(slot => ({
-        ...slot,
-        percentage: (slot.currentCount * 100 / slot.maxQuota)
-      }));
-      
-      return res.status(200).json(slotsWithPercentage);
     } catch (error) {
       console.error(`Error getting today's therapy slots: ${error}`);
       return res.status(500).json({ message: "Failed to get today's therapy slots" });
@@ -4104,63 +4166,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       
-      // Gunakan pendekatan sederhana langsung ke database storage
-      let slots;
-      
-      if (dateParam) {
-        try {
-          console.log(`Finding therapy slots for date: ${dateParam}`);
-          
-          // Gunakan SQL native untuk mendapatkan hasil lebih cepat dan menghindari masalah operator
-          const result = await pool.query(`
-            SELECT * FROM therapy_slots 
-            WHERE CAST(date AS TEXT) LIKE $1
-            ORDER BY time_slot ASC
-          `, [`${dateParam}%`]);
-          
-          console.log(`Found ${result.rows.length} slots with SQL query for date ${dateParam}`);
-          
-          slots = result.rows;
-        } catch (error) {
-          console.error(`Error getting slots by date: ${dateParam}`, error);
-          // Fallback - dapatkan semua slot
-          console.log("Fallback: mendapatkan semua slot");
+      // OPTIMASI: Query langsung dengan agregasi appointment yang aktif untuk performa lebih baik
+      const startTime = Date.now();
+      try {
+        // Base query dengan JOIN untuk menghitung appointment aktif dalam satu query
+        let baseQuery = `
+          SELECT 
+            ts.id, 
+            ts.date, 
+            ts.time_slot AS "timeSlot", 
+            ts.max_quota AS "maxQuota", 
+            ts.current_count AS "currentCount", 
+            ts.is_active AS "isActive",
+            ts.created_at AS "createdAt",
+            ts.time_slot_key AS "timeSlotKey",
+            ts.global_quota AS "globalQuota",
+            COUNT(CASE WHEN a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') THEN 1 END) AS "activeAppointments"
+          FROM 
+            therapy_slots ts
+          LEFT JOIN 
+            appointments a ON ts.id = a.therapy_slot_id
+        `;
+        
+        // Tambahkan kondisi WHERE sesuai parameter
+        let whereConditions = [];
+        let queryParams = [];
+        let paramIndex = 1;
+        
+        if (dateParam) {
+          whereConditions.push(`CAST(ts.date AS TEXT) LIKE $${paramIndex}`);
+          queryParams.push(`${dateParam}%`);
+          paramIndex++;
+        }
+        
+        if (activeOnly) {
+          whereConditions.push(`ts.is_active = true`);
+        }
+        
+        // Gabungkan WHERE conditions jika ada
+        if (whereConditions.length > 0) {
+          baseQuery += ` WHERE ${whereConditions.join(' AND ')}`;
+        }
+        
+        // GROUP BY untuk agregasi appointment count
+        baseQuery += `
+          GROUP BY ts.id
+          ORDER BY ts.date, ts.time_slot
+        `;
+        
+        console.log("Executing optimized therapy slots query");
+        
+        const result = await pool.query(baseQuery, queryParams);
+        
+        // Transformasi hasil dan konversi tipe data
+        let slots = result.rows.map(slot => ({
+          ...slot,
+          maxQuota: parseInt(slot.maxQuota),
+          currentCount: parseInt(slot.activeAppointments) || 0, // Gunakan hasil COUNT dari SQL
+          isActive: slot.isActive === true || slot.isActive === 't',
+          globalQuota: slot.globalQuota ? parseInt(slot.globalQuota) : null
+        }));
+        
+        // Filter ketersediaan jika diminta
+        if (availableOnly) {
+          slots = slots.filter(slot => 
+            slot.isActive && (slot.currentCount < slot.maxQuota)
+          );
+        }
+        
+        const endTime = Date.now();
+        console.log(`Optimized query completed in ${endTime - startTime}ms, found ${slots.length} slots`);
+        console.log(`Returning ${slots.length} slots after all filtering`);
+        return res.status(200).json(slots);
+      } catch (error) {
+        console.error("Error in optimized therapy slots query:", error);
+        
+        // Fallback ke metode asli jika query optimized gagal
+        console.log("Falling back to original method");
+        
+        // Gunakan pendekatan sederhana langsung ke database storage
+        let slots;
+        
+        if (dateParam) {
+          try {
+            console.log(`Finding therapy slots for date: ${dateParam}`);
+            
+            // Gunakan SQL native untuk mendapatkan hasil lebih cepat dan menghindari masalah operator
+            const result = await pool.query(`
+              SELECT * FROM therapy_slots 
+              WHERE CAST(date AS TEXT) LIKE $1
+              ORDER BY time_slot ASC
+            `, [`${dateParam}%`]);
+            
+            console.log(`Found ${result.rows.length} slots with SQL query for date ${dateParam}`);
+            
+            slots = result.rows;
+          } catch (error) {
+            console.error(`Error getting slots by date: ${dateParam}`, error);
+            // Fallback - dapatkan semua slot
+            console.log("Fallback: mendapatkan semua slot");
+            slots = await storage.getAllTherapySlots();
+          }
+        } else if (activeOnly) {
+          console.log("Mendapatkan slot aktif saja");
+          slots = await storage.getActiveTherapySlots();
+        } else {
+          console.log("Mendapatkan semua slot");
           slots = await storage.getAllTherapySlots();
         }
-      } else if (activeOnly) {
-        console.log("Mendapatkan slot aktif saja");
-        slots = await storage.getActiveTherapySlots();
-      } else {
-        console.log("Mendapatkan semua slot");
-        slots = await storage.getAllTherapySlots();
-      }
-      
-      // Terapkan filter tambahan pada hasil
-      if (activeOnly && dateParam) {
-        // Filter aktif jika diminta dan belum difilter oleh storage
-        console.log("Menerapkan filter aktif");
-        slots = slots.filter(slot => slot.isActive);
-      }
-      
-      if (availableOnly) {
-        // Filter berdasarkan kuota
-        console.log("Menerapkan filter kuota tersedia");
-        slots = slots.filter(slot => slot.currentCount < slot.maxQuota);
-      }
-      
-      // Urutkan hasil
-      slots.sort((a, b) => {
-        // Sort by date first
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        if (dateA !== dateB) return dateA - dateB;
         
-        // Then by time slot
-        return a.timeSlot.localeCompare(b.timeSlot);
-      });
-      
-      console.log(`Returning ${slots.length} slots after all filtering`);
-      return res.status(200).json(slots);
+        // Terapkan filter tambahan pada hasil
+        if (activeOnly && dateParam) {
+          // Filter aktif jika diminta dan belum difilter oleh storage
+          console.log("Menerapkan filter aktif");
+          slots = slots.filter(slot => slot.isActive);
+        }
+        
+        if (availableOnly) {
+          // Filter berdasarkan kuota
+          console.log("Menerapkan filter kuota tersedia");
+          slots = slots.filter(slot => slot.currentCount < slot.maxQuota);
+        }
+        
+        // Urutkan hasil
+        slots.sort((a, b) => {
+          // Sort by date first
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          if (dateA !== dateB) return dateA - dateB;
+          
+          // Then by time slot
+          return a.timeSlot.localeCompare(b.timeSlot);
+        });
+        
+        console.log(`Returning ${slots.length} slots after all filtering (fallback method)`);
+        return res.status(200).json(slots);
+      }
     } catch (error) {
       console.error("Error ketika mengambil therapy slots:", error);
       return res.status(500).json({ message: "Internal server error" });
