@@ -274,7 +274,21 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
   };
   
   // Gunakan satu fungsi fetch untuk semua data dengan error handling yang baik
+  // Tambahan untuk mencegah duplicate calls
+  const fetchInProgressRef = useRef(false);
+  
   const fetchSlotAndAppointments = async () => {
+    console.log("fetchSlotAndAppointments called with fetchInProgress =", fetchInProgressRef.current);
+    
+    // Skip jika sudah ada fetch yang sedang berjalan
+    if (fetchInProgressRef.current) {
+      console.log("Skipping duplicate fetch request - already in progress");
+      return;
+    }
+    
+    // Set flag bahwa fetch sedang berjalan
+    fetchInProgressRef.current = true;
+    
     // Reset state
     setIsLoading(true);
     setError(null);
@@ -283,86 +297,56 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       console.error("fetchSlotAndAppointments called without slotId");
       setIsLoading(false);
       setError(new Error("Slot ID tidak tersedia"));
+      fetchInProgressRef.current = false;
       return;
     }
     
     // Dapatkan tanggal saat ini untuk fallback
     const todayString = new Date().toISOString().split('T')[0];
+    const fetchStartTime = Date.now();
     
     try {
-      // STRATEGI ALTERNATIF: Coba dapatkan semua slot hari ini dulu (lebih ringan & reliable)
-      // dan cari slot spesifik dari data lengkap daripada hit endpoint spesifik yang sering timeout
-      console.log(`Attempting to get slot ${slotId} data via general slots endpoint first`);
+      console.log(`🔄 Memulai fetch data untuk slot ${slotId} pada ${new Date().toISOString()}`);
+      
+      // STRATEGI LEBIH SEDERHANA & EFISIEN: 
+      // Gunakan satu API call langsung ke endpoint slot detail
+      console.log(`Fetching slot detail untuk ID ${slotId}`);
       
       let slotResult = null;
       let appointmentsData = [];
       
-      // STEP 1: Coba dapatkan data dari allSlots endpoint (lebih reliabel)
+      // STEP 1: Dapatkan data slot langsung dari endpoint spesifik
       try {
-        // Endpoint untuk semua slot hari ini
-        const allSlotsEndpoint = `/api/therapy-slots?date=${todayString}`;
+        const slotEndpoint = `/api/therapy-slots/${slotId}`;
         
-        // Gunakan timeout yang lebih pendek & hanya 1 retry untuk fallback ini
-        const allSlotsResponse = await fetchWithTimeout(
-          allSlotsEndpoint, 
+        // Single fetch dengan timeout yg lebih singkat untuk responsiveness
+        const slotResponse = await fetchWithTimeout(
+          slotEndpoint, 
           {
             headers: {
               'Accept': 'application/json',
-              'Cache-Control': 'no-cache'
+              'Cache-Control': 'no-cache, no-store',
+              'Pragma': 'no-cache'
             }
           },
-          5000,  // 5 detik timeout
+          3000,  // 3 detik timeout
           1      // 1 retry saja
         );
         
-        if (allSlotsResponse.ok) {
-          const allSlotsData = await allSlotsResponse.json();
-          
-          if (Array.isArray(allSlotsData) && allSlotsData.length > 0) {
-            // Cari slot dengan ID yang sama dari data lengkap
-            const foundSlot = allSlotsData.find(slot => Number(slot.id) === Number(slotId));
-            
-            if (foundSlot) {
-              console.log("Successfully found slot data from general endpoint:", foundSlot);
-              slotResult = foundSlot;
-            }
-          }
+        if (slotResponse.ok) {
+          slotResult = await slotResponse.json();
+          console.log("Successfully fetched slot data:", slotResult);
+        } else {
+          console.error("Failed to fetch slot data, status:", slotResponse.status);
         }
-      } catch (fallbackError) {
-        console.log("Fallback approach failed, will try direct fetch:", fallbackError);
-        // Lanjutkan ke direct fetch approach
+      } catch (fetchError) {
+        console.log("Error fetching slot data:", fetchError);
+        // Lanjut ke fallback data
       }
       
-      // STEP 2: Jika fallback gagal, coba direct fetch ke endpoint spesifik
-      if (!slotResult) {
-        console.log("Direct fetch attempt for slot", slotId);
-        const endpoint = `/api/therapy-slots/${slotId}`;
-        
-        try {
-          // Kurangi timeout dan retry untuk menghindari UI freezing terlalu lama
-          const slotResponse = await fetchWithTimeout(
-            endpoint,
-            {
-              headers: {
-                'Accept': 'application/json',
-                'Cache-Control': 'no-cache'
-              },
-            },
-            4000,  // Kurangi timeout menjadi 4 detik
-            0      // Kurangi retry menjadi tidak ada
-          );
-          
-          if (slotResponse.ok) {
-            slotResult = await slotResponse.json();
-            console.log("Direct slot fetch successful:", slotResult);
-          } else {
-            console.error("Failed direct slot fetch, status:", slotResponse.status);
-          }
-        } catch (directFetchError) {
-          console.log("Network error in direct fetch:", directFetchError);
-          // Tetap lanjutkan dengan data minimal
-        }
-      }
+      // Jika langkah 1 gagal, kita sudah tidak perlu coba fetch lagi karena 
+      // kita sudah menggunakan endpoint langsung
+      // Langsung lanjut ke fallback data dari localStorage
       
       // STEP 3: Jika masih tidak ada data slot, gunakan parameter yang diteruskan untuk membuat data minimal
       if (!slotResult) {
@@ -530,11 +514,24 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
     } finally {
       setIsLoading(false);
       hasRefreshedRef.current = true;
+      
+      // Reset fetch progress flag setelah jeda untuk mencegah multiple fetch segera
+      window.setTimeout(() => {
+        fetchInProgressRef.current = false;
+        console.log("Reset fetchInProgressRef after timeout");
+      }, 500);
     }
   };
   
-  // Refetch function - langsung fetch ulang dengan metode baru
+  // Refetch function dengan debounce untuk mencegah multiple fetch
   const refetch = () => {
+    // Skip jika fetch sedang berjalan
+    if (fetchInProgressRef.current) {
+      console.log("Skipping refetch - fetch already in progress");
+      return;
+    }
+    
+    console.log("Manual refetch triggered");
     fetchSlotAndAppointments();
   };
   
@@ -644,9 +641,13 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
   }, [isOpen, slotId, slotData, appointmentData, isLoading, error, combinedSlotInfo]);
   
   // Effect untuk menangani loading data pada saat dialog dibuka dengan pendekatan state-based
+  // Tambahkan flag untuk melacak apakah fetch sedang aktif
+  const isFetchingRef = useRef(false);
+  
   useEffect(() => {
     // Handler fungsi untuk clean up timeout
     let timeoutId: number | null = null;
+    let debounceId: number | null = null;
     
     if (isOpen && slotId) {
       // Reset error saat dialog dibuka
@@ -656,34 +657,49 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       // Catat waktu dialog dibuka untuk analytics
       dialogOpenedTimeRef.current = Date.now();
       
-      // Fungsi kecil untuk fetch data dengan proteksi
+      // Fungsi kecil untuk fetch data dengan proteksi dan debounce
       const loadData = () => {
-        console.log(`Dialog dibuka: loading data untuk slot ID ${slotId}`);
+        console.log(`Dialog dibuka: loading data untuk slot ID ${slotId}, isFetching=${isFetchingRef.current}`);
         
-        // Gunakan flag untuk menghindari multiple fetch
-        if (!hasRefreshedRef.current) {
-          hasRefreshedRef.current = true;
+        // Skip jika fetch sedang berlangsung
+        if (isFetchingRef.current) {
+          console.log("Fetch sedang berlangsung, skip request baru");
+          return;
+        }
+        
+        // Set flag untuk mencegah fetch ganda
+        isFetchingRef.current = true;
+        hasRefreshedRef.current = true;
+        
+        // Clear debounce timeout jika ada
+        if (debounceId) window.clearTimeout(debounceId);
+        
+        // Tambahkan debounce untuk mencegah multiple fetch yang terlalu dekat
+        debounceId = window.setTimeout(() => {
+          console.log("Executing fetch after debounce...");
           
-          // Sedikit delay untuk memastikan dialog sudah terbuka
-          // Hindari setTimeout ganda dengan clear sebelumnya jika ada
-          if (timeoutId) clearTimeout(timeoutId);
-          
-          // Gunakan timeoutId untuk menghindari memory leak
-          const timerId = window.setTimeout(() => {
-            // Pastikan komponen masih ter-mount saat fetch selesai
+          // Gunakan timeout untuk memprioritaskan UI responsiveness
+          timeoutId = window.setTimeout(() => {
+            // Double-check karena React bisa re-render beberapa kali
             if (hasRefreshedRef.current) {
               fetchSlotAndAppointments()
+                .then(() => {
+                  console.log(`Data untuk slot ${slotId} berhasil dimuat`);
+                  
+                  // Delay sedikit sebelum reset flag untuk mencegah rapid fetch
+                  window.setTimeout(() => {
+                    isFetchingRef.current = false;
+                  }, 500);
+                })
                 .catch(err => {
                   console.error("Failed to fetch slot data:", err);
                   setError(new Error("Gagal mengambil data. Silakan coba lagi."));
                   setIsLoading(false);
+                  isFetchingRef.current = false;
                 });
             }
           }, 150);
-          
-          // Simpan ID timeout untuk bisa di-clear jika diperlukan
-          timeoutId = timerId;
-        }
+        }, 250); // Tambahkan debounce 250ms untuk mencegah multiple calls
       };
       
       // Mulai proses load data
@@ -692,9 +708,11 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       // Reset semua state saat dialog ditutup
       hasRefreshedRef.current = false;
       dialogOpenedTimeRef.current = null;
+      isFetchingRef.current = false;
       
-      // Clear timeout jika ada
-      if (timeoutId) clearTimeout(timeoutId);
+      // Clear timeout jika ada untuk mencegah memory leak
+      if (timeoutId) window.clearTimeout(timeoutId);
+      if (debounceId) window.clearTimeout(debounceId);
       
       // Reset state UI untuk memastikan tidak ada data yang muncul sebentar saat dialog dibuka lagi
       setAppointmentData([]);
