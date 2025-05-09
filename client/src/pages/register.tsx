@@ -444,129 +444,163 @@ export default function RegisterPage() {
 
   // Effect untuk men-set therapySlotId dari sessionStorage/URL setelah therapySlots dimuat
   useEffect(() => {
-    if (therapySlots && therapySlots.length > 0) {
-      // Cek parameter dari URL dan sessionStorage
-      const savedSlotId = sessionStorage.getItem("selectedSlotId");
-      const params = new URLSearchParams(window.location.search);
-      const slotIdParam = params.get("slotId");
-      const timeSlotKeyParam = params.get("timeSlotKey");
-      const isWalkInParam = params.get("walkin") === "true";
-      
-      console.log("Parameter yang diterima:", {
-        savedSlotId, 
-        slotIdParam, 
-        timeSlotKeyParam, 
-        isWalkInParam
-      });
-      
-      let matchingSlot = null;
-      
-      // PRIORITAS 1: Cari berdasarkan timeSlotKey jika tersedia
-      if (timeSlotKeyParam) {
-        console.log("Mencari slot berdasarkan timeSlotKey:", timeSlotKeyParam);
-        
-        // Format timeSlotKey: YYYY-MM-DD_HH:MM-HH:MM
-        // Pisahkan bagian tanggal dan waktu
-        const [dateString, timeString] = timeSlotKeyParam.split('_');
-        
-        // Cari slot dengan tanggal dan timeSlot yang sesuai
-        matchingSlot = therapySlots.find((slot: any) => {
-          // Extract tanggal dari slot, dapat berbentuk "2025-05-08" atau "2025-05-08 00:00:00"
-          let slotDateStr;
-          if (typeof slot.date === 'string') {
-            slotDateStr = slot.date.split(' ')[0]; // Ambil bagian YYYY-MM-DD
-          } else {
-            const slotDate = new Date(slot.date);
-            slotDateStr = `${slotDate.getFullYear()}-${String(slotDate.getMonth() + 1).padStart(2, '0')}-${String(slotDate.getDate()).padStart(2, '0')}`;
-          }
-          
-          // Bandingkan tanggal dan timeSlot
-          const isMatch = slotDateStr === dateString && slot.timeSlot === timeString;
-          if (isMatch) {
-            console.log("Menemukan slot berdasarkan timeSlotKey:", slot);
-          }
-          return isMatch;
-        });
-        
-        // Jika tidak ditemukan dengan pendekatan parsing, coba cari langsung di timeSlotKey
-        if (!matchingSlot) {
-          matchingSlot = therapySlots.find((slot: any) => 
-            slot.timeSlotKey === timeSlotKeyParam
-          );
-          
-          if (matchingSlot) {
-            console.log("Menemukan slot langsung dari timeSlotKey dalam data:", matchingSlot);
-          }
-        }
-      }
-      
-      // PRIORITAS 2: Cari berdasarkan slotId jika timeSlotKey tidak ditemukan
-      if (!matchingSlot && (slotIdParam || savedSlotId)) {
-        const slotIdToUse = slotIdParam || savedSlotId;
-        console.log("Mencari slot berdasarkan ID:", slotIdToUse);
-        
-        if (slotIdToUse) {
-          const slotId = parseInt(slotIdToUse);
-          matchingSlot = therapySlots.find((slot: any) => slot.id === slotId);
-          
-          if (matchingSlot) {
-            console.log("Menemukan slot berdasarkan ID:", matchingSlot);
-          }
-        }
-      }
-      
-      // Jika slot ditemukan, gunakan untuk form
-      if (matchingSlot) {
-        console.log("Menggunakan slot terapi:", matchingSlot);
-        
-        // Set nilai pada form
-        form.setValue("therapySlotId", matchingSlot.id);
-        
-        // Jika ada timeSlotKey, tambahkan ke form
-        if (matchingSlot.timeSlotKey) {
-          form.setValue("timeSlotKey", matchingSlot.timeSlotKey);
-        } else if (timeSlotKeyParam) {
-          form.setValue("timeSlotKey", timeSlotKeyParam);
-        }
-        
-        // Simpan data slot untuk tampilan
-        setSelectedSlot({
-          id: matchingSlot.id,
-          date: format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale }),
-          timeSlot: matchingSlot.timeSlot
-        });
-        
-        // Hapus dari sessionStorage agar tidak digunakan lagi
-        sessionStorage.removeItem("selectedSlotId");
-        
-        // Deteksi apakah ini pendaftaran walk-in dari admin
-        if (isWalkInParam) {
-          setIsWalkInMode(true);
-          toast({
-            title: "Mode Pendaftaran Pasien Walk-in",
-            description: `Pendaftaran untuk pasien walk-in pada sesi ${matchingSlot.timeSlot}, ${format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale })}.`,
-            className: "bg-blue-50 border-blue-200 text-blue-800",
-          });
+    const fetchSlotDetails = async (slotId: number) => {
+      try {
+        const response = await fetch(`/api/therapy-slots/${slotId}?includeInactive=true`);
+        if (response.ok) {
+          return await response.json();
         } else {
-          toast({
-            title: "Sesi Terapi Telah Dipilih",
-            description: `Kami telah memilih sesi ${matchingSlot.timeSlot} pada ${format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale })} untuk Anda.`,
-            className: "bg-teal-50 border-teal-200 text-teal-800",
-          });
+          console.error("Gagal mengambil detail slot dari server. Status:", response.status);
+          return null;
         }
-      } else if (slotIdParam || savedSlotId || timeSlotKeyParam) {
-        // Jika slot tidak ditemukan tapi ada parameter, berikan feedback
-        console.error("Slot terapi yang diminta tidak ditemukan:", {
-          timeSlotKey: timeSlotKeyParam,
-          slotId: slotIdParam || savedSlotId
+      } catch (error) {
+        console.error("Error saat mengambil data slot dari server:", error);
+        return null;
+      }
+    };
+    
+    const setUpSelectedSlot = async () => {
+      if (therapySlots && therapySlots.length > 0) {
+        // Cek parameter dari URL dan sessionStorage
+        const savedSlotId = sessionStorage.getItem("selectedSlotId");
+        const params = new URLSearchParams(window.location.search);
+        const slotIdParam = params.get("slotId");
+        const timeSlotKeyParam = params.get("timeSlotKey");
+        const isWalkInParam = params.get("walkin") === "true";
+        
+        console.log("Parameter yang diterima:", {
+          savedSlotId, 
+          slotIdParam, 
+          timeSlotKeyParam, 
+          isWalkInParam
         });
         
-        toast({
-          title: "Slot Tidak Tersedia",
-          description: "Slot terapi yang dipilih tidak tersedia atau telah berubah. Silakan pilih slot terapi lainnya.",
-          variant: "destructive",
-        });
+        let matchingSlot = null;
+        
+        // PRIORITAS 1: Cari berdasarkan timeSlotKey jika tersedia
+        if (timeSlotKeyParam) {
+          console.log("Mencari slot berdasarkan timeSlotKey:", timeSlotKeyParam);
+          
+          // Format timeSlotKey: YYYY-MM-DD_HH:MM-HH:MM
+          // Pisahkan bagian tanggal dan waktu
+          const [dateString, timeString] = timeSlotKeyParam.split('_');
+          
+          // Cari slot dengan tanggal dan timeSlot yang sesuai
+          matchingSlot = therapySlots.find((slot: any) => {
+            // Extract tanggal dari slot, dapat berbentuk "2025-05-08" atau "2025-05-08 00:00:00"
+            let slotDateStr;
+            if (typeof slot.date === 'string') {
+              slotDateStr = slot.date.split(' ')[0]; // Ambil bagian YYYY-MM-DD
+            } else {
+              const slotDate = new Date(slot.date);
+              slotDateStr = `${slotDate.getFullYear()}-${String(slotDate.getMonth() + 1).padStart(2, '0')}-${String(slotDate.getDate()).padStart(2, '0')}`;
+            }
+            
+            // Bandingkan tanggal dan timeSlot
+            const isMatch = slotDateStr === dateString && slot.timeSlot === timeString;
+            if (isMatch) {
+              console.log("Menemukan slot berdasarkan timeSlotKey:", slot);
+            }
+            return isMatch;
+          });
+          
+          // Jika tidak ditemukan dengan pendekatan parsing, coba cari langsung di timeSlotKey
+          if (!matchingSlot) {
+            matchingSlot = therapySlots.find((slot: any) => 
+              slot.timeSlotKey === timeSlotKeyParam
+            );
+            
+            if (matchingSlot) {
+              console.log("Menemukan slot langsung dari timeSlotKey dalam data:", matchingSlot);
+            }
+          }
+        }
+        
+        // PRIORITAS 2: Cari berdasarkan slotId jika timeSlotKey tidak ditemukan
+        if (!matchingSlot && (slotIdParam || savedSlotId)) {
+          const slotIdToUse = slotIdParam || savedSlotId;
+          console.log("Mencari slot berdasarkan ID:", slotIdToUse);
+          
+          if (slotIdToUse) {
+            const slotId = parseInt(slotIdToUse);
+            matchingSlot = therapySlots.find((slot: any) => slot.id === slotId);
+            
+            if (matchingSlot) {
+              console.log("Menemukan slot berdasarkan ID:", matchingSlot);
+            } else {
+              // Jika slot tidak ditemukan tapi ini adalah walk-in (dari admin)
+              if (isWalkInParam) {
+                console.log("Mode walk-in terdeteksi, akan tetap menggunakan slot meskipun tidak tersedia di daftar lokal");
+                // Untuk walk-in, kita akan mencoba mendapatkan slot tersebut meskipun tidak aktif
+                matchingSlot = await fetchSlotDetails(slotId);
+                if (matchingSlot) {
+                  console.log("Slot berhasil diambil dari server (termasuk tidak aktif):", matchingSlot);
+                }
+              }
+            }
+          }
+        }
+      
+        // Jika slot ditemukan, gunakan untuk form
+        if (matchingSlot) {
+          console.log("Menggunakan slot terapi:", matchingSlot);
+          
+          // Set nilai pada form
+          form.setValue("therapySlotId", matchingSlot.id);
+          
+          // Jika ada timeSlotKey, tambahkan ke form
+          if (matchingSlot.timeSlotKey) {
+            form.setValue("timeSlotKey", matchingSlot.timeSlotKey);
+          } else if (timeSlotKeyParam) {
+            form.setValue("timeSlotKey", timeSlotKeyParam);
+          }
+          
+          // Simpan data slot untuk tampilan
+          setSelectedSlot({
+            id: matchingSlot.id,
+            date: format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale }),
+            timeSlot: matchingSlot.timeSlot
+          });
+          
+          // Hapus dari sessionStorage agar tidak digunakan lagi
+          sessionStorage.removeItem("selectedSlotId");
+          
+          // Deteksi apakah ini pendaftaran walk-in dari admin
+          if (isWalkInParam) {
+            setIsWalkInMode(true);
+            toast({
+              title: "Mode Pendaftaran Pasien Walk-in",
+              description: `Pendaftaran untuk pasien walk-in pada sesi ${matchingSlot.timeSlot}, ${format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale })}.`,
+              className: "bg-blue-50 border-blue-200 text-blue-800",
+            });
+          } else {
+            toast({
+              title: "Sesi Terapi Telah Dipilih",
+              description: `Kami telah memilih sesi ${matchingSlot.timeSlot} pada ${format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale })} untuk Anda.`,
+              className: "bg-teal-50 border-teal-200 text-teal-800",
+            });
+          }
+        } else if (slotIdParam || savedSlotId || timeSlotKeyParam) {
+          // Jika slot tidak ditemukan tapi ada parameter, berikan feedback
+          console.error("Slot terapi yang diminta tidak ditemukan:", {
+            timeSlotKey: timeSlotKeyParam,
+            slotId: slotIdParam || savedSlotId
+          });
+          
+          toast({
+            title: "Slot Tidak Tersedia",
+            description: "Slot terapi yang dipilih tidak tersedia atau telah berubah. Silakan pilih slot terapi lainnya.",
+            variant: "destructive",
+          });
+        }
       }
+    };
+    
+    // Panggil fungsi async
+    if (therapySlots && therapySlots.length > 0) {
+      setUpSelectedSlot().catch(error => {
+        console.error("Error dalam menjalankan setUpSelectedSlot:", error);
+      });
     }
   }, [therapySlots, form, toast]);
 
@@ -799,7 +833,7 @@ export default function RegisterPage() {
     }
     
     // Validasi waktu terapi (pastikan tidak registrasi untuk waktu yang sudah lewat)
-    if (values.therapySlotId && therapySlots) {
+    if (values.therapySlotId && therapySlots && !isWalkInMode) {
       // Definisikan tipe untuk slot
       interface TherapySlotData {
         id: number;
@@ -832,6 +866,46 @@ export default function RegisterPage() {
           });
           setIsSubmitting(false);
           return;
+        }
+      }
+    } else if (isWalkInMode && values.therapySlotId) {
+      // Untuk walk-in, kita tetap memberikan informasi jika waktunya sudah lewat, tapi tidak mencegah pendaftaran
+      interface TherapySlotData {
+        id: number;
+        date: string;
+        timeSlot: string;
+        maxQuota: number;
+        currentCount: number;
+        isActive: boolean;
+        timeSlotKey?: string | null;
+        globalQuota?: number;
+        createdAt?: string;
+      }
+      
+      const selectedSlot = therapySlots?.find((slot: TherapySlotData) => slot.id === values.therapySlotId);
+      if (selectedSlot) {
+        const slotDate = new Date(selectedSlot.date);
+        const [startHour, startMinute] = selectedSlot.timeSlot.split('-')[0].split(':').map(Number);
+        
+        // Set jam dan menit dari timeSlot
+        slotDate.setHours(startHour, startMinute, 0);
+        
+        const now = new Date();
+        
+        // Jika waktu terapi sudah lewat (minimal 30 menit dari sekarang)
+        if (slotDate < new Date(now.getTime() + 30 * 60000)) {
+          console.log("Waktu terapi untuk walk-in tidak valid, tetapi tetap diproses:", {
+            now: now.toISOString(),
+            slotDate: slotDate.toISOString(),
+            therapySlotId: values.therapySlotId
+          });
+          
+          // Informasikan admin bahwa waktu terapi sudah lewat tapi pendaftaran tetap diproses
+          toast({
+            title: "Informasi Walk-in",
+            description: "Waktu terapi yang dipilih telah lewat, tetapi pendaftaran walk-in akan tetap diproses.",
+            className: "bg-amber-50 border-amber-200 text-amber-700",
+          });
         }
       }
     }
