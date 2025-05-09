@@ -627,6 +627,12 @@ export default function TherapySlots() {
     setEditDialogOpen(true);
   };
   
+  // Handler untuk menampilkan dialog optimized slot
+  const openOptimizedDialog = (slot: TherapySlot) => {
+    setSelectedSlot(slot);
+    setIsSlotDialogOpen(true);
+  };
+  
   // Mutation untuk edit slot terapi - dioptimalkan untuk kecepatan
   const editSlotMutation = useMutation({
     mutationFn: async (values: TherapySlotFormValues & { id: number }) => {
@@ -2365,6 +2371,16 @@ export default function TherapySlots() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Dialog optimized untuk melihat detail slot dan pasien */}
+      <OptimizedSlotDialog 
+        slotId={selectedSlot?.id || null}
+        isOpen={isSlotDialogOpen}
+        onClose={() => {
+          setIsSlotDialogOpen(false);
+          setSelectedSlot(null);
+        }}
+      />
     </>
   );
 }
