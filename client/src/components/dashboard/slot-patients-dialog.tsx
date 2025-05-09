@@ -812,7 +812,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         setIsConfirmCancelOpen(false);
       }
     } catch (error) {
-      console.error("Error confirming appointment cancellation:", error);
+      // Silent error handling dengan feedback UI
       toast({
         title: "Terjadi kesalahan",
         description: "Gagal membatalkan janji temu. Silakan coba lagi.",
@@ -849,7 +849,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         description: `Membuka detail pasien: ${patient.name || 'pasien terpilih'}`,
       });
     } catch (error) {
-      console.error("Error navigating to patient detail:", error);
+      // Silent error handling dengan pesan untuk pengguna
       toast({
         title: "Terjadi kesalahan",
         description: "Gagal membuka detail pasien. Silakan coba lagi.",
@@ -950,7 +950,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
           }, 2000); // Delay awal
         })
         .catch(err => {
-          console.error("Error fetching complete patient data:", err);
+          // Silent error handling dengan fallback
           
           // Fallback ke metode lama jika API gagal
           const patientData = {
@@ -983,7 +983,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         });
       
     } catch (error) {
-      console.error("Error navigating to transaction:", error);
+      // Silent error handling
       toast({
         title: "Terjadi kesalahan",
         description: "Gagal membuka form transaksi. Silakan coba lagi.",
@@ -1039,7 +1039,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         description: `WhatsApp untuk ${appointment.patient.name || 'pasien'} telah dibuka`,
       });
     } catch (error) {
-      console.error("Error sending appointment reminder:", error);
+      // Silent error handling dengan pesan untuk pengguna
       toast({
         title: "Terjadi kesalahan",
         description: "Gagal mengirim pengingat. Silakan coba lagi.",
@@ -1084,7 +1084,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         return matchesSlotId || matchesTimeSlot;
       });
     } catch (error) {
-      console.error("Error saat memfilter appointment untuk slot:", error);
+      // Silent error, return empty array for safety
       return [];
     }
   }, [allAppointmentsForDate, slotId, slotData]);
@@ -1094,7 +1094,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
     try {
       return filterActiveAppointments(slotAppointments);
     } catch (error) {
-      console.error("Error saat memfilter appointment aktif:", error);
+      // Silent error handling
       return [];
     }
   }, [slotAppointments]);
@@ -1138,8 +1138,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         }
       };
     } catch (error) {
-      console.error("Error processing appointment data:", error);
-      // Fallback paling aman jika terjadi error saat pemrosesan
+      // Silent error handling dengan fallback yang aman
       return {
         ...appointment,
         patient: { id: null, name: 'Error Data Pasien', phoneNumber: '-' }
@@ -1157,7 +1156,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       // Map data dengan enrichAppointment
       return slotActiveAppointments.map(enrichAppointment).filter(Boolean);
     } catch (error) {
-      console.error("Error memproses data appointments:", error);
+      // Silent error handling
       return [];
     }
   }, [slotActiveAppointments]);
