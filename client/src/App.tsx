@@ -76,9 +76,12 @@ function PublicApp() {
 
 function App() {
   // Tentukan apakah ini halaman publik berdasarkan URL
+  // Enhanced public page detection logic to handle redirects and query parameters
   const isPublicPage = window.location.pathname.includes('/register') || 
                       window.location.pathname.includes('/daftar') || 
-                      window.location.pathname.includes('/registration-success');
+                      window.location.pathname.includes('/registration-success') ||
+                      // Include registration URLs with query parameters
+                      window.location.search.includes('walkin=true');
   
   return (
     <QueryClientProvider client={queryClient}>
