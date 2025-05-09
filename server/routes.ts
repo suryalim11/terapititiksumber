@@ -3159,84 +3159,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get active packages for dashboard
   app.get("/api/dashboard/active-packages", async (req: Request, res: Response) => {
     try {
-      // Gunakan akses database langsung untuk performa yang lebih baik
-      console.log("Mengambil paket aktif dengan query database langsung...");
+      // Gunakan SQL query langsung untuk performa dan menghindari masalah relasi
+      console.log("Mengambil paket aktif dengan SQL query langsung...");
       
-      // Query: Mendapatkan semua sesi yang aktif dengan join packages dan patients
-      const activeSessions = await db.query.sessions.findMany({
-        where: eq(schema.sessions.status, "Active"),
-        with: {
-          package: true,
-          patient: true
-        }
-      });
+      // Query SQL yang mengambil semua data yang dibutuhkan dalam satu query
+      const query = `
+        SELECT 
+          s.id, 
+          s.patient_id AS "patientId",
+          s.package_id AS "packageId",
+          s.total_sessions AS "totalSessions",
+          s.sessions_used AS "sessionsUsed",
+          s.status,
+          s.start_date AS "startDate",
+          s.last_session_date AS "lastSessionDate",
+          p.id AS "patient_id",
+          p.name AS "patient_name",
+          p.patient_id AS "patient_patientId",
+          pkg.id AS "package_id",
+          pkg.name AS "package_name",
+          pkg.sessions AS "package_sessions"
+        FROM 
+          sessions s
+        JOIN 
+          patients p ON s.patient_id = p.id
+        JOIN 
+          packages pkg ON s.package_id = pkg.id
+        WHERE 
+          s.status = 'Active'
+          AND pkg.sessions > 1
+        ORDER BY
+          s.last_session_date DESC NULLS LAST,
+          s.sessions_used DESC
+      `;
       
-      if (!activeSessions || activeSessions.length === 0) {
+      // Eksekusi query
+      const result = await pool.query(query);
+      
+      if (!result.rows || result.rows.length === 0) {
+        console.log("Tidak ditemukan paket aktif");
         return res.status(200).json([]);
       }
       
-      // Filter untuk multi-session packages saja
-      const multiSessionSessions = activeSessions.filter(session => 
-        session.package && session.package.sessions > 1
-      );
+      console.log(`Ditemukan ${result.rows.length} sesi aktif dengan paket multi-sesi`);
       
-      if (multiSessionSessions.length === 0) {
-        return res.status(200).json([]);
-      }
-      
-      // Buat Map untuk mengelompokkan sesi berdasarkan pasien+paket
+      // Gunakan Map untuk mengelompokkan berdasarkan pasien dan paket
       const uniquePackagesMap = new Map();
       
-      // Kelompokkan sesi berdasarkan pasien dan paket
-      for (const session of multiSessionSessions) {
-        if (!session.patient || !session.package) continue;
+      // Proses setiap baris hasil
+      for (const row of result.rows) {
+        const uniqueKey = `${row.patientId}_${row.packageId}`;
         
-        const uniqueKey = `${session.patientId}_${session.packageId}`;
-        
-        // Jika kombinasi ini sudah ada, simpan yang paling baru digunakan
-        if (uniquePackagesMap.has(uniqueKey)) {
-          const existing = uniquePackagesMap.get(uniqueKey);
-          
-          // Simpan sesi yang digunakan terakhir atau yang lebih banyak sesi terpakai
-          if (
-            !existing.lastSessionDate || 
-            (session.lastSessionDate && new Date(session.lastSessionDate) > new Date(existing.lastSessionDate)) ||
-            (session.lastSessionDate && existing.lastSessionDate && 
-              new Date(session.lastSessionDate).getTime() === new Date(existing.lastSessionDate).getTime() && 
-              session.sessionsUsed > existing.sessionsUsed)
-          ) {
-            uniquePackagesMap.set(uniqueKey, session);
-          }
-        } else {
-          uniquePackagesMap.set(uniqueKey, session);
+        // Jika belum ada di map atau ini yang terbaru, simpan
+        if (!uniquePackagesMap.has(uniqueKey) || 
+            (row.lastSessionDate && 
+             (!uniquePackagesMap.get(uniqueKey).lastSessionDate ||
+              new Date(row.lastSessionDate) > new Date(uniquePackagesMap.get(uniqueKey).lastSessionDate)))) {
+          uniquePackagesMap.set(uniqueKey, row);
         }
       }
       
-      // Dapatkan sesi unik dan format hasilnya
-      const uniqueSessions = Array.from(uniquePackagesMap.values());
-      
-      // Map ke format yang dibutuhkan oleh frontend
-      const activePackages = uniqueSessions.map(session => ({
+      // Konversi ke array dan format output untuk frontend
+      const activePackages = Array.from(uniquePackagesMap.values()).map(session => ({
         id: session.id,
-        patient: session.patient ? {
-          id: session.patient.id,
-          name: session.patient.name,
-          patientId: session.patient.patientId
-        } : null,
-        package: session.package ? {
-          id: session.package.id,
-          name: session.package.name,
-          sessions: session.package.sessions
-        } : null,
+        patient: {
+          id: session.patient_id,
+          name: session.patient_name,
+          patientId: session.patient_patientId
+        },
+        package: {
+          id: session.package_id,
+          name: session.package_name,
+          sessions: session.package_sessions
+        },
         status: session.status,
         startDate: session.startDate,
         lastSessionDate: session.lastSessionDate,
-        sessionsUsed: session.sessionsUsed,
-        totalSessions: session.totalSessions,
-        progress: Math.round((session.sessionsUsed / session.totalSessions) * 100)
+        sessionsUsed: parseInt(session.sessionsUsed),
+        totalSessions: parseInt(session.totalSessions),
+        progress: Math.round((parseInt(session.sessionsUsed) / parseInt(session.totalSessions)) * 100)
       }));
       
-      console.log(`Returning ${activePackages.length} unique multi-session packages from ${activeSessions.length} total active sessions`);
+      console.log(`Returning ${activePackages.length} unique multi-session packages`);
       return res.status(200).json(activePackages);
     } catch (error) {
       console.error("Error getting active packages:", error);
