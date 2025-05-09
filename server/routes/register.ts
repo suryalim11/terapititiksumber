@@ -156,8 +156,7 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         // Update langsung ke database untuk kecepatan
         await db.update(schema.registrationLinks)
           .set({ 
-            currentRegistrations: registrationLink.currentRegistrations + 1,
-            updatedAt: new Date()
+            currentRegistrations: registrationLink.currentRegistrations + 1
           })
           .where(eq(schema.registrationLinks.code, registrationCode));
         
@@ -206,10 +205,17 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       // Lakukan pembaruan jika diperlukan
       if (needsUpdate) {
         try {
-          const updatedPatient = await storage.updatePatient(existingPatient.id, fieldsToUpdate);
-          if (updatedPatient) {
-            console.log(`Data pasien ID ${existingPatient.id} berhasil diperbarui`);
-            patientToUse = updatedPatient;
+          // Update pasien langsung ke database
+          if (Object.keys(fieldsToUpdate).length > 0) {
+            const [updatedPatient] = await db.update(schema.patients)
+              .set(fieldsToUpdate as any) // Menggunakan cast as any untuk menghindari error type
+              .where(eq(schema.patients.id, existingPatient.id))
+              .returning();
+              
+            if (updatedPatient) {
+              console.log(`Data pasien ID ${existingPatient.id} berhasil diperbarui`);
+              patientToUse = updatedPatient;
+            }
           }
         } catch (error) {
           console.error(`Gagal memperbarui data pasien ID ${existingPatient.id}:`, error);
@@ -269,8 +275,7 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         // Tingkatkan jumlah penggunaan slot terapi langsung ke database
         await db.update(schema.therapySlots)
           .set({ 
-            currentCount: therapySlot.currentCount + 1,
-            updatedAt: new Date()
+            currentCount: therapySlot.currentCount + 1
           })
           .where(eq(schema.therapySlots.id, therapySlot.id));
         

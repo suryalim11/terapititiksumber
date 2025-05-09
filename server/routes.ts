@@ -566,9 +566,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint optimasi untuk pendaftaran pasien
   app.post("/api/patients", async (req: Request, res: Response) => {
     try {
-      console.log("Menerima permintaan POST /api/patients dengan data:", JSON.stringify(req.body, null, 2));
+      // Import handler optimasi jika belum tersedia
+      const { handlePatientRegistration } = await import("./routes/register");
+      
+      // Gunakan handler optimasi untuk meningkatkan performa
+      return handlePatientRegistration(req, res);
+    } catch (error) {
+      console.error("Error saat menggunakan handler optimasi:", error);
+      
+      // Kembalikan error respons
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat memproses pendaftaran",
+        error: "OPTIMIZATION_HANDLER_ERROR"
+      });
+    }
+  });
+  
+  // Endpoint original sebagai backup dengan nama yang berbeda
+  app.post("/api/patients/legacy", async (req: Request, res: Response) => {
+    try {
+      console.log("Menerima permintaan POST /api/patients/legacy dengan data:", JSON.stringify(req.body, null, 2));
       
       // Validasi body request - jika kosong atau tidak valid, kembalikan error
       if (!req.body || Object.keys(req.body).length === 0) {
