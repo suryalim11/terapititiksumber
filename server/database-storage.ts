@@ -3258,35 +3258,40 @@ export class DatabaseStorage implements IStorage {
           console.error(`[STATUS UPDATE] Error updating session usage for session ${existingAppointment.sessionId}:`, error);
         }
       } 
-      // Jika belum ada sessionId, coba cari dan hubungkan dengan sesi yang tersedia
+      // Jika belum ada sessionId, hanya log dan lanjutkan
       else if (existingAppointment.patientId) {
-        console.log(`[STATUS UPDATE] Appointment ${id} completed but no session connected. Searching for available session...`);
-        try {
-          // Import fungsi connectAppointmentToSession secara dinamis
-          const { connectAppointmentToSession } = await import('./appointment-session-connector');
-          
-          // Coba hubungkan appointment dengan sesi yang tersedia
-          const connected = await connectAppointmentToSession(id, existingAppointment.patientId);
-          
-          if (connected) {
-            console.log(`[STATUS UPDATE] Successfully connected appointment ${id} to an available session`);
+        console.log(`[STATUS UPDATE] Appointment ${id} completed but no session connected. Skipping session connection for performance...`);
+        
+        // Jadwalkan koneksi sesi sebagai tugas background nanti
+        setTimeout(async () => {
+          try {
+            console.log(`[BACKGROUND] Starting delayed session connection for appointment ${id}...`);
+            // Import fungsi connectAppointmentToSession secara dinamis
+            const { connectAppointmentToSession } = await import('./appointment-session-connector');
             
-            // Dapatkan appointment yang sudah diupdate dengan sessionId baru
-            const updatedAppointment = await db.query.appointments.findFirst({
-              where: eq(schema.appointments.id, id)
-            });
+            // Coba hubungkan appointment dengan sesi yang tersedia
+            const connected = await connectAppointmentToSession(id, existingAppointment.patientId);
             
-            if (updatedAppointment && updatedAppointment.sessionId) {
-              // Update penggunaan sesi
-              await this.updateSessionUsage(updatedAppointment.sessionId);
-              console.log(`[STATUS UPDATE] Session ${updatedAppointment.sessionId} usage updated after connection`);
+            if (connected) {
+              console.log(`[BACKGROUND] Successfully connected appointment ${id} to an available session`);
+              
+              // Dapatkan appointment yang sudah diupdate dengan sessionId baru
+              const updatedAppointment = await db.query.appointments.findFirst({
+                where: eq(schema.appointments.id, id)
+              });
+              
+              if (updatedAppointment && updatedAppointment.sessionId) {
+                // Update penggunaan sesi
+                await this.updateSessionUsage(updatedAppointment.sessionId);
+                console.log(`[BACKGROUND] Session ${updatedAppointment.sessionId} usage updated after connection`);
+              }
+            } else {
+              console.log(`[BACKGROUND] No available session found for patient ${existingAppointment.patientId}`);
             }
-          } else {
-            console.log(`[STATUS UPDATE] No available session found for patient ${existingAppointment.patientId}`);
+          } catch (error) {
+            console.error(`[BACKGROUND] Error connecting appointment to session:`, error);
           }
-        } catch (error) {
-          console.error(`[STATUS UPDATE] Error connecting appointment to session:`, error);
-        }
+        }, 100); // Jalankan setelah 100ms
       }
     }
     

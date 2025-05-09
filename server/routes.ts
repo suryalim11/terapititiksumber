@@ -2774,6 +2774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Implementasi sederhana langsung mengakses DB untuk mengatasi masalah timeout
   app.put("/api/appointments/:id/status", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
@@ -2804,37 +2805,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Updating appointment ${id} status to: ${status}`);
       
       // Get appointment untuk mendapatkan therapy slot id jika status cancelled
-      const appointment = await storage.getAppointment(id);
+      const appointment = await db.query.appointments.findFirst({
+        where: eq(schema.appointments.id, id)
+      });
+      
       if (!appointment) {
         return res.status(404).json({ message: "Appointment not found" });
       }
       
-      const updatedAppointment = await storage.updateAppointmentStatus(id, status);
-      
-      if (!updatedAppointment) {
+      // Langsung update status tanpa koneksi atau validasi kompleks
+      const result = await db
+        .update(schema.appointments)
+        .set({ status })
+        .where(eq(schema.appointments.id, id))
+        .returning();
+        
+      if (!result || result.length === 0) {
         return res.status(404).json({ message: "Failed to update appointment" });
       }
       
-      // Jika status menjadi Cancelled, kurangi jumlah current count di therapy slot
-      if (status === 'Cancelled' && appointment.status !== 'Cancelled' && appointment.therapySlotId) {
-        await storage.decrementTherapySlotUsage(appointment.therapySlotId);
-        console.log(`Therapy slot ${appointment.therapySlotId} usage decremented after cancellation`);
-      }
+      const updatedAppointment = result[0];
       
-      // Jika status menjadi Completed, update session usage jika ada sessionId
-      if (status === 'Completed' && appointment.status !== 'Completed' && appointment.sessionId) {
-        // Dapatkan session
-        const session = await storage.getSession(appointment.sessionId);
-        if (session) {
-          // Increment session usage
-          const updatedSession = await storage.updateSessionUsage(appointment.sessionId);
-          console.log(`Session ${appointment.sessionId} usage incremented after appointment completion:`, 
-            updatedSession ? `sessions used: ${updatedSession.sessionsUsed}/${updatedSession.totalSessions}` : 'failed to update');
+      // Jadwalkan proses lanjutan sebagai background task
+      setTimeout(async () => {
+        try {
+          // Jika status menjadi Cancelled, kurangi jumlah current count di therapy slot
+          if (status === 'Cancelled' && appointment.status !== 'Cancelled' && appointment.therapySlotId) {
+            await storage.decrementTherapySlotUsage(appointment.therapySlotId);
+            console.log(`[BACKGROUND] Therapy slot ${appointment.therapySlotId} usage decremented after cancellation`);
+          }
+          
+          // Jika status menjadi Completed, update session usage jika ada sessionId
+          if (status === 'Completed' && appointment.status !== 'Completed') {
+            if (appointment.sessionId) {
+              const session = await storage.getSession(appointment.sessionId);
+              if (session) {
+                const updatedSession = await storage.updateSessionUsage(appointment.sessionId);
+                console.log(`[BACKGROUND] Session ${appointment.sessionId} usage incremented:`, 
+                  updatedSession ? `sessions used: ${updatedSession.sessionsUsed}/${updatedSession.totalSessions}` : 'failed to update');
+              }
+            } else if (appointment.patientId) {
+              console.log(`[BACKGROUND] Trying to connect completed appointment ${id} with available session...`);
+              try {
+                const { connectAppointmentToSession } = await import('./appointment-session-connector');
+                await connectAppointmentToSession(id, appointment.patientId);
+              } catch (err) {
+                console.error(`[BACKGROUND] Error connecting appointment to session:`, err);
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`[BACKGROUND] Error in post-update processing:`, err);
+        }
+      }, 100);
+      
+      // Tambahkan data pasien ke respons jika tersedia
+      let responseAppointment = updatedAppointment;
+      if (updatedAppointment.patientId) {
+        try {
+          const patient = await storage.getPatient(updatedAppointment.patientId);
+          if (patient) {
+            responseAppointment = {
+              ...updatedAppointment,
+              patient
+            };
+          }
+        } catch (err) {
+          console.error(`Error getting patient data:`, err);
         }
       }
       
-      console.log(`Appointment updated successfully:`, updatedAppointment);
-      return res.status(200).json(updatedAppointment);
+      console.log(`Appointment updated successfully:`, responseAppointment);
+      return res.status(200).json(responseAppointment);
     } catch (error) {
       console.error("Error updating appointment status:", error);
       return res.status(500).json({ message: "Internal server error" });
