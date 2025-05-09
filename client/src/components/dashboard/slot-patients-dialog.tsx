@@ -1689,6 +1689,14 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                                 Slot #{appointment.therapySlotId}
                               </Badge>
                             )}
+                            {/* Tampilkan badge WALK-IN jika ditemukan dalam notes */}
+                            {appointment.notes && 
+                             (appointment.notes.toLowerCase().includes('walk-in') || 
+                              appointment.notes.toLowerCase().includes('walkin')) && (
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
+                                WALK-IN
+                              </Badge>
+                            )}
                           </div>
                           <Badge className={getStatusClass(appointment.status)}>
                             {appointment.status || 'Unknown'}

@@ -3613,6 +3613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: appointment.id,
           patientId: appointment.patient_id,
           status: appointment.status,
+          notes: appointment.notes, // Tambahkan notes untuk deteksi walk-in
           patient: patientInfo
         };
       });
