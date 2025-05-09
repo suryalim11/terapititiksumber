@@ -3204,6 +3204,13 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
     
+    // Validasi status - pastikan sama dengan validasi di routes.ts
+    const validStatuses = ['Active', 'Completed', 'Cancelled', 'Scheduled'];
+    if (!validStatuses.includes(status)) {
+      console.error(`Status tidak valid: ${status}. Status harus salah satu dari: ${validStatuses.join(', ')}`);
+      return undefined;
+    }
+    
     // Definisikan status yang dihitung sebagai "aktif" untuk keperluan perhitungan kuota
     const isActiveStatus = (s: string) => 
       s === 'Active' || s === 'Booked' || s === 'Confirmed' || s === 'Scheduled';
