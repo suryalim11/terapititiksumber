@@ -1,7 +1,7 @@
 import { Request, Response, Router } from 'express';
 import { db } from '../db';
 import * as schema from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 // Create router
 const router = Router();
@@ -72,7 +72,7 @@ router.put('/:id/status', async (req: Request, res: Response) => {
           await db
             .update(schema.therapySlots)
             .set({ 
-              currentCount: db.raw(`GREATEST(current_count - 1, 0)`) 
+              currentCount: sql`GREATEST(current_count - 1, 0)` 
             })
             .where(eq(schema.therapySlots.id, appointment.therapySlotId));
             
@@ -118,9 +118,10 @@ router.put('/:id/status', async (req: Request, res: Response) => {
         });
         
         if (patient) {
+          // Create a response-friendly object instead of trying to add to the DB entity
           responseAppointment = {
             ...updatedAppointment,
-            patient
+            patientData: patient  // Use patientData instead of patient to avoid type issues
           };
         }
       } catch (error) {

@@ -35,6 +35,7 @@ import { fixDarukniSession } from "./fix-darukni-session";
 import { fixExistingPackages } from "./fix-existing-packages";
 import { mergeAgusIsrofinDirectly } from "./merge-agus-script";
 import adminRoutes from "./routes/admin";
+import appointmentStatusRoutes from "./routes/appointment-status";
 import { addFixPatientDuplicatesEndpoint } from "./fix-patient-duplicates";
 import crypto from "crypto";
 import { setupAuth } from "./auth";
@@ -150,6 +151,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Admin routes
   app.use("/api/admin", adminRoutes);
+  
+  // Appointment status optimized routes
+  app.use("/api/appointments", appointmentStatusRoutes);
   
   // Change password endpoint
   app.post("/api/change-password", async (req: Request, res: Response) => {
