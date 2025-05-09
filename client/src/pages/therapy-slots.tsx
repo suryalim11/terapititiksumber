@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { CreateBatchDialog } from "@/components/therapy-slots/create-batch-dialog";
 import { SimplifiedSlotDialog } from "@/components/dashboard/simplified-slot-dialog";
+import { OptimizedSlotDialog } from "@/components/dashboard/optimized-slot-dialog";
 import {
   Card,
   CardContent,
@@ -140,6 +141,7 @@ export default function TherapySlots() {
     setDate(currentDate);
   }, []);
   const [selectedSlot, setSelectedSlot] = useState<TherapySlot | null>(null);
+  const [isSlotDialogOpen, setIsSlotDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deletingSlotId, setDeletingSlotId] = useState<number | null>(null);
