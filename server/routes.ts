@@ -3186,12 +3186,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         JOIN 
           packages pkg ON s.package_id = pkg.id
         WHERE 
-          s.status = 'Active'
+          LOWER(s.status) = 'active'
           AND pkg.sessions > 1
         ORDER BY
           s.last_session_date DESC NULLS LAST,
           s.sessions_used DESC
       `;
+      
+      console.log("Executing query for active packages...");
       
       // Eksekusi query
       const result = await pool.query(query);
