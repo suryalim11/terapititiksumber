@@ -275,11 +275,11 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
   const fetchInProgressRef = useRef(false);
   
   const fetchSlotAndAppointments = async () => {
-    console.log("fetchSlotAndAppointments called with fetchInProgress =", fetchInProgressRef.current);
+
     
     // Skip jika sudah ada fetch yang sedang berjalan
     if (fetchInProgressRef.current) {
-      console.log("Skipping duplicate fetch request - already in progress");
+
       return;
     }
     
@@ -307,8 +307,6 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       
       // STRATEGI LEBIH SEDERHANA & EFISIEN: 
       // Gunakan satu API call langsung ke endpoint slot detail
-      console.log(`Fetching slot detail untuk ID ${slotId}`);
-      
       let slotResult = null;
       let appointmentsData = [];
       
@@ -332,12 +330,10 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         
         if (slotResponse.ok) {
           slotResult = await slotResponse.json();
-          console.log("Successfully fetched slot data:", slotResult);
         } else {
           console.error("Failed to fetch slot data, status:", slotResponse.status);
         }
       } catch (fetchError) {
-        console.log("Error fetching slot data:", fetchError);
         // Lanjut ke fallback data
       }
       
@@ -347,8 +343,6 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       
       // STEP 3: Jika masih tidak ada data slot, gunakan parameter yang diteruskan untuk membuat data minimal
       if (!slotResult) {
-        console.log("Creating minimal slot data fallback using passed parameters");
-        
         // Gunakan tanggal dan waktu slot yang diteruskan sebagai props jika tersedia
         const fallbackDate = slotDate || todayString;
         const fallbackTimeSlot = slotTimeSlot || "Data tidak tersedia";
@@ -372,7 +366,6 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
               if (matchingSlot) {
                 actualQuota = matchingSlot.maxQuota || 0;
                 actualCurrentCount = matchingSlot.currentCount || 0;
-                console.log(`Menemukan data slot dari cache: kuota=${actualQuota}, terisi=${actualCurrentCount}`);
               }
             }
           }
@@ -391,7 +384,6 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
             if (combinedData && combinedData[slotId]) {
               quotaFromCombined = combinedData[slotId].totalQuota || 0;
               patientsFromCombined = combinedData[slotId].totalPatients || 0;
-              console.log(`Data kuota dari combinedSlotsInfo (fallback): ${quotaFromCombined}, terisi: ${patientsFromCombined}`);
             }
           }
         } catch (error) {
@@ -415,7 +407,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
           isActive: true
         };
         
-        console.log(`Using fallback data - Date: ${fallbackDate}, TimeSlot: ${fallbackTimeSlot}, Quota: ${slotResult.maxQuota}, Current: ${slotResult.currentCount}`);
+
         
         // Set warning tapi tetap tampilkan UI
         setError(new Error("Data slot tidak dapat diambil dari server. Menggunakan informasi dari parameter dan cache."));
@@ -437,7 +429,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
           slotDate = todayString; // Fallback ke hari ini
         }
         
-        console.log("Fetching appointments for date", slotDate);
+
         
         try {
           // Kurangi timeout dan retry untuk menghindari UI freezing
@@ -473,15 +465,8 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                       Number(app.therapySlotId) !== Number(slotId);
               });
               
-              // Debug info untuk melihat potensi duplikasi
-              console.log(`Direct matches (by slotId): ${directMatches.length}`);
-              console.log(`Time matches (by timeSlot): ${timeMatches.length}`);
-              
               // Gabungkan kedua hasil
               appointmentsData = [...directMatches, ...timeMatches];
-              
-              // Debug untuk melihat hasil akhir
-              console.log(`Total appointments: ${appointmentsData.length}`);
               
               // Tambahkan flag untuk membedakan appointment dari slot lain
               appointmentsData = appointmentsData.map(app => ({
@@ -504,7 +489,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       
       // Clear error jika sudah berhasil
       setError(null);
-      console.log("Data loading complete successfully");
+
     } catch (err) {
       console.error("Unhandled error in fetchSlotAndAppointments:", err);
       setError(err instanceof Error ? err : new Error("Terjadi kesalahan saat mengambil data"));
@@ -515,7 +500,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       // Reset fetch progress flag setelah jeda untuk mencegah multiple fetch segera
       window.setTimeout(() => {
         fetchInProgressRef.current = false;
-        console.log("Reset fetchInProgressRef after timeout");
+
       }, 500);
     }
   };
