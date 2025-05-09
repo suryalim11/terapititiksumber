@@ -4606,35 +4606,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       console.log(`Attempting to delete therapy slot ${id}`);
       
-      const slot = await storage.getTherapySlot(id);
-      if (!slot) {
+      // Cek slot yang ingin dihapus langsung di database
+      const slot = await db
+        .select()
+        .from(schema.therapySlots)
+        .where(eq(schema.therapySlots.id, id))
+        .limit(1);
+      
+      if (!slot || slot.length === 0) {
         return res.status(404).json({ message: "Therapy slot not found" });
       }
       
       // Periksa apakah slot memiliki pasien yang terdaftar
-      if (slot.currentCount > 0) {
+      if (slot[0].currentCount > 0) {
         return res.status(400).json({ 
           message: "Cannot delete therapy slot with registered patients",
           success: false
         });
       }
       
-      const deleted = await storage.deleteTherapySlot(id);
+      // Hapus slot langsung dari database
+      const result = await db
+        .delete(schema.therapySlots)
+        .where(eq(schema.therapySlots.id, id))
+        .returning();
       
-      if (deleted) {
-        return res.status(200).json({ 
-          success: true, 
-          message: "Therapy slot deleted successfully" 
-        });
-      } else {
-        return res.status(500).json({ 
-          success: false, 
-          message: "Failed to delete therapy slot" 
-        });
-      }
+      console.log(`Delete result:`, result);
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "Therapy slot deleted successfully",
+        deletedSlot: slot[0]
+      });
     } catch (error) {
       console.error("Error ketika menghapus therapy slot:", error);
-      return res.status(500).json({ message: "Internal server error" });
+      return res.status(500).json({ 
+        message: "Internal server error", 
+        error: String(error)
+      });
     }
   });
   
