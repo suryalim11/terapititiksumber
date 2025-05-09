@@ -11,18 +11,28 @@ import { Link } from "wouter";
 function fixTimeSlotFormat(timeSlot: string): string {
   if (!timeSlot) return "";
   
-  // Cek pola waktu yang salah (10:00-00:00)
-  if (timeSlot.endsWith("-00:00")) {
-    // Ambil waktu awal dari time slot
-    const startTime = timeSlot.split("-")[0];
-    // Cek apakah ini pola waktu yang bisa diperbaiki, dan tentukan akhirnya
-    if (startTime === "10:00") return "10:00-12:00";
-    if (startTime === "13:00") return "13:00-15:00"; 
-    if (startTime === "15:00") return "15:00-17:00";
-    if (startTime === "17:00") return "17:00-19:00";
+  // Jika format waktu adalah "10:00-00:00", konversi ke format yang lebih masuk akal
+  if (timeSlot.endsWith('-00:00')) {
+    // Coba ekstrak waktu awal dan tambahkan 2 jam sebagai standar durasi terapi
+    try {
+      const startTime = timeSlot.split('-')[0];
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      
+      // Jika waktu awal valid, tambahkan 2 jam untuk waktu akhir
+      if (!isNaN(startHour) && !isNaN(startMinute)) {
+        let endHour = startHour + 2;
+        if (endHour >= 24) endHour = endHour - 24;
+        
+        // Format waktu akhir dengan leading zero jika perlu
+        const endTimeStr = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
+        return `${startTime}-${endTimeStr}`;
+      }
+    } catch (error) {
+      // Silent error handling
+    }
   }
   
-  // Jika tidak ada pola yang cocok, tampilkan apa adanya
+  // Jika tidak bisa diproses atau format sudah benar, tampilkan apa adanya
   return timeSlot;
 }
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -542,7 +552,8 @@ export default function Dashboard() {
       // Simpan data slot yang diklik
       setSelectedSlotId(slotId);
       setSelectedSlotDate(slotDate);
-      setSelectedSlotTime(slotTime);
+      // Perbaiki format waktu sebelum mengirim ke dialog
+      setSelectedSlotTime(slotTime ? fixTimeSlotFormat(slotTime) : slotTime);
       setIsDialogOpen(true);
       
     } catch (error) {
@@ -736,7 +747,7 @@ export default function Dashboard() {
                         >
                           <div className="flex justify-between items-center mb-2">
                             <div>
-                              <div className="font-medium">{slot.timeSlot}</div>
+                              <div className="font-medium">{fixTimeSlotFormat(slot.timeSlot)}</div>
                               <div className="text-xs text-muted-foreground">
                                 {slot.date ? formatDateDDMMYYYY(slot.date) : '-'}
                               </div>
