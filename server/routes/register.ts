@@ -104,6 +104,10 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     const timeSlotKey = req.body.timeSlotKey || null;
     console.log("TimeSlotKey dari form pendaftaran:", timeSlotKey);
     
+    // Cek mode walk-in (pendaftaran dari admin)
+    const isWalkInMode = req.body.isWalkInMode === true || req.body.walkin === "true";
+    console.log("Mode Walk-in:", isWalkInMode ? "Ya" : "Tidak");
+    
     console.log("Data yang akan divalidasi:", patientData);
     
     try {
@@ -255,21 +259,26 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           });
         }
         
-        // Validasi slot terapi
-        if (!therapySlot.isActive) {
+        // Validasi slot terapi - mode walk-in dapat mengabaikan validasi aktif
+        if (!therapySlot.isActive && !isWalkInMode) {
           console.error(`Slot terapi dengan ID ${therapySlotId} tidak aktif`);
           return res.status(400).json({ 
             message: "Slot terapi tidak aktif", 
             code: "INACTIVE_THERAPY_SLOT" 
           });
+        } else if (!therapySlot.isActive && isWalkInMode) {
+          console.log(`Walk-in: Mengizinkan pendaftaran untuk slot terapi tidak aktif dengan ID ${therapySlotId}`);
         }
         
-        if (therapySlot.currentCount >= therapySlot.maxQuota) {
+        // Validasi kuota - mode walk-in juga dapat mengabaikan batas kuota
+        if (therapySlot.currentCount >= therapySlot.maxQuota && !isWalkInMode) {
           console.error(`Slot terapi dengan ID ${therapySlotId} sudah penuh`);
           return res.status(400).json({ 
             message: "Slot terapi sudah penuh. Silakan pilih slot lain.", 
             code: "THERAPY_SLOT_FULL" 
           });
+        } else if (therapySlot.currentCount >= therapySlot.maxQuota && isWalkInMode) {
+          console.log(`Walk-in: Mengizinkan pendaftaran meskipun slot terapi sudah penuh (${therapySlot.currentCount}/${therapySlot.maxQuota})`);
         }
         
         // Tingkatkan jumlah penggunaan slot terapi langsung ke database

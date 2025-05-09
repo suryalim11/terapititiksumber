@@ -914,6 +914,7 @@ export default function RegisterPage() {
     const dataToSend = {
       ...values,
       registrationCode,
+      isWalkInMode, // Tambahkan flag isWalkInMode ke request
     };
     
     console.log("Mengirim data pendaftaran ke server");
