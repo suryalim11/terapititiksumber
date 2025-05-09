@@ -21,16 +21,36 @@ async function throwIfResNotOk(res: Response) {
 
 export async function apiRequest<T = Record<string, unknown>>(
   url: string,
-  options?: RequestInit
+  options?: RequestInit & { data?: any }
 ): Promise<T> {
   console.log(`API Request to ${url} with credentials included`);
   
+  // Jika ada data dalam options, konversikan ke JSON string dan atur Content-Type
+  let finalOptions = { ...options };
+  if (options && 'data' in options) {
+    console.log(`Sending data to ${url}:`, options.data);
+    
+    // Hapus data dari options langsung
+    const { data, ...restOptions } = options;
+    
+    // Buat body dari data
+    finalOptions = {
+      ...restOptions,
+      body: JSON.stringify(data),
+      headers: {
+        ...(restOptions.headers || {}),
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      }
+    };
+  }
+  
   // Paksakan selalu menggunakan credentials include
   const res = await fetch(url, {
-    ...options,
+    ...finalOptions,
     credentials: "include",
     headers: {
-      ...(options?.headers || {}),
+      ...(finalOptions.headers || {}),
       "Accept": "application/json"
     }
   });

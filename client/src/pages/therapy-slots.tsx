@@ -698,7 +698,7 @@ export default function TherapySlots() {
       }
     }
     
-    // Gunakan TanStack Query mutation untuk update
+    // Persiapkan data untuk update
     console.log(`Mengirim permintaan update untuk slot ID ${selectedSlot.id}`);
     
     // Tandai bahwa proses edit sedang berlangsung
@@ -711,54 +711,65 @@ export default function TherapySlots() {
       description: "Permintaan edit sedang diproses.",
     });
     
-    // Buat API request dengan React Query untuk lebih reliable
-    apiRequest(`/api/therapy-slots/${selectedSlot.id}`, {
-      method: "PUT",
-      data: {
-        date: dateString, // Kirim format string YYYY-MM-DD yang dihasilkan manual
-        timeSlot: timeSlot,
-        maxQuota: data.maxQuota,
-        isActive: data.isActive
+    // Buat payload data yang akan dikirim ke server
+    const payload = {
+      date: dateString, // Kirim format string YYYY-MM-DD yang dihasilkan manual
+      timeSlot: timeSlot,
+      maxQuota: data.maxQuota,
+      isActive: data.isActive
+    };
+    
+    console.log("Mengirim data update:", payload);
+    
+    // Gunakan useMutation dari react-query
+    const updateSlot = async () => {
+      try {
+        const response = await apiRequest(`/api/therapy-slots/${selectedSlot.id}`, {
+          method: "PUT",
+          data: payload
+        });
+        
+        console.log("Berhasil update slot:", response);
+        
+        // Update selesai, reset state
+        setIsEditing(false);
+        setEditError(null);
+        
+        // Perbarui data
+        queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+        
+        // Notifikasi sukses
+        toast({
+          title: "Berhasil!",
+          description: "Slot terapi telah diperbarui.",
+        });
+        
+        // Tutup dialog dan reset state
+        setEditDialogOpen(false);
+        setSelectedSlot(null);
+        
+      } catch (error) {
+        console.error("Error updating therapy slot:", error);
+        
+        // Set error state
+        setEditError(error instanceof Error ? error.message : "Terjadi kesalahan");
+        setIsEditing(false);
+        
+        // Tampilkan pesan error
+        toast({
+          title: "Gagal memperbarui slot terapi",
+          description: error instanceof Error ? error.message : "Terjadi kesalahan tak terduga",
+          variant: "destructive",
+        });
+        
+        // Tetap buka dialog agar pengguna dapat melihat pesan error dan mencoba lagi
+        // Refresh data untuk memastikan tampilan konsisten
+        queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
       }
-    })
-    .then(response => {
-      console.log("Berhasil update slot:", response);
-      
-      // Update selesai, reset state
-      setIsEditing(false);
-      setEditError(null);
-      
-      // Perbarui data
-      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-      
-      // Notifikasi sukses
-      toast({
-        title: "Berhasil!",
-        description: "Slot terapi telah diperbarui.",
-      });
-      
-      // Tutup dialog dan reset state
-      setEditDialogOpen(false);
-      setSelectedSlot(null);
-    })
-    .catch(error => {
-      console.error("Error updating therapy slot:", error);
-      
-      // Set error state
-      setEditError(error.message || "Terjadi kesalahan");
-      setIsEditing(false);
-      
-      // Tampilkan pesan error
-      toast({
-        title: "Gagal memperbarui slot terapi",
-        description: error.message || "Terjadi kesalahan tak terduga",
-        variant: "destructive",
-      });
-      
-      // Tetap buka dialog agar pengguna dapat melihat pesan error dan mencoba lagi
-      // Refresh data untuk memastikan tampilan konsisten
-      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-    });
+    };
+    
+    // Eksekusi fungsi update
+    updateSlot();
   };
 
   // Format tanggal untuk ditampilkan
