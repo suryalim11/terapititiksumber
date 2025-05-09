@@ -3158,40 +3158,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get active packages for dashboard
   app.get("/api/dashboard/active-packages", async (req: Request, res: Response) => {
     try {
-      const sessions = await storage.getAllActiveSessions();
+      // Gunakan akses database langsung untuk performa yang lebih baik
+      console.log("Mengambil paket aktif dengan query database langsung...");
       
-      // Get all packages first to check which ones have more than 1 session
-      const allPackages = new Map();
-      for (const session of sessions) {
-        const pkg = await storage.getPackage(session.packageId);
-        if (pkg) {
-          allPackages.set(pkg.id, pkg);
+      // Query: Mendapatkan semua sesi yang aktif dengan join packages dan patients
+      const activeSessions = await db.query.sessions.findMany({
+        where: eq(schema.sessions.status, "Active"),
+        with: {
+          package: true,
+          patient: true
         }
+      });
+      
+      if (!activeSessions || activeSessions.length === 0) {
+        return res.status(200).json([]);
       }
       
-      // Filter sessions for packages with more than 1 session (exclude single-session packages)
-      const multiSessionSessions = sessions.filter(session => {
-        const pkg = allPackages.get(session.packageId);
-        return pkg && pkg.sessions > 1; // Only include if it's a multi-session package
-      });
+      // Filter untuk multi-session packages saja
+      const multiSessionSessions = activeSessions.filter(session => 
+        session.package && session.package.sessions > 1
+      );
       
       if (multiSessionSessions.length === 0) {
         return res.status(200).json([]);
       }
       
-      // Create a unique key for each patient+package combination
+      // Buat Map untuk mengelompokkan sesi berdasarkan pasien+paket
       const uniquePackagesMap = new Map();
       
-      // First, group sessions by patient and package
+      // Kelompokkan sesi berdasarkan pasien dan paket
       for (const session of multiSessionSessions) {
+        if (!session.patient || !session.package) continue;
+        
         const uniqueKey = `${session.patientId}_${session.packageId}`;
         
-        // If this combination already exists, keep only the one with the most recent lastSessionDate
-        // or the one with higher sessionsUsed if lastSessionDate is the same
+        // Jika kombinasi ini sudah ada, simpan yang paling baru digunakan
         if (uniquePackagesMap.has(uniqueKey)) {
           const existing = uniquePackagesMap.get(uniqueKey);
           
-          // Keep the more recently used session or the one with more sessions used
+          // Simpan sesi yang digunakan terakhir atau yang lebih banyak sesi terpakai
           if (
             !existing.lastSessionDate || 
             (session.lastSessionDate && new Date(session.lastSessionDate) > new Date(existing.lastSessionDate)) ||
@@ -3206,38 +3211,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Get unique multi-session sessions
+      // Dapatkan sesi unik dan format hasilnya
       const uniqueSessions = Array.from(uniquePackagesMap.values());
       
-      // Map sessions to include patient and package details
-      const activePackages = await Promise.all(
-        uniqueSessions.map(async (session) => {
-          const patient = await storage.getPatient(session.patientId);
-          const packageItem = await storage.getPackage(session.packageId);
-          
-          return {
-            id: session.id,
-            patient: patient ? {
-              id: patient.id,
-              name: patient.name,
-              patientId: patient.patientId
-            } : null,
-            package: packageItem ? {
-              id: packageItem.id,
-              name: packageItem.name,
-              sessions: packageItem.sessions
-            } : null,
-            status: session.status,
-            startDate: session.startDate,
-            lastSessionDate: session.lastSessionDate,
-            sessionsUsed: session.sessionsUsed,
-            totalSessions: session.totalSessions,
-            progress: Math.round((session.sessionsUsed / session.totalSessions) * 100)
-          };
-        })
-      );
+      // Map ke format yang dibutuhkan oleh frontend
+      const activePackages = uniqueSessions.map(session => ({
+        id: session.id,
+        patient: session.patient ? {
+          id: session.patient.id,
+          name: session.patient.name,
+          patientId: session.patient.patientId
+        } : null,
+        package: session.package ? {
+          id: session.package.id,
+          name: session.package.name,
+          sessions: session.package.sessions
+        } : null,
+        status: session.status,
+        startDate: session.startDate,
+        lastSessionDate: session.lastSessionDate,
+        sessionsUsed: session.sessionsUsed,
+        totalSessions: session.totalSessions,
+        progress: Math.round((session.sessionsUsed / session.totalSessions) * 100)
+      }));
       
-      console.log(`Returning ${activePackages.length} unique multi-session packages from ${sessions.length} total active sessions`);
+      console.log(`Returning ${activePackages.length} unique multi-session packages from ${activeSessions.length} total active sessions`);
       return res.status(200).json(activePackages);
     } catch (error) {
       console.error("Error getting active packages:", error);
