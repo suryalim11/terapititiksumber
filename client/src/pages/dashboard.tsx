@@ -104,7 +104,6 @@ export default function Dashboard() {
   // Format today's date to YYYY-MM-DD for API query with WIB timezone
   const todayWIB = getTodayInWIB(); // Dapatkan hari ini dalam timezone WIB
   const formattedToday = dateToWIBDateString(todayWIB); // Format ke YYYY-MM-DD
-  console.log(`Today in WIB timezone: ${formattedToday}`);
   
   // Format selected date if available
   const formattedSelectedDate = selectedDate ? dateToWIBDateString(selectedDate) : formattedToday;
@@ -129,7 +128,7 @@ export default function Dashboard() {
   // Fungsi untuk mendapatkan tanggal dari slot (YYYY-MM-DD) dari format apapun
   const getSlotDateStr = (slot: TherapySlot): string => {
     if (!slot || !slot.date) {
-      console.error('Invalid slot or missing date:', slot);
+      // Silent error handling
       return '';
     }
     
@@ -147,9 +146,6 @@ export default function Dashboard() {
     queryKey: ['/api/slots-by-period', selectedPeriod],
     queryFn: async () => {
       try {
-        console.log(`Memperbarui tanggal ke hari ini:`, formattedToday);
-        console.log(`Hari ini adalah tanggal:`, format(todayWIB, 'd MMMM yyyy', { locale: localeId }));
-        
         // Modifikasi endpoint berdasarkan periode yang dipilih
         let apiUrl = '/api/therapy-slots';
         
@@ -323,7 +319,7 @@ export default function Dashboard() {
               const slotDate = new Date(slotDateStr);
               return slotDate >= nowWIB && slotDate <= weekEndDate;
             } catch (err) {
-              console.error("Error filtering slot for week:", err);
+              // Silent error handling
               return false;
             }
           });
@@ -341,7 +337,7 @@ export default function Dashboard() {
               const slotDate = new Date(slotDateStr);
               return slotDate >= startOfMonth && slotDate <= endOfMonth;
             } catch (err) {
-              console.error("Error filtering slot for month:", err);
+              // Silent error handling
               return false;
             }
           });
@@ -359,7 +355,7 @@ export default function Dashboard() {
               const slotDate = new Date(slotDateStr);
               return slotDate >= getStartOfDayWIB(new Date()); // Slot hari ini dan ke depan
             } catch (err) {
-              console.error("Error filtering slot for future:", err);
+              // Silent error handling
               return false;
             }
           });
@@ -392,7 +388,7 @@ export default function Dashboard() {
             // Jika tanggal sama, bandingkan berdasarkan waktu
             return a.timeSlot.localeCompare(b.timeSlot);
           } catch (err) {
-            console.error("Error sorting slots:", err);
+            // Silent error handling
             return 0;
           }
         });
