@@ -9,7 +9,7 @@ import {
   sessions, appointments, therapySlots, registrationLinks, confirmationTokens, systemLogs
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, gt, lt, gte, lte, and, desc, asc, not, inArray, ne, or } from "drizzle-orm";
+import { eq, gt, lt, gte, lte, and, desc, asc, not, inArray, ne, or, sql } from "drizzle-orm";
 import * as schema from "../shared/schema";
 import { format } from "date-fns";
 import { IStorage } from "./storage";
@@ -1883,121 +1883,127 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllTherapySlots(): Promise<TherapySlot[]> {
-    // Periksa apakah kolom time_slot_key ada
-    let timeSlotKeyExists = false;
+    // Gunakan SQL langsung untuk mendapatkan semua slot dengan jumlah appointment aktif
+    const query = `
+      SELECT 
+        ts.id, 
+        ts.date, 
+        ts.time_slot as "timeSlot", 
+        ts.max_quota as "maxQuota", 
+        ts.current_count as "currentCount", 
+        ts.is_active as "isActive",
+        ts.created_at as "createdAt",
+        ts.time_slot_key as "timeSlotKey",
+        ts.global_quota as "globalQuota",
+        COUNT(CASE WHEN a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') THEN 1 END) as "activeAppointments"
+      FROM 
+        therapy_slots ts
+      LEFT JOIN 
+        appointments a ON ts.id = a.therapy_slot_id
+      GROUP BY 
+        ts.id
+      ORDER BY 
+        ts.date, ts.time_slot
+    `;
+    
     try {
-      // Use direct pool query which is more reliable
-      const columns = await pool.query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
-      `);
+      console.log("Executing optimized getAllTherapySlots query");
+      const startTime = Date.now();
       
-      // If we get at least one row, the column exists
-      timeSlotKeyExists = columns.rows.length > 0;
-    } catch (err) {
-      console.warn("Error checking for time_slot_key column:", err);
-    }
-    
-    // Log keberadaan kolom
-    console.log(`getAllTherapySlots: time_slot_key column exists: ${timeSlotKeyExists}`);
-    
-    const slots = await db.query.therapySlots.findMany({
-      orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
-    });
-    
-    // Untuk setiap slot, ambil jumlah appointment aktif yang terkait
-    // dan gunakan itu sebagai currentCount yang akurat
-    for (const slot of slots) {
-      // Ambil semua appointment untuk slot ini
-      const allAppointments = await db.query.appointments.findMany({
-        where: eq(schema.appointments.therapySlotId, slot.id)
+      const result = await pool.query(query);
+      
+      const endTime = Date.now();
+      console.log(`Query completed in ${endTime - startTime}ms, found ${result.rows.length} slots`);
+      
+      // Perbarui currentCount untuk setiap slot berdasarkan hasil SQL count
+      const slots = result.rows.map(row => {
+        // Konversi tipe data yang perlu dikonversi
+        return {
+          ...row,
+          maxQuota: parseInt(row.maxQuota),
+          currentCount: parseInt(row.activeAppointments) || 0, // Gunakan appointment count dari SQL
+          isActive: row.isActive === true || row.isActive === 't',
+          globalQuota: row.globalQuota ? parseInt(row.globalQuota) : null
+        };
       });
       
-      // Filter hanya appointment dengan status aktif
-      const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
-      const activeAppointments = allAppointments.filter(app => activeStatuses.includes(app.status));
+      return slots;
+    } catch (error) {
+      console.error("Error in optimized getAllTherapySlots:", error);
       
-      // Update currentCount langsung di objek slot yang dikembalikan
-      slot.currentCount = activeAppointments.length;
+      // Fallback ke metode lama jika query optimized gagal
+      console.log("Falling back to original getAllTherapySlots method");
+      
+      const slots = await db.query.therapySlots.findMany({
+        orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
+      });
+      
+      return slots;
     }
-    
-    return slots;
   }
 
   async getActiveTherapySlots(): Promise<TherapySlot[]> {
-    // Periksa apakah kolom time_slot_key ada
-    let timeSlotKeyExists = false;
+    // Gunakan SQL langsung untuk mendapatkan semua slot aktif dengan jumlah appointment aktif
+    const query = `
+      SELECT 
+        ts.id, 
+        ts.date, 
+        ts.time_slot as "timeSlot", 
+        ts.max_quota as "maxQuota", 
+        ts.current_count as "currentCount", 
+        ts.is_active as "isActive",
+        ts.created_at as "createdAt",
+        ts.time_slot_key as "timeSlotKey",
+        ts.global_quota as "globalQuota",
+        COUNT(CASE WHEN a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') THEN 1 END) as "activeAppointments"
+      FROM 
+        therapy_slots ts
+      LEFT JOIN 
+        appointments a ON ts.id = a.therapy_slot_id
+      WHERE
+        ts.is_active = true
+      GROUP BY 
+        ts.id
+      ORDER BY 
+        ts.date, ts.time_slot
+    `;
+    
     try {
-      // Use direct pool query which is more reliable
-      const columns = await pool.query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
-      `);
+      console.log("Executing optimized getActiveTherapySlots query");
+      const startTime = Date.now();
       
-      // If we get at least one row, the column exists
-      timeSlotKeyExists = columns.rows.length > 0;
-    } catch (err) {
-      console.warn("Error checking for time_slot_key column:", err);
+      const result = await pool.query(query);
+      
+      const endTime = Date.now();
+      console.log(`Active slots query completed in ${endTime - startTime}ms, found ${result.rows.length} active slots`);
+      
+      // Perbarui currentCount untuk setiap slot berdasarkan hasil SQL count
+      const slots = result.rows.map(row => {
+        // Konversi tipe data yang perlu dikonversi
+        return {
+          ...row,
+          maxQuota: parseInt(row.maxQuota),
+          currentCount: parseInt(row.activeAppointments) || 0, // Gunakan appointment count dari SQL
+          isActive: row.isActive === true || row.isActive === 't',
+          globalQuota: row.globalQuota ? parseInt(row.globalQuota) : null
+        };
+      });
+      
+      return slots;
+    } catch (error) {
+      console.error("Error in optimized getActiveTherapySlots:", error);
+      
+      // Fallback ke metode tradisional jika query optimized gagal
+      console.log("Falling back to original getActiveTherapySlots method");
+      
+      // Ambil semua slot terapi yang aktif
+      const slots = await db.query.therapySlots.findMany({
+        where: eq(schema.therapySlots.isActive, true),
+        orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
+      });
+      
+      return slots;
     }
-    
-    // Log keberadaan kolom
-    console.log(`getActiveTherapySlots: time_slot_key column exists: ${timeSlotKeyExists}`);
-    
-    // Perbaikan: mendapatkan semua slot terapi aktif, termasuk hari ini dan yang akan datang
-    const today = new Date();
-    
-    // Konversi date ke string format YYYY-MM-DD
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`;
-    
-    console.log("Mencari slot terapi aktif mulai dari:", todayStr);
-    
-    // Ambil semua slot terapi yang aktif
-    const slots = await db.query.therapySlots.findMany({
-      where: eq(schema.therapySlots.isActive, true),
-      orderBy: [asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot)]
-    });
-    
-    // Untuk setiap slot, perbarui currentCount dengan jumlah appointment aktif
-    for (const slot of slots) {
-      try {
-        // Dapatkan semua appointment untuk slot ini
-        const allAppointments = await db.query.appointments.findMany({
-          where: eq(schema.appointments.therapySlotId, slot.id)
-        });
-        
-        // Definisikan status apa saja yang dianggap aktif (sama seperti di getTherapySlotsByDate)
-        const activeStatuses = ['Active', 'Booked', 'Confirmed', 'Scheduled'];
-        
-        // Buat fungsi helper untuk check status aktif
-        const isActiveStatus = (s: string) => activeStatuses.includes(s);
-        
-        // Filter hanya appointment dengan status aktif
-        const activeAppointments = allAppointments.filter(app => isActiveStatus(app.status));
-        
-        // Log detail untuk membantu debugging
-        if (activeAppointments.length > 0) {
-          console.log(`Detail appointment aktif untuk slot ${slot.id}:`, 
-            activeAppointments.map(app => ({id: app.id, status: app.status}))
-          );
-        }
-        
-        // Update currentCount langsung di objek slot yang dikembalikan
-        slot.currentCount = activeAppointments.length;
-        
-        // Log jumlah appointment untuk slot ini
-        console.log(`Slot ${slot.id} (${slot.timeSlot} ${slot.date}): ${activeAppointments.length} active appointments dari ${allAppointments.length} total`);
-      } catch (error) {
-        console.error(`Error saat memproses slot ${slot.id}:`, error);
-        // Jika terjadi error, biarkan currentCount seperti apa adanya
-      }
-    }
-    
-    return slots; // Kembalikan semua slot yang aktif tanpa filter tanggal
   }
   
   /**
