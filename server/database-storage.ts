@@ -2397,25 +2397,6 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log(`Updating therapy slot ${id} with data:`, slot);
       
-      // Periksa apakah kolom time_slot_key ada
-      let timeSlotKeyExists = false;
-      try {
-        // Use same approach as in initDefaultTherapySlots
-        const columns = await pool.query(`
-          SELECT column_name 
-          FROM information_schema.columns 
-          WHERE table_name = 'therapy_slots' AND column_name = 'time_slot_key'
-        `);
-        
-        // If we get at least one row, the column exists
-        timeSlotKeyExists = columns.rows.length > 0;
-      } catch (err) {
-        console.warn("Error checking for time_slot_key column:", err);
-      }
-      
-      // Log keberadaan kolom
-      console.log(`updateTherapySlot: time_slot_key column exists: ${timeSlotKeyExists}`);
-      
       // Dapatkan slot terapi yang akan diupdate
       const existingSlot = await this.getTherapySlot(id);
       if (!existingSlot) {
@@ -2426,55 +2407,35 @@ export class DatabaseStorage implements IStorage {
       console.log(`Existing slot:`, existingSlot);
       
       // Siapkan nilai untuk diupdate
-      let updateValues = {};
+      const updateValues: Record<string, any> = {};
       
       // Pindahkan nilai yang valid saja ke updateValues
-      if (slot.timeSlot !== undefined) updateValues['timeSlot'] = slot.timeSlot;
-      if (slot.maxQuota !== undefined) updateValues['maxQuota'] = slot.maxQuota;
-      if (slot.isActive !== undefined) updateValues['isActive'] = slot.isActive;
+      if (slot.timeSlot !== undefined) updateValues.timeSlot = slot.timeSlot;
+      if (slot.maxQuota !== undefined) updateValues.maxQuota = slot.maxQuota;
+      if (slot.isActive !== undefined) updateValues.isActive = slot.isActive;
       
-      // Handle tanggal dengan benar
+      // Handle tanggal dengan benar - Terima string apa adanya
       if (slot.date !== undefined) {
-        if (typeof slot.date === 'string') {
-          // Simpan string tanggal apa adanya, tanpa konversi
-          updateValues['date'] = slot.date;
-          console.log(`Using string date: ${slot.date}`);
-        } else if (slot.date instanceof Date) {
-          // Format tanggal sebagai YYYY-MM-DD
-          const dateObj = slot.date;
-          const year = dateObj.getFullYear();
-          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const day = String(dateObj.getDate()).padStart(2, '0');
-          const formattedDate = `${year}-${month}-${day}`;
-          
-          updateValues['date'] = formattedDate;
-          console.log(`Converted Date to string: ${formattedDate}`);
-        }
+        updateValues.date = typeof slot.date === 'string' 
+          ? slot.date 
+          : slot.date instanceof Date
+            ? `${slot.date.getFullYear()}-${String(slot.date.getMonth() + 1).padStart(2, '0')}-${String(slot.date.getDate()).padStart(2, '0')}`
+            : String(slot.date);
+        
+        console.log(`Using date: ${updateValues.date}`);
       }
       
-      // Jika ada perubahan date atau timeSlot, perbarui juga time_slot_key
-      if (timeSlotKeyExists && (slot.date || slot.timeSlot)) {
-        const dateToUse = slot.date || existingSlot.date;
+      // Perbarui timeSlotKey jika diperlukan
+      if (slot.date || slot.timeSlot) {
+        const dateToUse = updateValues.date || existingSlot.date;
         const timeSlotToUse = slot.timeSlot || existingSlot.timeSlot;
         
-        // Format tanggal jika perlu
-        let dateString: string;
-        if (typeof dateToUse === 'string') {
-          dateString = dateToUse;
-        } else if (dateToUse instanceof Date) {
-          const dateObj = dateToUse;
-          const year = dateObj.getFullYear();
-          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const day = String(dateObj.getDate()).padStart(2, '0');
-          dateString = `${year}-${month}-${day}`;
-        } else {
-          // Fallback jika format tanggal tidak dikenali
-          dateString = String(existingSlot.date).split('T')[0];
-        }
+        // Format tanggal untuk timeSlotKey (YYYY-MM-DD_HH:MM-HH:MM)
+        let dateString = String(dateToUse).split('T')[0];
         
         // Buat time_slot_key baru
         const timeSlotKey = `${dateString}_${timeSlotToUse}`;
-        updateValues['timeSlotKey'] = timeSlotKey;
+        updateValues.timeSlotKey = timeSlotKey;
         
         console.log(`Generated new time_slot_key: ${timeSlotKey} for slot ID ${id}`);
       }
@@ -2487,21 +2448,27 @@ export class DatabaseStorage implements IStorage {
         return existingSlot;
       }
       
-      // Lakukan update ke database
-      const result = await db
-        .update(schema.therapySlots)
-        .set(updateValues)
-        .where(eq(schema.therapySlots.id, id))
-        .returning();
-      
-      console.log(`Update result:`, result);
-      
-      if (!result || result.length === 0) {
-        console.error(`No rows returned from update operation`);
-        return undefined;
+      try {
+        // Eksekusi update dengan nilai yang sudah disiapkan
+        const result = await db
+          .update(schema.therapySlots)
+          .set(updateValues)
+          .where(eq(schema.therapySlots.id, id))
+          .returning();
+        
+        console.log(`Update result:`, result);
+        
+        if (!result || result.length === 0) {
+          console.error(`No rows returned from update operation`);
+          return undefined;
+        }
+        
+        return result[0];
+      } catch (dbError) {
+        console.error(`Database error in updateTherapySlot:`, dbError);
+        console.error(`Update values:`, updateValues);
+        throw dbError;
       }
-      
-      return result[0];
     } catch (error) {
       console.error(`Error in updateTherapySlot: ${error}`);
       throw error;
