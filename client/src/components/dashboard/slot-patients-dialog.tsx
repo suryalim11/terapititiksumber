@@ -331,7 +331,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         if (slotResponse.ok) {
           slotResult = await slotResponse.json();
         } else {
-          console.error("Failed to fetch slot data, status:", slotResponse.status);
+          // Silent error handling for failed slot data fetch
         }
       } catch (fetchError) {
         // Lanjut ke fallback data
@@ -370,7 +370,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
             }
           }
         } catch (error) {
-          console.error("Error mencari data dari cache:", error);
+          // Silent error handling for cache data lookup
         }
         
         // Cek juga di combined slots info jika tersedia
@@ -387,7 +387,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
             }
           }
         } catch (error) {
-          console.error("Error getting quota from combinedSlotsInfo (fallback):", error);
+          // Silent error handling for combinedSlotsInfo
         }
         
         // Prioritaskan kuota dari berbagai sumber berdasarkan ketersediaan
@@ -425,7 +425,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
             ? slotResult.date.split(' ')[0] // Extract YYYY-MM-DD
             : new Date(slotResult.date).toISOString().split('T')[0];
         } catch (dateError) {
-          console.warn("Date formatting error:", dateError);
+          // Silent error handling with fallback
           slotDate = todayString; // Fallback ke hari ini
         }
         
@@ -476,10 +476,10 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
               }));
             }
           } else {
-            console.warn("Appointments fetch failed, status:", appointmentsResponse.status);
+            // Silent handling for failed appointments fetch
           }
         } catch (appointmentError) {
-          console.warn("Failed to fetch appointments:", appointmentError);
+          // Silent handling for appointments fetch error
           // Tetap lanjutkan dengan array kosong
         }
       }
@@ -491,7 +491,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       setError(null);
 
     } catch (err) {
-      console.error("Unhandled error in fetchSlotAndAppointments:", err);
+      // Silent logging but still set error for UI
       setError(err instanceof Error ? err : new Error("Terjadi kesalahan saat mengambil data"));
     } finally {
       setIsLoading(false);
@@ -559,7 +559,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
               }
             }
           } catch (error) {
-            console.error("Error mencari data dari cache untuk combinedInfo:", error);
+            // Silent error handling for cache data lookup
           }
           
           // Cek lagi apakah ada data di combinedSlotsInfo
@@ -577,7 +577,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
               }
             }
           } catch (error) {
-            console.error("Error getting quota from combinedSlotsInfo:", error);
+            // Silent error handling for combinedSlotsInfo
           }
           
           // Prioritaskan kuota dari berbagai sumber berdasarkan ketersediaan
@@ -601,7 +601,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
 
         }
       } catch (error) {
-        console.error("Error processing combined slots info:", error);
+        // Silent error handling for combined slots info processing
       }
     }
   }, [isOpen, slotId, slotDate, slotTimeSlot]);
@@ -653,7 +653,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                   }, 500);
                 })
                 .catch(err => {
-                  console.error("Failed to fetch slot data:", err);
+                  // Silent error handling with UI feedback
                   setError(new Error("Gagal mengambil data. Silakan coba lagi."));
                   setIsLoading(false);
                   isFetchingRef.current = false;
