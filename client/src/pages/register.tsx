@@ -9,6 +9,29 @@ import { useQuery } from "@tanstack/react-query";
 import { format, parseISO, isAfter, isSameDay, addHours } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { formatDateDDMMYYYY, formatBirthDate, cn } from "@/lib/utils";
+
+/**
+ * Fungsi untuk memperbaiki format time slot yang salah (10:00-00:00)
+ * @param timeSlot waktu dalam format "HH:MM-HH:MM"
+ * @returns waktu yang sudah diperbaiki
+ */
+function fixTimeSlotFormat(timeSlot: string): string {
+  if (!timeSlot) return "";
+  
+  // Cek pola waktu yang salah (10:00-00:00)
+  if (timeSlot.endsWith("-00:00")) {
+    // Ambil waktu awal dari time slot
+    const startTime = timeSlot.split("-")[0];
+    // Cek apakah ini pola waktu yang bisa diperbaiki, dan tentukan akhirnya
+    if (startTime === "10:00") return "10:00-12:00";
+    if (startTime === "13:00") return "13:00-15:00"; 
+    if (startTime === "15:00") return "15:00-17:00";
+    if (startTime === "17:00") return "17:00-19:00";
+  }
+  
+  // Jika tidak ada pola yang cocok, tampilkan apa adanya
+  return timeSlot;
+}
 import { Calendar } from "@/components/ui/calendar";
 import { RegistrationPDF } from "@/components/registration/registration-pdf";
 import {
@@ -153,11 +176,12 @@ export default function RegisterPage() {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [patientFound, setPatientFound] = useState<boolean>(false);
   const [foundPatient, setFoundPatient] = useState<any>(null);
-  const [selectedSlot, setSelectedSlot] = useState<{id: number, date: string, timeSlot: string} | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<{id: number, date: string, timeSlot: string, timeSlotFixed?: string} | null>(null);
   
   // State untuk hasil registrasi
   const [registrationResult, setRegistrationResult] = useState<RegistrationResponse | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWalkInMode, setIsWalkInMode] = useState(false);
   
   // Form handling
   const form = useForm<RegisterFormValues>({
@@ -439,8 +463,7 @@ export default function RegisterPage() {
     }
   };
 
-  // State untuk mode pendaftaran walk-in (dari admin)
-  const [isWalkInMode, setIsWalkInMode] = useState<boolean>(false);
+  // Catatan: state isWalkInMode sudah dideklarasikan di atas
 
   // Effect untuk men-set therapySlotId dari sessionStorage/URL setelah therapySlots dimuat
   useEffect(() => {
@@ -559,7 +582,9 @@ export default function RegisterPage() {
           setSelectedSlot({
             id: matchingSlot.id,
             date: format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale }),
-            timeSlot: matchingSlot.timeSlot
+            timeSlot: matchingSlot.timeSlot,
+            // Simpan timeSlot yang sudah diperbaiki jika formatnya seperti 10:00-00:00
+            timeSlotFixed: fixTimeSlotFormat(matchingSlot.timeSlot)
           });
           
           // Hapus dari sessionStorage agar tidak digunakan lagi
