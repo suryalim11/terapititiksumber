@@ -193,7 +193,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
     
     // Informasi endpoint yang lebih deskriptif untuk log
     const endpoint = url.split('?')[0]; // Hanya tampilkan base path tanpa query string untuk log yang lebih bersih
-    console.log(`🔄 Fetching data dari ${endpoint}... (timeout: ${timeoutMs}ms, retry: ${retryCount})`);
+
     
     for (let attempt = 0; attempt <= retryCount; attempt++) {
       try {
@@ -204,7 +204,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         const timeoutPromise = new Promise<Response>((_, reject) => {
           timeoutId = window.setTimeout(() => {
             // Lapor timeout terjadi
-            console.log(`⏱️ Request to ${endpoint} timeout after ${timeoutMs}ms`);
+
             
             // Reject dengan timeout error
             reject(new Error(`Request timeout (${timeoutMs}ms)`));
@@ -231,12 +231,12 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         
         // Cek network apakah offline
         if (!window.navigator.onLine) {
-          console.log("📴 Perangkat sedang offline, menunggu koneksi...");
+
           throw new Error("Perangkat offline");
         }
         
         // Success log
-        console.log(`✅ Fetch sukses [${attempt + 1}/${retryCount + 1}]: ${endpoint} - Status: ${response.status}`);
+
         return response;
       } catch (err: any) {
         // Timeout sudah dibersihkan di Promise.race
@@ -244,18 +244,15 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         const isTimeout = err.message.includes('timeout');
         const waitTime = Math.min(500 * Math.pow(2, attempt), 4000); // Exponential backoff dengan max 4 detik
         
-        console.log(
-          `❌ Fetch attempt ${attempt + 1}/${retryCount + 1} to ${endpoint} failed:`, 
-          isTimeout ? '⏱️ Request timed out' : err.message
-        );
+
         
         // Jika offline, tunggu sampai online
         if (!window.navigator.onLine) {
-          console.log("📱 Menunggu perangkat kembali online...");
+
           await new Promise<void>(resolve => {
             const onlineHandler = () => {
               window.removeEventListener('online', onlineHandler);
-              console.log("📶 Perangkat kembali online, melanjutkan request...");
+
               resolve();
             };
             window.addEventListener('online', onlineHandler);
