@@ -918,8 +918,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
           // Tutup dialog terlebih dahulu
           onClose();
           
-          // Log untuk debugging
-          console.log("Persiapan navigasi ke transaksi untuk pasien dengan data lengkap:", patientData);
+
           
           // Navigasi langsung ke halaman transaksi dengan parameter query yang lebih eksplisit
           navigate(`/transactions?patientId=${patientIdNumber}&patientName=${encodeURIComponent(completePatientData.name)}&hideDropdown=true&delay=2000&source=slot-dialog&timestamp=${Date.now()}`);
@@ -942,17 +941,11 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
               }
             });
             
-            // Log untuk debugging
-            console.log("Mengirim event dengan data SANGAT lengkap:", {
-              patientId: patientIdNumber,
-              patientIdType: typeof patientIdNumber,
-              patientName: completePatientData.name,
-              patientData: JSON.stringify(patientData).substring(0, 100) + "..." // Tampilkan sebagian saja
-            });
+
             
             // Kirim event utama hanya sekali, tanpa retry berkali-kali
             window.dispatchEvent(openFormEvent);
-            console.log("Event telah dikirim sekali untuk patientId", patientIdNumber);
+
             
           }, 2000); // Delay awal
         })
@@ -986,7 +979,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
           
           // Dispatch event dengan metode sederhana
           // Kita percaya bahwa localStorage akan tersedia dan tidak perlu event retry
-          console.log("Menggunakan metode fallback untuk navigasi ke transaksi");
+
         });
       
     } catch (error) {
@@ -1065,11 +1058,9 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
     return Array.isArray(appointmentData) ? appointmentData : [];
   }, [appointmentData]);
   
-  // Logging untuk debug yang efisien
+  // useEffect untuk tracking data akan digunakan jika diperlukan di masa mendatang
   useEffect(() => {
-    if (isOpen && slotId && allAppointmentsForDate.length >= 0) {
-      console.log(`Total appointments untuk tanggal ini: ${allAppointmentsForDate.length}`);
-    }
+    // Tracked but no logging necessary
   }, [allAppointmentsForDate.length, isOpen, slotId]);
   
   // Filter appointment untuk slot tertentu dengan useMemo untuk caching
@@ -1192,20 +1183,17 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       
       const fetchPatients = async () => {
         try {
-          console.log(`Fetching data untuk ${patientIds.length} pasien`);
-          
           // Menggunakan Promise.allSettled untuk menangani kasus sebagian request gagal
           const patientPromises = patientIds.map(id => {
             // Cek cache dulu
             if (patientDataCacheRef.current[id]) {
-              console.log(`Using cached data for patient ${id}`);
               return Promise.resolve(patientDataCacheRef.current[id]);
             }
             
             // Jika tidak ada di cache, fetch dengan timeout 5 detik
             return new Promise((resolve) => {
               const timeoutId = setTimeout(() => {
-                console.log(`Patient fetch timeout for ID ${id}`);
+                // Timeout handling silent
               }, 5000);
               
               fetch(`/api/patients/${id}`, { 
@@ -1234,7 +1222,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
             .map(result => result.status === 'fulfilled' ? result.value : null)
             .filter(Boolean);
           
-          console.log(`Retrieved ${patientsData.length} of ${patientIds.length} patient records`);
+
           
           // Update appointment data dengan informasi pasien
           if (patientsData.length > 0) {
@@ -1288,7 +1276,6 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
     
     // 1. Filter hanya appointment aktif
     const activeAppointments = filteredAppointments.filter(app => app && isActiveStatus(app.status));
-    console.log("Active appointment count:", activeAppointments.length);
     
     // 2. Urutkan berdasarkan status dan nama pasien (jika tersedia)
     const sortedAppointments = [...activeAppointments].sort((a, b) => {
@@ -1308,12 +1295,9 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
     return sortedAppointments;
   }, [appointmentData]);
   
-  // Debug logging in development - versi sederhana
+  // Simplified state tracking without console logging
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log("Total appointment data:", appointmentData?.length || 0);
-      console.log("Active appointment data:", processAppointmentData.length);
-    }
+    // Track state changes but no logging needed
   }, [appointmentData, processAppointmentData]);
   
   // Tidak perlu lagi debug flag
@@ -1480,7 +1464,6 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                         // Pertama coba retry dengan timeout manual
                         try {
                           const retryTimeoutId = setTimeout(() => {
-                            console.log(`Retry timeout for slot ${slotId}`);
                             toast({
                               title: "Waktu Habis",
                               description: "Server tidak merespons dalam waktu 3 detik",
