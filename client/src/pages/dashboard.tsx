@@ -174,8 +174,6 @@ export default function Dashboard() {
         }
         // Periode "register" dan "selected-date" sudah dihapus dari UI
         
-        console.log(`Fetching therapy slots with URL:`, apiUrl);
-        
         // Ambil data dari server
         const response = await fetch(apiUrl);
         if (!response.ok) {
@@ -191,7 +189,6 @@ export default function Dashboard() {
         try {
           if (Array.isArray(rawData) && rawData.length > 0) {
             localStorage.setItem('slotsData', JSON.stringify(rawData));
-            console.log(`Saved ${rawData.length} slots to localStorage from dashboard query`);
           }
         } catch (cacheError) {
           console.error("Error caching slots data:", cacheError);
@@ -199,7 +196,7 @@ export default function Dashboard() {
         
         // Verifikasi bahwa rawData adalah array
         if (!Array.isArray(rawData)) {
-          console.error('Expected array but got:', typeof rawData, rawData);
+          console.error('Expected array but got:', typeof rawData);
           return []; // Return empty array instead of throwing to prevent UI disruption
         }
         
@@ -215,18 +212,6 @@ export default function Dashboard() {
           createdAt: slot.createdAt || ''
         }));
         
-        console.log("Data sebelum deduplikasi: " + processedSlots.length + " slots");
-        
-        // Log debug lengkap
-        console.log("Raw data dari server (sample):", processedSlots.slice(0, 3).map(s => ({ 
-          id: s.id, 
-          date: s.date, 
-          isActive: s.isActive,
-          timeSlot: s.timeSlot,
-          currentCount: s.currentCount,
-          maxQuota: s.maxQuota
-        })));
-        
         // Langkah 1: Deduplikasi berdasarkan ID
         const idSet = new Set<number>();
         const filteredSlots: TherapySlot[] = processedSlots.filter((slot) => {
@@ -236,7 +221,6 @@ export default function Dashboard() {
           idSet.add(slot.id);
           return true;
         });
-        console.log(`After ID deduplication: ${filteredSlots.length} slots remaining`);
         
         // PERUBAHAN: Gabungkan slot dengan waktu yang sama dan akumulasikan jumlah pasien
         const dateTimeMap = new Map<string, TherapySlot[]>();
@@ -305,8 +289,6 @@ export default function Dashboard() {
         // Simpan informasi slot gabungan ke localStorage untuk diakses di komponen dialog
         localStorage.setItem('combinedSlotsInfo', JSON.stringify(combinedSlotsInfo));
         
-        console.log(`After date+time deduplication: ${uniqueSlots.length} slots remaining`);
-        
         // Filter data berdasarkan periode yang dipilih
         let filteredByPeriod: TherapySlot[] = [];
         
@@ -367,7 +349,7 @@ export default function Dashboard() {
         } else if (selectedPeriod === 'future') {
           // Untuk mendatang, tampilkan slot hari ini dan ke depan (masa depan)
           // Gunakan nilai nowWIB untuk memastikan zona waktu benar
-          console.log("Today in WIB timezone:", dateToWIBDateString(nowWIB));
+
           
           filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             try {
@@ -394,7 +376,7 @@ export default function Dashboard() {
           filteredByPeriod = uniqueSlots;
         }
         
-        console.log(`After period (${selectedPeriod}) filtering: ${filteredByPeriod.length} slots`);
+
         
         // Langkah 4: Urutkan berdasarkan tanggal dan waktu
         const sortedSlots = filteredByPeriod.sort((a: TherapySlot, b: TherapySlot) => {
@@ -544,7 +526,7 @@ export default function Dashboard() {
       setSelectedSlotTime(slotTime);
       setIsDialogOpen(true);
       
-      console.log(`Slot diklik: ID=${slotId}, Date=${slotDate}, Time=${slotTime}`);
+
     } catch (error) {
       console.error("Error handling slot click:", error);
     }

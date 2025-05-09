@@ -306,7 +306,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
     const fetchStartTime = Date.now();
     
     try {
-      console.log(`🔄 Memulai fetch data untuk slot ${slotId} pada ${new Date().toISOString()}`);
+    
       
       // STRATEGI LEBIH SEDERHANA & EFISIEN: 
       // Gunakan satu API call langsung ke endpoint slot detail
