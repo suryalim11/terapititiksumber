@@ -698,7 +698,7 @@ export default function TherapySlots() {
       }
     }
     
-    // Kirim request update dengan penanganan error yang lebih baik
+    // Gunakan TanStack Query mutation untuk update
     console.log(`Mengirim permintaan update untuk slot ID ${selectedSlot.id}`);
     
     // Tandai bahwa proses edit sedang berlangsung
@@ -711,61 +711,18 @@ export default function TherapySlots() {
       description: "Permintaan edit sedang diproses.",
     });
     
-    // Gunakan timeout untuk menangani kasus di mana server terlalu lama merespons
-    const timeoutId = setTimeout(() => {
-      console.log("Edit request timeout - forcing dialog close");
-      
-      // Reset semua state
-      setIsEditing(false);
-      setEditError("Waktu permintaan habis");
-      setEditDialogOpen(false);
-      setSelectedSlot(null);
-      
-      // Refresh data untuk memastikan tampilan konsisten
-      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-      
-      toast({
-        title: "Permintaan melebihi batas waktu",
-        description: "Koneksi lambat terdeteksi. Silahkan coba lagi nanti.",
-        variant: "destructive",
-      });
-    }, 8000); // 8 detik timeout
-    
-    // Kirim permintaan update ke server
-    fetch(`/api/therapy-slots/${selectedSlot.id}`, {
+    // Buat API request dengan React Query untuk lebih reliable
+    apiRequest(`/api/therapy-slots/${selectedSlot.id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+      data: {
         date: dateString, // Kirim format string YYYY-MM-DD yang dihasilkan manual
         timeSlot: timeSlot,
         maxQuota: data.maxQuota,
         isActive: data.isActive
-      })
-    })
-    .then(res => {
-      // Batalkan timeout karena server telah merespons
-      clearTimeout(timeoutId);
-      
-      if (!res.ok) {
-        // Coba membaca pesan error dari respons
-        return res.text().then(errorText => {
-          let errorMessage = 'Gagal mengupdate slot terapi';
-          try {
-            // Coba parse sebagai JSON untuk mendapatkan pesan error
-            const errorJson = JSON.parse(errorText);
-            if (errorJson.message) errorMessage = errorJson.message;
-            if (errorJson.error) errorMessage = errorJson.error;
-          } catch (e) {
-            // Jika bukan JSON, gunakan text sebagai pesan error
-            if (errorText) errorMessage = errorText;
-          }
-          throw new Error(errorMessage);
-        });
       }
-      return res.json();
     })
-    .then(responseData => {
-      console.log("Berhasil update slot:", responseData);
+    .then(response => {
+      console.log("Berhasil update slot:", response);
       
       // Update selesai, reset state
       setIsEditing(false);
@@ -788,11 +745,8 @@ export default function TherapySlots() {
       console.error("Error updating therapy slot:", error);
       
       // Set error state
-      setEditError(error.message);
+      setEditError(error.message || "Terjadi kesalahan");
       setIsEditing(false);
-      
-      // Pastikan timeout dibatalkan
-      clearTimeout(timeoutId);
       
       // Tampilkan pesan error
       toast({
@@ -801,12 +755,9 @@ export default function TherapySlots() {
         variant: "destructive",
       });
       
-      // Tutup dialog setelah delay agar pengguna bisa membaca pesan error
-      setTimeout(() => {
-        setEditDialogOpen(false);
-        setSelectedSlot(null);
-        queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-      }, 1500);
+      // Tetap buka dialog agar pengguna dapat melihat pesan error dan mencoba lagi
+      // Refresh data untuk memastikan tampilan konsisten
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
     });
   };
 
