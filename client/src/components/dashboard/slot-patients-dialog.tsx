@@ -1210,7 +1210,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                 })
                 .catch(err => {
                   clearTimeout(timeoutId);
-                  console.error(`Error fetching patient ${id}:`, err);
+                  // Silent error handling, resolve null
                   resolve(null); // Resolve null alih-alih reject
                 });
             });
@@ -1254,7 +1254,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
           
           setHasEnrichedPatientData(true);
         } catch (error) {
-          console.error("Error enriching patient data:", error);
+          // Silent error handling
           // Tetap tandai bahwa proses enrichment sudah selesai meskipun error
           setHasEnrichedPatientData(true);
         }
