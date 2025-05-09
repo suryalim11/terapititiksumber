@@ -44,7 +44,7 @@ function formatDate(dateInput?: string | Date): string {
     const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
     return format(date, 'dd MMMM yyyy', { locale: localeId });
   } catch (error) {
-    console.error("Error formatting date:", error);
+    // Silent error handling
     return 'Invalid date';
   }
 }
@@ -70,7 +70,7 @@ function formatTimeSlot(timeSlot?: string): string {
         return `${startTime}-${endTimeStr}`;
       }
     } catch (error) {
-      console.error("Error formatting time slot:", error);
+      // Silent error handling
     }
   }
   
@@ -260,13 +260,13 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         }
         // Jika ini bukan percobaan terakhir, tunggu sebentar sebelum mencoba lagi
         else if (attempt < retryCount) {
-          console.log(`⏳ Menunggu ${waitTime}ms sebelum retry...`);
+          // Waiting with exponential backoff 
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
     }
     
-    console.log(`💥 Fetch gagal setelah ${retryCount + 1} percobaan: ${endpoint}`);
+    // Don't log fetch failures - just throw the error
     throw lastError || new Error(`Fetch gagal setelah ${retryCount + 1} percobaan`);
   };
   
@@ -291,7 +291,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
     setError(null);
     
     if (!slotId) {
-      console.error("fetchSlotAndAppointments called without slotId");
+      // Missing slot ID handling
       setIsLoading(false);
       setError(new Error("Slot ID tidak tersedia"));
       fetchInProgressRef.current = false;
@@ -1494,10 +1494,10 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                           .catch(e => {
                             // Clear timeout pada error
                             clearTimeout(retryTimeoutId);
-                            console.error("Quick retry failed:", e);
+                            // Silent error handling, no logging needed
                           });
                         } catch (e) {
-                          console.error("Error during quick retry:", e);
+                          // Silently handle, no logging needed
                         }
                       }, 500);
                     }}
@@ -1587,7 +1587,6 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                           
                           // Jika slotData tersedia dan memiliki timeSlotKey, gunakan itu
                           if (slotData && slotData.timeSlotKey) {
-                            console.log(`Menggunakan timeSlotKey yang ada: ${slotData.timeSlotKey}`);
                             queryParams.append('timeSlotKey', slotData.timeSlotKey);
                           } 
                           // Jika tidak ada timeSlotKey, tapi ada tanggal dan waktu, generate timeSlotKey
@@ -1611,7 +1610,6 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                             
                             // Buat timeSlotKey dengan format YYYY-MM-DD_HH:MM-HH:MM
                             const generatedTimeSlotKey = `${dateStr}_${slotData.timeSlot}`;
-                            console.log(`Generated timeSlotKey: ${generatedTimeSlotKey}`);
                             
                             // Tambahkan ke parameter URL
                             queryParams.append('timeSlotKey', generatedTimeSlotKey);
