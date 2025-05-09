@@ -1655,10 +1655,10 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                             queryParams.append('timeSlotKey', generatedTimeSlotKey);
                           }
                           
-                          // Redirect ke halaman pendaftaran dengan parameter
-                          // Use window.location.href for a full page load to ensure proper routing
-                          // Use '/daftar' path for consistency with other links
-                          window.location.href = `/daftar?${queryParams.toString()}`;
+                          // Redirect ke halaman pendaftaran dengan parameter di tab baru
+                          // Menggunakan window.open untuk membuka halaman di tab baru
+                          // '_blank' menunjukkan bahwa halaman harus dibuka di tab/jendela baru
+                          window.open(`/daftar?${queryParams.toString()}`, '_blank');
                         }}
                       >
                         <User className="h-3 w-3 mr-1" />
