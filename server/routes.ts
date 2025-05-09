@@ -3552,12 +3552,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[ROUTE] Found slot data: ${slot.id}, date: ${slot.date}, timeSlot: ${slot.timeSlot}`);
       
       // Now get patients - direct simple query without joins
+      // Ubah query untuk mencakup semua status termasuk appointment walk-in
       const { rows: appointmentRows } = await pool.query(`
-        SELECT id, patient_id, status
+        SELECT id, patient_id, status, notes
         FROM appointments
         WHERE therapy_slot_id = $1
-        AND status IN ('Active', 'Booked', 'Confirmed', 'Scheduled')
-        LIMIT 20
+        AND (
+          status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') 
+          OR notes LIKE '%walk-in%' OR notes LIKE '%walkin%'
+        )
+        LIMIT 50
       `, [slotId]);
       
       console.log(`[ROUTE] Found ${appointmentRows.length} appointments`);

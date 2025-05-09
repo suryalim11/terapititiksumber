@@ -291,10 +291,18 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         console.log(`Slot terapi dengan ID ${therapySlot.id} diperbarui: ${therapySlot.currentCount + 1}/${therapySlot.maxQuota}`);
         
         // TAHAP 7: Buat appointment baru
+        // Tambahkan informasi walk-in ke notes jika dalam mode walk-in
+        let notes = patientData.complaints || '';
+        if (isWalkInMode) {
+          // Tambahkan tag walk-in ke notes untuk ditampilkan di slot tracker
+          notes = `[WALK-IN] ${notes}`;
+          console.log("Menambahkan tanda WALK-IN ke notes appointment");
+        }
+        
         const appointmentData = {
           patientId: patientToUse.id,
           therapySlotId: therapySlot.id,
-          notes: patientData.complaints,
+          notes: notes,
           status: "Scheduled",
           date: therapySlot.date, // Gunakan langsung dalam format string
           timeSlot: therapySlot.timeSlot,
