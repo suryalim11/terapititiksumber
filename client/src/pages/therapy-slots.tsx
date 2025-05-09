@@ -625,151 +625,78 @@ export default function TherapySlots() {
     setEditDialogOpen(true);
   };
   
-  // Handler untuk submit edit form
+  // Mutation untuk edit slot terapi - dioptimalkan untuk kecepatan
+  const editSlotMutation = useMutation({
+    mutationFn: async (values: TherapySlotFormValues & { id: number }) => {
+      // Format tanggal dengan sederhana
+      let dateObj = values.date;
+      if (typeof dateObj === 'string') {
+        dateObj = new Date(dateObj);
+      }
+      
+      // Format tanggal YYYY-MM-DD
+      const dateString = dateObj.toISOString().split('T')[0];
+      
+      // Format time slot
+      const timeSlot = `${values.startTime}-${values.endTime}`;
+      
+      // Kirim permintaan
+      return apiRequest(`/api/therapy-slots/${values.id}`, {
+        method: "PUT",
+        data: {
+          date: dateString,
+          timeSlot,
+          maxQuota: values.maxQuota,
+          isActive: values.isActive
+        }
+      });
+    },
+    onSuccess: () => {
+      // Perbarui data
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      
+      // Notifikasi sukses tanpa delay
+      toast({
+        title: "Berhasil!",
+        description: "Slot terapi telah diperbarui.",
+      });
+      
+      // Reset state
+      setIsEditing(false);
+      setEditError(null);
+      setEditDialogOpen(false);
+      setSelectedSlot(null);
+    },
+    onError: (error: Error) => {
+      // Set error state
+      setEditError(error.message || "Terjadi kesalahan");
+      setIsEditing(false);
+      
+      // Tampilkan pesan error
+      toast({
+        title: "Gagal memperbarui slot terapi",
+        description: error.message || "Terjadi kesalahan tak terduga",
+        variant: "destructive",
+      });
+      
+      // Refresh data untuk memastikan tampilan konsisten
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+    }
+  });
+
+  // Handler untuk submit edit form (disederhanakan)
   const onSubmitEdit = (data: TherapySlotFormValues) => {
     if (!selectedSlot) return;
-    
-    // Debugging: Periksa tanggal input yang diterima dari form
-    console.log("------------ DEBUGGING EDIT FORM SUBMISSION ------------");
-    console.log("Tanggal dari form edit (raw):", data.date);
-    console.log("Tipe data tanggal edit:", typeof data.date);
-    
-    if (data.date instanceof Date) {
-      console.log("Edit - Date object toString():", data.date.toString());
-      console.log("Edit - Date object toISOString():", data.date.toISOString());
-      console.log("Edit - Tahun:", data.date.getFullYear());
-      console.log("Edit - Bulan:", data.date.getMonth() + 1); // +1 karena getMonth() dimulai dari 0
-      console.log("Edit - Tanggal:", data.date.getDate());
-      console.log("Edit - Local timezone offset (menit):", data.date.getTimezoneOffset());
-    }
-    
-    // Gabungkan startTime dan endTime menjadi timeSlot
-    const timeSlot = `${data.startTime}-${data.endTime}`;
-    console.log("Edit - Time slot:", timeSlot);
-    
-    // Ekstrak tahun, bulan, hari tanpa terpengaruh timezone (manual fix)
-    let dateObj = data.date;
-    if (typeof dateObj === 'string') {
-      dateObj = new Date(dateObj);
-    }
-    
-    // Membuat string YYYY-MM-DD secara manual dari komponen tanggal
-    const year = dateObj.getFullYear();
-    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-    const day = dateObj.getDate().toString().padStart(2, '0');
-    const dateString = `${year}-${month}-${day}`;
-    
-    console.log("Edit - Date setelah manual formatting:", dateString);
-    console.log("Edit - Updating date as string format:", dateString);
-    console.log("------------ END DEBUGGING EDIT FORM SUBMISSION ------------");
-    
-    // CEK PERUBAHAN: Jika tanggal atau waktu berubah, periksa duplikasi
-    const dateChanged = dateString !== selectedSlot.date;
-    const timeChanged = timeSlot !== selectedSlot.timeSlot;
-    
-    if ((dateChanged || timeChanged) && therapySlots) {
-      // Periksa apakah ada slot lain dengan tanggal dan waktu yang sama
-      const duplicateSlot = therapySlots.find(slot => 
-        // Cari slot yang bukan slot yang sedang diedit
-        slot.id !== selectedSlot.id &&
-        // Dan memiliki tanggal + waktu yang sama seperti nilai baru
-        slot.date === dateString && 
-        slot.timeSlot === timeSlot &&
-        // Dan masih aktif
-        slot.isActive === true
-      );
-      
-      if (duplicateSlot) {
-        // Tanya pengguna apakah ingin mengganti edit ke slot yang sudah ada
-        if (confirm(`PERHATIAN: Slot terapi untuk tanggal ${dateString} dan waktu ${timeSlot} sudah ada (ID: ${duplicateSlot.id}).\n\nApakah Anda ingin mengedit slot tersebut sebagai gantinya?\n- Klik OK untuk beralih ke edit slot tersebut\n- Klik Cancel untuk melanjutkan edit slot ini (dapat menyebabkan duplikasi)`)) {
-          // Buka dialog edit untuk slot yang sudah ada sebagai gantinya
-          setEditDialogOpen(false);
-          setTimeout(() => {
-            openEditDialog(duplicateSlot);
-          }, 300);
-          return; // Berhenti karena pengguna memilih edit slot lain
-        } else {
-          // Konfirmasi lagi jika pengguna tetap ingin membuat duplikat
-          if (!confirm(`Anda akan membuat DUPLIKAT slot terapi.\nIni dapat menyebabkan kebingungan saat penjadwalan pasien.\n\nLanjutkan pembuatan slot duplikat?`)) {
-            return; // Batal jika pengguna membatalkan
-          }
-          // Lanjutkan jika pengguna mengonfirmasi ingin membuat duplikat
-        }
-      }
-    }
-    
-    // Persiapkan data untuk update
-    console.log(`Mengirim permintaan update untuk slot ID ${selectedSlot.id}`);
     
     // Tandai bahwa proses edit sedang berlangsung
     setIsEditing(true);
     setEditError(null);
     
-    // Tampilkan toast bahwa update sedang diproses
-    toast({
-      title: "Sedang memproses...",
-      description: "Permintaan edit sedang diproses.",
+    // Eksekusi mutation
+    editSlotMutation.mutate({
+      ...data,
+      id: selectedSlot.id
     });
-    
-    // Buat payload data yang akan dikirim ke server
-    const payload = {
-      date: dateString, // Kirim format string YYYY-MM-DD yang dihasilkan manual
-      timeSlot: timeSlot,
-      maxQuota: data.maxQuota,
-      isActive: data.isActive
-    };
-    
-    console.log("Mengirim data update:", payload);
-    
-    // Gunakan useMutation dari react-query
-    const updateSlot = async () => {
-      try {
-        const response = await apiRequest(`/api/therapy-slots/${selectedSlot.id}`, {
-          method: "PUT",
-          data: payload
-        });
-        
-        console.log("Berhasil update slot:", response);
-        
-        // Update selesai, reset state
-        setIsEditing(false);
-        setEditError(null);
-        
-        // Perbarui data
-        queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-        
-        // Notifikasi sukses
-        toast({
-          title: "Berhasil!",
-          description: "Slot terapi telah diperbarui.",
-        });
-        
-        // Tutup dialog dan reset state
-        setEditDialogOpen(false);
-        setSelectedSlot(null);
-        
-      } catch (error) {
-        console.error("Error updating therapy slot:", error);
-        
-        // Set error state
-        setEditError(error instanceof Error ? error.message : "Terjadi kesalahan");
-        setIsEditing(false);
-        
-        // Tampilkan pesan error
-        toast({
-          title: "Gagal memperbarui slot terapi",
-          description: error instanceof Error ? error.message : "Terjadi kesalahan tak terduga",
-          variant: "destructive",
-        });
-        
-        // Tetap buka dialog agar pengguna dapat melihat pesan error dan mencoba lagi
-        // Refresh data untuk memastikan tampilan konsisten
-        queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-      }
-    };
-    
-    // Eksekusi fungsi update
-    updateSlot();
   };
 
   // Format tanggal untuk ditampilkan
@@ -946,19 +873,8 @@ export default function TherapySlots() {
                           selected={typeof field.value === 'string' ? parseISO(field.value) : field.value}
                           onSelect={(date) => {
                             if (date) {
-                              console.log("============= CALENDAR EDIT DEBUG =============");
-                              console.log("Raw date yang dipilih dari calendar (edit):", date);
-                              console.log("toString():", date.toString());
-                              console.log("toISOString():", date.toISOString());
-                              console.log("Timezone offset (menit):", date.getTimezoneOffset());
-                              
-                              // Gunakan fixTimezone untuk mendapatkan string tanggal yang konsisten
-                              const dateString = fixTimezone(date);
-                              
-                              console.log("Calendar (edit): date setelah fixTimezone:", dateString);
-                              console.log("============= END CALENDAR EDIT DEBUG =============");
-                              
-                              field.onChange(dateString); // Simpan string, bukan Date object
+                              // Langsung gunakan date object asli untuk menyederhanakan proses
+                              field.onChange(date);
                             }
                           }}
                           initialFocus
