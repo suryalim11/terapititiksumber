@@ -174,7 +174,7 @@ export default function Dashboard() {
         const response = await fetch(apiUrl);
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`Server returned ${response.status} with text: ${errorText}`);
+          // Silent error handling with error thrown for UI handling
           throw new Error(`Failed to fetch slots: ${response.status} ${errorText}`);
         }
         
@@ -187,12 +187,12 @@ export default function Dashboard() {
             localStorage.setItem('slotsData', JSON.stringify(rawData));
           }
         } catch (cacheError) {
-          console.error("Error caching slots data:", cacheError);
+          // Silent error handling - cache error is non-critical
         }
         
         // Verifikasi bahwa rawData adalah array
         if (!Array.isArray(rawData)) {
-          console.error('Expected array but got:', typeof rawData);
+          // Silent error handling with empty array return
           return []; // Return empty array instead of throwing to prevent UI disruption
         }
         
@@ -403,7 +403,7 @@ export default function Dashboard() {
         // Return hasil yang sudah diproses
         return slotsWithPercentage;
       } catch (error) {
-        console.error("Error fetching slots:", error);
+        // Silent error handling
         // Don't throw the error, return empty array instead
         // This prevents the UI from crashing and shows "No slots" message
         return [];
@@ -462,7 +462,7 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots', 'patients'] });
       
     } catch (error) {
-      console.error("Error auto-connecting sessions:", error);
+      // Silent error handling with UI feedback via toast
       toast({
         title: "Auto-Connect Gagal",
         description: error instanceof Error ? error.message : "Terjadi kesalahan saat menghubungkan appointment dengan sesi paket terapi.",
@@ -512,7 +512,7 @@ export default function Dashboard() {
   const handleSlotClick = (slotId: number, slotDate?: string, slotTime?: string) => {
     try {
       if (typeof slotId !== 'number' || isNaN(slotId)) {
-        console.error("Invalid slot ID:", slotId);
+        // Silent error handling for invalid ID
         return;
       }
       
@@ -522,9 +522,9 @@ export default function Dashboard() {
       setSelectedSlotTime(slotTime);
       setIsDialogOpen(true);
       
-
     } catch (error) {
-      console.error("Error handling slot click:", error);
+      // Silent error handling
+      // No UI feedback needed as this is not critical functionality
     }
   };
 
