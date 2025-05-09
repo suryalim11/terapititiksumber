@@ -144,6 +144,10 @@ export default function TherapySlots() {
   const queryClient = useQueryClient();
   const [deletingSlotId, setDeletingSlotId] = useState<number | null>(null);
   
+  // State untuk edit/update operasi dengan timeout handling
+  const [isEditing, setIsEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  
   // State untuk link pendaftaran
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [expiryHours, setExpiryHours] = useState(168); // Default 1 minggu (168 jam)
@@ -694,27 +698,26 @@ export default function TherapySlots() {
       }
     }
     
-    // Kirim request update dengan timeout dan error handling yang lebih baik
+    // Kirim request update dengan penanganan error yang lebih baik
     console.log(`Mengirim permintaan update untuk slot ID ${selectedSlot.id}`);
     
-    // State pendukung untuk pelacakan proses pengeditan
-    const [isUpdating, setIsUpdating] = useState(false);
+    // Tandai bahwa proses edit sedang berlangsung
+    setIsEditing(true);
+    setEditError(null);
     
     // Tampilkan toast bahwa update sedang diproses
-    setIsUpdating(true);
     toast({
       title: "Sedang memproses...",
       description: "Permintaan edit sedang diproses.",
     });
     
-    // Gunakan timeout yang lebih lama untuk menangani kasus di mana server lambat
+    // Gunakan timeout untuk menangani kasus di mana server terlalu lama merespons
     const timeoutId = setTimeout(() => {
       console.log("Edit request timeout - forcing dialog close");
       
-      // Batalkan status update
-      setIsUpdating(false);
-      
-      // Reset UI
+      // Reset semua state
+      setIsEditing(false);
+      setEditError("Waktu permintaan habis");
       setEditDialogOpen(false);
       setSelectedSlot(null);
       
@@ -723,133 +726,88 @@ export default function TherapySlots() {
       
       toast({
         title: "Permintaan melebihi batas waktu",
-        description: "Koneksi lambat terdeteksi. Data mungkin berhasil tersimpan - memeriksa perubahan...",
-        variant: "warning",
+        description: "Koneksi lambat terdeteksi. Silahkan coba lagi nanti.",
+        variant: "destructive",
       });
-    }, 8000); // 8 detik timeout lebih lama untuk jaringan lambat
+    }, 8000); // 8 detik timeout
     
-    // Gunakan controller untuk membatalkan fetch jika perlu
-    const controller = new AbortController();
-    const signal = controller.signal;
-    
-    // Track status retry
-    let isRetrying = false;
-    
-    // Fungsi untuk mencoba request (dengan kemampuan retry)
-    const attemptUpdate = () => {
-      fetch(`/api/therapy-slots/${selectedSlot.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          date: dateString, // Kirim format string YYYY-MM-DD yang dihasilkan manual
-          timeSlot: timeSlot,
-          maxQuota: data.maxQuota,
-          isActive: data.isActive
-        }),
-        signal: signal // Untuk membatalkan fetch jika perlu
+    // Kirim permintaan update ke server
+    fetch(`/api/therapy-slots/${selectedSlot.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: dateString, // Kirim format string YYYY-MM-DD yang dihasilkan manual
+        timeSlot: timeSlot,
+        maxQuota: data.maxQuota,
+        isActive: data.isActive
       })
-      .then(res => {
-        // Batalkan timeout karena server telah merespons
-        clearTimeout(timeoutId);
-        
-        if (!res.ok) {
-          // Coba membaca pesan error dari respons
-          return res.text().then(errorText => {
-            let errorMessage = 'Gagal mengupdate slot terapi';
-            try {
-              // Coba parse sebagai JSON untuk mendapatkan pesan error
-              const errorJson = JSON.parse(errorText);
-              if (errorJson.message) errorMessage = errorJson.message;
-              if (errorJson.error) errorMessage = errorJson.error;
-            } catch (e) {
-              // Jika bukan JSON, gunakan text sebagai pesan error
-              if (errorText) errorMessage = errorText;
-            }
-            throw new Error(errorMessage);
-          });
-        }
-        return res.json();
-      })
-      .then(responseData => {
-        console.log("Berhasil update slot:", responseData);
-        
-        // Update selesai, reset state
-        setIsUpdating(false);
-        
-        // Perbarui data
-        queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-        
-        // Notifikasi sukses
-        toast({
-          title: "Berhasil!",
-          description: "Slot terapi telah diperbarui.",
+    })
+    .then(res => {
+      // Batalkan timeout karena server telah merespons
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) {
+        // Coba membaca pesan error dari respons
+        return res.text().then(errorText => {
+          let errorMessage = 'Gagal mengupdate slot terapi';
+          try {
+            // Coba parse sebagai JSON untuk mendapatkan pesan error
+            const errorJson = JSON.parse(errorText);
+            if (errorJson.message) errorMessage = errorJson.message;
+            if (errorJson.error) errorMessage = errorJson.error;
+          } catch (e) {
+            // Jika bukan JSON, gunakan text sebagai pesan error
+            if (errorText) errorMessage = errorText;
+          }
+          throw new Error(errorMessage);
         });
-        
-        // Tutup dialog dan reset state
+      }
+      return res.json();
+    })
+    .then(responseData => {
+      console.log("Berhasil update slot:", responseData);
+      
+      // Update selesai, reset state
+      setIsEditing(false);
+      setEditError(null);
+      
+      // Perbarui data
+      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      
+      // Notifikasi sukses
+      toast({
+        title: "Berhasil!",
+        description: "Slot terapi telah diperbarui.",
+      });
+      
+      // Tutup dialog dan reset state
+      setEditDialogOpen(false);
+      setSelectedSlot(null);
+    })
+    .catch(error => {
+      console.error("Error updating therapy slot:", error);
+      
+      // Set error state
+      setEditError(error.message);
+      setIsEditing(false);
+      
+      // Pastikan timeout dibatalkan
+      clearTimeout(timeoutId);
+      
+      // Tampilkan pesan error
+      toast({
+        title: "Gagal memperbarui slot terapi",
+        description: error.message || "Terjadi kesalahan tak terduga",
+        variant: "destructive",
+      });
+      
+      // Tutup dialog setelah delay agar pengguna bisa membaca pesan error
+      setTimeout(() => {
         setEditDialogOpen(false);
         setSelectedSlot(null);
-      })
-      .catch(error => {
-        // Jika request dibatalkan (oleh user atau timeout), abaikan error
-        if (error.name === 'AbortError') {
-          console.log('Fetch request aborted');
-          return;
-        }
-        
-        console.error("Error updating therapy slot:", error);
-        
-        // Pastikan timeout dibatalkan
-        clearTimeout(timeoutId);
-        
-        // Jika error terkait network dan belum mencoba ulang, coba sekali lagi
-        if (!isRetrying && 
-            (error.message.includes('network') || 
-             error.message.includes('timeout') || 
-             error.message.includes('failed to fetch'))) {
-          
-          isRetrying = true;
-          toast({
-            title: "Koneksi lambat",
-            description: "Mencoba kembali dalam 2 detik...",
-            variant: "warning",
-          });
-          
-          // Tunggu 2 detik sebelum mencoba lagi
-          setTimeout(() => {
-            console.log("Mencoba request ulang...");
-            attemptUpdate();
-          }, 2000);
-          return;
-        }
-        
-        // Reset state update
-        setIsUpdating(false);
-        
-        // Tampilkan pesan error
-        toast({
-          title: "Gagal memperbarui slot terapi",
-          description: error.message || "Terjadi kesalahan tak terduga",
-          variant: "destructive",
-        });
-        
-        // Meskipun gagal, untuk mencegah interface "diam" tutup dialog
-        // Ini membuat UX lebih baik daripada dialog yang tidak responsif
-        setTimeout(() => {
-          setEditDialogOpen(false);
-          setSelectedSlot(null);
-          queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-        }, 1500);
-      });
-    };
-    
-    // Mulai percobaan update
-    attemptUpdate();
-    
-    // Cleanup function jika component unmount
-    return () => {
-      clearTimeout(timeoutId);
-      controller.abort();
-    };
+        queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      }, 1500);
+    });
   };
 
   // Format tanggal untuk ditampilkan
@@ -1129,8 +1087,16 @@ export default function TherapySlots() {
               />
               
               <DialogFooter>
-                <Button type="submit">
-                  Simpan Perubahan
+                <Button 
+                  type="submit" 
+                  disabled={isEditing}
+                >
+                  {isEditing ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : "Simpan Perubahan"}
                 </Button>
               </DialogFooter>
             </form>
