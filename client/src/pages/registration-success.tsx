@@ -251,7 +251,24 @@ export default function RegistrationSuccessPage() {
                   <div className="flex items-center">
                     <Clock className="mr-2 h-4 w-4 text-blue-700" />
                     <span className="text-blue-900 font-medium">
-                      {registrationData.slotInfo.timeSlot}
+                      {(() => {
+                        // Perbaiki tampilan waktu jika formatnya seperti "10:00-00:00"
+                        const timeSlot = registrationData.slotInfo.timeSlot;
+                        
+                        // Cek pola waktu yang salah (10:00-00:00)
+                        if (timeSlot && timeSlot.endsWith("-00:00")) {
+                          // Ambil waktu awal dari time slot
+                          const startTime = timeSlot.split("-")[0];
+                          // Cek apakah ini pola waktu yang bisa diperbaiki, dan tentukan akhirnya
+                          if (startTime === "10:00") return "10:00-12:00";
+                          if (startTime === "13:00") return "13:00-15:00"; 
+                          if (startTime === "15:00") return "15:00-17:00";
+                          if (startTime === "17:00") return "17:00-19:00";
+                        }
+                        
+                        // Jika tidak ada pola yang cocok, tampilkan apa adanya
+                        return timeSlot;
+                      })()}
                     </span>
                   </div>
                 </div>
@@ -264,6 +281,9 @@ export default function RegistrationSuccessPage() {
                 <li>Mohon datang 15 menit sebelum jadwal terapi</li>
                 <li>Lakukan konfirmasi kehadiran melalui WhatsApp</li>
                 <li>Bawa kartu identitas untuk verifikasi</li>
+                {registrationData.slotInfo && registrationData.slotInfo.timeSlot && registrationData.slotInfo.timeSlot.endsWith("-00:00") && (
+                  <li className="text-orange-600 font-medium">Mohon perhatikan jam terapi yang sudah diperbaiki pada Detail Jadwal Terapi di atas</li>
+                )}
               </ul>
             </div>
           </div>
