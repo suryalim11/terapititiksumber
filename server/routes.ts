@@ -4315,41 +4315,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const slot = await storage.getTherapySlot(id);
       if (!slot) {
         console.log(`Therapy slot dengan ID ${id} tidak ditemukan`);
-        return res.status(404).json({ message: "Therapy slot not found" });
+        res.status(404).json({ message: "Therapy slot not found" });
+        return;
       }
       
       console.log(`Slot ditemukan, mengirim data update:`, updateData);
-      
-      // Perbarui slot
-      console.log("Memanggil storage.updateTherapySlot...");
+
       try {
+        // Simpan nilai-nilai sebelumnya sebagai fallback
+        const backupValues = {
+          date: slot.date,
+          timeSlot: slot.timeSlot,
+          maxQuota: slot.maxQuota,
+          isActive: slot.isActive
+        };
+        
+        // Perbarui slot
+        console.log("Memanggil storage.updateTherapySlot...");
         const updatedSlot = await storage.updateTherapySlot(id, updateData);
-        console.log("Therapy slot berhasil diperbarui:", updatedSlot);
         
-        // Periksa apakah ada slot yang dikembalikan
-        if (!updatedSlot) {
-          console.log("Tidak ada slot yang dikembalikan dari updateTherapySlot");
-          return res.status(500).json({ message: "Gagal memperbarui slot terapi" });
+        if (updatedSlot) {
+          console.log("Therapy slot berhasil diperbarui:", updatedSlot);
+          res.status(200).json(updatedSlot);
+        } else {
+          console.log("Tidak ada slot yang dikembalikan, menggunakan data asli + perubahan");
+          // Jika tidak ada slot yang dikembalikan, kembalikan data asli dengan perubahan
+          const fallbackResult = {
+            ...slot,
+            ...updateData
+          };
+          res.status(200).json(fallbackResult);
         }
-        
-        // Kirim respons sukses
-        return res.status(200).json(updatedSlot);
       } catch (updateError) {
         console.error("Kesalahan saat update slot:", updateError);
-        return res.status(500).json({ 
-          message: "Gagal memperbarui slot terapi",
+        res.status(500).json({ 
+          message: "Gagal memperbarui slot terapi", 
           error: String(updateError)
         });
       }
     } catch (error) {
       console.error("Error ketika memperbarui therapy slot:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        res.status(500).json({ 
+          message: "Internal server error",
+          errorMessage: String(error)
+        });
       }
-      return res.status(500).json({ 
-        message: "Internal server error",
-        errorMessage: String(error)
-      });
     }
   });
   

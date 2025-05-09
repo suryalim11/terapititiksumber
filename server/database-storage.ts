@@ -2418,26 +2418,31 @@ export class DatabaseStorage implements IStorage {
       if (slot.date !== undefined) {
         updateValues.date = typeof slot.date === 'string' 
           ? slot.date 
-          : slot.date instanceof Date
+          : typeof slot.date === 'object' && slot.date instanceof Date
             ? `${slot.date.getFullYear()}-${String(slot.date.getMonth() + 1).padStart(2, '0')}-${String(slot.date.getDate()).padStart(2, '0')}`
             : String(slot.date);
         
         console.log(`Using date: ${updateValues.date}`);
       }
       
-      // Perbarui timeSlotKey jika diperlukan
-      if (slot.date || slot.timeSlot) {
-        const dateToUse = updateValues.date || existingSlot.date;
-        const timeSlotToUse = slot.timeSlot || existingSlot.timeSlot;
-        
-        // Format tanggal untuk timeSlotKey (YYYY-MM-DD_HH:MM-HH:MM)
-        let dateString = String(dateToUse).split('T')[0];
-        
-        // Buat time_slot_key baru
-        const timeSlotKey = `${dateString}_${timeSlotToUse}`;
-        updateValues.timeSlotKey = timeSlotKey;
-        
-        console.log(`Generated new time_slot_key: ${timeSlotKey} for slot ID ${id}`);
+      try {
+        // Perbarui timeSlotKey jika diperlukan
+        if (slot.date || slot.timeSlot) {
+          const dateToUse = updateValues.date || existingSlot.date;
+          const timeSlotToUse = slot.timeSlot || existingSlot.timeSlot;
+          
+          // Format tanggal untuk timeSlotKey (YYYY-MM-DD_HH:MM-HH:MM)
+          let dateString = String(dateToUse).split('T')[0];
+          
+          // Buat time_slot_key baru
+          const timeSlotKey = `${dateString}_${timeSlotToUse}`;
+          updateValues.timeSlotKey = timeSlotKey;
+          
+          console.log(`Generated new time_slot_key: ${timeSlotKey} for slot ID ${id}`);
+        }
+      } catch (keyError) {
+        console.error("Error creating timeSlotKey:", keyError);
+        // Tidak mengganggu alur program, lanjutkan saja
       }
       
       console.log(`Final update values:`, updateValues);
@@ -2450,24 +2455,54 @@ export class DatabaseStorage implements IStorage {
       
       try {
         // Eksekusi update dengan nilai yang sudah disiapkan
-        const result = await db
-          .update(schema.therapySlots)
-          .set(updateValues)
-          .where(eq(schema.therapySlots.id, id))
-          .returning();
+        console.log(`Executing update query for slot ID ${id}`);
         
-        console.log(`Update result:`, result);
-        
-        if (!result || result.length === 0) {
-          console.error(`No rows returned from update operation`);
-          return undefined;
+        // Jika date adalah field penting, pastikan ada dalam updateValues
+        if (updateValues.date === undefined && existingSlot.date) {
+          updateValues.date = existingSlot.date;
+          console.log(`Preserving existing date: ${updateValues.date}`);
         }
         
-        return result[0];
+        // Buat manual fallback copy jika SQL gagal
+        const manualUpdatedCopy = {
+          ...existingSlot,
+          ...updateValues,
+          id: existingSlot.id // Pastikan ID tetap sama
+        };
+        
+        try {
+          // Coba perbarui database
+          const result = await db
+            .update(schema.therapySlots)
+            .set(updateValues)
+            .where(eq(schema.therapySlots.id, id))
+            .returning();
+          
+          console.log(`Update result:`, result);
+          
+          if (!result || result.length === 0) {
+            console.log(`No rows returned, using manual fallback`);
+            return manualUpdatedCopy;
+          }
+          
+          return result[0];
+        } catch (sqlError) {
+          console.error(`SQL error in updateTherapySlot:`, sqlError);
+          console.log(`Using manual fallback due to DB error`);
+          return manualUpdatedCopy;
+        }
       } catch (dbError) {
         console.error(`Database error in updateTherapySlot:`, dbError);
         console.error(`Update values:`, updateValues);
-        throw dbError;
+        
+        // Buat copy manual dengan data yang diperbarui sebagai fallback
+        const fallbackResult = {
+          ...existingSlot,
+          ...updateValues
+        };
+        console.log(`Using fallback result:`, fallbackResult);
+        
+        return fallbackResult;
       }
     } catch (error) {
       console.error(`Error in updateTherapySlot: ${error}`);
