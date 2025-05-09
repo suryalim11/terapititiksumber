@@ -509,11 +509,8 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
   const refetch = () => {
     // Skip jika fetch sedang berjalan
     if (fetchInProgressRef.current) {
-      console.log("Skipping refetch - fetch already in progress");
       return;
     }
-    
-    console.log("Manual refetch triggered");
     fetchSlotAndAppointments();
   };
   
@@ -531,7 +528,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
           const combinedSlotsData = JSON.parse(storedCombinedInfo);
           if (combinedSlotsData && combinedSlotsData[slotId]) {
             setCombinedSlotInfo(combinedSlotsData[slotId]);
-            console.log("Loaded combined slot info from localStorage:", combinedSlotsData[slotId]);
+
             return;
           }
         }
@@ -557,7 +554,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                 if (matchingSlot) {
                   actualQuota = matchingSlot.maxQuota || 0;
                   actualPatients = matchingSlot.currentCount || 0;
-                  console.log(`Menemukan data slot dari cache untuk combinedInfo: kuota=${actualQuota}, terisi=${actualPatients}`);
+
                 }
               }
             }
@@ -576,7 +573,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
               if (combinedData && combinedData[slotId]) {
                 quotaFromCombined = combinedData[slotId].totalQuota || 0;
                 patientsFromCombined = combinedData[slotId].totalPatients || 0;
-                console.log(`Data kuota dari combinedSlotsInfo: ${quotaFromCombined}, terisi: ${patientsFromCombined}`);
+
               }
             }
           } catch (error) {
@@ -601,7 +598,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
           };
           
           setCombinedSlotInfo(newCombinedInfo);
-          console.log("Created combined slot info from props:", newCombinedInfo);
+
         }
       } catch (error) {
         console.error("Error processing combined slots info:", error);
@@ -609,18 +606,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
     }
   }, [isOpen, slotId, slotDate, slotTimeSlot]);
   
-  // Logging additional debug info
-  useEffect(() => {
-    console.log("Current dialog state:", { 
-      isOpen, 
-      slotId,
-      hasSlotData: !!slotData, 
-      appointmentCount: appointmentData?.length || 0,
-      isLoading,
-      hasError: !!error,
-      combinedInfo: combinedSlotInfo
-    });
-  }, [isOpen, slotId, slotData, appointmentData, isLoading, error, combinedSlotInfo]);
+
   
   // Effect untuk menangani loading data pada saat dialog dibuka dengan pendekatan state-based
   // Tambahkan flag untuk melacak apakah fetch sedang aktif
@@ -641,11 +627,8 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
       
       // Fungsi kecil untuk fetch data dengan proteksi dan debounce
       const loadData = () => {
-        console.log(`Dialog dibuka: loading data untuk slot ID ${slotId}, isFetching=${isFetchingRef.current}`);
-        
         // Skip jika fetch sedang berlangsung
         if (isFetchingRef.current) {
-          console.log("Fetch sedang berlangsung, skip request baru");
           return;
         }
         
@@ -658,16 +641,12 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
         
         // Tambahkan debounce untuk mencegah multiple fetch yang terlalu dekat
         debounceId = window.setTimeout(() => {
-          console.log("Executing fetch after debounce...");
-          
           // Gunakan timeout untuk memprioritaskan UI responsiveness
           timeoutId = window.setTimeout(() => {
             // Double-check karena React bisa re-render beberapa kali
             if (hasRefreshedRef.current) {
               fetchSlotAndAppointments()
                 .then(() => {
-                  console.log(`Data untuk slot ${slotId} berhasil dimuat`);
-                  
                   // Delay sedikit sebelum reset flag untuk mencegah rapid fetch
                   window.setTimeout(() => {
                     isFetchingRef.current = false;
@@ -905,7 +884,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
             throw new Error("Data pasien tidak ditemukan di server");
           }
           
-          console.log("Data lengkap pasien dari API:", completePatientData);
+
           
           // Simpan data pasien yang sangat lengkap ke localStorage
           // Tapi kita buat objek baru dengan properti yang telah difilter
