@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { requireAuth, requireAdminRole, allowPublicOrAuth, allowAnyAccess } from "./middleware/auth";
 import { z } from "zod";
 import { db, pool } from "./db";
+
 import { registerAgusFixRoutes } from "./routes-agus-fix";
 import { 
   insertPatientSchema, 
@@ -25,7 +26,7 @@ import * as schema from "../shared/schema";
 import { handleTherapySlotsBatch } from "./routes/therapy-slots-batch";
 import fixTransactionsTable from "./fix-transactions-schema";
 import { fixMissingPackageSessions } from "./fix-missing-sessions";
-import { eq, and, ne, isNotNull, desc, or, isNull, lte, sql } from "drizzle-orm";
+import { eq, and, ne, isNotNull, desc, or, isNull, lte, sql, asc, like, lt } from "drizzle-orm";
 import { fixAgusIsrofinSessions } from "./fix-agus-isrofin";
 import { fixAgusIsrofinSessionToday } from "./fix-agus-isrofin-session";
 
@@ -4103,113 +4104,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       
-      let slots;
+      // Inisialisasi query Drizzle untuk performa lebih baik
+      let query = db.select().from(schema.therapySlots);
       
-      // Step 1: Get initial slots based on date parameter
+      // Buat kondisi yang akan digunakan dalam where
+      const conditions = [];
+      
+      // Filter berdasarkan tanggal jika ada
       if (dateParam) {
-        // Terima tanggal apa adanya dan gunakan konstruktor Date standar
         try {
-          // Gunakan konstruktor Date langsung
-          const date = new Date(dateParam);
-          
-          console.log(`Mendapatkan slot terapi untuk tanggal: ${dateParam} -> ${date.toISOString()}`);
-          
-          if (isNaN(date.getTime())) {
-            return res.status(400).json({ message: "Invalid date format" });
-          }
-          
-          slots = await storage.getTherapySlotsByDate(date);
-          
+          console.log(`Mendapatkan slot terapi untuk tanggal: ${dateParam}`);
+          // Gunakan LIKE untuk filter awal string tanggal (lebih cepat dari konversi Date)
+          // Format di database: '2025-05-10 00:00:00'
+          conditions.push(like(schema.therapySlots.date, `${dateParam}%`));
         } catch (error) {
           console.error(`Error parsing date ${dateParam}:`, error);
           return res.status(400).json({ message: "Invalid date format" });
         }
-      } else if (activeOnly && !availableOnly) {
-        // Dapatkan semua slot aktif jika hanya filter active yang diberikan
-        console.log("Mendapatkan semua slot terapi aktif (tanpa filter available)");
-        slots = await storage.getActiveTherapySlots();
-      } else {
-        // Default: Dapatkan semua slot terapi
-        console.log("Mendapatkan semua slot terapi (default)");
-        slots = await storage.getAllTherapySlots();
       }
       
-      // Step 2: Apply additional filters
-      let filteredSlots = [...slots]; // Create a copy to avoid mutation issues
-      
-      // Apply active filter if needed and not already filtered by the storage method
-      if (activeOnly && dateParam) {
-        console.log("Filtering for active slots after date filter");
-        filteredSlots = filteredSlots.filter(slot => slot.isActive);
+      // Filter aktif jika diminta
+      if (activeOnly) {
+        conditions.push(eq(schema.therapySlots.isActive, true));
       }
       
-      // Tambahkan filter tambahan untuk memastikan tanggal di masa depan (hari ini atau nanti)
-      if (activeOnly && availableOnly) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Reset ke awal hari
-        
-        console.log("Filtering for slots on or after today:", today.toISOString());
-        
-        filteredSlots = filteredSlots.filter(slot => {
-          const slotDate = new Date(slot.date);
-          slotDate.setHours(0, 0, 0, 0); // Normalize to start of day
-          return slotDate.getTime() >= today.getTime();
-        });
-      }
-      
-      // Apply available filter (slots that aren't full)
+      // Filter tersedia jika diminta
       if (availableOnly) {
-        console.log("Filtering for available slots (currentCount < maxQuota)");
-        
-        // Filter multi-tahap:
-        // 1. Dapatkan semua ID slot yang akan difilter
-        const slotIds = filteredSlots.map(slot => slot.id);
-        
-        // 2. Untuk setiap slot, dapatkan appointment aktif terkait
-        const appointmentPromises = slotIds.map(async (slotId) => {
-          const appointments = await storage.getAppointmentsByTherapySlot(slotId);
-          // Filter hanya appointment yang aktif (tidak dibatalkan)
-          const activeAppointments = appointments.filter(app => app.status !== 'Cancelled');
-          console.log(`Slot ${slotId}: ${activeAppointments.length} active appointments`);
-          return { slotId, appointmentCount: activeAppointments.length };
-        });
-        
-        // 3. Tunggu semua promise selesai
-        const appointmentCounts = await Promise.all(appointmentPromises);
-        
-        // 4. Buat map dari ID slot ke jumlah appointment aktif
-        const slotAppointmentMap = new Map();
-        appointmentCounts.forEach(({ slotId, appointmentCount }) => {
-          slotAppointmentMap.set(slotId, appointmentCount);
-        });
-        
-        // 5. Filter slot berdasarkan jumlah appointment aktif
-        filteredSlots = filteredSlots.filter(slot => {
-          const actualCount = slotAppointmentMap.get(slot.id) || 0;
-          // Gunakan jumlah appointment aktual dari database untuk filter
-          return actualCount < slot.maxQuota;
-        });
-        
-        // 6. Update nilai currentCount di masing-masing slot (hanya di respons)
-        filteredSlots = filteredSlots.map(slot => ({
-          ...slot,
-          currentCount: slotAppointmentMap.get(slot.id) || slot.currentCount
-        }));
+        conditions.push(lt(schema.therapySlots.currentCount, schema.therapySlots.maxQuota));
       }
       
-      // Sort by date (nearest first) and then by time slot
-      filteredSlots.sort((a, b) => {
-        // Sort by date first
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        if (dateA !== dateB) return dateA - dateB;
-        
-        // Then by time slot if dates are the same
-        return a.timeSlot.localeCompare(b.timeSlot);
-      });
+      // Tambahkan filter jika perlu
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
       
-      console.log(`Returning ${filteredSlots.length} slots after filtering`);
-      return res.status(200).json(filteredSlots);
+      // Eksekusi query dan sort hasilnya
+      const slots = await query.orderBy(asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot));
+      
+      console.log(`Returning ${slots.length} slots after filtering`);
+      return res.status(200).json(slots);
     } catch (error) {
       console.error("Error ketika mengambil therapy slots:", error);
       return res.status(500).json({ message: "Internal server error" });
