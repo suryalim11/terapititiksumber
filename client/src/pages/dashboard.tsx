@@ -11,28 +11,15 @@ import { Link } from "wouter";
 function fixTimeSlotFormat(timeSlot: string): string {
   if (!timeSlot) return "";
   
-  // Jika format waktu adalah "10:00-00:00", konversi ke format yang lebih masuk akal
-  if (timeSlot.endsWith('-00:00')) {
-    // Coba ekstrak waktu awal dan tambahkan 2 jam sebagai standar durasi terapi
-    try {
-      const startTime = timeSlot.split('-')[0];
-      const [startHour, startMinute] = startTime.split(':').map(Number);
-      
-      // Jika waktu awal valid, tambahkan 2 jam untuk waktu akhir
-      if (!isNaN(startHour) && !isNaN(startMinute)) {
-        let endHour = startHour + 2;
-        if (endHour >= 24) endHour = endHour - 24;
-        
-        // Format waktu akhir dengan leading zero jika perlu
-        const endTimeStr = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
-        return `${startTime}-${endTimeStr}`;
-      }
-    } catch (error) {
-      // Silent error handling
-    }
-  }
+  // Ini adalah kasus spesifik yang perlu diperbaiki: slot dengan akhiran -00:00
+  // Hanya perbaiki format yang salah (10:00-00:00, 13:00-00:00, 15:00-00:00, 17:00-00:00)
+  // sesuai dengan format yang dibuat di terapi titik sumber
+  if (timeSlot === "10:00-00:00") return "10:00-12:00";
+  if (timeSlot === "13:00-00:00") return "13:00-15:00";
+  if (timeSlot === "15:00-00:00") return "15:00-17:00";
+  if (timeSlot === "17:00-00:00") return "17:00-19:00";
   
-  // Jika tidak bisa diproses atau format sudah benar, tampilkan apa adanya
+  // Untuk semua format lain, tampilkan apa adanya sesuai yang diinput di therapy slots
   return timeSlot;
 }
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
