@@ -3578,10 +3578,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint untuk mendapatkan daftar pasien berdasarkan slot terapi (extremely simplified version)
+  // Endpoint untuk mendapatkan daftar pasien berdasarkan slot terapi (super-optimized version)
   app.get("/api/therapy-slots/:id/patients", async (req: Request, res: Response) => {
     try {
-      console.log(`[ROUTE] GET /api/therapy-slots/:id/patients - Starting extremely simplified version`);
+      const startTime = Date.now();
+      console.log(`[ROUTE] GET /api/therapy-slots/:id/patients - Starting super-optimized version`);
       const slotId = parseInt(req.params.id);
       
       if (isNaN(slotId)) {
@@ -3593,110 +3594,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       
-      // Get basic slot info first - just the essentials
-      console.log(`[ROUTE] Executing simplified query for slot data`);
-      const { rows: slotRows } = await pool.query(`
-        SELECT id, date, time_slot, max_quota, current_count, is_active 
-        FROM therapy_slots 
-        WHERE id = $1 
-        LIMIT 1
-      `, [slotId]);
-      
-      if (slotRows.length === 0) {
-        console.log(`[ROUTE] Therapy slot ID ${slotId} not found`);
-        return res.status(404).json({ message: "Therapy slot not found" });
-      }
-      
-      const slot = {
-        id: slotRows[0].id,
-        date: slotRows[0].date,
-        timeSlot: slotRows[0].time_slot,
-        maxQuota: slotRows[0].max_quota,
-        currentCount: slotRows[0].current_count,
-        isActive: slotRows[0].is_active
-      };
-      
-      console.log(`[ROUTE] Found slot data: ${slot.id}, date: ${slot.date}, timeSlot: ${slot.timeSlot}`);
-      
-      // Now get patients - direct simple query without joins
-      // Ubah query untuk mencakup semua status termasuk appointment walk-in
-      const { rows: appointmentRows } = await pool.query(`
-        SELECT id, patient_id, status, notes
-        FROM appointments
-        WHERE therapy_slot_id = $1
-        AND (
-          status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') 
-          OR notes LIKE '%walk-in%' OR notes LIKE '%walkin%'
-        )
-        LIMIT 50
-      `, [slotId]);
-      
-      console.log(`[ROUTE] Found ${appointmentRows.length} appointments`);
-      
-      // Get patient IDs
-      const patientIds = appointmentRows.map(row => row.patient_id);
-      
-      // Empty result if no appointments
-      if (patientIds.length === 0) {
-        console.log(`[ROUTE] No patients found for slot ${slotId}`);
-        return res.status(200).json({
-          slot,
-          appointments: []
-        });
-      }
-      
-      // Get patient info for those IDs (max 20)
-      const patientIdsParam = patientIds.join(',');
-      console.log(`[ROUTE] Fetching info for patients: ${patientIdsParam}`);
-      
-      // Safe direct query with parameterized values
-      const { rows: patientRows } = await pool.query(`
-        SELECT id, name, phone_number 
-        FROM patients 
-        WHERE id IN (${patientIds.map((_, i) => `$${i+1}`).join(',')})
-      `, patientIds);
-      
-      console.log(`[ROUTE] Found ${patientRows.length} patients`);
-      
-      // Create a lookup map for patients
-      const patientsById = {};
-      patientRows.forEach(patient => {
-        patientsById[patient.id] = {
-          id: patient.id,
-          name: patient.name,
-          phoneNumber: patient.phone_number
-        };
-      });
-      
-      // Transform to the expected format
-      const appointments = appointmentRows.map(appointment => {
-        const patientInfo = patientsById[appointment.patient_id] || { 
-          id: appointment.patient_id,
-          name: "Unknown", 
-          phoneNumber: "Unknown" 
+      // Gunakan satu optimized query untuk mendapatkan semua data yang dibutuhkan
+      try {
+        // Metode single-query super optimized: mendapatkan slot + semua appointment + data pasien dalam SATU query
+        const query = `
+          WITH slot_data AS (
+            SELECT 
+              id, 
+              date, 
+              time_slot AS "timeSlot", 
+              max_quota AS "maxQuota", 
+              current_count AS "currentCount", 
+              is_active AS "isActive"
+            FROM therapy_slots
+            WHERE id = $1
+            LIMIT 1
+          ),
+          appointment_data AS (
+            SELECT 
+              a.id AS "appointmentId", 
+              a.patient_id AS "patientId", 
+              a.status,
+              a.notes,
+              p.id AS "patient_id",
+              p.name AS "patientName",
+              p.phone_number AS "phoneNumber"
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.id
+            WHERE a.therapy_slot_id = $1
+            AND (
+              a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') 
+              OR a.notes LIKE '%walk-in%' OR a.notes LIKE '%walkin%'
+            )
+            LIMIT 50
+          )
+          SELECT 
+            json_build_object(
+              'slot', (SELECT row_to_json(s) FROM slot_data s),
+              'appointments', (
+                SELECT json_agg(
+                  json_build_object(
+                    'id', a."appointmentId",
+                    'patientId', a."patientId",
+                    'status', a.status,
+                    'notes', a.notes,
+                    'patient', json_build_object(
+                      'id', a.patient_id,
+                      'name', a."patientName",
+                      'phoneNumber', a."phoneNumber"
+                    )
+                  )
+                )
+                FROM appointment_data a
+              )
+            ) AS result
+        `;
+        
+        console.log(`[ROUTE] Executing super-optimized query for slot ID ${slotId}`);
+        const { rows } = await pool.query(query, [slotId]);
+        
+        // Validasi hasil
+        if (!rows || rows.length === 0 || !rows[0].result) {
+          console.log(`[ROUTE] No data found for slot ID ${slotId}`);
+          return res.status(404).json({ message: "Therapy slot not found" });
+        }
+        
+        const result = rows[0].result;
+        
+        // Pastikan appointments adalah array (bisa null jika tidak ada appointment)
+        if (!result.appointments) {
+          result.appointments = [];
+        }
+        
+        // Update count untuk tujuan tampilan
+        if (result.slot) {
+          result.slot.currentCount = result.appointments.length;
+        }
+        
+        const timeTaken = Date.now() - startTime;
+        console.log(`[ROUTE] Super-optimized query completed in ${timeTaken}ms with ${result.appointments ? result.appointments.length : 0} patients`);
+        
+        // Kirim response
+        return res.status(200).json(result);
+      } catch (optimizedError) {
+        console.error(`[ROUTE] Error in super-optimized query:`, optimizedError);
+        
+        // Fallback ke metode lama jika query optimized gagal
+        console.log(`[ROUTE] Falling back to separated queries method`);
+        
+        // 1. Ambil data slot dasar
+        const { rows: slotRows } = await pool.query(`
+          SELECT id, date, time_slot, max_quota, current_count, is_active 
+          FROM therapy_slots 
+          WHERE id = $1 
+          LIMIT 1
+        `, [slotId]);
+        
+        if (slotRows.length === 0) {
+          console.log(`[ROUTE] Therapy slot ID ${slotId} not found`);
+          return res.status(404).json({ message: "Therapy slot not found" });
+        }
+        
+        const slot = {
+          id: slotRows[0].id,
+          date: slotRows[0].date,
+          timeSlot: slotRows[0].time_slot,
+          maxQuota: slotRows[0].max_quota,
+          currentCount: slotRows[0].current_count,
+          isActive: slotRows[0].is_active
         };
         
-        return {
-          id: appointment.id,
-          patientId: appointment.patient_id,
-          status: appointment.status,
-          notes: appointment.notes, // Tambahkan notes untuk deteksi walk-in
-          patient: patientInfo
-        };
-      });
-      
-      // Update count for display purposes
-      slot.currentCount = appointments.length;
-      
-      console.log(`[ROUTE] Successfully prepared response with ${appointments.length} patient records`);
-      
-      // Send response
-      return res.status(200).json({
-        slot,
-        appointments
-      });
+        // 2. Dapatkan appointment
+        const { rows: appointmentRows } = await pool.query(`
+          SELECT id, patient_id, status, notes
+          FROM appointments
+          WHERE therapy_slot_id = $1
+          AND (
+            status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') 
+            OR notes LIKE '%walk-in%' OR notes LIKE '%walkin%'
+          )
+          LIMIT 50
+        `, [slotId]);
+        
+        // Hasil kosong jika tidak ada appointment
+        if (appointmentRows.length === 0) {
+          console.log(`[ROUTE] No patients found for slot ${slotId}`);
+          return res.status(200).json({
+            slot,
+            appointments: []
+          });
+        }
+        
+        // 3. Dapatkan data pasien
+        const patientIds = appointmentRows.map(row => row.patient_id);
+        const { rows: patientRows } = await pool.query(`
+          SELECT id, name, phone_number 
+          FROM patients 
+          WHERE id IN (${patientIds.map((_, i) => `$${i+1}`).join(',')})
+        `, patientIds);
+        
+        // Buat lookup map untuk pasien
+        const patientsById = {};
+        patientRows.forEach(patient => {
+          patientsById[patient.id] = {
+            id: patient.id,
+            name: patient.name,
+            phoneNumber: patient.phone_number
+          };
+        });
+        
+        // Format hasil
+        const appointments = appointmentRows.map(appointment => {
+          const patientInfo = patientsById[appointment.patient_id] || { 
+            id: appointment.patient_id,
+            name: "Unknown", 
+            phoneNumber: "Unknown" 
+          };
+          
+          return {
+            id: appointment.id,
+            patientId: appointment.patient_id,
+            status: appointment.status,
+            notes: appointment.notes,
+            patient: patientInfo
+          };
+        });
+        
+        // Update count untuk tujuan tampilan
+        slot.currentCount = appointments.length;
+        
+        const timeTakenFallback = Date.now() - startTime;
+        console.log(`[ROUTE] Fallback method completed in ${timeTakenFallback}ms with ${appointments.length} patients`);
+        
+        // Kirim response
+        return res.status(200).json({
+          slot,
+          appointments
+        });
+      }
     } catch (error) {
-      console.error(`[ROUTE] Error in simplified therapy slot patients endpoint: ${error}`);
+      console.error(`[ROUTE] Error in therapy slot patients endpoint: ${error}`);
       return res.status(500).json({ 
         message: "Failed to get patients for therapy slot",
         error: error instanceof Error ? error.message : String(error)
@@ -4317,13 +4394,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/therapy-slots/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const slot = await storage.getTherapySlot(id);
+      console.log(`Fetching therapy slot detail for ID: ${id}`);
       
-      if (!slot) {
-        return res.status(404).json({ message: "Therapy slot not found" });
+      const startTime = Date.now();
+      
+      // Gunakan SQL query langsung untuk performa lebih baik
+      try {
+        // Query SQL untuk mendapatkan slot terapi beserta jumlah appointment aktif (non-cancelled) dalam satu query
+        const query = `
+          SELECT 
+            ts.id,
+            ts.date,
+            ts.time_slot AS "timeSlot",
+            ts.time_slot_key AS "timeSlotKey",
+            ts.max_quota AS "maxQuota",
+            ts.current_count AS "currentCount",
+            ts.is_active AS "isActive",
+            ts.created_at AS "createdAt",
+            ts.updated_at AS "updatedAt",
+            ts.global_quota AS "globalQuota",
+            COALESCE(
+              (SELECT COUNT(*)
+               FROM appointments a
+               WHERE a.therapy_slot_id = ts.id
+               AND a.status != 'Cancelled'),
+              0
+            ) AS "actualCount"
+          FROM 
+            therapy_slots ts
+          WHERE 
+            ts.id = $1
+        `;
+        
+        const result = await pool.query(query, [id]);
+        
+        if (!result.rows || result.rows.length === 0) {
+          console.log(`Therapy slot with ID ${id} not found`);
+          return res.status(404).json({ message: "Therapy slot not found" });
+        }
+        
+        // Format hasil untuk mengembalikan format yang konsisten
+        const slot = result.rows[0];
+        
+        // Gunakan actualCount dari query SQL untuk performa yang lebih baik
+        const responseData = {
+          ...slot,
+          currentCount: parseInt(slot.actualCount || 0)
+        };
+        
+        const timeTaken = Date.now() - startTime;
+        console.log(`Therapy slot fetched in ${timeTaken}ms with optimized SQL`);
+        
+        return res.status(200).json(responseData);
+      } catch (sqlError) {
+        console.error("Error in optimized therapy slot fetch:", sqlError);
+        
+        // Fallback ke metode lama jika query optimized gagal
+        console.log("Falling back to storage.getTherapySlot method");
+        const slot = await storage.getTherapySlot(id);
+        
+        if (!slot) {
+          return res.status(404).json({ message: "Therapy slot not found" });
+        }
+        
+        return res.status(200).json(slot);
       }
-      
-      return res.status(200).json(slot);
     } catch (error) {
       console.error("Error ketika mengambil therapy slot:", error);
       return res.status(500).json({ message: "Internal server error" });
