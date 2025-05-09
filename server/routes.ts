@@ -4298,31 +4298,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       console.log(`Menerima permintaan PUT /api/therapy-slots/${id} dengan data:`, req.body);
       
-      // Gunakan tanggal apa adanya tanpa konversi timezone
-      let slotDate = null;
-      
-      if (req.body.date) {
-        if (typeof req.body.date === 'string') {
-          // Simpan sebagai string YYYY-MM-DD, tidak perlu konversi ke Date
-          slotDate = req.body.date;
-          console.log(`UPDATE - Menggunakan date string: ${slotDate}`);
-        } else {
-          // Jika bukan string, konversi ke tanggal
-          slotDate = new Date(req.body.date);
-          console.log(`UPDATE - Menggunakan tanggal object: ${slotDate.toISOString()}`);
-        }
-      }
-      
       // Siapkan data yang akan diperbarui
-      const updateData = {
+      const updateData: any = {
         timeSlot: req.body.timeSlot,
         maxQuota: req.body.maxQuota,
         isActive: req.body.isActive
       };
       
       // Hanya tambahkan date jika ada
-      if (slotDate !== null) {
-        updateData.date = slotDate;
+      if (req.body.date) {
+        updateData.date = req.body.date;
+        console.log(`UPDATE - Menggunakan date: ${updateData.date}`);
       }
       
       // Periksa jika slot ada
@@ -4335,11 +4321,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Slot ditemukan, mengirim data update:`, updateData);
       
       // Perbarui slot
-      const updatedSlot = await storage.updateTherapySlot(id, updateData);
-      console.log("Therapy slot berhasil diperbarui:", updatedSlot);
-      
-      // Kirim respons sukses
-      return res.status(200).json(updatedSlot);
+      console.log("Memanggil storage.updateTherapySlot...");
+      try {
+        const updatedSlot = await storage.updateTherapySlot(id, updateData);
+        console.log("Therapy slot berhasil diperbarui:", updatedSlot);
+        
+        // Periksa apakah ada slot yang dikembalikan
+        if (!updatedSlot) {
+          console.log("Tidak ada slot yang dikembalikan dari updateTherapySlot");
+          return res.status(500).json({ message: "Gagal memperbarui slot terapi" });
+        }
+        
+        // Kirim respons sukses
+        return res.status(200).json(updatedSlot);
+      } catch (updateError) {
+        console.error("Kesalahan saat update slot:", updateError);
+        return res.status(500).json({ 
+          message: "Gagal memperbarui slot terapi",
+          error: String(updateError)
+        });
+      }
     } catch (error) {
       console.error("Error ketika memperbarui therapy slot:", error);
       if (error instanceof z.ZodError) {
@@ -4347,8 +4348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       return res.status(500).json({ 
         message: "Internal server error",
-        errorMessage: error.message,
-        errorDetails: String(error)
+        errorMessage: String(error)
       });
     }
   });
