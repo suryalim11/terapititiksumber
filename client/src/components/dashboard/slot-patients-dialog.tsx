@@ -49,19 +49,9 @@ function formatDate(dateInput?: string | Date): string {
   }
 }
 
-// Fungsi untuk memastikan format waktu yang benar
+// Fungsi perbaikan format waktu dihapus untuk menghindari kebingungan
 function formatTimeSlot(timeSlot?: string): string {
   if (!timeSlot) return '-';
-  
-  // Ini adalah kasus spesifik yang perlu diperbaiki: slot dengan akhiran -00:00
-  // Hanya perbaiki format yang salah (10:00-00:00, 13:00-00:00, 15:00-00:00, 17:00-00:00)
-  // sesuai dengan format yang dibuat di terapi titik sumber
-  if (timeSlot === "10:00-00:00") return "10:00-12:00";
-  if (timeSlot === "13:00-00:00") return "13:00-15:00";
-  if (timeSlot === "15:00-00:00") return "15:00-17:00";
-  if (timeSlot === "17:00-00:00") return "17:00-19:00";
-  
-  // Untuk semua format lain, tampilkan apa adanya sesuai yang diinput di therapy slots
   return timeSlot;
 }
 

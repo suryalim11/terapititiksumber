@@ -3,25 +3,7 @@ import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { Link } from "wouter";
 
-/**
- * Fungsi untuk memperbaiki format time slot yang salah (10:00-00:00)
- * @param timeSlot waktu dalam format "HH:MM-HH:MM"
- * @returns waktu yang sudah diperbaiki
- */
-function fixTimeSlotFormat(timeSlot: string): string {
-  if (!timeSlot) return "";
-  
-  // Ini adalah kasus spesifik yang perlu diperbaiki: slot dengan akhiran -00:00
-  // Hanya perbaiki format yang salah (10:00-00:00, 13:00-00:00, 15:00-00:00, 17:00-00:00)
-  // sesuai dengan format yang dibuat di terapi titik sumber
-  if (timeSlot === "10:00-00:00") return "10:00-12:00";
-  if (timeSlot === "13:00-00:00") return "13:00-15:00";
-  if (timeSlot === "15:00-00:00") return "15:00-17:00";
-  if (timeSlot === "17:00-00:00") return "17:00-19:00";
-  
-  // Untuk semua format lain, tampilkan apa adanya sesuai yang diinput di therapy slots
-  return timeSlot;
-}
+// Fungsi perbaikan format waktu dihapus untuk menghindari kebingungan
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   BarChart3, 
@@ -539,8 +521,8 @@ export default function Dashboard() {
       // Simpan data slot yang diklik
       setSelectedSlotId(slotId);
       setSelectedSlotDate(slotDate);
-      // Perbaiki format waktu sebelum mengirim ke dialog
-      setSelectedSlotTime(slotTime ? fixTimeSlotFormat(slotTime) : slotTime);
+      // Gunakan waktu slot apa adanya (tanpa perlu perbaikan format)
+      setSelectedSlotTime(slotTime);
       setIsDialogOpen(true);
       
     } catch (error) {
@@ -682,7 +664,7 @@ export default function Dashboard() {
                             >
                               <td className="py-3 text-left">
                                 <div className="flex flex-col">
-                                  <span>{fixTimeSlotFormat(slot.timeSlot)}</span>
+                                  <span>{slot.timeSlot}</span>
                                   <span className="text-xs text-muted-foreground">
                                     {slot.date ? formatDateDDMMYYYY(slot.date) : '-'}
                                   </span>
@@ -734,7 +716,7 @@ export default function Dashboard() {
                         >
                           <div className="flex justify-between items-center mb-2">
                             <div>
-                              <div className="font-medium">{fixTimeSlotFormat(slot.timeSlot)}</div>
+                              <div className="font-medium">{slot.timeSlot}</div>
                               <div className="text-xs text-muted-foreground">
                                 {slot.date ? formatDateDDMMYYYY(slot.date) : '-'}
                               </div>
