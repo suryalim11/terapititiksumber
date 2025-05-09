@@ -4104,44 +4104,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       
-      // Inisialisasi query Drizzle untuk performa lebih baik
-      let query = db.select().from(schema.therapySlots);
+      // Gunakan pendekatan sederhana langsung ke database storage
+      let slots;
       
-      // Buat kondisi yang akan digunakan dalam where
-      const conditions = [];
-      
-      // Filter berdasarkan tanggal jika ada
       if (dateParam) {
         try {
-          console.log(`Mendapatkan slot terapi untuk tanggal: ${dateParam}`);
-          // Gunakan LIKE untuk filter awal string tanggal (lebih cepat dari konversi Date)
-          // Format di database: '2025-05-10 00:00:00'
-          conditions.push(like(schema.therapySlots.date, `${dateParam}%`));
+          console.log(`Finding therapy slots for date: ${dateParam}`);
+          
+          // Gunakan SQL native untuk mendapatkan hasil lebih cepat dan menghindari masalah operator
+          const result = await pool.query(`
+            SELECT * FROM therapy_slots 
+            WHERE CAST(date AS TEXT) LIKE $1
+            ORDER BY time_slot ASC
+          `, [`${dateParam}%`]);
+          
+          console.log(`Found ${result.rows.length} slots with SQL query for date ${dateParam}`);
+          
+          slots = result.rows;
         } catch (error) {
-          console.error(`Error parsing date ${dateParam}:`, error);
-          return res.status(400).json({ message: "Invalid date format" });
+          console.error(`Error getting slots by date: ${dateParam}`, error);
+          // Fallback - dapatkan semua slot
+          console.log("Fallback: mendapatkan semua slot");
+          slots = await storage.getAllTherapySlots();
         }
+      } else if (activeOnly) {
+        console.log("Mendapatkan slot aktif saja");
+        slots = await storage.getActiveTherapySlots();
+      } else {
+        console.log("Mendapatkan semua slot");
+        slots = await storage.getAllTherapySlots();
       }
       
-      // Filter aktif jika diminta
-      if (activeOnly) {
-        conditions.push(eq(schema.therapySlots.isActive, true));
+      // Terapkan filter tambahan pada hasil
+      if (activeOnly && dateParam) {
+        // Filter aktif jika diminta dan belum difilter oleh storage
+        console.log("Menerapkan filter aktif");
+        slots = slots.filter(slot => slot.isActive);
       }
       
-      // Filter tersedia jika diminta
       if (availableOnly) {
-        conditions.push(lt(schema.therapySlots.currentCount, schema.therapySlots.maxQuota));
+        // Filter berdasarkan kuota
+        console.log("Menerapkan filter kuota tersedia");
+        slots = slots.filter(slot => slot.currentCount < slot.maxQuota);
       }
       
-      // Tambahkan filter jika perlu
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions));
-      }
+      // Urutkan hasil
+      slots.sort((a, b) => {
+        // Sort by date first
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        
+        // Then by time slot
+        return a.timeSlot.localeCompare(b.timeSlot);
+      });
       
-      // Eksekusi query dan sort hasilnya
-      const slots = await query.orderBy(asc(schema.therapySlots.date), asc(schema.therapySlots.timeSlot));
-      
-      console.log(`Returning ${slots.length} slots after filtering`);
+      console.log(`Returning ${slots.length} slots after all filtering`);
       return res.status(200).json(slots);
     } catch (error) {
       console.error("Error ketika mengambil therapy slots:", error);
