@@ -958,7 +958,7 @@ export default function RegisterPage() {
       slotInfo: selectedSlot ? {
         id: selectedSlot.id,
         date: selectedSlot.date,
-        timeSlot: selectedSlot.timeSlot
+        timeSlot: selectedSlot.timeSlotFixed || fixTimeSlotFormat(selectedSlot.timeSlot)
       } : null,
       timestamp: new Date().toISOString(),
       isComplete: false // Tandai bahwa ini belum complete dari server
@@ -1297,7 +1297,7 @@ export default function RegisterPage() {
                           }}
                         />
                         <Clock className="h-4 w-4 text-gray-500" />
-                        <span>{slot.timeSlot}</span>
+                        <span>{fixTimeSlotFormat(slot.timeSlot)}</span>
                       </div>
                       <span className="text-xs text-gray-500">
                         {slot.currentCount}/{slot.maxQuota}
@@ -1433,7 +1433,7 @@ export default function RegisterPage() {
                     <div className="flex items-center">
                       <Clock className="mr-2 h-4 w-4 text-blue-700" />
                       <span className="text-blue-900 font-medium">
-                        {registrationResult.appointment.timeSlot}
+                        {fixTimeSlotFormat(registrationResult.appointment.timeSlot)}
                       </span>
                     </div>
                   </div>
@@ -1458,7 +1458,7 @@ export default function RegisterPage() {
                 patientName={registrationResult.name || ""}
                 phoneNumber={registrationResult.phoneNumber || ""}
                 therapyDate={format(new Date(registrationResult.appointment.date), "dd/MM/yyyy")}
-                therapyTime={registrationResult.appointment.timeSlot}
+                therapyTime={fixTimeSlotFormat(registrationResult.appointment.timeSlot)}
               />
             )}
             <Button onClick={() => window.location.reload()} variant="outline" className="w-full sm:w-auto">
