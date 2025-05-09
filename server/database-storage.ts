@@ -8,7 +8,7 @@ import {
   medicalHistories, patients, users, products, packages, transactions, 
   sessions, appointments, therapySlots, registrationLinks, confirmationTokens, systemLogs
 } from "@shared/schema";
-import { db, sql, pool } from "./db";
+import { db, pool } from "./db";
 import { eq, gt, lt, gte, lte, and, desc, asc, not, inArray, ne, or } from "drizzle-orm";
 import * as schema from "../shared/schema";
 import { format } from "date-fns";
