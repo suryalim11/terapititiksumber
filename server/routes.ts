@@ -4298,7 +4298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       console.log(`Menerima permintaan PUT /api/therapy-slots/${id} dengan data:`, req.body);
       
-      // Siapkan data yang akan diperbarui
+      // Siapkan data yang akan diperbarui (versi sederhana dan cepat)
       const updateData: any = {
         timeSlot: req.body.timeSlot,
         maxQuota: req.body.maxQuota,
@@ -4311,58 +4311,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`UPDATE - Menggunakan date: ${updateData.date}`);
       }
       
-      // Periksa jika slot ada
-      const slot = await storage.getTherapySlot(id);
-      if (!slot) {
-        console.log(`Therapy slot dengan ID ${id} tidak ditemukan`);
-        res.status(404).json({ message: "Therapy slot not found" });
-        return;
+      // Cek slot yang ingin diupdate
+      const slot = await db
+        .select()
+        .from(schema.therapySlots)
+        .where(eq(schema.therapySlots.id, id))
+        .limit(1);
+      
+      if (!slot || slot.length === 0) {
+        return res.status(404).json({ message: "Therapy slot not found" });
       }
       
-      console.log(`Slot ditemukan, mengirim data update:`, updateData);
-
-      try {
-        // Simpan nilai-nilai sebelumnya sebagai fallback
-        const backupValues = {
-          date: slot.date,
-          timeSlot: slot.timeSlot,
-          maxQuota: slot.maxQuota,
-          isActive: slot.isActive
+      // Buat timeSlotKey
+      if (updateData.date || updateData.timeSlot) {
+        const dateToUse = updateData.date || slot[0].date;
+        const timeSlotToUse = updateData.timeSlot || slot[0].timeSlot;
+        const dateString = String(dateToUse).split('T')[0];
+        updateData.timeSlotKey = `${dateString}_${timeSlotToUse}`;
+      }
+      
+      // Update langsung di database
+      const result = await db
+        .update(schema.therapySlots)
+        .set(updateData)
+        .where(eq(schema.therapySlots.id, id))
+        .returning();
+      
+      if (result && result.length > 0) {
+        console.log("Therapy slot berhasil diperbarui:", result[0]);
+        return res.status(200).json(result[0]);
+      } else {
+        // Fallback jika tidak ada hasil
+        const fallbackResult = {
+          ...slot[0],
+          ...updateData
         };
-        
-        // Perbarui slot
-        console.log("Memanggil storage.updateTherapySlot...");
-        const updatedSlot = await storage.updateTherapySlot(id, updateData);
-        
-        if (updatedSlot) {
-          console.log("Therapy slot berhasil diperbarui:", updatedSlot);
-          res.status(200).json(updatedSlot);
-        } else {
-          console.log("Tidak ada slot yang dikembalikan, menggunakan data asli + perubahan");
-          // Jika tidak ada slot yang dikembalikan, kembalikan data asli dengan perubahan
-          const fallbackResult = {
-            ...slot,
-            ...updateData
-          };
-          res.status(200).json(fallbackResult);
-        }
-      } catch (updateError) {
-        console.error("Kesalahan saat update slot:", updateError);
-        res.status(500).json({ 
-          message: "Gagal memperbarui slot terapi", 
-          error: String(updateError)
-        });
+        console.log("Menggunakan fallback result:", fallbackResult);
+        return res.status(200).json(fallbackResult);
       }
     } catch (error) {
       console.error("Error ketika memperbarui therapy slot:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Validation error", errors: error.errors });
-      } else {
-        res.status(500).json({ 
-          message: "Internal server error",
-          errorMessage: String(error)
-        });
-      }
+      return res.status(500).json({ 
+        message: "Internal server error",
+        error: String(error)
+      });
     }
   });
   
