@@ -126,6 +126,8 @@ export default function TherapySlots() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  const [optimizedDialogOpen, setOptimizedDialogOpen] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<TherapySlot | null>(null);
   
   // Effect untuk memastikan tanggal selalu terbaru saat komponen dirender
   useEffect(() => {
@@ -140,8 +142,6 @@ export default function TherapySlots() {
     }));
     setDate(currentDate);
   }, []);
-  const [selectedSlot, setSelectedSlot] = useState<TherapySlot | null>(null);
-  const [isSlotDialogOpen, setIsSlotDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deletingSlotId, setDeletingSlotId] = useState<number | null>(null);
@@ -630,7 +630,7 @@ export default function TherapySlots() {
   // Handler untuk menampilkan dialog optimized slot
   const openOptimizedDialog = (slot: TherapySlot) => {
     setSelectedSlot(slot);
-    setIsSlotDialogOpen(true);
+    setOptimizedDialogOpen(true);
   };
   
   // Mutation untuk edit slot terapi - dioptimalkan untuk kecepatan
