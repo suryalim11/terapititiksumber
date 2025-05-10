@@ -1259,6 +1259,14 @@ export default function TherapySlots() {
                                 <TableCell>
                                   <div className="flex space-x-2">
                                     <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                                      onClick={() => openOptimizedDialog(slot)}
+                                    >
+                                      <Info className="h-4 w-4" />
+                                    </Button>
+                                    <Button
                                       variant={slot.isActive ? "destructive" : "outline"}
                                       size="sm"
                                       onClick={() => handleToggleStatus(slot)}
@@ -1727,6 +1735,14 @@ export default function TherapySlots() {
                               </TableCell>
                               <TableCell>
                                 <div className="flex space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                                    onClick={() => openOptimizedDialog(slot)}
+                                  >
+                                    <Info className="h-4 w-4" />
+                                  </Button>
                                   <Button
                                     variant={slot.isActive ? "destructive" : "outline"}
                                     size="sm"
