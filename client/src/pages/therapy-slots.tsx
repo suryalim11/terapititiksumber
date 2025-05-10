@@ -2400,9 +2400,9 @@ export default function TherapySlots() {
       {/* Dialog optimized untuk melihat detail slot dan pasien */}
       <OptimizedSlotDialog 
         slotId={selectedSlot?.id || null}
-        isOpen={isSlotDialogOpen}
+        isOpen={optimizedDialogOpen}
         onClose={() => {
-          setIsSlotDialogOpen(false);
+          setOptimizedDialogOpen(false);
           setSelectedSlot(null);
         }}
       />
