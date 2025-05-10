@@ -1322,6 +1322,15 @@ export default function TherapySlots() {
                               </div>
                               <div className="p-4 bg-gray-50 flex flex-wrap gap-2">
                                 <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-12 flex-1 border-blue-200 text-blue-600 hover:bg-blue-50"
+                                  onClick={() => openOptimizedDialog(slot)}
+                                >
+                                  <Info className="h-4 w-4 mr-2" />
+                                  Detail
+                                </Button>
+                                <Button
                                   variant={slot.isActive ? "destructive" : "outline"}
                                   size="sm"
                                   className="h-12 flex-1"
@@ -1716,9 +1725,9 @@ export default function TherapySlots() {
                               <TableCell>{slot.timeSlot}</TableCell>
                               <TableCell>
                                 {slot.currentCount} / {slot.maxQuota}
-                                {slot.totalMaxQuota && slot.totalMaxQuota !== slot.maxQuota && (
+                                {slot.globalQuota && slot.globalQuota !== slot.maxQuota && (
                                   <span className="text-xs text-muted-foreground ml-1 block">
-                                    (dari {slot.totalMaxQuota} total)
+                                    (dari {slot.globalQuota} total)
                                   </span>
                                 )}
                               </TableCell>
