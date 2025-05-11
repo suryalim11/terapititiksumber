@@ -191,12 +191,165 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     };
   }, [isOpen, slotId]);
   
-  // Navigate to patient detail
+  // Navigasi ke halaman pasien
   const handlePatientClick = (patientId: number) => {
     if (!patientId) return;
     
     onClose();
     navigate(`/patients/${patientId}`);
+  };
+  
+  // Navigasi ke halaman transaksi
+  const handleTransactionClick = (patient: any, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    if (!patient || !patient.id) {
+      toast({
+        title: "Error",
+        description: "Data pasien tidak lengkap",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    onClose();
+    navigate(`/transactions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name || '')}&source=optimized-dialog`);
+  };
+  
+  // Fungsi untuk mengubah status appointment
+  const handleStatusChange = async (appointmentId: number, newStatus: string, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    if (!appointmentId) {
+      toast({
+        title: "Error",
+        description: "ID appointment tidak valid",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      // Kirim permintaan untuk mengubah status
+      const response = await fetch(`/api/appointments/${appointmentId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: newStatus }),
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      
+      // Reload data appointment untuk memperbarui tampilan
+      toast({
+        title: "Berhasil",
+        description: `Status diubah menjadi: ${newStatus}`,
+        variant: "default"
+      });
+      
+      // Reload data appointment setelah status diubah
+      fetchSlotAndPatients();
+      
+    } catch (error) {
+      toast({
+        title: "Gagal",
+        description: "Gagal mengubah status. Silakan coba lagi.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Komponen StatusDropdown untuk menampilkan dan mengubah status
+  const StatusDropdown = ({ appointment, stopPropagation = true }: { appointment: any, stopPropagation?: boolean }) => {
+    const [isUpdating, setIsUpdating] = useState(false);
+    const statusOptions = ["Scheduled", "Completed", "Cancelled", "No-Show"];
+    const currentStatus = appointment?.status || "Pending";
+    
+    const updateStatus = async (status: string) => {
+      setIsUpdating(true);
+      try {
+        await handleStatusChange(appointment.id, status);
+      } finally {
+        setIsUpdating(false);
+      }
+    };
+    
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-6 px-2 text-xs"
+            disabled={isUpdating}
+            onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}
+          >
+            {isUpdating ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : (
+              <><Check className="h-3 w-3 mr-1" /> Status</>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-32">
+          {statusOptions.map((status) => (
+            <DropdownMenuItem
+              key={status}
+              onClick={(e) => {
+                if (stopPropagation) e.stopPropagation();
+                updateStatus(status);
+              }}
+              disabled={isUpdating || status === currentStatus}
+              className={status === currentStatus ? "bg-muted font-medium" : ""}
+            >
+              {status}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+  
+  // Fungsi untuk mengirim pengingat via WhatsApp
+  const handleReminderClick = (patient: any, appointment: any, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    if (!patient || !patient.phoneNumber) {
+      toast({
+        title: "Error",
+        description: "Nomor telepon pasien tidak tersedia",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      // Format nomor telepon untuk WhatsApp
+      const formattedNumber = formatWhatsAppNumber(patient.phoneNumber);
+      
+      // Template pesan pengingat
+      const message = `Halo ${patient.name || 'Bapak/Ibu'}, kami mengingatkan jadwal terapi Anda pada ${formatDate(slotData?.date)} pukul ${slotData?.timeSlot}. Terima kasih.`;
+      
+      // Buka WhatsApp
+      const whatsappLink = generateWhatsAppLink(formattedNumber, message);
+      window.open(whatsappLink, '_blank');
+    } catch (error) {
+      toast({
+        title: "Gagal",
+        description: "Gagal mengirim pengingat. Silakan coba lagi.",
+        variant: "destructive"
+      });
+    }
   };
   
   // If not open, don't render anything
@@ -269,7 +422,8 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                     onClick={() => {
                       onClose();
                       if (slotData?.id) {
-                        window.location.href = `/appointments/new?slotId=${slotData.id}`;
+                        // Menggunakan navigate untuk pindah halaman dengan lebih baik
+                        navigate(`/register-appointment?slotId=${slotData.id}&date=${encodeURIComponent(formatDate(slotData.date))}&time=${encodeURIComponent(slotData.timeSlot || '')}`);
                       }
                     }}
                     className="h-7 text-xs"
@@ -305,15 +459,43 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                         <Badge>{appointment.status || 'Pending'}</Badge>
                       </div>
                       
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2 h-7 text-xs"
-                        onClick={() => handlePatientClick(appointment.patient?.id || appointment.patientId)}
-                      >
-                        <User className="h-3 w-3 mr-1" />
-                        Detail Pasien
-                      </Button>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {/* Detail Pasien */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handlePatientClick(appointment.patient?.id || appointment.patientId)}
+                        >
+                          <User className="h-3 w-3 mr-1" />
+                          Detail
+                        </Button>
+                        
+                        {/* Dropdown Status */}
+                        <StatusDropdown appointment={appointment} />
+                        
+                        {/* Transaksi */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={(e) => handleTransactionClick(appointment.patient, e)}
+                        >
+                          <ShoppingCart className="h-3 w-3 mr-1" />
+                          Transaksi
+                        </Button>
+                        
+                        {/* Pengingat */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={(e) => handleReminderClick(appointment.patient, appointment, e)}
+                        >
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          Pengingat
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
