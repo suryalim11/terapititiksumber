@@ -1,12 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, CalendarIcon, User } from "lucide-react";
+import { Loader2, CalendarIcon, User, ShoppingCart, MessageSquare, Check, MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { formatWhatsAppNumber, generateWhatsAppLink } from "@/lib/utils";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 interface OptimizedSlotDialogProps {
   slotId: number | null;
