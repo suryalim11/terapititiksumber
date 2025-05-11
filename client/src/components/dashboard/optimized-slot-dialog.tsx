@@ -251,12 +251,26 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
             
             {/* Patient list */}
             <div>
-              <h3 className="text-sm font-medium mb-2 flex items-center justify-between">
-                <span>Daftar Pasien</span>
-                <span className="text-xs text-muted-foreground">
-                  {appointments.length} pasien
-                </span>
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium">Daftar Pasien</h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {appointments.length} pasien
+                  </span>
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      onClose();
+                      if (slotData?.id) {
+                        window.location.href = `/appointments/new?slotId=${slotData.id}`;
+                      }
+                    }}
+                    className="h-7 text-xs"
+                  >
+                    Daftarkan Pasien
+                  </Button>
+                </div>
+              </div>
               
               {appointments.length === 0 ? (
                 <div className="text-center py-8 border rounded-md">

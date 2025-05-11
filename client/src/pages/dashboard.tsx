@@ -513,30 +513,23 @@ export default function Dashboard() {
   const [selectedSlotDate, setSelectedSlotDate] = useState<string | undefined>();
   const [selectedSlotTime, setSelectedSlotTime] = useState<string | undefined>();
 
-  const handleSlotClick = (slotId: number, slotDate?: string, slotTime?: string, useOptimized: boolean = true) => {
+  // Simplified slot handler yang hanya menggunakan OptimizedSlotDialog
+  const handleSlotClick = (slotId: number, slotDate?: string, slotTime?: string) => {
     try {
       if (typeof slotId !== 'number' || isNaN(slotId)) {
-        // Silent error handling for invalid ID
         return;
       }
       
-      // Simpan data slot yang diklik
+      // Simpan data slot yang diklik (untuk legacy dialog jika diperlukan)
       setSelectedSlotId(slotId);
       setSelectedSlotDate(slotDate);
-      // Gunakan waktu slot apa adanya (tanpa perlu perbaikan format)
       setSelectedSlotTime(slotTime);
       
-      if (useOptimized) {
-        // Gunakan dialog yang sudah dioptimasi
-        setIsOptimizedDialogOpen(true);
-      } else {
-        // Dialog legacy sebagai fallback
-        setIsDialogOpen(true);
-      }
-      
+      // Selalu gunakan dialog yang sudah dioptimasi
+      setIsOptimizedDialogOpen(true);
     } catch (error) {
       // Silent error handling
-      // No UI feedback needed as this is not critical functionality
+      console.error("Error handling slot click:", error);
     }
   };
 
@@ -673,7 +666,7 @@ export default function Dashboard() {
                             <tr 
                               key={slot.id} 
                               className="py-2 hover:bg-muted/50 cursor-pointer transition-colors"
-                              onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot, true)}
+                              onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot)}
                             >
                               <td className="py-3 text-left">
                                 <div className="flex flex-col">
@@ -725,7 +718,7 @@ export default function Dashboard() {
                         <div 
                           key={slot.id}
                           className="border rounded-lg p-3 hover:bg-muted/50 cursor-pointer transition-colors mobile-card"
-                          onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot, true)}
+                          onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot)}
                         >
                           <div className="flex justify-between items-center mb-2">
                             <div>
@@ -930,7 +923,7 @@ export default function Dashboard() {
         </CardContent>
       </Card>
       
-      {/* Dialog untuk melihat pasien yang terdaftar di slot (legacy/original) */}
+      {/* Dialog fallback (jika diperlukan) - tidak digunakan secara default */}
       <SlotPatientsDialog 
         slotId={selectedSlotId}
         slotDate={selectedSlotDate}
