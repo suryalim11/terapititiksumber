@@ -21,6 +21,17 @@ interface OptimizedSlotDialogProps {
   onClose: () => void;
 }
 
+// Tipe data untuk slot terapi
+interface SlotData {
+  id: number;
+  date: string | Date;
+  timeSlot: string;
+  timeSlotKey?: string; // Kunci unik berdasarkan tanggal+waktu
+  maxQuota: number;
+  currentCount: number;
+  status: string;
+}
+
 // Formatting helper functions
 function formatDate(dateInput?: string | Date): string {
   if (!dateInput) return '-';
@@ -37,7 +48,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
   const { toast } = useToast();
   
   // State
-  const [slotData, setSlotData] = useState<any>(null);
+  const [slotData, setSlotData] = useState<SlotData | null>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -422,8 +433,11 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                     onClick={() => {
                       onClose();
                       if (slotData?.id) {
-                        // Menggunakan navigate untuk pindah halaman dengan lebih baik
-                        navigate(`/register-appointment?slotId=${slotData.id}&date=${encodeURIComponent(formatDate(slotData.date))}&time=${encodeURIComponent(slotData.timeSlot || '')}`);
+                        // Menggunakan parameter yang benar untuk pendaftaran walk-in
+                        navigate(`/register?walkin=true&slotId=${slotData.id}&timeSlotKey=${slotData.timeSlotKey || ''}`);
+                        
+                        // Simpan ID slot ke sessionStorage (backup)
+                        sessionStorage.setItem('selectedSlotId', String(slotData.id));
                       }
                     }}
                     className="h-7 text-xs"
