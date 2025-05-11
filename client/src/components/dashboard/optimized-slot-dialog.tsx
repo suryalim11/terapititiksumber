@@ -227,7 +227,27 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     }
     
     onClose();
-    navigate(`/transactions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name || '')}&source=optimized-dialog`);
+    
+    // Gunakan parameter query yang lebih lengkap seperti di SlotPatientsDialog
+    const patientIdNumber = Number(patient.id);
+    
+    // Tambahkan parameter untuk memastikan form transaksi terbuka langsung
+    navigate(`/transactions?patientId=${patientIdNumber}&patientName=${encodeURIComponent(patient.name || '')}&hideDropdown=true&delay=2000&source=optimized-dialog&timestamp=${Date.now()}`);
+    
+    // Tambahkan toast untuk memberikan feedback
+    toast({
+      title: "Membuat transaksi baru",
+      description: `Mempersiapkan transaksi untuk ${patient.name || 'pasien'}`,
+      duration: 3000
+    });
+    
+    // Tunggu sebentar untuk memastikan halaman transaksi sudah dimuat, lalu kirim event
+    setTimeout(() => {
+      // Buat custom event untuk membuka form transaksi dengan data pasien
+      window.dispatchEvent(new CustomEvent('openNewTransactionForm', { 
+        detail: { patientId: patientIdNumber, source: 'optimized-dialog' }
+      }));
+    }, 500);
   };
   
   // Fungsi untuk mengubah status appointment
@@ -412,10 +432,10 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 
                 <div className="text-muted-foreground">Status:</div>
                 <div>
-                  {slotData.status?.toLowerCase() === 'active' ? (
+                  {slotData.isActive ? (
                     <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Aktif</Badge>
                   ) : (
-                    <Badge variant="destructive">{slotData.status || 'Tidak Aktif'}</Badge>
+                    <Badge variant="destructive">Tidak Aktif</Badge>
                   )}
                 </div>
               </div>
