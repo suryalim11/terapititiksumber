@@ -412,10 +412,10 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 
                 <div className="text-muted-foreground">Status:</div>
                 <div>
-                  {slotData.status && slotData.status.toLowerCase() === 'active' ? (
-                    <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Aktif</Badge>
+                  {slotData.status ? (
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-200">{slotData.status}</Badge>
                   ) : (
-                    <Badge variant="destructive">Tidak Aktif</Badge>
+                    <Badge variant="destructive">Tidak Tersedia</Badge>
                   )}
                 </div>
               </div>
