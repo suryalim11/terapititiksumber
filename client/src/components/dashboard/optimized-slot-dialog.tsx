@@ -30,6 +30,7 @@ interface SlotData {
   maxQuota: number;
   currentCount: number;
   status: string;
+  isActive?: boolean; // Status keaktifan slot
 }
 
 // Formatting helper functions
@@ -411,7 +412,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 
                 <div className="text-muted-foreground">Status:</div>
                 <div>
-                  {slotData.isActive ? (
+                  {slotData.status && slotData.status.toLowerCase() === 'active' ? (
                     <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Aktif</Badge>
                   ) : (
                     <Badge variant="destructive">Tidak Aktif</Badge>
@@ -433,11 +434,46 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                     onClick={() => {
                       onClose();
                       if (slotData?.id) {
-                        // Menggunakan parameter yang benar untuk pendaftaran walk-in
-                        navigate(`/register?walkin=true&slotId=${slotData.id}&timeSlotKey=${slotData.timeSlotKey || ''}`);
-                        
-                        // Simpan ID slot ke sessionStorage (backup)
+                        // Simpan ID slot ke sessionStorage
                         sessionStorage.setItem('selectedSlotId', String(slotData.id));
+                        
+                        // Siapkan parameter untuk pendaftaran
+                        let queryParams = new URLSearchParams();
+                        queryParams.append('walkin', 'true');
+                        queryParams.append('slotId', String(slotData.id));
+                        
+                        // Tambahkan timeSlotKey jika tersedia
+                        if (slotData.timeSlotKey) {
+                          queryParams.append('timeSlotKey', slotData.timeSlotKey);
+                        } 
+                        // Jika tidak ada timeSlotKey, tapi ada tanggal dan waktu, generate timeSlotKey
+                        else if (slotData.date && slotData.timeSlot) {
+                          // Format tanggal ke YYYY-MM-DD
+                          let dateStr;
+                          
+                          if (typeof slotData.date === 'string') {
+                            if (slotData.date.includes('T')) {
+                              dateStr = slotData.date.split('T')[0];
+                            } else if (slotData.date.includes(' ')) {
+                              dateStr = slotData.date.split(' ')[0];
+                            } else {
+                              dateStr = slotData.date;
+                            }
+                          } else {
+                            // Jika tanggal bukan string, konversi ke string
+                            const dateObj = new Date(slotData.date);
+                            dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+                          }
+                          
+                          // Buat timeSlotKey dengan format YYYY-MM-DD_HH:MM-HH:MM
+                          const generatedTimeSlotKey = `${dateStr}_${slotData.timeSlot}`;
+                          
+                          // Tambahkan ke parameter URL
+                          queryParams.append('timeSlotKey', generatedTimeSlotKey);
+                        }
+                        
+                        // Gunakan URL yang benar: /daftar
+                        window.open(`/daftar?${queryParams.toString()}`, '_blank');
                       }
                     }}
                     className="h-7 text-xs"
