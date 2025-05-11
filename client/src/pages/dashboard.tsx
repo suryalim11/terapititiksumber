@@ -35,6 +35,7 @@ import {
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
+import { OptimizedSlotDialog } from "@/components/dashboard/optimized-slot-dialog";
 import { SessionEditorDialog } from "@/components/dashboard/session-editor-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,7 @@ interface TherapySlot {
 export default function Dashboard() {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isOptimizedDialogOpen, setIsOptimizedDialogOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("day"); // Default to "day" view
   const [showBalance, setShowBalance] = useState(false); // Default: hide balance
   const [isSyncing, setIsSyncing] = useState(false); // State untuk status sinkronisasi
@@ -511,7 +513,7 @@ export default function Dashboard() {
   const [selectedSlotDate, setSelectedSlotDate] = useState<string | undefined>();
   const [selectedSlotTime, setSelectedSlotTime] = useState<string | undefined>();
 
-  const handleSlotClick = (slotId: number, slotDate?: string, slotTime?: string) => {
+  const handleSlotClick = (slotId: number, slotDate?: string, slotTime?: string, useOptimized: boolean = true) => {
     try {
       if (typeof slotId !== 'number' || isNaN(slotId)) {
         // Silent error handling for invalid ID
@@ -523,7 +525,14 @@ export default function Dashboard() {
       setSelectedSlotDate(slotDate);
       // Gunakan waktu slot apa adanya (tanpa perlu perbaikan format)
       setSelectedSlotTime(slotTime);
-      setIsDialogOpen(true);
+      
+      if (useOptimized) {
+        // Gunakan dialog yang sudah dioptimasi
+        setIsOptimizedDialogOpen(true);
+      } else {
+        // Dialog legacy sebagai fallback
+        setIsDialogOpen(true);
+      }
       
     } catch (error) {
       // Silent error handling
@@ -533,6 +542,10 @@ export default function Dashboard() {
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
+  };
+  
+  const handleCloseOptimizedDialog = () => {
+    setIsOptimizedDialogOpen(false);
   };
 
   return (
