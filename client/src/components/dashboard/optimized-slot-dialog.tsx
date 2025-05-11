@@ -243,11 +243,45 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     
     // Tunggu sebentar untuk memastikan halaman transaksi sudah dimuat, lalu kirim event
     setTimeout(() => {
-      // Buat custom event untuk membuka form transaksi dengan data pasien
-      window.dispatchEvent(new CustomEvent('openNewTransactionForm', { 
-        detail: { patientId: patientIdNumber, source: 'optimized-dialog' }
-      }));
-    }, 500);
+      // Log yang lebih jelas untuk debugging
+      console.log("🚀 Mempersiapkan event openTransactionForm dari OptimizedSlotDialog");
+      
+      try {
+        // Buat custom event untuk membuka form transaksi dengan data pasien
+        // PENTING: Gunakan nama event yang sama persis dengan yang digunakan di transactions.tsx
+        const evt = new CustomEvent('openTransactionForm', { 
+          detail: { 
+            patientId: patientIdNumber, 
+            patientName: patient.name || 'pasien',
+            timestamp: Date.now(),
+            source: 'optimized-dialog' 
+          }
+        });
+        
+        // Log dan kirim event
+        console.log("📤 Mengirim event openTransactionForm dengan detail:", evt.detail);
+        window.dispatchEvent(evt);
+        console.log("✅ Event openTransactionForm telah terkirim");
+        
+        // Tambahan: simpan di localStorage sebagai fallback
+        localStorage.setItem('pendingTransactionPatientId', String(patientIdNumber));
+        localStorage.setItem('pendingTransactionPatientName', patient.name || '');
+        
+        // Menambahkan notifikasi toast untuk informasi pengguna bahwa proses sedang berlangsung
+        toast({
+          title: "Membuka form transaksi",
+          description: "Mohon tunggu sebentar, halaman transaksi sedang disiapkan...",
+          duration: 3000
+        });
+      } catch (error) {
+        console.error("⚠️ Error saat mengirim event openTransactionForm:", error);
+        toast({
+          title: "Terjadi Kesalahan",
+          description: "Gagal membuka form transaksi. Coba lagi nanti.",
+          variant: "destructive"
+        });
+      }
+    }, 300);
   };
   
   // Fungsi untuk mengubah status appointment

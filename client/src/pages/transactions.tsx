@@ -412,14 +412,18 @@ export default function Transactions() {
       }
     };
     
-    // Debugging
-    console.log("Memasang event listener untuk openTransactionForm");
+    // Debugging yang lebih jelas
+    console.log("⚡ Memasang event listener untuk openTransactionForm di halaman transaksi");
     
-    // Pasang event listener
-    window.addEventListener('openTransactionForm' as any, handleOpenTransactionForm);
+    // Pasang event listener dengan logging tambahan untuk men-debug event yang terlewatkan
+    window.addEventListener('openTransactionForm' as any, (event: Event) => {
+      console.log("🎯 Event openTransactionForm tertangkap di halaman transaksi:", event);
+      handleOpenTransactionForm(event as unknown as CustomEvent);
+    });
     
     return () => {
       // Cabut event listener saat komponen unmount
+      console.log("⚠️ Mencabut event listener openTransactionForm karena komponen unmount");
       window.removeEventListener('openTransactionForm' as any, handleOpenTransactionForm);
     };
   }, [patients, toast, apiRequest]); // Tambahkan dependensi yang diperlukan
@@ -1486,8 +1490,11 @@ export default function Transactions() {
             }
           }} 
           selectedPatientId={selectedPatientId}
-          // Hanya sembunyikan dropdown pasien jika selectedPatientId tidak null (dipilih dari slot)
-          hidePatientSearch={selectedPatientId !== null && selectedPatientId !== undefined}
+          // Periksa parameter hideDropdown dari URL
+          hidePatientSearch={
+            (selectedPatientId !== null && selectedPatientId !== undefined) || 
+            urlParams.get("hideDropdown") === "true"
+          }
         />
       )}
       
