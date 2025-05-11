@@ -290,7 +290,10 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
       event.stopPropagation();
     }
     
+    console.log(`🔄 handleStatusChange dipanggil dengan ID: ${appointmentId}, status baru: ${newStatus}`);
+    
     if (!appointmentId) {
+      console.error("ID appointment tidak valid:", appointmentId);
       toast({
         title: "Error",
         description: "ID appointment tidak valid",
@@ -300,34 +303,52 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     }
     
     try {
+      console.log(`📤 Mengirim permintaan ke /api/appointments/${appointmentId}/status`);
+      
       // Kirim permintaan untuk mengubah status
       const response = await fetch(`/api/appointments/${appointmentId}/status`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({ status: newStatus }),
         credentials: 'include'
       });
       
+      console.log(`📥 Menerima respons: ${response.status}`);
+      
+      // Coba ambil body respons untuk informasi lebih detail
+      let responseBody = null;
+      try {
+        responseBody = await response.json();
+        console.log("Respons body:", responseBody);
+      } catch (e) {
+        console.log("Tidak dapat mengambil respons body:", e);
+      }
+      
       if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+        throw new Error(`Error: ${response.status} - ${responseBody?.message || 'Unknown error'}`);
       }
       
       // Reload data appointment untuk memperbarui tampilan
       toast({
         title: "Berhasil",
-        description: `Status diubah menjadi: ${newStatus}`,
+        description: `Status berhasil diubah menjadi: ${newStatus}`,
         variant: "default"
       });
       
+      console.log("✅ Status berhasil diperbarui, sekarang memuat ulang data");
+      
       // Reload data appointment setelah status diubah
-      fetchSlotAndPatients();
+      await fetchSlotAndPatients();
       
     } catch (error) {
+      console.error("❌ Gagal mengubah status:", error);
       toast({
         title: "Gagal",
-        description: "Gagal mengubah status. Silakan coba lagi.",
+        description: `Gagal mengubah status: ${(error as Error).message || 'Silakan coba lagi.'}`,
         variant: "destructive"
       });
     }
@@ -336,27 +357,46 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
   // Komponen StatusDropdown untuk menampilkan dan mengubah status
   const StatusDropdown = ({ appointment, stopPropagation = true }: { appointment: any, stopPropagation?: boolean }) => {
     const [isUpdating, setIsUpdating] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const statusOptions = ["Scheduled", "Completed", "Cancelled", "No-Show"];
     const currentStatus = appointment?.status || "Pending";
     
+    // Tambahkan logging untuk memudahkan debugging
+    console.log("Status pasien saat ini:", currentStatus, "untuk appointment ID:", appointment?.id);
+    
     const updateStatus = async (status: string) => {
+      if (status === currentStatus) {
+        console.log("Status tidak berubah, tidak perlu update");
+        return;
+      }
+      
+      console.log("Mencoba mengubah status dari", currentStatus, "ke", status);
       setIsUpdating(true);
+      
       try {
         await handleStatusChange(appointment.id, status);
+        console.log("Berhasil mengubah status menjadi:", status);
+      } catch (error) {
+        console.error("Gagal mengubah status:", error);
       } finally {
         setIsUpdating(false);
+        setIsOpen(false); // Tutup dropdown setelah perubahan
       }
     };
     
     return (
-      <DropdownMenu>
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <Button 
             variant="outline" 
             size="sm" 
-            className="h-6 px-2 text-xs"
+            className="h-7 text-xs" 
             disabled={isUpdating}
-            onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}
+            onClick={(e) => {
+              if (stopPropagation) e.stopPropagation();
+              // Toggle dropdown secara manual
+              setIsOpen(!isOpen);
+            }}
           >
             {isUpdating ? (
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -370,6 +410,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
             <DropdownMenuItem
               key={status}
               onClick={(e) => {
+                e.preventDefault(); // Cegah penutupan otomatis
                 if (stopPropagation) e.stopPropagation();
                 updateStatus(status);
               }}
