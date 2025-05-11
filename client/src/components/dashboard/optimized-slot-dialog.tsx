@@ -201,7 +201,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarIcon className="h-5 w-5 text-primary" />
-            Detail Slot Terapi (Optimized)
+            Detail Slot Terapi
           </DialogTitle>
           <DialogDescription>
             Menampilkan detail slot terapi dan daftar pasien

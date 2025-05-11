@@ -673,7 +673,7 @@ export default function Dashboard() {
                             <tr 
                               key={slot.id} 
                               className="py-2 hover:bg-muted/50 cursor-pointer transition-colors"
-                              onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot)}
+                              onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot, true)}
                             >
                               <td className="py-3 text-left">
                                 <div className="flex flex-col">
@@ -725,7 +725,7 @@ export default function Dashboard() {
                         <div 
                           key={slot.id}
                           className="border rounded-lg p-3 hover:bg-muted/50 cursor-pointer transition-colors mobile-card"
-                          onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot)}
+                          onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot, true)}
                         >
                           <div className="flex justify-between items-center mb-2">
                             <div>
@@ -930,13 +930,20 @@ export default function Dashboard() {
         </CardContent>
       </Card>
       
-      {/* Dialog untuk melihat pasien yang terdaftar di slot */}
+      {/* Dialog untuk melihat pasien yang terdaftar di slot (legacy/original) */}
       <SlotPatientsDialog 
         slotId={selectedSlotId}
         slotDate={selectedSlotDate}
         slotTimeSlot={selectedSlotTime}
         isOpen={isDialogOpen} 
         onClose={handleCloseDialog} 
+      />
+      
+      {/* Dialog teroptimasi untuk kinerja yang lebih baik */}
+      <OptimizedSlotDialog
+        slotId={selectedSlotId}
+        isOpen={isOptimizedDialogOpen}
+        onClose={handleCloseOptimizedDialog}
       />
 
       {/* Dialog untuk mengedit jumlah sesi paket */}
