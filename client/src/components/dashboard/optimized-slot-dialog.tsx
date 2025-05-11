@@ -113,12 +113,12 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
   };
   
   // Main fetch function with optimized approach
-  const fetchSlotAndPatients = async () => {
-    console.log("Memulai proses load data slot dan pasien", slotId);
+  const fetchSlotAndPatients = async (forceRefresh = false) => {
+    console.log("📊 Memulai proses load data slot dan pasien", slotId, forceRefresh ? "(Force Refresh)" : "");
     
-    // Skip if already fetching
-    if (fetchInProgressRef.current) {
-      console.log("Ada fetch yang sedang berjalan, skip request");
+    // Skip if already fetching, unless force refresh
+    if (fetchInProgressRef.current && !forceRefresh) {
+      console.log("⚠️ Ada fetch yang sedang berjalan, skip request");
       return;
     }
     
@@ -131,6 +131,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     
     if (!slotId) {
       // Missing slot ID handling
+      console.error("❌ Slot ID tidak tersedia");
       setIsLoading(false);
       setError(new Error("Slot ID tidak tersedia"));
       fetchInProgressRef.current = false;
@@ -138,14 +139,16 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     }
     
     const fetchStartTime = Date.now();
+    // Tambahkan timestamp untuk mencegah caching
+    const cacheBuster = Date.now(); 
     
     try {
       // NEW APPROACH: Use optimized endpoint
       // with single server query for slot + appointments at once
-      console.log(`Mengambil data slot dan pasien untuk ID: ${slotId} dari endpoint optimized`);
+      console.log(`📥 Mengambil data slot dan pasien untuk ID: ${slotId} dari endpoint optimized`);
       
-      // Use optimized endpoint
-      const optimizedEndpoint = `/api/therapy-slots/${slotId}/patients`;
+      // Use optimized endpoint with cache buster
+      const optimizedEndpoint = `/api/therapy-slots/${slotId}/patients?_t=${cacheBuster}`;
       
       // Set proper cache control and timeout
       const response = await fetchWithTimeout(
@@ -157,31 +160,53 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
             'Pragma': 'no-cache'
           }
         },
-        6000,  // 6 second timeout
+        8000,  // 8 second timeout (increased)
         2      // 2 retries
       );
       
       if (response.ok) {
         // Response is { slot: {...}, appointments: [...] }
         const result = await response.json();
-        console.log(`Data diterima dari endpoint optimized dengan ${result.appointments ? result.appointments.length : 0} pasien`);
+        console.log(`✅ Data diterima dari endpoint optimized dengan ${result.appointments ? result.appointments.length : 0} pasien`);
+        
+        // Debug appointments data
+        if (result.appointments && result.appointments.length > 0) {
+          console.log("📋 Detail status pasien yang diterima:");
+          result.appointments.forEach((app: any) => {
+            console.log(`   - Pasien: ${app.patient?.name || 'Unknown'}, Status: ${app.status || 'Unknown'}, ID: ${app.id}`);
+          });
+        }
         
         // Set data to state
         setSlotData(result.slot);
         setAppointments(result.appointments || []);
         
         const fetchEndTime = Date.now();
-        console.log(`Slot data fetch selesai dalam ${fetchEndTime - fetchStartTime}ms`);
+        console.log(`⏱️ Slot data fetch selesai dalam ${fetchEndTime - fetchStartTime}ms`);
       } else {
-        console.error(`Error respons dari endpoint optimized: ${response.status}`);
+        console.error(`❌ Error respons dari endpoint optimized: ${response.status}`);
         setError(new Error(`Gagal mengambil data: ${response.status}`));
+        
+        // Tampilkan toast untuk user
+        toast({
+          title: "Gagal memuat data",
+          description: `Server merespons dengan kode: ${response.status}`,
+          variant: "destructive"
+        });
       }
     } catch (error) {
-      console.error("Error saat mengambil data:", error);
+      console.error("❌ Error saat mengambil data:", error);
       setError(new Error("Terjadi kesalahan saat mengambil data. Coba lagi."));
+      
+      // Tampilkan toast untuk user
+      toast({
+        title: "Error",
+        description: `${(error as Error).message || 'Gagal memuat data. Silakan coba lagi.'}`,
+        variant: "destructive"
+      });
     } finally {
       const totalTime = Date.now() - fetchStartTime;
-      console.log(`Total waktu proses: ${totalTime}ms`);
+      console.log(`⏱️ Total waktu proses: ${totalTime}ms`);
       
       // Reset loading state
       setIsLoading(false);
@@ -339,10 +364,10 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
         variant: "default"
       });
       
-      console.log("✅ Status berhasil diperbarui, sekarang memuat ulang data");
+      console.log("✅ Status berhasil diperbarui, sekarang memuat ulang data dengan forceRefresh=true");
       
-      // Reload data appointment setelah status diubah
-      await fetchSlotAndPatients();
+      // Reload data appointment setelah status diubah (paksa refresh)
+      await fetchSlotAndPatients(true);
       
     } catch (error) {
       console.error("❌ Gagal mengubah status:", error);
@@ -361,23 +386,45 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     const statusOptions = ["Scheduled", "Completed", "Cancelled", "No-Show"];
     const currentStatus = appointment?.status || "Pending";
     
-    // Tambahkan logging untuk memudahkan debugging
-    console.log("Status pasien saat ini:", currentStatus, "untuk appointment ID:", appointment?.id);
+    // Debug pada render komponen
+    useEffect(() => {
+      console.log(`🔍 StatusDropdown mounted for ${appointment?.patient?.name || 'Unknown'}`);
+      console.log(`   - Current status: ${currentStatus}`);
+      console.log(`   - Appointment ID: ${appointment?.id}`);
+      
+      return () => {
+        console.log(`🔍 StatusDropdown unmounted for appointment ID: ${appointment?.id}`);
+      };
+    }, [appointment?.id, appointment?.patient?.name, currentStatus]);
     
     const updateStatus = async (status: string) => {
       if (status === currentStatus) {
-        console.log("Status tidak berubah, tidak perlu update");
+        console.log("🚫 Status tidak berubah, tidak perlu update:", status);
+        setIsOpen(false);
         return;
       }
       
-      console.log("Mencoba mengubah status dari", currentStatus, "ke", status);
+      console.log(`🔄 Mencoba mengubah status dari "${currentStatus}" ke "${status}" untuk ID:${appointment.id}`);
       setIsUpdating(true);
       
       try {
+        // Feedback visual untuk menunjukkan proses sedang berjalan
+        toast({
+          title: "Memproses...",
+          description: `Mengubah status menjadi ${status}`,
+          duration: 3000,
+        });
+        
         await handleStatusChange(appointment.id, status);
-        console.log("Berhasil mengubah status menjadi:", status);
+        console.log(`✅ Berhasil mengubah status menjadi: "${status}"`);
       } catch (error) {
-        console.error("Gagal mengubah status:", error);
+        console.error("❌ Gagal mengubah status:", error);
+        toast({
+          title: "Gagal",
+          description: `Error saat mengubah status: ${(error as Error).message}`,
+          variant: "destructive",
+          duration: 4000,
+        });
       } finally {
         setIsUpdating(false);
         setIsOpen(false); // Tutup dropdown setelah perubahan
@@ -409,15 +456,30 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           {statusOptions.map((status) => (
             <DropdownMenuItem
               key={status}
-              onClick={(e) => {
-                e.preventDefault(); // Cegah penutupan otomatis
-                if (stopPropagation) e.stopPropagation();
-                updateStatus(status);
+              onSelect={(e) => {
+                // Gunakan onSelect alih-alih onClick untuk dropdownmenu
+                // Hentikan event default
+                e.preventDefault();
+                
+                console.log(`🖱️ Item status "${status}" diklik`);
+                if (status === currentStatus) {
+                  console.log(`⚠️ Status "${status}" sama dengan status saat ini, tidak ada tindakan`);
+                  return;
+                }
+                
+                // Panggil fungsi update dengan slight delay
+                setTimeout(() => {
+                  updateStatus(status);
+                }, 10);
               }}
               disabled={isUpdating || status === currentStatus}
-              className={status === currentStatus ? "bg-muted font-medium" : ""}
+              className={`${status === currentStatus ? "bg-muted font-medium" : ""} ${
+                status === "Completed" ? "text-green-600" : 
+                status === "Cancelled" ? "text-red-600" : 
+                status === "No-Show" ? "text-amber-600" : ""
+              }`}
             >
-              {status}
+              {status === currentStatus ? `✓ ${status}` : status}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -483,7 +545,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
         ) : error ? (
           <div className="text-center py-8 space-y-3">
             <p className="text-destructive">{error.message}</p>
-            <Button size="sm" onClick={fetchSlotAndPatients}>Coba Lagi</Button>
+            <Button size="sm" onClick={() => fetchSlotAndPatients(true)}>Coba Lagi</Button>
           </div>
         ) : !slotData ? (
           <div className="text-center py-8 text-muted-foreground">
@@ -652,7 +714,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
               <Button
                 variant="outline"
                 size="sm"
-                onClick={fetchSlotAndPatients}
+                onClick={() => fetchSlotAndPatients(true)}
                 className="w-full"
               >
                 Refresh Data
