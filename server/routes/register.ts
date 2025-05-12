@@ -51,7 +51,7 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     console.log("  - req.query.walkInMode:", req.query.walkInMode);
     
     // FIXED: Standarisasi deteksi walk-in dari semua format parameter yang mungkin
-    const isWalkInMode = 
+    const walkInDetected = 
       req.body.isWalkInMode === true || 
       req.body.walkin === true || 
       req.body.walkInMode === true ||
@@ -59,7 +59,7 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       req.query.isWalkInMode === 'true' ||
       req.query.walkInMode === 'true';
       
-    console.log("Hasil deteksi walk-in mode:", isWalkInMode);
+    console.log("Hasil deteksi walk-in mode:", walkInDetected);
     
     // Validasi body request - jika kosong atau tidak valid, kembalikan error
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -352,7 +352,7 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         // TAHAP 7: Buat appointment baru
         // Tambahkan informasi walk-in ke notes jika dalam mode walk-in
         let notes = patientData.complaints || '';
-        if (isWalkInMode) {
+        if (walkInDetected) {
           // Tambahkan tag walk-in ke notes untuk ditampilkan di slot tracker
           notes = `[WALK-IN] ${notes}`;
           console.log("Menambahkan tanda WALK-IN ke notes appointment");
