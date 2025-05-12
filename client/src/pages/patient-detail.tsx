@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AppointmentDetailDialog } from "@/components/appointments/appointment-detail-dialog";
 import { MedicalHistoryList } from "@/components/medical-history/medical-history-list";
+import FixAppointmentButton from "@/components/FixAppointmentButton";
 
 // Add formats for Indonesia locale
 // Menggunakan formatBirthDate dari utils untuk tanggal lahir
