@@ -296,8 +296,11 @@ export default function Dashboard() {
           // Untuk hari ini, gunakan tanggal hari ini
           const todayWIBStr = dateToWIBDateString(nowWIB);
           
+          // Untuk "Hari Ini", filter berdasarkan tanggal hari ini tanpa memperhatikan waktu
+          // Perubahan: Jika slotDateStr sama dengan todayWIBStr, maka itu adalah slot hari ini
           filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             const slotDateStr = getSlotDateStr(slot);
+            console.log("Slot date:", slotDateStr, "Today date:", todayWIBStr);
             return slotDateStr === todayWIBStr;
           });
           
@@ -347,19 +350,27 @@ export default function Dashboard() {
           });
           
         } else if (selectedPeriod === 'future') {
-          // Untuk mendatang, tampilkan slot hari ini dan ke depan (masa depan)
+          // Untuk mendatang, tampilkan slot esok hari dan ke depan (masa depan)
+          // Perubahan: Slot hari ini TIDAK termasuk mendatang, hanya mulai besok
           // Gunakan nilai nowWIB untuk memastikan zona waktu benar
-
+          
+          const todayWIBStr = dateToWIBDateString(nowWIB);
+          console.log("Filter future slots, today is:", todayWIBStr);
           
           filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             try {
               const slotDateStr = getSlotDateStr(slot);
               if (!slotDateStr) return false;
               
+              // Jika tanggalnya hari ini, jangan masukkan ke tab "Mendatang"
+              if (slotDateStr === todayWIBStr) return false;
+              
               const slotDate = new Date(slotDateStr);
-              return slotDate >= getStartOfDayWIB(new Date()); // Slot hari ini dan ke depan
+              // Hanya tampilkan slot yang tanggalnya setelah hari ini
+              return slotDate > getStartOfDayWIB(new Date());
             } catch (err) {
               // Silent error handling
+              console.error("Error filtering future slots:", err);
               return false;
             }
           });
