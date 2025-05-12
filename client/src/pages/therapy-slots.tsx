@@ -178,7 +178,7 @@ export default function TherapySlots() {
     queryKey: ['/api/registration-links'],
     queryFn: async () => {
       const response = await fetch('/api/registration-links');
-      if (!response.ok) throw new Error('Failed to fetch registration links');
+      if (!response.ok) throw new Error('Gagal mengambil data link pendaftaran');
       return response.json();
     },
   });
@@ -281,7 +281,7 @@ export default function TherapySlots() {
       
       console.log("Fetching therapy slots with URL:", endpoint);
       const response = await fetch(endpoint);
-      if (!response.ok) throw new Error('Failed to fetch therapy slots');
+      if (!response.ok) throw new Error('Gagal mengambil data slot terapi');
       
       // Dapatkan data dari respons
       const data = await response.json();
@@ -391,7 +391,7 @@ export default function TherapySlots() {
       }
       
       if (!res.ok) {
-        throw new Error('Failed to update slot status');
+        throw new Error('Gagal mengubah status slot');
       }
       
       return await res.json();
@@ -422,7 +422,7 @@ export default function TherapySlots() {
       
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || 'Failed to delete therapy slot');
+        throw new Error(errorData.message || 'Gagal menghapus slot terapi');
       }
       
       return await res.json();
