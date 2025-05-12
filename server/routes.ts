@@ -592,6 +592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Endpoint original sebagai backup dengan nama yang berbeda
+  // Jalur pendaftaran lama (legacy) - tidak aktif digunakan
   app.post("/api/patients/legacy", async (req: Request, res: Response) => {
     try {
       console.log("Menerima permintaan POST /api/patients/legacy dengan data:", JSON.stringify(req.body, null, 2));
@@ -5674,7 +5675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Endpoint khusus untuk memperbaiki appointment yang tidak terbuat karena timeout
-  // Diakses langsung tanpa middleware autentikasi
+  // Jalur ini sudah tidak digunakan - dialihkan ke /api/fix/appointment-direct
   app.post("/api/fix/create-missing-appointment", allowAnyAccess, async (req: Request, res: Response) => {
     try {
       const { patientName, birthDate, therapySlotId } = req.body;
