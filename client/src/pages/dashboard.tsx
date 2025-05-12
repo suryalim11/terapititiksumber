@@ -132,16 +132,26 @@ export default function Dashboard() {
   // Fungsi untuk mendapatkan tanggal dari slot (YYYY-MM-DD) dari format apapun
   const getSlotDateStr = (slot: TherapySlot): string => {
     if (!slot || !slot.date) {
+      console.log("Error: Slot tidak valid atau tidak memiliki tanggal:", slot);
       // Silent error handling
       return '';
     }
     
-    if (typeof slot.date === 'string') {
-      // Format: "2025-04-07 00:00:00" atau "2025-04-07 03:07:41.562" -> ambil "2025-04-07"
-      return slot.date.split(' ')[0];
-    } else {
-      // Format: Date object -> convert ke string "2025-04-07"
-      return new Date(slot.date).toISOString().split('T')[0];
+    try {
+      if (typeof slot.date === 'string') {
+        // Format: "2025-04-07 00:00:00" atau "2025-04-07 03:07:41.562" -> ambil "2025-04-07"
+        const dateStr = slot.date.split(' ')[0]; 
+        console.log(`Memproses slot ID:${slot.id}, tanggal string: "${slot.date}" -> "${dateStr}"`);
+        return dateStr;
+      } else {
+        // Format: Date object -> convert ke string "2025-04-07" 
+        const dateStr = new Date(slot.date).toISOString().split('T')[0];
+        console.log(`Memproses slot ID:${slot.id}, tanggal objek: "${slot.date}" -> "${dateStr}"`);
+        return dateStr;
+      }
+    } catch (error) {
+      console.error("Error memproses tanggal slot:", error, slot);
+      return '';
     }
   };
 
