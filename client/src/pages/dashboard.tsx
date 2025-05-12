@@ -138,17 +138,26 @@ export default function Dashboard() {
     }
     
     try {
+      let resultDate = '';
+      
       if (typeof slot.date === 'string') {
-        // Format: "2025-04-07 00:00:00" atau "2025-04-07 03:07:41.562" -> ambil "2025-04-07"
-        const dateStr = slot.date.split(' ')[0]; 
-        console.log(`Memproses slot ID:${slot.id}, tanggal string: "${slot.date}" -> "${dateStr}"`);
-        return dateStr;
+        // Format: untuk database PostgreSQL biasanya "2025-05-12T00:00:00.000Z"
+        if (slot.date.includes('T')) {
+          resultDate = slot.date.split('T')[0];
+        } else if (slot.date.includes(' ')) {
+          // Format lama: "2025-04-07 00:00:00" -> ambil "2025-04-07"
+          resultDate = slot.date.split(' ')[0]; 
+        } else {
+          // Sudah dalam format YYYY-MM-DD
+          resultDate = slot.date;
+        }
       } else {
         // Format: Date object -> convert ke string "2025-04-07" 
-        const dateStr = new Date(slot.date).toISOString().split('T')[0];
-        console.log(`Memproses slot ID:${slot.id}, tanggal objek: "${slot.date}" -> "${dateStr}"`);
-        return dateStr;
+        resultDate = new Date(slot.date).toISOString().split('T')[0];
       }
+      
+      console.log(`Memproses slot ID:${slot.id}, tanggal asli: "${slot.date}" -> hasil format: "${resultDate}"`);
+      return resultDate;
     } catch (error) {
       console.error("Error memproses tanggal slot:", error, slot);
       return '';
@@ -307,11 +316,21 @@ export default function Dashboard() {
           const todayWIBStr = dateToWIBDateString(nowWIB);
           
           // Untuk "Hari Ini", filter berdasarkan tanggal hari ini tanpa memperhatikan waktu
-          // Perubahan: Jika slotDateStr sama dengan todayWIBStr, maka itu adalah slot hari ini
+          // Perbaikan: Konversi format tanggal untuk memastikan kesamaan
+          console.log("Hari ini (WIB):", todayWIBStr);
+          
           filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             const slotDateStr = getSlotDateStr(slot);
-            console.log("Slot date:", slotDateStr, "Today date:", todayWIBStr);
-            return slotDateStr === todayWIBStr;
+            // Log tanggal dengan jelas untuk memeriksa format
+            console.log(`Slot ID:${slot.id} Tanggal Slot:${slotDateStr} = Hari Ini:${todayWIBStr}? ${slotDateStr === todayWIBStr}`);
+            
+            // Percobaan tanggal alternatif jika format tidak cocok
+            const slotDate = new Date(slotDateStr);
+            const slotDateAlternative = slotDate.toISOString().split('T')[0];
+            console.log(`  Format Alternatif: ${slotDateAlternative} = ${todayWIBStr}? ${slotDateAlternative === todayWIBStr}`);
+            
+            // Periksa dengan beberapa cara berbeda untuk memastikan kecocokan
+            return slotDateStr === todayWIBStr || slotDateAlternative === todayWIBStr;
           });
           
         } else if (selectedPeriod === 'selected-date' && selectedDate) {
@@ -361,25 +380,31 @@ export default function Dashboard() {
           
         } else if (selectedPeriod === 'future') {
           // Untuk mendatang, tampilkan slot esok hari dan ke depan (masa depan)
-          // Perubahan: Slot hari ini TIDAK termasuk mendatang, hanya mulai besok
-          // Gunakan nilai nowWIB untuk memastikan zona waktu benar
+          // PERBAIKAN: Slot hari ini TIDAK termasuk mendatang, hanya mulai besok
           
+          // Gunakan nilai nowWIB untuk tanggal hari ini dan tambah 1 hari untuk besok
           const todayWIBStr = dateToWIBDateString(nowWIB);
-          console.log("Filter future slots, today is:", todayWIBStr);
+          
+          // Buat tanggal untuk besok dengan zona waktu yang benar
+          const tomorrowWIB = new Date(nowWIB);
+          tomorrowWIB.setDate(tomorrowWIB.getDate() + 1);
+          const tomorrowWIBStr = dateToWIBDateString(tomorrowWIB);
+          
+          console.log("Filter mendatang - Hari ini:", todayWIBStr, "Besok:", tomorrowWIBStr);
           
           filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             try {
               const slotDateStr = getSlotDateStr(slot);
               if (!slotDateStr) return false;
               
-              // Jika tanggalnya hari ini, jangan masukkan ke tab "Mendatang"
-              if (slotDateStr === todayWIBStr) return false;
+              // Log untuk debug
+              console.log(`Cek slot masa depan - ID:${slot.id}, Tanggal:${slotDateStr}, > Hari ini (${todayWIBStr})? ${slotDateStr > todayWIBStr}`);
               
-              const slotDate = new Date(slotDateStr);
-              // Hanya tampilkan slot yang tanggalnya setelah hari ini
-              return slotDate > getStartOfDayWIB(new Date());
+              // PERBAIKAN: Slot yang tanggalnya setelah hari ini (tanggal lebih besar)
+              // Jika tanggal = hari ini, maka false (tidak masuk tab Mendatang)
+              // Jika tanggal > hari ini, maka true (masuk tab Mendatang)
+              return slotDateStr > todayWIBStr;
             } catch (err) {
-              // Silent error handling
               console.error("Error filtering future slots:", err);
               return false;
             }
