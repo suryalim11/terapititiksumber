@@ -50,7 +50,14 @@ export default function RegistrationSuccessPage() {
     const params = new URLSearchParams(window.location.search);
     const timeParam = params.get('t');
     const sourceParam = params.get('src');
-    console.log(`Params: timestamp=${timeParam}, source=${sourceParam}`);
+    const isWalkIn = params.get('walkin') === 'true';
+    console.log(`Params: timestamp=${timeParam}, source=${sourceParam}, walkin=${isWalkIn}`);
+    
+    // Catat status walk-in ke localStorage untuk pemberian pesan yang tepat
+    if (isWalkIn) {
+      localStorage.setItem('walkin_status', 'true');
+      console.log("Mode walk-in terdeteksi dan disimpan");
+    }
     
     let isMounted = true; // Flag untuk mencegah state update pada komponen yang unmounted
     
@@ -60,8 +67,10 @@ export default function RegistrationSuccessPage() {
         console.log("Mencoba memuat data dari localStorage...");
         const savedData = localStorage.getItem('registrationData');
         const statusData = localStorage.getItem('registrationStatus');
+        const walkInStatus = localStorage.getItem('walkin_status') === 'true';
         
         console.log(`Status data di localStorage: ${statusData || 'tidak ada'}`);
+        console.log(`Status walk-in dari localStorage: ${walkInStatus ? 'Ya' : 'Tidak'}`);
         
         if (savedData && isMounted) {
           console.log("Data ditemukan di localStorage");
@@ -69,6 +78,12 @@ export default function RegistrationSuccessPage() {
           try {
             const parsedData = JSON.parse(savedData);
             console.log("Data berhasil di-parse:", parsedData);
+            
+            // Tambahkan status walk-in ke data
+            if (walkInStatus || isWalkIn) {
+              parsedData.isWalkIn = true;
+              console.log("Mode walk-in ditambahkan ke data registrasi");
+            }
             
             // Pastikan data yang diload valid
             if (parsedData && parsedData.name && parsedData.phoneNumber) {
@@ -204,9 +219,14 @@ export default function RegistrationSuccessPage() {
           <div className="flex justify-center mb-4">
             <CheckCircle className="h-16 w-16 text-green-600" />
           </div>
-          <CardTitle className="text-center text-2xl text-green-800">Pendaftaran Berhasil!</CardTitle>
+          <CardTitle className="text-center text-2xl text-green-800">
+            {registrationData.isWalkIn ? 'Pendaftaran Walk-in Berhasil!' : 'Pendaftaran Berhasil!'}
+          </CardTitle>
           <CardDescription className="text-center text-green-700">
-            Terima kasih telah mendaftar di klinik Terapi Titik Sumber
+            {registrationData.isWalkIn 
+              ? 'Pasien telah terdaftar sebagai walk-in di klinik Terapi Titik Sumber'
+              : 'Terima kasih telah mendaftar di klinik Terapi Titik Sumber'
+            }
           </CardDescription>
         </CardHeader>
 
@@ -284,12 +304,19 @@ export default function RegistrationSuccessPage() {
 
             <div className="border-b pb-4">
               <h3 className="font-medium text-gray-700 mb-2">Informasi Penting</h3>
-              <ul className="list-disc pl-5 space-y-1 text-gray-600">
-                <li>Mohon datang 15 menit sebelum jadwal terapi</li>
-                <li>Lakukan konfirmasi kehadiran melalui WhatsApp</li>
-                <li>Bawa kartu identitas untuk verifikasi</li>
-                {/* Peringatan tentang format waktu sudah tidak diperlukan karena format sudah otomatis diperbaiki */}
-              </ul>
+              {registrationData.isWalkIn ? (
+                <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                  <li>Pasien sudah terdaftar sebagai walk-in</li>
+                  <li>Siap dilayani sesuai antrean yang tersedia</li>
+                  <li>Status walk-in telah dicatat di sistem</li>
+                </ul>
+              ) : (
+                <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                  <li>Mohon datang 15 menit sebelum jadwal terapi</li>
+                  <li>Lakukan konfirmasi kehadiran melalui WhatsApp</li>
+                  <li>Bawa kartu identitas untuk verifikasi</li>
+                </ul>
+              )}
             </div>
           </div>
         </CardContent>
