@@ -597,6 +597,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                         // Siapkan parameter untuk pendaftaran
                         let queryParams = new URLSearchParams();
                         queryParams.append('walkin', 'true');
+                        queryParams.append('isWalkInMode', 'true'); // Tambahkan parameter isWalkInMode
                         queryParams.append('slotId', String(slotData.id));
                         
                         // Tambahkan timeSlotKey jika tersedia
