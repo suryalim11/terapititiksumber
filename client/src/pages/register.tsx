@@ -1,3 +1,5 @@
+// JALUR PENDAFTARAN ONLINE UTAMA
+// Halaman ini adalah satu-satunya jalur pendaftaran via link untuk pasien
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { z } from "zod";

@@ -13,11 +13,12 @@ import Reports from "@/pages/reports";
 import ReportsIndex from "@/pages/reports/index";
 import PatientsDailyReport from "@/pages/reports/patients-daily";
 import Settings from "@/pages/settings";
+// JALUR PENDAFTARAN ONLINE UTAMA
 import Register from "@/pages/register";
-// import RegistrationSuccess from "@/pages/registration-success";
 import RegistrationSuccess from "@/pages/registration-success-fixed";
-// Import halaman register sederhana untuk testing
-import SimpleRegister from "@/pages/register.simple";
+
+// HALAMAN PENDAFTARAN LEGACY (TIDAK DIGUNAKAN)
+// import SimpleRegister from "@/pages/register.simple";
 import Login from "@/pages/login";
 import BackupRestore from "@/pages/backup-restore";
 import DateTest from "@/pages/date-test";
@@ -67,7 +68,8 @@ function PublicApp() {
         <Route path="/daftar" component={Register} />
         <Route path="/register" component={Register} />
         <Route path="/registration-success" component={RegistrationSuccess} />
-        <Route path="/register-simple" component={SimpleRegister} />
+        {/* Rute pendaftaran sederhana dinonaktifkan - diganti dengan register utama */}
+        {/* <Route path="/register-simple" component={SimpleRegister} /> */}
         <Route component={NotFound} />
       </Switch>
     </PublicLayout>
