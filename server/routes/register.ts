@@ -347,15 +347,22 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         }
         
         // FIXED: Konversi date ke string ISO agar kompatibel dengan tipe data di database
+        // Konversi data secara manual untuk mengatasi type error
         let dateStr = '';
+        
+        console.log("Original therapySlot.date:", therapySlot.date);
+        console.log("Type of therapySlot.date:", Object.prototype.toString.call(therapySlot.date));
+        
         if (typeof therapySlot.date === 'string') {
           dateStr = therapySlot.date;
-        } else if (therapySlot.date instanceof Date) {
+          console.log("Using string date directly:", dateStr);
+        } else if (Object.prototype.toString.call(therapySlot.date) === '[object Date]') {
           dateStr = therapySlot.date.toISOString();
+          console.log("Converted date object to ISO string:", dateStr);
         } else {
           // Jika tipe tidak diketahui, gunakan tanggal hari ini
           dateStr = new Date().toISOString();
-          console.log("WARNING: Tipe data dari therapySlot.date tidak dikenali, menggunakan tanggal hari ini");
+          console.log("WARNING: Tipe data dari therapySlot.date tidak dikenali, menggunakan tanggal hari ini:", dateStr);
         }
         
         console.log("Type dari therapySlot.date:", typeof therapySlot.date);
@@ -401,17 +408,21 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           throw new Error("Gagal membuat appointment: Data appointment kosong");
         }
         
-        // Simpan appointment untuk digunakan nanti
+        // Simpan appointment untuk digunakan nanti (FIXED: Gunakan dateStr yang sudah diformat dengan benar)
+        console.log("💾 DEBUGINFO: Membuat appointmentResponse dengan date:", dateStr);
+        
         appointmentResponse = {
           ...appointmentResult,
           therapySlotDetails: {
-            date: therapySlot.date,
+            date: dateStr, // Gunakan string date yang sudah dikonversi
             timeSlot: therapySlot.timeSlot,
-            formattedDate: format(new Date(therapySlot.date), 'dd/MM/yyyy'),
+            formattedDate: format(new Date(dateStr), 'dd/MM/yyyy'),
             // Tambahkan format waktu yang benar untuk mengatasi bug 10:00-00:00
             timeSlotFixed: fixTimeSlotFormat(therapySlot.timeSlot)
           }
         };
+        
+        console.log("✅ SUKSES: appointmentResponse dibuat:", JSON.stringify(appointmentResponse, null, 2));
         
         console.log("🔍 DEBUGGING WALKIN: Appointment berhasil disimpan dengan ID:", appointmentResult.id);
       } catch (error) {
