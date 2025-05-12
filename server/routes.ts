@@ -6197,6 +6197,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register special fix routes for Agus Isrofin
   registerAgusFixRoutes(app);
+  
+  // Endpoint untuk perbaikan appointment yang hilang melalui ID pasien & ID therapy slot
+  app.post("/api/fix/appointment-direct", allowAnyAccess, async (req: Request, res: Response) => {
+    try {
+      const { patientId, therapySlotId } = req.body;
+      
+      if (!patientId || !therapySlotId) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Diperlukan patientId dan therapySlotId",
+          example: { patientId: 343, therapySlotId: 462 }
+        });
+      }
+      
+      console.log(`Memperbaiki appointment langsung untuk pasien ${patientId} pada slot ${therapySlotId}`);
+      
+      // Import fungsi dari fix-appointment-direct.ts
+      const { createMissingAppointmentDirect } = await import('./fix-appointment-direct');
+      
+      // Jalankan fungsi perbaikan
+      const result = await createMissingAppointmentDirect(
+        parseInt(patientId.toString()), 
+        parseInt(therapySlotId.toString())
+      );
+      
+      if (result.success) {
+        return res.status(201).json(result);
+      } else {
+        return res.status(400).json(result);
+      }
+    } catch (error) {
+      console.error("Error saat memperbaiki appointment secara langsung:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat memperbaiki appointment", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
 
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);
