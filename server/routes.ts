@@ -6199,7 +6199,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register special fix routes for Agus Isrofin
   registerAgusFixRoutes(app);
   
-  // Endpoint untuk perbaikan appointment yang hilang melalui ID pasien & ID therapy slot
+  // Endpoint untuk walkin register - menghubungkan pasien & slot terapi (memastikan data konsisten)
+  // Ini adalah salah satu dari dua jalur pendaftaran yang diaktifkan (jalur walkin)
   app.post("/api/fix/appointment-direct", allowAnyAccess, async (req: Request, res: Response) => {
     try {
       const { patientId, therapySlotId } = req.body;

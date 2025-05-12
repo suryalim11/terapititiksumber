@@ -23,6 +23,8 @@ const registerFormSchema = z.object({
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
+// Halaman pendaftaran sederhana ini sudah tidak digunakan, digantikan oleh register.tsx utama
+// yang mendukung pendaftaran via link maupun walkin dengan lengkap
 export default function SimpleRegisterPage() {
   // Form handling
   const form = useForm<RegisterFormValues>({

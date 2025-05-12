@@ -98,15 +98,15 @@ export default function FixAppointmentButton({
         onClick={() => setIsOpen(true)}
         className="h-8 px-2 text-xs"
       >
-        Fix Appointment
+        Daftarkan Walkin
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Perbaiki Appointment Pasien</DialogTitle>
+            <DialogTitle>Daftarkan Pasien Walkin</DialogTitle>
             <DialogDescription>
-              Buat appointment untuk pasien yang tidak muncul di sistem meskipun sudah terdaftar.
+              Pendaftaran pasien walkin secara langsung ke slot terapi yang tersedia.
             </DialogDescription>
           </DialogHeader>
 
