@@ -1,11 +1,17 @@
 import { pool } from "./db";
 
 /**
- * Fungsi untuk membuat appointment secara langsung dari ID pasien dan ID slot terapi
- * Digunakan untuk memperbaiki kasus dimana pasien berhasil terdaftar tetapi appointmentnya tidak terbuat
+ * JALUR WALKIN REGISTER
+ * 
+ * Fungsi ini merupakan implementasi untuk jalur pendaftaran walkin
+ * yang menghubungkan pasien dan slot terapi secara langsung melalui tombol di halaman detail pasien.
+ * 
+ * Ini adalah satu dari dua jalur pendaftaran utama dalam sistem:
+ * 1. Pendaftaran online (melalui register.tsx)
+ * 2. Pendaftaran walkin (melalui fungsi ini)
  */
 export async function createMissingAppointmentDirect(patientId: number, therapySlotId: number) {
-  console.log(`Creating missing appointment for patient ${patientId} on therapy slot ${therapySlotId}`);
+  console.log(`Pendaftaran walkin: Menghubungkan pasien ${patientId} ke slot terapi ${therapySlotId}`);
   
   try {
     // 1. Verifikasi patient
