@@ -560,6 +560,16 @@ export default function PatientDetail() {
                     <div className="text-center py-6">
                       <AlertTriangle className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                       <p>Tidak ada janji temu yang ditemukan</p>
+                      {patient?.therapySlotId && (
+                        <div className="mt-4 flex justify-center">
+                          <FixAppointmentButton 
+                            patientId={patient.id} 
+                            therapySlotId={patient.therapySlotId} 
+                            patientName={patient.name}
+                            onSuccess={refetchAppointments}
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-4">
