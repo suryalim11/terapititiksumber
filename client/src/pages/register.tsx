@@ -838,6 +838,9 @@ export default function RegisterPage() {
   // Handling form submission with improved navigation
   const onSubmit = async (values: RegisterFormValues) => {
     console.log("Form submitted with values:", values);
+    console.log("DEBUGGING: Status walk-in mode saat submit:", isWalkInMode);
+    console.log("DEBUGGING: Therapy slot ID:", values.therapySlotId);
+    console.log("DEBUGGING: Selected slot:", selectedSlot);
     setIsSubmitting(true);
     
     // Validasi jika kode pendaftaran tidak ada
@@ -948,6 +951,8 @@ export default function RegisterPage() {
       isWalkInMode, // Tambahkan flag isWalkInMode ke request
     };
     
+    console.log("DEBUGGING: Data yang akan dikirim:", dataToSend);
+    console.log("DEBUGGING: Status walk-in dalam data:", isWalkInMode);
     console.log("Mengirim data pendaftaran ke server");
     
     // Update UI status
