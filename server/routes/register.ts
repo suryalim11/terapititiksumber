@@ -347,38 +347,53 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         }
         
         // FIXED: Konversi date ke string ISO agar kompatibel dengan tipe data di database
-        // Konversi data secara manual untuk mengatasi type error
+        // FIXED: Konversi date ke format string dengan cara yang lebih aman
         let dateStr = '';
         
         console.log("Original therapySlot.date:", therapySlot.date);
         console.log("Type of therapySlot.date:", Object.prototype.toString.call(therapySlot.date));
         
-        if (typeof therapySlot.date === 'string') {
-          dateStr = therapySlot.date;
-          console.log("Using string date directly:", dateStr);
-        } else if (Object.prototype.toString.call(therapySlot.date) === '[object Date]') {
-          dateStr = therapySlot.date.toISOString();
-          console.log("Converted date object to ISO string:", dateStr);
-        } else {
-          // Jika tipe tidak diketahui, gunakan tanggal hari ini
+        try {
+          if (typeof therapySlot.date === 'string') {
+            // Jika sudah string, gunakan langsung
+            dateStr = therapySlot.date;
+            console.log("Using string date directly:", dateStr);
+          } else if (therapySlot.date && typeof therapySlot.date.toISOString === 'function') {
+            // Jika object Date (dengan method toISOString)
+            dateStr = therapySlot.date.toISOString();
+            console.log("Converted date object to ISO string:", dateStr);
+          } else {
+            // Jika tipe tidak diketahui, gunakan tanggal hari ini
+            dateStr = new Date().toISOString();
+            console.log("WARNING: Tipe data dari therapySlot.date tidak dikenali, menggunakan tanggal hari ini:", dateStr);
+          }
+        } catch (error) {
+          console.error("ERROR converting date:", error);
+          // Fallback ke tanggal hari ini jika terjadi error
           dateStr = new Date().toISOString();
-          console.log("WARNING: Tipe data dari therapySlot.date tidak dikenali, menggunakan tanggal hari ini:", dateStr);
+          console.log("ERROR: Menggunakan tanggal hari ini sebagai fallback:", dateStr);
         }
         
         console.log("Type dari therapySlot.date:", typeof therapySlot.date);
         console.log("Original date:", therapySlot.date);
         console.log("Converted date string:", dateStr);
         
+        // FIXED: Format data dengan benar untuk insert ke database
         const appointmentData = {
           patientId: patientToUse.id,
           therapySlotId: therapySlot.id,
-          notes: notes,
+          notes: notes || '',
           status: "Scheduled",
           date: dateStr, // Gunakan string ISO date
-          timeSlot: therapySlot.timeSlot,
+          timeSlot: therapySlot.timeSlot || '',
           sessionId: null,
           registrationNumber: null
         };
+        
+        // Cek ulang semua properti required
+        console.log("CHECK: appointmentData.patientId is valid:", typeof patientToUse.id === 'number' && !isNaN(patientToUse.id));
+        console.log("CHECK: appointmentData.therapySlotId is valid:", typeof therapySlot.id === 'number' && !isNaN(therapySlot.id));
+        console.log("CHECK: appointmentData.date is valid:", dateStr && typeof dateStr === 'string' && dateStr.length > 0);
         
         console.log("Data appointment yang akan dibuat:", JSON.stringify(appointmentData, null, 2));
         console.log(`Pastikan: patientId=${patientToUse.id}, Nama pasien=${patientToUse.name}, therapySlotId=${therapySlot.id}`);
@@ -390,8 +405,25 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         let appointmentResult;
         
         try {
+          // FIXED: Coba gunakan query langsung untuk memasukkan data
+          console.log("Mencoba insert appointment dengan format yang benar");
+          
+          // Pastikan semua field untuk appointment valid dengan format yang tepat
+          const formattedAppointmentData = {
+            patientId: parseInt(String(patientToUse.id), 10), // Pastikan berupa number
+            therapySlotId: parseInt(String(therapySlot.id), 10), // Pastikan berupa number
+            notes: notes || "",
+            status: "Scheduled",
+            date: dateStr, // String date sesuai format
+            timeSlot: therapySlot.timeSlot || "",
+            sessionId: null,
+            registrationNumber: null
+          };
+          
+          console.log("Menggunakan formatted data:", JSON.stringify(formattedAppointmentData, null, 2));
+          
           const [appointment] = await db.insert(schema.appointments)
-            .values(appointmentData)
+            .values(formattedAppointmentData)
             .returning();
           
           // Simpan appointment ke variabel lokal

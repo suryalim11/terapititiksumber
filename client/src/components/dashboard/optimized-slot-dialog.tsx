@@ -600,9 +600,10 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                         // DEBUG: Tampilkan informasi tentang slot yang akan didaftarkan
                         console.log("DEBUGGING: Membuka pendaftaran walk-in untuk slot:", slotData);
                         
-                        // PENTING: Gunakan KEDUA parameter untuk kompatibilitas
+                        // PENTING: Gunakan semua format untuk memastikan kompatibilitas dengan server
                         queryParams.append('walkin', 'true');
                         queryParams.append('isWalkInMode', 'true');
+                        queryParams.append('walkInMode', 'true'); // Tambahkan format lain untuk memastikan kompatibilitas
                         
                         // Pastikan ID slot terkirim dengan benar
                         console.log("DEBUGGING: Mengirim ID slot:", slotData.id);
