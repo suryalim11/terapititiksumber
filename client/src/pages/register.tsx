@@ -606,12 +606,21 @@ export default function RegisterPage() {
             console.log("DEBUGGING: Mode walk-in terdeteksi dari parameter URL");
             setIsWalkInMode(true);
             console.log("DEBUGGING: isWalkInMode set ke true");
-            toast({
-              title: "Mode Pendaftaran Pasien Walk-in",
-              description: `Pendaftaran untuk pasien walk-in pada sesi ${matchingSlot.timeSlot}, ${format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale })}.`,
-              className: "bg-blue-50 border-blue-200 text-blue-800",
-            });
-            console.log("DEBUGGING: Toast mode walk-in ditampilkan");
+            // FIXED: Tambahkan ID toast untuk menghindari duplikasi
+            // Mode walk-in hanya ditampilkan sekali di awal
+            if (!window.localStorage.getItem('walkin_toast_shown')) {
+              toast({
+                id: "walkin-mode-toast",
+                title: "Mode Pendaftaran Pasien Walk-in",
+                description: `Pendaftaran untuk pasien walk-in pada sesi ${matchingSlot.timeSlot}, ${format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale })}.`,
+                className: "bg-blue-50 border-blue-200 text-blue-800",
+              });
+              // Simpan flag untuk tidak menampilkan lagi
+              window.localStorage.setItem('walkin_toast_shown', 'true');
+              console.log("DEBUGGING: Toast mode walk-in ditampilkan (sekali)");
+            } else {
+              console.log("Toast mode walk-in tidak ditampilkan ulang - sudah ditampilkan sebelumnya");
+            }
           } else {
             toast({
               title: "Sesi Terapi Telah Dipilih",
