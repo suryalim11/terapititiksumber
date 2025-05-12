@@ -86,9 +86,15 @@ export async function handleTherapySlotsBatch(req: Request, res: Response) {
         
         console.log(`Membuat slot terapi dengan tanggal: ${dateStr} (${typeof dateStr})`);
         
+        // Buat timeSlotKey secara manual dari date dan timeSlot
+        const timeSlotKey = `${dateStr}_${slotData.timeSlot}`;
+        
+        console.log(`Membuat slot terapi dengan tanggal: ${dateStr}, timeSlot: ${slotData.timeSlot}, timeSlotKey: ${timeSlotKey}`);
+        
         const newSlot = await storage.createTherapySlot({
           date: dateStr, // Pastikan selalu string format YYYY-MM-DD
           timeSlot: slotData.timeSlot,
+          timeSlotKey: timeSlotKey, // Tambahkan timeSlotKey yang sudah dibuat
           maxQuota: slotData.maxQuota,
           isActive: slotData.isActive !== undefined ? slotData.isActive : true
         });

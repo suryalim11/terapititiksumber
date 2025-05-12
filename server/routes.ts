@@ -4506,9 +4506,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Tanggal slot yang akan disimpan:", dateString);
       
+      // Generate timeSlotKey dari date + timeSlot
+      const timeSlot = req.body.timeSlot || req.body.startTime + "-" + req.body.endTime;
+      const timeSlotKey = `${dateString}_${timeSlot}`;
+      
+      console.log("TimeSlotKey yang dihasilkan:", timeSlotKey);
+      
       const data = {
         ...req.body,
         date: dateString, // Gunakan string tanggal format YYYY-MM-DD
+        timeSlot: timeSlot,
+        timeSlotKey: timeSlotKey, // Tambahkan timeSlotKey eksplisit
         maxQuota: req.body.maxQuota || 6,
         currentCount: req.body.currentCount || 0,
         isActive: req.body.isActive !== undefined ? req.body.isActive : true
