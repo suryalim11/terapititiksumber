@@ -847,9 +847,11 @@ export default function RegisterPage() {
   // Handling form submission with improved navigation
   const onSubmit = async (values: RegisterFormValues) => {
     console.log("Form submitted with values:", values);
-    console.log("DEBUGGING: Status walk-in mode saat submit:", isWalkInMode);
-    console.log("DEBUGGING: Therapy slot ID:", values.therapySlotId);
-    console.log("DEBUGGING: Selected slot:", selectedSlot);
+    console.log("🔍 DEBUGGING WALKIN di onSubmit register.tsx:");
+    console.log("  - isWalkInMode:", isWalkInMode);
+    console.log("  - therapySlotId:", values.therapySlotId);
+    console.log("  - selectedSlot:", selectedSlot);
+    console.log("  - formState:", form.formState);
     setIsSubmitting(true);
     
     // Validasi jika kode pendaftaran tidak ada
@@ -912,7 +914,10 @@ export default function RegisterPage() {
       }
     } else if (isWalkInMode && values.therapySlotId) {
       // Untuk walk-in, kita tetap memberikan informasi jika waktunya sudah lewat, tapi tidak mencegah pendaftaran
-      console.log("DEBUGGING: Validasi walk-in mode terdeteksi, isWalkInMode:", isWalkInMode);
+      console.log("🔍 DEBUGGING WALKIN di validasi register.tsx:");
+      console.log("  - isWalkInMode:", isWalkInMode);
+      console.log("  - therapySlotId:", values.therapySlotId);
+      console.log("  - URL params:", new URLSearchParams(window.location.search).toString());
       interface TherapySlotData {
         id: number;
         date: string;
@@ -953,15 +958,19 @@ export default function RegisterPage() {
       }
     }
     
-    // Siapkan data untuk server
+    // Siapkan data untuk server dengan parameter walk-in yang lebih jelas
     const dataToSend = {
       ...values,
       registrationCode,
-      isWalkInMode, // Tambahkan flag isWalkInMode ke request
+      isWalkInMode, // Parameter asli
+      walkin: isWalkInMode, // Parameter tambahan untuk kompatibilitas
+      walkInMode: isWalkInMode, // Parameter tambahan untuk kompatibilitas
     };
     
-    console.log("DEBUGGING: Data yang akan dikirim:", dataToSend);
-    console.log("DEBUGGING: Status walk-in dalam data:", isWalkInMode);
+    console.log("🔍 DEBUGGING WALKIN di pengiriman data register.tsx:");
+    console.log("  - isWalkInMode:", isWalkInMode);
+    console.log("  - Data yang akan dikirim:", dataToSend);
+    console.log("  - URL params saat ini:", new URLSearchParams(window.location.search).toString());
     console.log("Mengirim data pendaftaran ke server");
     
     // Update UI status
