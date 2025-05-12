@@ -41,6 +41,14 @@ export async function handlePatientRegistration(req: Request, res: Response) {
   try {
     console.log("Menerima permintaan pendaftaran pasien dengan data:", JSON.stringify(req.body, null, 2));
     
+    // DEBUGGING: Log semua parameter walk-in yang mungkin untuk deteksi konsistensi
+    console.log("🔍 DEBUGGING WALKIN di server-side register.ts:");
+    console.log("  - req.body.isWalkInMode:", req.body.isWalkInMode);
+    console.log("  - req.body.walkin:", req.body.walkin);
+    console.log("  - req.body.walkInMode:", req.body.walkInMode);
+    console.log("  - req.query.walkin:", req.query.walkin);
+    console.log("  - req.query.isWalkInMode:", req.query.isWalkInMode);
+    
     // Validasi body request - jika kosong atau tidak valid, kembalikan error
     if (!req.body || Object.keys(req.body).length === 0) {
       console.log("Error: Request body kosong atau tidak valid");
@@ -129,19 +137,23 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     
     // Cek mode walk-in (pendaftaran dari admin)
     // FIX CRITICAL BUG: Berbagai format parameter walk-in yang mungkin dikirim dari client
+    // Deteksi parameter walk-in dengan dukungan semua format yang mungkin
     const isWalkInMode = 
       req.body.isWalkInMode === true || 
       req.body.walkin === "true" || 
       req.body.walkin === true || 
       req.body.isWalkInMode === "true" ||
       req.body.iswalkinmode === "true" ||
-      req.body.iswalkinmode === true;
+      req.body.iswalkinmode === true ||
+      req.body.walkInMode === true ||
+      req.body.walkInMode === "true";
     
-    console.log("🔍 DEBUGGING WALKIN: Tipe data value isWalkInMode:", typeof req.body.isWalkInMode);
-    console.log("🔍 DEBUGGING WALKIN: Tipe data value walkin:", typeof req.body.walkin);
-    console.log("🔍 DEBUGGING WALKIN: Value isWalkInMode:", req.body.isWalkInMode);
-    console.log("🔍 DEBUGGING WALKIN: Value walkin:", req.body.walkin);
-    console.log("🔍 DEBUGGING WALKIN: Hasil deteksi final:", isWalkInMode ? "WALK-IN AKTIF" : "BUKAN WALK-IN");
+    console.log("🔍 DEBUGGING WALKIN di deteksi param register.ts:");
+    console.log("  - req.body.isWalkInMode [" + typeof req.body.isWalkInMode + "]:", req.body.isWalkInMode);
+    console.log("  - req.body.walkin [" + typeof req.body.walkin + "]:", req.body.walkin);
+    console.log("  - req.body.walkInMode [" + typeof req.body.walkInMode + "]:", req.body.walkInMode);
+    console.log("  - req.body.iswalkinmode [" + typeof req.body.iswalkinmode + "]:", req.body.iswalkinmode);
+    console.log("  - Hasil deteksi:", isWalkInMode ? "WALK-IN AKTIF" : "BUKAN WALK-IN");
     
     console.log("Data yang akan divalidasi:", patientData);
     
@@ -334,12 +346,28 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           console.log("Menambahkan tanda WALK-IN ke notes appointment");
         }
         
+        // FIXED: Konversi date ke string ISO agar kompatibel dengan tipe data di database
+        let dateStr = '';
+        if (typeof therapySlot.date === 'string') {
+          dateStr = therapySlot.date;
+        } else if (therapySlot.date instanceof Date) {
+          dateStr = therapySlot.date.toISOString();
+        } else {
+          // Jika tipe tidak diketahui, gunakan tanggal hari ini
+          dateStr = new Date().toISOString();
+          console.log("WARNING: Tipe data dari therapySlot.date tidak dikenali, menggunakan tanggal hari ini");
+        }
+        
+        console.log("Type dari therapySlot.date:", typeof therapySlot.date);
+        console.log("Original date:", therapySlot.date);
+        console.log("Converted date string:", dateStr);
+        
         const appointmentData = {
           patientId: patientToUse.id,
           therapySlotId: therapySlot.id,
           notes: notes,
           status: "Scheduled",
-          date: therapySlot.date, // Gunakan langsung dalam format string
+          date: dateStr, // Gunakan string ISO date
           timeSlot: therapySlot.timeSlot,
           sessionId: null,
           registrationNumber: null
