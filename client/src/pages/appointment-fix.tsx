@@ -1,12 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Spinner } from "@/components/ui/spinner";
-import { ExternalLink, MessageCircle, Check, AlertTriangle } from "lucide-react";
+import { ExternalLink, InfoIcon, AlertTriangle } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function AppointmentFixPage() {
   const { toast } = useToast();
