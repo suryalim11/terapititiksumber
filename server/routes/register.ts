@@ -128,10 +128,20 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     console.log("TimeSlotKey dari form pendaftaran:", timeSlotKey);
     
     // Cek mode walk-in (pendaftaran dari admin)
-    const isWalkInMode = req.body.isWalkInMode === true || req.body.walkin === "true" || req.body.isWalkInMode === "true";
-    console.log("Mode Walk-in:", isWalkInMode ? "Ya" : "Tidak");
-    console.log("DEBUGGING: Nilai req.body.isWalkInMode:", req.body.isWalkInMode);
-    console.log("DEBUGGING: Nilai req.body.walkin:", req.body.walkin);
+    // FIX CRITICAL BUG: Berbagai format parameter walk-in yang mungkin dikirim dari client
+    const isWalkInMode = 
+      req.body.isWalkInMode === true || 
+      req.body.walkin === "true" || 
+      req.body.walkin === true || 
+      req.body.isWalkInMode === "true" ||
+      req.body.iswalkinmode === "true" ||
+      req.body.iswalkinmode === true;
+    
+    console.log("🔍 DEBUGGING WALKIN: Tipe data value isWalkInMode:", typeof req.body.isWalkInMode);
+    console.log("🔍 DEBUGGING WALKIN: Tipe data value walkin:", typeof req.body.walkin);
+    console.log("🔍 DEBUGGING WALKIN: Value isWalkInMode:", req.body.isWalkInMode);
+    console.log("🔍 DEBUGGING WALKIN: Value walkin:", req.body.walkin);
+    console.log("🔍 DEBUGGING WALKIN: Hasil deteksi final:", isWalkInMode ? "WALK-IN AKTIF" : "BUKAN WALK-IN");
     
     console.log("Data yang akan divalidasi:", patientData);
     
@@ -339,15 +349,33 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         console.log(`Pastikan: patientId=${patientToUse.id}, Nama pasien=${patientToUse.name}, therapySlotId=${therapySlot.id}`);
         
         // Insert appointment langsung ke database
-        const [appointment] = await db.insert(schema.appointments)
-          .values(appointmentData)
-          .returning();
+        console.log("🔍 DEBUGGING WALKIN: Menyimpan appointment ke database dengan data:", JSON.stringify(appointmentData, null, 2));
         
-        console.log("Appointment berhasil dibuat:", JSON.stringify(appointment, null, 2));
+        // Declare appointment variable here so it's in scope
+        let appointmentResult;
+        
+        try {
+          const [appointment] = await db.insert(schema.appointments)
+            .values(appointmentData)
+            .returning();
+          
+          // Simpan appointment ke variabel lokal
+          appointmentResult = appointment;
+          
+          console.log("✅ SUKSES: Appointment berhasil dibuat:", JSON.stringify(appointmentResult, null, 2));
+        } catch (dbError: any) {
+          console.error("❌ KRITIS: Gagal menyimpan appointment ke database:", dbError);
+          throw new Error(`Gagal menyimpan appointment: ${dbError.message}`);
+        }
+        
+        // Pastikan appointment berhasil dibuat dan variabel appointment tersedia
+        if (!appointmentResult) {
+          throw new Error("Gagal membuat appointment: Data appointment kosong");
+        }
         
         // Simpan appointment untuk digunakan nanti
         appointmentResponse = {
-          ...appointment,
+          ...appointmentResult,
           therapySlotDetails: {
             date: therapySlot.date,
             timeSlot: therapySlot.timeSlot,
@@ -356,6 +384,8 @@ export async function handlePatientRegistration(req: Request, res: Response) {
             timeSlotFixed: fixTimeSlotFormat(therapySlot.timeSlot)
           }
         };
+        
+        console.log("🔍 DEBUGGING WALKIN: Appointment berhasil disimpan dengan ID:", appointmentResult.id);
       } catch (error) {
         console.error("Error saat memproses slot terapi:", error);
         return res.status(500).json({ 
