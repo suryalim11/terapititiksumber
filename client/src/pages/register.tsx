@@ -491,7 +491,7 @@ export default function RegisterPage() {
         const params = new URLSearchParams(window.location.search);
         const slotIdParam = params.get("slotId");
         const timeSlotKeyParam = params.get("timeSlotKey");
-        const isWalkInParam = params.get("walkin") === "true";
+        const isWalkInParam = params.get("walkin") === "true" || params.get("isWalkInMode") === "true";
         
         console.log("Parameter yang diterima:", {
           savedSlotId, 

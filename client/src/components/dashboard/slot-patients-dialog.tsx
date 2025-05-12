@@ -1560,6 +1560,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
                           // Siapkan parameter untuk pendaftaran
                           let queryParams = new URLSearchParams();
                           queryParams.append('walkin', 'true');
+                          queryParams.append('isWalkInMode', 'true'); // Tambahkan parameter isWalkInMode
                           queryParams.append('slotId', String(slotId));
                           
                           // Jika slotData tersedia dan memiliki timeSlotKey, gunakan itu
