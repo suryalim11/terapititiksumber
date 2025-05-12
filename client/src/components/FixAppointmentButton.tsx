@@ -142,7 +142,7 @@ export default function FixAppointmentButton({
             </DialogClose>
             <Button onClick={handleFixAppointment} disabled={isLoading || !!result}>
               {isLoading ? <Spinner className="mr-2" /> : null}
-              {isLoading ? "Memproses..." : "Perbaiki Appointment"}
+              {isLoading ? "Memproses..." : "Daftarkan Sekarang"}
             </Button>
           </DialogFooter>
         </DialogContent>

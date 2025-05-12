@@ -1,4 +1,6 @@
-import { pool } from "./db";
+import { db } from "./db";
+import * as schema from "../shared/schema";
+import { eq, and } from "drizzle-orm";
 
 /**
  * JALUR WALKIN REGISTER
@@ -14,96 +16,85 @@ export async function createMissingAppointmentDirect(patientId: number, therapyS
   console.log(`Pendaftaran walkin: Menghubungkan pasien ${patientId} ke slot terapi ${therapySlotId}`);
   
   try {
-    // 1. Verifikasi patient
-    const patientResult = await pool.query(
-      `SELECT * FROM patients WHERE id = $1`,
-      [patientId]
-    );
+    // 1. Verifikasi patient menggunakan Drizzle ORM
+    const [patient] = await db
+      .select()
+      .from(schema.patients)
+      .where(eq(schema.patients.id, patientId));
     
-    if (patientResult.rows.length === 0) {
+    if (!patient) {
       throw new Error(`Patient with ID ${patientId} not found`);
     }
     
-    const patient = patientResult.rows[0];
     console.log(`Patient verified: ${patient.name}`);
     
-    // 2. Verifikasi therapy slot
-    const therapySlotResult = await pool.query(
-      `SELECT * FROM therapy_slots WHERE id = $1`,
-      [therapySlotId]
-    );
+    // 2. Verifikasi therapy slot menggunakan Drizzle ORM
+    const [therapySlot] = await db
+      .select()
+      .from(schema.therapySlots)
+      .where(eq(schema.therapySlots.id, therapySlotId));
       
-    if (therapySlotResult.rows.length === 0) {
+    if (!therapySlot) {
       throw new Error(`Therapy slot with ID ${therapySlotId} not found`);
     }
     
-    const therapySlot = therapySlotResult.rows[0];
-    console.log(`Therapy slot verified: ${therapySlot.date} ${therapySlot.time_slot}`);
+    console.log(`Therapy slot verified: ${therapySlot.date} ${therapySlot.timeSlot}`);
     
-    // 3. Periksa apakah appointment sudah ada
-    const existingAppointmentsResult = await pool.query(
-      `SELECT * FROM appointments WHERE patient_id = $1 AND therapy_slot_id = $2`,
-      [patientId, therapySlotId]
-    );
+    // 3. Periksa apakah appointment sudah ada menggunakan Drizzle ORM
+    const existingAppointments = await db
+      .select()
+      .from(schema.appointments)
+      .where(
+        and(
+          eq(schema.appointments.patientId, patientId),
+          eq(schema.appointments.therapySlotId, therapySlotId)
+        )
+      );
       
-    if (existingAppointmentsResult.rows.length > 0) {
+    if (existingAppointments.length > 0) {
       throw new Error(`Appointment already exists for patient ${patientId} on therapy slot ${therapySlotId}`);
     }
     
-    // 4. Buat appointment baru
+    // 4. Siapkan data untuk appointment baru
     const appointmentData = {
-      patient_id: patient.id,
-      therapy_slot_id: therapySlot.id,
-      notes: "Appointment dibuat ulang dengan fix-appointment-direct.ts",
+      patientId: patient.id,
+      therapySlotId: therapySlot.id,
+      notes: "Pendaftaran walkin langsung",
       status: "Scheduled",
-      date: therapySlot.date,
-      time_slot: therapySlot.time_slot,
-      session_id: null,
-      registration_number: null
+      date: String(therapySlot.date),  // Pastikan date dalam bentuk string
+      timeSlot: therapySlot.timeSlot,
+      sessionId: null,
+      registrationNumber: null
     };
     
     console.log(`Creating appointment with data:`, appointmentData);
     
-    // 5. Insert appointment ke database menggunakan SQL
-    const appointmentResult = await pool.query(
-      `INSERT INTO appointments 
-        (patient_id, therapy_slot_id, notes, status, date, time_slot, session_id, registration_number) 
-       VALUES 
-        ($1, $2, $3, $4, $5, $6, $7, $8) 
-       RETURNING *`,
-      [
-        appointmentData.patient_id,
-        appointmentData.therapy_slot_id,
-        appointmentData.notes,
-        appointmentData.status,
-        appointmentData.date,
-        appointmentData.time_slot,
-        appointmentData.session_id,
-        appointmentData.registration_number
-      ]
-    );
+    // 5. Insert appointment ke database menggunakan Drizzle ORM
+    const [appointment] = await db
+      .insert(schema.appointments)
+      .values(appointmentData)
+      .returning();
       
-    const appointment = appointmentResult.rows[0];
     console.log(`Appointment successfully created with ID ${appointment.id}`);
     
-    // 6. Update therapy slot's currentCount
-    await pool.query(
-      `UPDATE therapy_slots 
-       SET current_count = current_count + 1 
-       WHERE id = $1`,
-      [therapySlotId]
-    );
+    // 6. Update therapy slot's currentCount menggunakan Drizzle ORM
+    await db
+      .update(schema.therapySlots)
+      .set({
+        currentCount: (therapySlot.currentCount || 0) + 1
+      })
+      .where(eq(schema.therapySlots.id, therapySlotId));
       
     console.log(`Therapy slot ${therapySlotId} current count updated`);
     
     return {
       success: true,
       appointment,
-      message: `Appointment berhasil dibuat untuk pasien ${patient.name} pada slot ${therapySlot.date} ${therapySlot.time_slot}`
+      message: `Appointment berhasil dibuat untuk pasien ${patient.name} pada slot ${therapySlot.date} ${therapySlot.timeSlot}`
     };
     
   } catch (error) {
-    console.error(`Error creating missing appointment: ${error}`);
+    console.error(`Error creating appointment: ${error}`);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
