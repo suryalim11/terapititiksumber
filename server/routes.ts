@@ -4469,24 +4469,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Menerima permintaan POST /api/therapy-slots dengan data:", req.body);
       
+      // Untuk debugging
+      console.log("Tipe data tanggal:", typeof req.body.date);
+      
       // Gunakan tanggal apa adanya tanpa konversi timezone
       let slotDate;
+      let dateString;
       
       if (req.body.date) {
-        // Terima tanggal apa adanya, baik format ISO string atau YYYY-MM-DD
-        slotDate = new Date(req.body.date);
-        console.log(`Menggunakan tanggal apa adanya: ${req.body.date} -> ${slotDate.toISOString()}`);
+        // Cek jika tanggal sudah dalam format string YYYY-MM-DD
+        if (typeof req.body.date === 'string' && req.body.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          // Gunakan string langsung jika sudah dalam format YYYY-MM-DD
+          dateString = req.body.date;
+          console.log(`Menggunakan string tanggal langsung: ${dateString}`);
+        } else {
+          // Konversi ke tanggal jika bukan format yang benar
+          slotDate = new Date(req.body.date);
+          
+          // Format tanggal sebagai YYYY-MM-DD
+          const year = slotDate.getFullYear();
+          const month = (slotDate.getMonth() + 1).toString().padStart(2, '0');
+          const day = slotDate.getDate().toString().padStart(2, '0');
+          dateString = `${year}-${month}-${day}`;
+          
+          console.log(`Konversi tanggal: ${req.body.date} -> ${dateString}`);
+        }
       } else {
         // Default ke hari ini jika tidak ada tanggal
         slotDate = new Date();
-        console.log(`Tidak ada tanggal diberikan, menggunakan hari ini: ${slotDate.toISOString()}`);
+        const year = slotDate.getFullYear();
+        const month = (slotDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = slotDate.getDate().toString().padStart(2, '0');
+        dateString = `${year}-${month}-${day}`;
+        console.log(`Tidak ada tanggal diberikan, menggunakan hari ini: ${dateString}`);
       }
       
-      console.log("Tanggal slot yang akan disimpan:", slotDate);
+      console.log("Tanggal slot yang akan disimpan:", dateString);
       
       const data = {
         ...req.body,
-        date: slotDate,
+        date: dateString, // Gunakan string tanggal format YYYY-MM-DD
         maxQuota: req.body.maxQuota || 6,
         currentCount: req.body.currentCount || 0,
         isActive: req.body.isActive !== undefined ? req.body.isActive : true

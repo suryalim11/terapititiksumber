@@ -313,12 +313,35 @@ export default function TherapySlots() {
   // Mutation untuk membuat slot terapi baru
   const createSlotMutation = useMutation({
     mutationFn: async (data: TherapySlotFormValues) => {
+      // Konversi tanggal dari Date ke format string YYYY-MM-DD
+      let dateObj = data.date;
+      if (typeof dateObj !== 'string' && dateObj instanceof Date) {
+        // Membuat string YYYY-MM-DD secara manual dari komponen tanggal
+        const year = dateObj.getFullYear();
+        const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+        const day = dateObj.getDate().toString().padStart(2, '0');
+        data = {
+          ...data,
+          date: `${year}-${month}-${day}`
+        };
+      }
+      
+      // Tambahkan log untuk debugging
+      console.log("Data yang dikirim ke server:", JSON.stringify(data));
+      
       const res = await fetch("/api/therapy-slots", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
       });
-      if (!res.ok) throw new Error('Failed to create therapy slot');
+      
+      // Tangkap detail error jika ada
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: 'Failed to parse error' }));
+        console.error("Error creating therapy slot:", errorData);
+        throw new Error(errorData.message || 'Failed to create therapy slot');
+      }
+      
       return await res.json();
     },
     onSuccess: () => {

@@ -64,8 +64,25 @@ export async function handleTherapySlotsBatch(req: Request, res: Response) {
         console.log(`Processing date: ${slotData.date}, type: ${typeof slotData.date}`);
         
         // Karena kita sekarang menggunakan string untuk date di schema, pastikan tanggal dalam format YYYY-MM-DD
-        // Client sudah mengirim dalam format string YYYY-MM-DD, jadi tidak perlu konversi lagi
-        const dateStr = slotData.date;
+        let dateStr;
+        
+        // Cek jika tanggal sudah dalam format string YYYY-MM-DD
+        if (typeof slotData.date === 'string' && slotData.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          // Gunakan string langsung jika sudah dalam format YYYY-MM-DD
+          dateStr = slotData.date;
+          console.log(`Menggunakan string tanggal langsung: ${dateStr}`);
+        } else {
+          // Konversi ke tanggal jika bukan format yang benar
+          const slotDate = new Date(slotData.date);
+          
+          // Format tanggal sebagai YYYY-MM-DD
+          const year = slotDate.getFullYear();
+          const month = (slotDate.getMonth() + 1).toString().padStart(2, '0');
+          const day = slotDate.getDate().toString().padStart(2, '0');
+          dateStr = `${year}-${month}-${day}`;
+          
+          console.log(`Konversi tanggal: ${slotData.date} -> ${dateStr}`);
+        }
         
         console.log(`Membuat slot terapi dengan tanggal: ${dateStr} (${typeof dateStr})`);
         
