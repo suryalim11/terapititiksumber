@@ -594,12 +594,15 @@ export default function RegisterPage() {
           
           // Deteksi apakah ini pendaftaran walk-in dari admin
           if (isWalkInParam) {
+            console.log("DEBUGGING: Mode walk-in terdeteksi dari parameter URL");
             setIsWalkInMode(true);
+            console.log("DEBUGGING: isWalkInMode set ke true");
             toast({
               title: "Mode Pendaftaran Pasien Walk-in",
               description: `Pendaftaran untuk pasien walk-in pada sesi ${matchingSlot.timeSlot}, ${format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale })}.`,
               className: "bg-blue-50 border-blue-200 text-blue-800",
             });
+            console.log("DEBUGGING: Toast mode walk-in ditampilkan");
           } else {
             toast({
               title: "Sesi Terapi Telah Dipilih",
@@ -897,6 +900,7 @@ export default function RegisterPage() {
       }
     } else if (isWalkInMode && values.therapySlotId) {
       // Untuk walk-in, kita tetap memberikan informasi jika waktunya sudah lewat, tapi tidak mencegah pendaftaran
+      console.log("DEBUGGING: Validasi walk-in mode terdeteksi, isWalkInMode:", isWalkInMode);
       interface TherapySlotData {
         id: number;
         date: string;
