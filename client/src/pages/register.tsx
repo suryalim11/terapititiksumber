@@ -1103,9 +1103,16 @@ export default function RegisterPage() {
               // Tambahkan delay kecil untuk memastikan data disimpan
               await new Promise(resolve => setTimeout(resolve, 500));
               
+              // FIXED: Tambahkan flag walk-in ke URL redirect jika dalam mode walk-in
               // Navigasi ke halaman sukses, dengan parameter timestamp untuk menghindari cache
               const timestamp = new Date().getTime();
-              window.location.href = `/registration-success?t=${timestamp}&src=success&id=${responseData.id}`;
+              const walkInParam = isWalkInMode ? `&walkin=true` : '';
+              
+              // Reset notifikasi flags setelah navigasi untuk memastikan notifikasi bekerja pada pembuatan berikutnya
+              window.localStorage.removeItem('walkin_toast_shown');
+              window.localStorage.removeItem('registration_success_shown');
+              
+              window.location.href = `/registration-success?t=${timestamp}&src=success&id=${responseData.id}${walkInParam}`;
               return true;
             } else {
               console.error("Respons sukses tapi tidak ada ID pasien:", responseData);
@@ -1124,9 +1131,16 @@ export default function RegisterPage() {
             
             success = true;
             
+            // FIXED: Tambahkan flag walk-in ke URL redirect jika dalam mode walk-in
             // Navigasi ke halaman sukses dengan parameter error
             const timestamp = new Date().getTime();
-            window.location.href = `/registration-success?t=${timestamp}&src=success&parse_error=true`;
+            const walkInParam = isWalkInMode ? `&walkin=true` : '';
+            
+            // Reset notifikasi flags
+            window.localStorage.removeItem('walkin_toast_shown');
+            window.localStorage.removeItem('registration_success_shown');
+            
+            window.location.href = `/registration-success?t=${timestamp}&src=success&parse_error=true${walkInParam}`;
             return true;
           }
         } else {
