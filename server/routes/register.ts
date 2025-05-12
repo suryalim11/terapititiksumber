@@ -48,6 +48,18 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     console.log("  - req.body.walkInMode:", req.body.walkInMode);
     console.log("  - req.query.walkin:", req.query.walkin);
     console.log("  - req.query.isWalkInMode:", req.query.isWalkInMode);
+    console.log("  - req.query.walkInMode:", req.query.walkInMode);
+    
+    // FIXED: Standarisasi deteksi walk-in dari semua format parameter yang mungkin
+    const isWalkInMode = 
+      req.body.isWalkInMode === true || 
+      req.body.walkin === true || 
+      req.body.walkInMode === true ||
+      req.query.walkin === 'true' ||
+      req.query.isWalkInMode === 'true' ||
+      req.query.walkInMode === 'true';
+      
+    console.log("Hasil deteksi walk-in mode:", isWalkInMode);
     
     // Validasi body request - jika kosong atau tidak valid, kembalikan error
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -364,13 +376,15 @@ export async function handlePatientRegistration(req: Request, res: Response) {
             console.log("Converted date object to ISO string:", dateStr);
           } else {
             // Jika tipe tidak diketahui, gunakan tanggal hari ini
-            dateStr = new Date().toISOString();
+            const today = new Date();
+            dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
             console.log("WARNING: Tipe data dari therapySlot.date tidak dikenali, menggunakan tanggal hari ini:", dateStr);
           }
         } catch (error) {
           console.error("ERROR converting date:", error);
           // Fallback ke tanggal hari ini jika terjadi error
-          dateStr = new Date().toISOString();
+          const today = new Date();
+          dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
           console.log("ERROR: Menggunakan tanggal hari ini sebagai fallback:", dateStr);
         }
         

@@ -495,12 +495,17 @@ export default function RegisterPage() {
         const isWalkInParam = 
           params.get("walkin") === "true" || 
           params.get("isWalkInMode") === "true" ||
-          params.get("iswalkinmode") === "true";
+          params.get("iswalkinmode") === "true" ||
+          params.get("walkInMode") === "true"; // Tambahkan format walkInMode
+          
+        // Reset localStorage untuk notifikasi walk-in setiap kali halaman di-load
+        window.localStorage.removeItem('walkin_toast_shown');
           
         console.log("🔍 DEBUGGING WALKIN di useEffect register.tsx:");  
         console.log("  - URL params walkin:", params.get("walkin"));
         console.log("  - URL params isWalkInMode:", params.get("isWalkInMode"));
         console.log("  - URL params iswalkinmode:", params.get("iswalkinmode"));
+        console.log("  - URL params walkInMode:", params.get("walkInMode"));
         
         console.log("Parameter yang diterima:", {
           savedSlotId, 
@@ -610,7 +615,7 @@ export default function RegisterPage() {
             // Mode walk-in hanya ditampilkan sekali di awal
             if (!window.localStorage.getItem('walkin_toast_shown')) {
               toast({
-                id: "walkin-mode-toast",
+
                 title: "Mode Pendaftaran Pasien Walk-in",
                 description: `Pendaftaran untuk pasien walk-in pada sesi ${matchingSlot.timeSlot}, ${format(new Date(matchingSlot.date), "dd MMMM yyyy", { locale: idLocale })}.`,
                 className: "bg-blue-50 border-blue-200 text-blue-800",
