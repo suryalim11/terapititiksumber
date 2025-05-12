@@ -1025,6 +1025,7 @@ export default function RegisterPage() {
         let controller = null;
         
         console.log(`Mengirim data pendaftaran:`, JSON.stringify(dataToSend));
+        console.log(`DEBUGGING: Mode walk-in saat pengiriman:`, isWalkInMode);
         
         const response = await fetch("/api/patients", {
           method: "POST",
@@ -1062,6 +1063,7 @@ export default function RegisterPage() {
               localStorage.setItem('registrationStatus', 'success');
               
               // Set success true setelah mendapatkan data dari server
+              console.log("DEBUGGING: Pendaftaran walk-in berhasil dengan flag isWalkInMode:", isWalkInMode);
               success = true;
               
               // Tambahkan delay kecil untuk memastikan data disimpan
@@ -1100,7 +1102,10 @@ export default function RegisterPage() {
           try {
             // Coba parse JSON error, jika ada
             const errorData = await response.json();
+            console.log("DEBUGGING: Error response dari server:", errorData);
             errorMessage = errorData.message || errorMessage;
+            console.log("DEBUGGING: Error message:", errorMessage);
+            console.log("DEBUGGING: Status walk-in saat error:", isWalkInMode);
             
             // Cek untuk kuota penuh
             if (errorMessage.includes("kuota") || errorMessage.includes("penuh")) {

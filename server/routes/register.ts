@@ -128,8 +128,10 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     console.log("TimeSlotKey dari form pendaftaran:", timeSlotKey);
     
     // Cek mode walk-in (pendaftaran dari admin)
-    const isWalkInMode = req.body.isWalkInMode === true || req.body.walkin === "true";
+    const isWalkInMode = req.body.isWalkInMode === true || req.body.walkin === "true" || req.body.isWalkInMode === "true";
     console.log("Mode Walk-in:", isWalkInMode ? "Ya" : "Tidak");
+    console.log("DEBUGGING: Nilai req.body.isWalkInMode:", req.body.isWalkInMode);
+    console.log("DEBUGGING: Nilai req.body.walkin:", req.body.walkin);
     
     console.log("Data yang akan divalidasi:", patientData);
     
