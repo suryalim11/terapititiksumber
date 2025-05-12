@@ -39,7 +39,7 @@ export default function FixAppointmentButton({
     setResult(null);
 
     try {
-      console.log(`Memperbaiki appointment untuk pasien ${patientName} (${patientId}) pada slot ${therapySlotId}`);
+      console.log(`[PENDAFTARAN WALKIN] Mendaftarkan pasien ${patientName} (ID: ${patientId}) pada slot terapi ${therapySlotId}`);
       
       const response = await fetch("/api/fix/appointment-direct", {
         method: "POST",
@@ -106,7 +106,7 @@ export default function FixAppointmentButton({
           <DialogHeader>
             <DialogTitle>Daftarkan Pasien Walkin</DialogTitle>
             <DialogDescription>
-              Pendaftaran pasien walkin secara langsung ke slot terapi yang tersedia.
+              Pendaftaran pasien walkin secara langsung ke slot terapi yang tersedia. Untuk pasien yang datang langsung ke klinik.
             </DialogDescription>
           </DialogHeader>
 

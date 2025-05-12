@@ -40,6 +40,10 @@ export async function createMissingAppointmentDirect(patientId: number, therapyS
     
     console.log(`Therapy slot verified: ${therapySlot.date} ${therapySlot.timeSlot}`);
     
+    // PENTING: Untuk pendaftaran walk-in, JANGAN validasi waktu terapi
+    // karena walk-in dari admin bisa dilakukan kapan saja
+    console.log("Skip validasi waktu terapi untuk pendaftaran walk-in");
+    
     // 3. Periksa apakah appointment sudah ada menggunakan Drizzle ORM
     const existingAppointments = await db
       .select()
