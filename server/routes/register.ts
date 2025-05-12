@@ -481,11 +481,17 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     }
     
     // TAHAP 8: Berikan respons sukses
+    // FIXED: Sesuaikan pesan respons berdasarkan mode walk-in
+    const successMessage = walkInDetected 
+      ? "Pasien berhasil didaftarkan sebagai walk-in ke sesi terapi" 
+      : "Pendaftaran berhasil";
+    
     return res.status(201).json({
       success: true,
-      message: "Pendaftaran berhasil",
+      message: successMessage,
       patient: patientToUse,
       appointment: appointmentResponse,
+      isWalkIn: walkInDetected, // Tambahkan flag walk-in ke respons
       registrationStatus: {
         code: registrationCode,
         updatedCount: registrationLink ? registrationLink.currentRegistrations + 1 : null

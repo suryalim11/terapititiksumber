@@ -499,7 +499,9 @@ export default function RegisterPage() {
           params.get("walkInMode") === "true"; // Tambahkan format walkInMode
           
         // Reset localStorage untuk notifikasi walk-in setiap kali halaman di-load
+        // Reset localStorage untuk semua toast notifikasi
         window.localStorage.removeItem('walkin_toast_shown');
+        window.localStorage.removeItem('registration_success_shown');
           
         console.log("🔍 DEBUGGING WALKIN di useEffect register.tsx:");  
         console.log("  - URL params walkin:", params.get("walkin"));
