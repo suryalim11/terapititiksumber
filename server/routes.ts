@@ -574,6 +574,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint optimasi untuk pendaftaran pasien
   app.post("/api/patients", async (req: Request, res: Response) => {
     try {
+      // Debugging untuk membantu troubleshoot masalah pendaftaran
+      console.log("DEBUGGING PENDAFTARAN: Menerima request POST /api/patients");
+      console.log("DEBUGGING PENDAFTARAN: isWalkInMode:", req.body.isWalkInMode);
+      console.log("DEBUGGING PENDAFTARAN: walkin parameter:", req.body.walkin);
+      
       // Import handler optimasi jika belum tersedia
       const { handlePatientRegistration } = await import("./routes/register");
       
