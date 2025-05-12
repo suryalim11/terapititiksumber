@@ -491,7 +491,16 @@ export default function RegisterPage() {
         const params = new URLSearchParams(window.location.search);
         const slotIdParam = params.get("slotId");
         const timeSlotKeyParam = params.get("timeSlotKey");
-        const isWalkInParam = params.get("walkin") === "true" || params.get("isWalkInMode") === "true";
+        // FIXED: Dukungan semua format parameter walk-in
+        const isWalkInParam = 
+          params.get("walkin") === "true" || 
+          params.get("isWalkInMode") === "true" ||
+          params.get("iswalkinmode") === "true";
+          
+        console.log("🔍 DEBUGGING WALKIN di useEffect register.tsx:");  
+        console.log("  - URL params walkin:", params.get("walkin"));
+        console.log("  - URL params isWalkInMode:", params.get("isWalkInMode"));
+        console.log("  - URL params iswalkinmode:", params.get("iswalkinmode"));
         
         console.log("Parameter yang diterima:", {
           savedSlotId, 
