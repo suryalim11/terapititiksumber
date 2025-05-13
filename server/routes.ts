@@ -5,7 +5,7 @@ import { requireAuth, requireAdminRole, allowPublicOrAuth, allowAnyAccess } from
 import { z } from "zod";
 import { db, pool } from "./db";
 
-import { registerAgusFixRoutes } from "./routes-agus-fix";
+// import { registerAgusFixRoutes } from "./routes-agus-fix"; // File tidak ditemukan
 import { 
   insertPatientSchema, 
   insertProductSchema, 
@@ -24,17 +24,17 @@ import {
 import { handleDateTest } from "./test-route";
 import * as schema from "../shared/schema";
 import { handleTherapySlotsBatch } from "./routes/therapy-slots-batch";
-import fixTransactionsTable from "./fix-transactions-schema";
-import { fixMissingPackageSessions } from "./fix-missing-sessions";
+// import fixTransactionsTable from "./fix-transactions-schema";
+// import { fixMissingPackageSessions } from "./fix-missing-sessions";
 import { eq, and, ne, isNotNull, desc, or, isNull, lte, sql, asc, like, lt } from "drizzle-orm";
-import { fixAgusIsrofinSessions } from "./fix-agus-isrofin";
-import { fixAgusIsrofinSessionToday } from "./fix-agus-isrofin-session";
+// import { fixAgusIsrofinSessions } from "./fix-agus-isrofin";
+// import { fixAgusIsrofinSessionToday } from "./fix-agus-isrofin-session";
 
 // Constant untuk server status
 const SYSTEM_START_TIME = new Date();
-import { fixDarukniSession } from "./fix-darukni-session";
-import { fixExistingPackages } from "./fix-existing-packages";
-import { mergeAgusIsrofinDirectly } from "./merge-agus-script";
+// import { fixDarukniSession } from "./fix-darukni-session";
+// import { fixExistingPackages } from "./fix-existing-packages";
+// import { mergeAgusIsrofinDirectly } from "./merge-agus-script";
 import adminRoutes from "./routes/admin";
 import appointmentStatusRoutes from "./routes/appointment-status";
 import { addFixPatientDuplicatesEndpoint } from "./fix-patient-duplicates";
@@ -5531,7 +5531,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint untuk memperbaiki session paket Darukni - tanpa middleware autentikasi apapun
   app.post("/api/fix/darukni-session", async (req: Request, res: Response) => {
     try {
-      const result = await fixDarukniSession();
+      // const result = await fixDarukniSession(); // Dinonaktifkan karena file tidak ditemukan
+      const result = { message: "Fungsi dinonaktifkan" };
       return res.json(result);
     } catch (error) {
       console.error("Error fixing Darukni session:", error);
@@ -6202,7 +6203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Register special fix routes for Agus Isrofin
-  registerAgusFixRoutes(app);
+  // registerAgusFixRoutes(app); // Dinonaktifkan karena file tidak ditemukan
   
   // Endpoint untuk walkin register - menghubungkan pasien & slot terapi (memastikan data konsisten)
   // Ini adalah salah satu dari dua jalur pendaftaran yang diaktifkan (jalur walkin)
