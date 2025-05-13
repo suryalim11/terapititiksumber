@@ -311,7 +311,7 @@ export default function Dashboard() {
         // Filter data berdasarkan periode yang dipilih
         let filteredByPeriod: TherapySlot[] = [];
         
-        if (selectedPeriod === 'day') {
+        if (selectedPeriod === 'today') {
           // Untuk hari ini, gunakan tanggal hari ini
           const todayWIBStr = dateToWIBDateString(nowWIB);
           
@@ -672,7 +672,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="p-0">
             <Tabs 
-              defaultValue="all" 
+              defaultValue="today" 
               className="w-full" 
               value={selectedPeriod}
               onValueChange={handlePeriodChange}
