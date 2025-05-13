@@ -3456,7 +3456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ts.created_at AS "createdAt",
             ts.time_slot_key AS "timeSlotKey",
             ts.global_quota AS "globalQuota",
-            COUNT(CASE WHEN a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') THEN 1 END) AS "activeAppointments"
+            COUNT(CASE WHEN (a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') OR a.notes LIKE '%walk-in%' OR a.notes LIKE '%walkin%') THEN 1 END) AS "activeAppointments"
           FROM 
             therapy_slots ts
           LEFT JOIN 
@@ -3715,7 +3715,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           SELECT id, patient_id, status, notes
           FROM appointments
           WHERE therapy_slot_id = $1
-          AND status IN ('Active', 'Booked', 'Confirmed', 'Scheduled')
+          AND (
+            status IN ('Active', 'Booked', 'Confirmed', 'Scheduled')
+            OR notes LIKE '%walk-in%' OR notes LIKE '%walkin%'
+          )
           LIMIT 50
         `, [slotId]);
         
@@ -4267,7 +4270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ts.created_at AS "createdAt",
             ts.time_slot_key AS "timeSlotKey",
             ts.global_quota AS "globalQuota",
-            COUNT(CASE WHEN a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') THEN 1 END) AS "activeAppointments"
+            COUNT(CASE WHEN (a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') OR a.notes LIKE '%walk-in%' OR a.notes LIKE '%walkin%') THEN 1 END) AS "activeAppointments"
           FROM 
             therapy_slots ts
           LEFT JOIN 
