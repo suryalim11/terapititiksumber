@@ -679,7 +679,7 @@ export default function Dashboard() {
             >
               <div className="px-4 pt-4">
                 <TabsList className="grid w-full grid-cols-3 mb-4">
-                  <TabsTrigger value="day">Hari Ini</TabsTrigger>
+                  <TabsTrigger value="today">Hari Ini</TabsTrigger>
                   <TabsTrigger value="future">Mendatang</TabsTrigger>
                   <TabsTrigger value="all">Semua Slot</TabsTrigger>
                 </TabsList>
