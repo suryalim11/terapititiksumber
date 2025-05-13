@@ -319,36 +319,67 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           });
         }
         
+        // PERBAIKAN: Cari slot terapi utama untuk mencegah duplikasi pendaftaran
+        const timeSlotKey = therapySlot.timeSlotKey || createTimeSlotKey(therapySlot.date, therapySlot.timeSlot);
+        console.log(`Mencari slot terapi utama dengan timeSlotKey: ${timeSlotKey}`);
+        
+        const primarySlot = await findPrimaryTherapySlot(timeSlotKey, therapySlot.date, therapySlot.timeSlot);
+        
+        // Deklarasikan variabel untuk slot yang akan digunakan
+        let slotToUse = therapySlot;
+        let slotIdToUse = therapySlotId;
+        
+        if (primarySlot && primarySlot.id !== therapySlot.id) {
+          console.log(`✅ Slot terapi utama ditemukan dengan ID=${primarySlot.id} (berbeda dari ID=${therapySlot.id})`);
+          console.log(`✅ Menggunakan slot terapi utama untuk konsistensi pendaftaran`);
+          
+          // Gunakan slot utama untuk mencegah duplikasi pendaftaran
+          const [updatedTherapySlot] = await db.select()
+            .from(schema.therapySlots)
+            .where(eq(schema.therapySlots.id, primarySlot.id))
+            .limit(1);
+            
+          if (updatedTherapySlot) {
+            slotToUse = updatedTherapySlot;
+            slotIdToUse = updatedTherapySlot.id; // Update ID slot yang digunakan
+            console.log(`✅ Slot terapi berhasil dialihkan ke slot utama ID=${slotIdToUse}`);
+          } else {
+            console.log(`⚠️ Gagal mengambil data slot utama, melanjutkan dengan slot awal`);
+          }
+        } else {
+          console.log(`✅ Slot terapi yang digunakan sudah merupakan slot utama atau tidak ada slot duplikat`);
+        }
+        
         // Validasi slot terapi - mode walk-in dapat mengabaikan validasi aktif
-        if (!therapySlot.isActive && !isWalkInMode) {
-          console.error(`Slot terapi dengan ID ${therapySlotId} tidak aktif`);
+        if (!slotToUse.isActive && !isWalkInMode) {
+          console.error(`Slot terapi dengan ID ${slotIdToUse} tidak aktif`);
           return res.status(400).json({ 
             message: "Slot terapi tidak aktif", 
             code: "INACTIVE_THERAPY_SLOT" 
           });
-        } else if (!therapySlot.isActive && isWalkInMode) {
-          console.log(`Walk-in: Mengizinkan pendaftaran untuk slot terapi tidak aktif dengan ID ${therapySlotId}`);
+        } else if (!slotToUse.isActive && isWalkInMode) {
+          console.log(`Walk-in: Mengizinkan pendaftaran untuk slot terapi tidak aktif dengan ID ${slotIdToUse}`);
         }
         
         // Validasi kuota - mode walk-in juga dapat mengabaikan batas kuota
-        if (therapySlot.currentCount >= therapySlot.maxQuota && !isWalkInMode) {
-          console.error(`Slot terapi dengan ID ${therapySlotId} sudah penuh`);
+        if (slotToUse.currentCount >= slotToUse.maxQuota && !isWalkInMode) {
+          console.error(`Slot terapi dengan ID ${slotIdToUse} sudah penuh`);
           return res.status(400).json({ 
             message: "Slot terapi sudah penuh. Silakan pilih slot lain.", 
             code: "THERAPY_SLOT_FULL" 
           });
-        } else if (therapySlot.currentCount >= therapySlot.maxQuota && isWalkInMode) {
-          console.log(`Walk-in: Mengizinkan pendaftaran meskipun slot terapi sudah penuh (${therapySlot.currentCount}/${therapySlot.maxQuota})`);
+        } else if (slotToUse.currentCount >= slotToUse.maxQuota && isWalkInMode) {
+          console.log(`Walk-in: Mengizinkan pendaftaran meskipun slot terapi sudah penuh (${slotToUse.currentCount}/${slotToUse.maxQuota})`);
         }
         
         // Tingkatkan jumlah penggunaan slot terapi langsung ke database
         await db.update(schema.therapySlots)
           .set({ 
-            currentCount: therapySlot.currentCount + 1
+            currentCount: slotToUse.currentCount + 1
           })
-          .where(eq(schema.therapySlots.id, therapySlot.id));
+          .where(eq(schema.therapySlots.id, slotIdToUse));
         
-        console.log(`Slot terapi dengan ID ${therapySlot.id} diperbarui: ${therapySlot.currentCount + 1}/${therapySlot.maxQuota}`);
+        console.log(`Slot terapi dengan ID ${slotIdToUse} diperbarui: ${slotToUse.currentCount + 1}/${slotToUse.maxQuota}`);
         
         // TAHAP 7: Buat appointment baru
         // Tambahkan informasi walk-in ke notes jika dalam mode walk-in
@@ -389,29 +420,29 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           console.log("ERROR: Menggunakan tanggal hari ini sebagai fallback:", dateStr);
         }
         
-        console.log("Type dari therapySlot.date:", typeof therapySlot.date);
-        console.log("Original date:", therapySlot.date);
+        console.log("Type dari slot.date:", typeof slotToUse.date);
+        console.log("Original date:", slotToUse.date);
         console.log("Converted date string:", dateStr);
         
         // FIXED: Format data dengan benar untuk insert ke database
         const appointmentData = {
           patientId: patientToUse.id,
-          therapySlotId: therapySlot.id,
+          therapySlotId: slotIdToUse, // Gunakan ID slot utama
           notes: notes || '',
           status: "Scheduled",
           date: dateStr, // Gunakan string ISO date
-          timeSlot: therapySlot.timeSlot || '',
+          timeSlot: slotToUse.timeSlot || '',
           sessionId: null,
           registrationNumber: null
         };
         
         // Cek ulang semua properti required
         console.log("CHECK: appointmentData.patientId is valid:", typeof patientToUse.id === 'number' && !isNaN(patientToUse.id));
-        console.log("CHECK: appointmentData.therapySlotId is valid:", typeof therapySlot.id === 'number' && !isNaN(therapySlot.id));
+        console.log("CHECK: appointmentData.therapySlotId is valid:", typeof slotIdToUse === 'number' && !isNaN(slotIdToUse));
         console.log("CHECK: appointmentData.date is valid:", dateStr && typeof dateStr === 'string' && dateStr.length > 0);
         
         console.log("Data appointment yang akan dibuat:", JSON.stringify(appointmentData, null, 2));
-        console.log(`Pastikan: patientId=${patientToUse.id}, Nama pasien=${patientToUse.name}, therapySlotId=${therapySlot.id}`);
+        console.log(`Pastikan: patientId=${patientToUse.id}, Nama pasien=${patientToUse.name}, therapySlotId=${slotIdToUse}`);
         
         // Insert appointment langsung ke database
         console.log("🔍 DEBUGGING WALKIN: Menyimpan appointment ke database dengan data:", JSON.stringify(appointmentData, null, 2));

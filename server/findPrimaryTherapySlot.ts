@@ -4,7 +4,7 @@
  */
 
 import { db } from './db';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import * as schema from '@shared/schema';
 import { format } from 'date-fns';
 
