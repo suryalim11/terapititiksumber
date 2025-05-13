@@ -4245,7 +4245,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/therapy-slots", async (req: Request, res: Response) => {
     try {
       const dateParam = req.query.date as string;
-      const activeOnly = req.query.active === 'true';
+      // Default ke activeOnly=true kecuali req.query.active secara eksplisit 'false'
+      const activeOnly = req.query.active !== 'false';
       const availableOnly = req.query.available === 'true';
       
       console.log(`Fetching therapy slots with params - date: ${dateParam}, activeOnly: ${activeOnly}, availableOnly: ${availableOnly}`);
