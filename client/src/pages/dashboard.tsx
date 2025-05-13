@@ -95,7 +95,7 @@ export default function Dashboard() {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isOptimizedDialogOpen, setIsOptimizedDialogOpen] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState<string>("day"); // Default to "day" view
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("today"); // Default to "today" view
   const [showBalance, setShowBalance] = useState(false); // Default: hide balance
   const [isSyncing, setIsSyncing] = useState(false); // State untuk status sinkronisasi
   const [isSessionEditorOpen, setIsSessionEditorOpen] = useState(false);
@@ -175,7 +175,7 @@ export default function Dashboard() {
         // Gunakan zona waktu WIB untuk semua perhitungan tanggal
         const nowWIB = getStartOfDayWIB(new Date()); // Tanggal hari ini dalam WIB, jam 00:00:00
         
-        if (selectedPeriod === 'day') {
+        if (selectedPeriod === 'today') {
           // Untuk hari ini, filter berdasarkan tanggal
           apiUrl = `/api/therapy-slots?date=${formattedToday}`;
         } else if (selectedPeriod === 'week') {
@@ -687,8 +687,75 @@ export default function Dashboard() {
               
               {/* Tab Pendaftaran telah dihapus */}
               
+              {/* Tab content for specific views */}
+              <TabsContent value="today" className="mt-0">
+                {isSlotsLoading ? (
+                  <div className="flex justify-center items-center py-6">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : slotsByPeriod.length > 0 ? (
+                  <div className="space-y-4">
+                    {slotsByPeriod.map((slot: any) => (
+                      <div 
+                        key={slot.id}
+                        className="border rounded-lg p-4 cursor-pointer transition-colors hover:border-primary/60"
+                        onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot)}
+                      >
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex justify-between items-center">
+                            <div className="text-lg font-medium">{slot.timeSlot}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-right">{slot.currentCount} / {slot.maxQuota}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="text-sm text-muted-foreground">
+                            {slot.date ? formatDateDDMMYYYY(slot.date) : '-'}
+                          </div>
+                          
+                          <div className="mt-1">
+                            <div className="flex justify-between items-center mb-1 text-sm">
+                              <span className="text-muted-foreground">Kapasitas Terisi</span>
+                              <span className={cn(
+                                "font-medium",
+                                slot.percentage >= 100 ? "text-red-600" : (slot.percentage > 75 ? "text-amber-600" : "")
+                              )}>
+                                {Math.round(slot.percentage)}%
+                              </span>
+                            </div>
+                            <Progress 
+                              value={slot.percentage} 
+                              max={100} 
+                              className={cn(
+                                "h-2",
+                                slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 0 ? "bg-primary/20" : "bg-slate-200")
+                              )}
+                              indicatorClassName={
+                                slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 0 ? "bg-primary" : "bg-primary/0")
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed p-8 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                      <Calendar className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="mt-4 text-lg font-semibold">
+                      Belum Ada Slot Terapi Hari Ini
+                    </h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Tidak ada slot terapi untuk hari ini. Kunjungi halaman Therapy Slots untuk mengatur slot terapi baru.
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+              
               {/* Tab content for other views */}
-              <TabsContent value={selectedPeriod} className="mt-0">
+              <TabsContent value={["future", "all"].includes(selectedPeriod) ? selectedPeriod : ""} className="mt-0">
                 
                 {isSlotsLoading ? (
                   <div className="flex justify-center items-center py-6">
