@@ -21,13 +21,15 @@ export default function AdminPage() {
     transactions: boolean;
     fixPackages: boolean;
     fixAgusIsrofin: boolean;
+    cleanDuplicateSlots: boolean;
   }>({
     sessions: false,
     slots: false,
     dates: false,
     transactions: false,
     fixPackages: false,
-    fixAgusIsrofin: false
+    fixAgusIsrofin: false,
+    cleanDuplicateSlots: false
   });
   
   // Handler untuk memeriksa integritas sesi paket
@@ -193,6 +195,39 @@ export default function AdminPage() {
       setLoading(prev => ({ ...prev, fixAgusIsrofin: false }));
     }
   };
+  
+  // Handler untuk membersihkan slot duplikat
+  const handleCleanDuplicateSlots = async () => {
+    try {
+      setLoading(prev => ({ ...prev, cleanDuplicateSlots: true }));
+      
+      // Konfirmasi dari pengguna
+      if (!window.confirm("Anda yakin ingin membersihkan slot duplikat? Slot duplikat akan dinonaktifkan (is_active = false).")) {
+        setLoading(prev => ({ ...prev, cleanDuplicateSlots: false }));
+        return;
+      }
+      
+      const result = await apiRequest("/api/therapy-slots/clean-duplicates", {
+        method: "POST"
+      });
+      
+      toast({
+        title: "Pembersihan Selesai",
+        description: result?.message || "Slot duplikat berhasil dibersihkan",
+      });
+      
+      console.log("Hasil pembersihan slot duplikat:", result);
+    } catch (error) {
+      console.error("Error cleaning duplicate slots:", error);
+      toast({
+        title: "Terjadi Kesalahan",
+        description: error instanceof Error ? error.message : "Tidak dapat membersihkan slot duplikat",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, cleanDuplicateSlots: false }));
+    }
+  };
 
   // Memeriksa apakah pengguna adalah admin
   if (user?.role !== 'admin') {
@@ -323,6 +358,21 @@ export default function AdminPage() {
                   </>
                 ) : (
                   "Perbaiki Paket Ganda Agus Isrofin"
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                className="justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={handleCleanDuplicateSlots}
+                disabled={loading.cleanDuplicateSlots}
+              >
+                {loading.cleanDuplicateSlots ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Membersihkan...
+                  </>
+                ) : (
+                  "Bersihkan Slot Terapi Duplikat"
                 )}
               </Button>
             </div>
