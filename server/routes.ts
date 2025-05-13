@@ -3712,10 +3712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           SELECT id, patient_id, status, notes
           FROM appointments
           WHERE therapy_slot_id = $1
-          AND (
-            status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') 
-            OR notes LIKE '%walk-in%' OR notes LIKE '%walkin%'
-          )
+          AND status IN ('Active', 'Booked', 'Confirmed', 'Scheduled')
           LIMIT 50
         `, [slotId]);
         
