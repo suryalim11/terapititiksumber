@@ -3628,7 +3628,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             FROM appointments a
             JOIN patients p ON a.patient_id = p.id
             WHERE a.therapy_slot_id = $1
-            AND a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled')
+            AND (
+              a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') 
+              OR a.notes LIKE '%walk-in%' OR a.notes LIKE '%walkin%'
+            )
             LIMIT 50
           )
           SELECT 
