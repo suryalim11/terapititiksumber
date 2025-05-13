@@ -42,10 +42,9 @@ export async function findPrimaryTherapySlot(
     if (timeSlotKey) {
       console.log(`Mencari slot terapi berdasarkan timeSlotKey: ${timeSlotKey}`);
       
-      const slotsWithSameKey = await db.query.therapySlots.findMany({
-        where: eq(schema.therapySlots.timeSlotKey, timeSlotKey),
-        orderBy: [{ column: schema.therapySlots.id, order: 'asc' }]
-      });
+      const slotsWithSameKey = await db.select().from(schema.therapySlots)
+        .where(eq(schema.therapySlots.timeSlotKey, timeSlotKey))
+        .orderBy(schema.therapySlots.id);
       
       if (slotsWithSameKey.length > 0) {
         // Ambil slot dengan ID terkecil sebagai "slot utama"
@@ -84,15 +83,14 @@ export async function findPrimaryTherapySlot(
         dateString = format(date, 'yyyy-MM-dd');
       }
       
-      const slotsWithSameDateAndTime = await db.query.therapySlots.findMany({
-        where: (criterias) => {
-          return criterias.and(
-            criterias.eq(schema.therapySlots.date, dateString),
-            criterias.eq(schema.therapySlots.timeSlot, timeSlot)
-          );
-        },
-        orderBy: [{ column: schema.therapySlots.id, order: 'asc' }]
-      });
+      const slotsWithSameDateAndTime = await db.select().from(schema.therapySlots)
+        .where(
+          and(
+            eq(schema.therapySlots.date, dateString),
+            eq(schema.therapySlots.timeSlot, timeSlot)
+          )
+        )
+        .orderBy(schema.therapySlots.id);
       
       if (slotsWithSameDateAndTime.length > 0) {
         // Ambil slot dengan ID terkecil sebagai "slot utama"

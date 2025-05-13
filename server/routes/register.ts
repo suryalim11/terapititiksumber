@@ -7,6 +7,7 @@ import { id } from "date-fns/locale";
 import crypto from "crypto";
 import { eq, and } from "drizzle-orm";
 import * as schema from "../../shared/schema";
+import { findPrimaryTherapySlot, createTimeSlotKey } from '../findPrimaryTherapySlot';
 
 /**
  * Fungsi untuk memperbaiki format time slot yang salah (10:00-00:00)
