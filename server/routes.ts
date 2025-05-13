@@ -3560,6 +3560,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint untuk membersihkan duplikasi slot terapi
+  app.post("/api/therapy-slots/clean-duplicates", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated() || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Unauthorized. Hanya admin yang dapat melakukan operasi ini." });
+      }
+      
+      console.log("Memulai proses pembersihan slot terapi duplikat...");
+      
+      // 1. Ambil semua slot terapi
+      const allSlots = await db.select().from(schema.therapySlots).orderBy(schema.therapySlots.id);
+      console.log(`Ditemukan total ${allSlots.length} slot terapi`);
+      
+      // 2. Kelompokkan slot berdasarkan timeSlotKey-nya
+      const slotsByTimeSlotKey: Record<string, any[]> = {};
+      
+      for (const slot of allSlots) {
+        // Pastikan setiap slot memiliki timeSlotKey yang valid
+        let timeSlotKey = slot.timeSlotKey;
+        
+        if (!timeSlotKey) {
+          // Jika tidak ada timeSlotKey, buat dari date dan timeSlot
+          const dateStr = typeof slot.date === 'string' ? slot.date : slot.date.toISOString().split('T')[0];
+          timeSlotKey = `${dateStr}_${slot.timeSlot}`;
+          console.log(`Slot ID ${slot.id} tidak memiliki timeSlotKey, dibuat: ${timeSlotKey}`);
+        }
+        
+        if (!slotsByTimeSlotKey[timeSlotKey]) {
+          slotsByTimeSlotKey[timeSlotKey] = [];
+        }
+        
+        slotsByTimeSlotKey[timeSlotKey].push(slot);
+      }
+      
+      // 3. Identifikasi grup dengan duplikasi (lebih dari 1 slot per timeSlotKey)
+      const duplicateGroups = Object.entries(slotsByTimeSlotKey).filter(([_, slots]) => slots.length > 1);
+      console.log(`Ditemukan ${duplicateGroups.length} kelompok slot dengan duplikasi`);
+      
+      // 4. Untuk setiap grup duplikasi, pilih satu slot untuk dipertahankan, nonaktifkan yang lain
+      const results = [];
+      let deactivatedCount = 0;
+      
+      for (const [timeSlotKey, slots] of duplicateGroups) {
+        console.log(`\nMemproses grup ${timeSlotKey} dengan ${slots.length} slot duplikat`);
+        
+        // Pilih slot untuk dipertahankan:
+        // 1. Prioritaskan yang aktif
+        // 2. Jika ada beberapa yang aktif, pilih dengan ID terkecil
+        // 3. Jika semua nonaktif, tetap pilih ID terkecil
+        let activeSlots = slots.filter(slot => slot.isActive);
+        
+        // Jika tidak ada yang aktif, gunakan semua slot
+        if (activeSlots.length === 0) {
+          activeSlots = slots;
+        }
+        
+        // Urutkan berdasarkan ID
+        activeSlots.sort((a, b) => a.id - b.id);
+        
+        // Slot yang akan dipertahankan
+        const slotToKeep = activeSlots[0];
+        console.log(`  Slot yang dipertahankan: ID=${slotToKeep.id}, isActive=${slotToKeep.isActive}`);
+        
+        // Nonaktifkan slot lainnya
+        for (const slot of slots) {
+          if (slot.id !== slotToKeep.id && slot.isActive) {
+            console.log(`  Menonaktifkan slot duplikat: ID=${slot.id}`);
+            
+            try {
+              await db.update(schema.therapySlots)
+                .set({ isActive: false })
+                .where(eq(schema.therapySlots.id, slot.id));
+              
+              deactivatedCount++;
+              results.push({
+                timeSlotKey,
+                deactivated: slot.id,
+                kept: slotToKeep.id,
+                status: 'success'
+              });
+            } catch (updateError) {
+              console.error(`  Error saat menonaktifkan slot ID=${slot.id}:`, updateError);
+              results.push({
+                timeSlotKey,
+                deactivated: slot.id,
+                kept: slotToKeep.id,
+                status: 'error',
+                error: updateError instanceof Error ? updateError.message : String(updateError)
+              });
+            }
+          }
+        }
+      }
+      
+      return res.status(200).json({
+        message: `Pembersihan slot duplikat selesai. ${deactivatedCount} slot dinonaktifkan.`,
+        duplicateGroups: duplicateGroups.length,
+        deactivatedSlots: deactivatedCount,
+        details: results
+      });
+    } catch (error) {
+      console.error("Error saat membersihkan slot terapi duplikat:", error);
+      return res.status(500).json({ 
+        message: "Terjadi kesalahan saat membersihkan slot terapi duplikat",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   // Endpoint untuk memperbarui time_slot_key yang kosong
   app.post("/api/therapy-slots/update-time-slot-keys", async (req: Request, res: Response) => {
     try {
