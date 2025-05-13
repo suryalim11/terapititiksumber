@@ -2344,6 +2344,7 @@ export class DatabaseStorage implements IStorage {
       console.log(`Generated time_slot_key: ${timeSlotKey}`);
       
       // VALIDASI DUPLIKASI: Periksa apakah sudah ada slot dengan tanggal dan waktu yang sama
+      // Cek semua slot terlepas dari status isActive untuk menghindari duplikasi
       let existingSlots;
       
       if (timeSlotKeyExists) {
@@ -2352,10 +2353,8 @@ export class DatabaseStorage implements IStorage {
           .select()
           .from(schema.therapySlots)
           .where(
-            and(
-              eq(schema.therapySlots.timeSlotKey, timeSlotKey),
-              eq(schema.therapySlots.isActive, true)
-            )
+            eq(schema.therapySlots.timeSlotKey, timeSlotKey)
+            // Hapus filter isActive untuk mendeteksi semua duplikasi
           );
       } else {
         // Fallback ke pengecekan duplikasi dengan tanggal dan waktu
@@ -2365,8 +2364,8 @@ export class DatabaseStorage implements IStorage {
           .where(
             and(
               eq(schema.therapySlots.date, dateString),
-              eq(schema.therapySlots.timeSlot, slot.timeSlot),
-              eq(schema.therapySlots.isActive, true)
+              eq(schema.therapySlots.timeSlot, slot.timeSlot)
+              // Hapus filter isActive untuk mendeteksi semua duplikasi
             )
           );
       }
