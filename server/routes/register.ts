@@ -8,27 +8,6 @@ import { eq, and } from "drizzle-orm";
 import * as schema from "../../shared/schema";
 
 /**
- * Fungsi untuk memperbaiki format time slot yang salah (10:00-00:00)
- */
-function fixTimeSlotFormat(timeSlot: string): string {
-  if (!timeSlot) return "";
-  
-  // Cek pola waktu yang salah (10:00-00:00)
-  if (timeSlot.endsWith("-00:00")) {
-    // Ambil waktu awal dari time slot
-    const startTime = timeSlot.split("-")[0];
-    // Cek apakah ini pola waktu yang bisa diperbaiki, dan tentukan akhirnya
-    if (startTime === "10:00") return "10:00-12:00";
-    if (startTime === "13:00") return "13:00-15:00"; 
-    if (startTime === "15:00") return "15:00-17:00";
-    if (startTime === "17:00") return "17:00-19:00";
-  }
-  
-  // Jika tidak ada pola yang cocok, tampilkan apa adanya
-  return timeSlot;
-}
-
-/**
  * Menangani proses pendaftaran pasien dengan dua jalur yang jelas:
  * 1. Online Registration: Via shared link (tanpa walkin parameter)
  * 2. Walk-in Registration: Via slot tracker dengan walkin parameter
@@ -335,8 +314,8 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         });
       }
       
-      // Format waktu slot terapi 
-      const timeSlot = fixTimeSlotFormat(therapySlot.time_slot);
+      // Gunakan langsung nilai time_slot dari database
+      const timeSlot = therapySlot.time_slot;
       
       // Buat nomor registrasi yang unik (ID-[YYYYMMDD]-[4 angka random])
       const today = new Date();
