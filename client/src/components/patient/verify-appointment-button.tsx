@@ -80,9 +80,9 @@ export function VerifyAppointmentButton({ patientId, onSuccess }: VerifyButtonPr
     <>
       <Button
         variant="outline"
-        size="sm"
         onClick={handleVerify}
         disabled={isLoading}
+        className="border-green-500 text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950 dark:border-green-600"
       >
         {isLoading ? (
           <>
@@ -92,7 +92,7 @@ export function VerifyAppointmentButton({ patientId, onSuccess }: VerifyButtonPr
         ) : (
           <>
             <RefreshCcw className="mr-2 h-4 w-4" />
-            {patientId ? "Verifikasi Koneksi" : "Verifikasi Semua"}
+            {patientId ? "Verifikasi & Perbaiki Janji Temu" : "Verifikasi Semua Koneksi"}
           </>
         )}
       </Button>
