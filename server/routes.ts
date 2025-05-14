@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { requireAuth, requireAdminRole, allowPublicOrAuth, allowAnyAccess } from "./middleware/auth";
 import { z } from "zod";
 import { db, pool } from "./db";
+import { verifyPatientAppointmentConnections, verifyAppointmentConnectionForPatient } from "./verify-appointment-connection";
 
 // import { registerAgusFixRoutes } from "./routes-agus-fix"; // File tidak ditemukan
 import { 
@@ -6406,51 +6407,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint untuk verifikasi dan perbaikan koneksi appointment dengan slot terapi
-  app.post("/api/maintenance/verify-appointments", requireAdminRole, async (req: Request, res: Response) => {
+  // Endpoint untuk verifikasi dan perbaikan koneksi antara pasien dan appointment
+  app.get("/api/verify/appointments", requireAdminRole, async (req: Request, res: Response) => {
     try {
-      // Import fungsi verifikasi
-      const { verifyAllAppointments } = await import('./verify-appointment-connection');
-      
-      console.log("🔄 Memulai verifikasi semua appointment...");
-      const result = await verifyAllAppointments();
+      console.log("🔄 Memulai verifikasi koneksi pasien-appointment...");
+      const result = await verifyPatientAppointmentConnections();
       
       return res.status(200).json({
         success: true,
-        message: `Verifikasi appointment selesai. ${result.verified} diverifikasi, ${result.fixed} diperbaiki.`,
+        message: `Verifikasi koneksi pasien-appointment selesai. ${result.verified} pasien diverifikasi, ${result.fixed} diperbaiki, ${result.skipped} dilewati.`,
         result
       });
     } catch (error) {
-      console.error("Error saat memverifikasi appointment:", error);
+      console.error("Error saat memverifikasi koneksi pasien-appointment:", error);
       return res.status(500).json({
         success: false,
-        message: "Terjadi kesalahan saat memverifikasi appointment",
+        message: "Terjadi kesalahan saat memverifikasi koneksi pasien-appointment",
         error: error instanceof Error ? error.message : String(error)
       });
     }
   });
   
   // Endpoint untuk verifikasi dan perbaikan koneksi appointment untuk pasien tertentu
-  app.post("/api/maintenance/verify-patient-appointments/:id", requireAdminRole, async (req: Request, res: Response) => {
+  app.get("/api/verify/patient/:id", requireAdminRole, async (req: Request, res: Response) => {
     try {
       const patientId = parseInt(req.params.id);
       
-      // Import fungsi verifikasi
-      const { verifyPatientAppointments } = await import('./verify-appointment-connection');
+      if (isNaN(patientId)) {
+        return res.status(400).json({
+          success: false,
+          message: "ID pasien tidak valid"
+        });
+      }
       
-      console.log(`🔄 Memulai verifikasi appointment untuk pasien ID ${patientId}...`);
-      const result = await verifyPatientAppointments(patientId);
+      console.log(`🔄 Memulai verifikasi koneksi appointment untuk pasien ID ${patientId}...`);
+      const result = await verifyAppointmentConnectionForPatient(patientId);
       
       return res.status(200).json({
         success: true,
-        message: `Verifikasi appointment pasien selesai. ${result.verified} diverifikasi, ${result.fixed} diperbaiki.`,
+        message: `Verifikasi koneksi pasien-appointment selesai. ${result.fixed > 0 ? 'Berhasil membuat appointment baru.' : 'Tidak ada yang perlu diperbaiki.'}`,
         result
       });
     } catch (error) {
-      console.error("Error saat memverifikasi appointment pasien:", error);
+      console.error("Error saat memverifikasi koneksi pasien-appointment:", error);
       return res.status(500).json({
         success: false,
-        message: "Terjadi kesalahan saat memverifikasi appointment pasien",
+        message: "Terjadi kesalahan saat memverifikasi koneksi pasien-appointment",
         error: error instanceof Error ? error.message : String(error)
       });
     }
