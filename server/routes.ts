@@ -6456,6 +6456,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API untuk verifikasi koneksi pasien-appointment
+  app.get("/api/verify/appointments", requireAdminRole, verifyAllPatientConnections);
+  app.get("/api/verify/patient/:id", requireAdminRole, verifyPatientConnection);
+
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);
 
