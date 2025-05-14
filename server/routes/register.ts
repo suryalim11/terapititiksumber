@@ -349,6 +349,27 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     // TAHAP 6: Cari slot terapi yang akan digunakan (optimasi query)
     let appointmentResponse = null;
     
+    // PERBAIKAN KRITIS: Validasi therapySlotId harus ada untuk pendaftaran janji temu
+    if (!therapySlotId) {
+      console.error("❌ ERROR KRITIS: therapySlotId tidak ada dalam request data pendaftaran");
+      return res.status(400).json({ 
+        success: false, 
+        message: "Pendaftaran membutuhkan data slot terapi yang valid", 
+        code: "MISSING_THERAPY_SLOT_ID",
+        diagnostics: {
+          requestData: {
+            // Ambil data penting dari request untuk diagnostik
+            therapySlotId: req.body.therapySlotId,
+            timeSlotKey: req.body.timeSlotKey,
+            date: req.body.date,
+            timeSlot: req.body.timeSlot,
+            isWalkIn: walkInDetected,
+            isOnline: onlineRegistration,
+          }
+        }
+      });
+    }
+    
     if (therapySlotId) {
       try {
         // Query slot terapi langsung dari database
@@ -504,15 +525,28 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           console.log(`   - Date: ${cleanAppointmentData.date} (Tipe: ${typeof cleanAppointmentData.date})`);
           console.log(`   - TimeSlot: ${cleanAppointmentData.timeSlot} (Tipe: ${typeof cleanAppointmentData.timeSlot})`);
           
-          // Insert data ke database dengan satu operasi
-          const [appointment] = await db.insert(schema.appointments)
-            .values(cleanAppointmentData)
-            .returning();
-          
-          appointmentResult = appointment;
-          
-          console.log("✅ Appointment berhasil dibuat dengan ID:", appointmentResult.id);
-          console.log("⏱️ Waktu pembuatan appointment:", new Date().toISOString());
+          // PERBAIKAN KRITIS: Tambahkan try/catch khusus untuk operasi insert data appointment
+          try {
+            // Insert data ke database dengan satu operasi dengan retry option
+            const [appointment] = await db.insert(schema.appointments)
+              .values(cleanAppointmentData)
+              .returning();
+            
+            if (!appointment || !appointment.id) {
+              throw new Error("Gagal membuat appointment: ID tidak ditemukan dalam hasil");
+            }
+            
+            appointmentResult = appointment;
+            
+            console.log("✅ Appointment berhasil dibuat dengan ID:", appointmentResult.id);
+            console.log("✅ Memastikan appointment diassign ke slot terapi ID:", slotIdToUse);
+            console.log("⏱️ Waktu pembuatan appointment:", new Date().toISOString());
+          } catch (error) {
+            // Handle error dengan tipe yang benar
+            const insertError = error as Error;
+            console.error("❌ ERROR KRITIS: Gagal menyimpan appointment ke database:", insertError);
+            throw new Error(`Gagal menyimpan appointment ke database: ${insertError.message}`);
+          }
           
           // PERBAIKAN: Perbarui currentCount slot terapi dan pastikan selalu tereksekusi
           // Gunakan await agar update selesai sebelum data dikirimkan ke klien
