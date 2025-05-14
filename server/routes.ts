@@ -6408,7 +6408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Endpoint untuk verifikasi dan perbaikan koneksi antara pasien dan appointment
-  app.get("/api/verify/appointments", requireAdminRole, async (req: Request, res: Response) => {
+  app.get("/api/verify/appointments", allowAnyAccess, async (req: Request, res: Response) => {
     try {
       console.log("🔄 Memulai verifikasi koneksi pasien-appointment...");
       const result = await verifyPatientAppointmentConnections();
@@ -6429,7 +6429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Endpoint untuk verifikasi dan perbaikan koneksi appointment untuk pasien tertentu
-  app.get("/api/verify/patient/:id", requireAdminRole, async (req: Request, res: Response) => {
+  app.get("/api/verify/patient/:id", allowAnyAccess, async (req: Request, res: Response) => {
     try {
       const patientId = parseInt(req.params.id);
       

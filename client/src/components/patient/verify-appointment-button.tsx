@@ -32,12 +32,18 @@ export function VerifyAppointmentButton({ patientId, onSuccess }: VerifyButtonPr
   const handleVerify = async () => {
     setIsLoading(true);
     try {
+      // URL untuk endpoint verifikasi
       const url = patientId 
         ? `/api/verify/patient/${patientId}` 
         : "/api/verify/appointments";
-        
+      
+      // Panggil API verifikasi  
       const response = await fetch(url, {
         method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
         credentials: "include"
       });
       
@@ -103,7 +109,7 @@ export function VerifyAppointmentButton({ patientId, onSuccess }: VerifyButtonPr
                   <p><strong>Diverifikasi:</strong> {result.result.verified}</p>
                   <p><strong>Diperbaiki:</strong> {result.result.fixed}</p>
                   <p><strong>Dilewati:</strong> {result.result.skipped}</p>
-                  {result.result.errors.length > 0 && (
+                  {result.result.errors && result.result.errors.length > 0 && (
                     <div className="mt-2">
                       <p><strong>Error:</strong> {result.result.errors.length}</p>
                       <details>
