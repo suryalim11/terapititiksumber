@@ -42,16 +42,19 @@ export async function handlePatientRegistration(req: Request, res: Response) {
   try {
     console.log("Menerima permintaan pendaftaran pasien dengan data:", JSON.stringify(req.body, null, 2));
     
-    // DEBUGGING: Log semua parameter walk-in yang mungkin untuk deteksi konsistensi
-    console.log("🔍 DEBUGGING WALKIN di server-side register.ts:");
+    // DEBUGGING: Log semua parameter walk-in dan online yang mungkin untuk deteksi konsistensi
+    console.log("🔍 DEBUGGING PARAMETER REGISTRASI di server-side register.ts:");
     console.log("  - req.body.isWalkInMode:", req.body.isWalkInMode);
     console.log("  - req.body.walkin:", req.body.walkin);
     console.log("  - req.body.walkInMode:", req.body.walkInMode);
     console.log("  - req.query.walkin:", req.query.walkin);
     console.log("  - req.query.isWalkInMode:", req.query.isWalkInMode);
     console.log("  - req.query.walkInMode:", req.query.walkInMode);
+    console.log("  - req.body.online:", req.body.online);
+    console.log("  - req.query.online:", req.query.online);
     
-    // FIXED: Standarisasi deteksi walk-in dari semua format parameter yang mungkin
+    // OPTIMASI: Deteksi kedua jalur pendaftaran dengan jelas
+    // 1. Deteksi walk-in dari berbagai parameter
     const walkInDetected = 
       req.body.isWalkInMode === true || 
       req.body.walkin === true || 
@@ -60,7 +63,12 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       req.query.isWalkInMode === 'true' ||
       req.query.walkInMode === 'true';
       
-    console.log("Hasil deteksi walk-in mode:", walkInDetected);
+    // 2. Deteksi pendaftaran online (dari form tracking)
+    const onlineRegistration = 
+      req.body.online === true || 
+      req.query.online === 'true';
+      
+    console.log("Hasil deteksi jalur pendaftaran - Walk-in:", walkInDetected, "Online:", onlineRegistration);
     
     // Validasi body request - jika kosong atau tidak valid, kembalikan error
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -390,18 +398,30 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         // Hindari konversi yang berlebihan, gunakan nilai dari database saat memungkinkan
         let dateStr = '';
         
-        // Untuk performa, proses secara minimal
-        if (typeof slotToUse.date === 'string') {
-          // Jika sudah string, gunakan langsung
-          dateStr = slotToUse.date;
-        } else if (slotToUse.date && typeof slotToUse.date.toISOString === 'function') {
-          // Jika object Date, konversi ke string ISO dan ambil tanggal saja
-          dateStr = slotToUse.date.toISOString().split('T')[0]; // YYYY-MM-DD
-        } else {
-          // Fallback jika semua cara gagal
+        // OPTIMASI: Penanganan tanggal yang lebih aman dengan pemeriksaan tipe
+        try {
+          // Menggunakan type guard yang lebih aman
+          if (typeof slotToUse.date === 'string') {
+            // Jika sudah string, gunakan langsung
+            dateStr = slotToUse.date;
+          } else if (slotToUse.date && 
+                    typeof slotToUse.date === 'object' && 
+                    'toISOString' in slotToUse.date &&
+                    typeof slotToUse.date.toISOString === 'function') {
+            // Jika object Date (dengan safe check), konversi ke string ISO dan ambil tanggal saja
+            dateStr = slotToUse.date.toISOString().split('T')[0]; // YYYY-MM-DD
+          } else {
+            // Jika tipe data tidak dikenal, gunakan tanggal hari ini
+            const today = new Date();
+            dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+            console.log("Menggunakan tanggal hari ini:", dateStr);
+          }
+        } catch (err) {
+          // Jika terjadi error, gunakan tanggal hari ini
+          console.error("Error saat memproses tanggal slot:", err);
           const today = new Date();
-          dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-          console.log("Menggunakan tanggal hari ini:", dateStr);
+          dateStr = today.toISOString().split('T')[0];
+          console.log("Fallback ke tanggal hari ini:", dateStr);
         }
         
         // Validasi sederhana format tanggal
@@ -460,6 +480,7 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           appointmentResult = appointment;
           
           console.log("✅ Appointment berhasil dibuat dengan ID:", appointmentResult.id);
+          console.log("⏱️ Waktu pembuatan appointment:", new Date().toISOString());
           
           // OPTIMASI: Perbarui currentCount slot terapi (bukan quota) secara asynchronous
           // Kita tidak perlu menunggu operasi ini selesai untuk mengembalikan response
@@ -470,7 +491,11 @@ export async function handlePatientRegistration(req: Request, res: Response) {
             })
             .where(eq(schema.therapySlots.id, slotIdToUse))
             .execute()
-            .then(() => console.log(`✅ CurrentCount slot terapi ID=${slotIdToUse} berhasil diupdate`))
+            .then(() => {
+              const updateTime = new Date().toISOString();
+              console.log(`✅ CurrentCount slot terapi ID=${slotIdToUse} berhasil diupdate pada ${updateTime}`);
+              console.log(`📊 Status sekarang: ${slotToUse.currentCount + 1}/${slotToUse.maxQuota}`);
+            })
             .catch(err => console.error(`❌ Gagal update currentCount: ${err}`));
         } catch (dbError: any) {
           console.error("❌ Gagal menyimpan appointment ke database:", dbError);
@@ -507,9 +532,13 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     
     // OPTIMASI: Sederhanakan respons untuk mengurangi ukuran data
     // Filter dan kirim hanya data yang penting
-    const successMessage = walkInDetected 
-      ? "Pasien berhasil didaftarkan sebagai walk-in ke sesi terapi" 
-      : "Pendaftaran berhasil";
+    // Pesan sukses yang lebih informatif berdasarkan jalur pendaftaran
+    let successMessage = "Pendaftaran berhasil";
+    if (walkInDetected) {
+      successMessage = "Pasien berhasil didaftarkan sebagai walk-in ke sesi terapi";
+    } else if (onlineRegistration) {
+      successMessage = "Pendaftaran online berhasil, pasien terdaftar pada slot terapi";
+    }
     
     // Siapkan respons minimal yang berisi informasi penting saja
     // Menghindari pengiriman data lengkap yang tidak perlu
@@ -529,7 +558,10 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         therapySlotId: appointmentResponse?.therapySlotId,
         status: appointmentResponse?.status
       } : null,
+      // Informasi jalur pendaftaran
+      registrationType: walkInDetected ? "walk-in" : (onlineRegistration ? "online" : "standard"),
       isWalkIn: walkInDetected,
+      isOnlineRegistration: onlineRegistration,
       // Informasi registrasi minimal
       registrationCode: registrationCode || null
     });
