@@ -457,11 +457,11 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           // Pastikan semua field untuk appointment valid dengan format yang tepat
           const formattedAppointmentData = {
             patientId: parseInt(String(patientToUse.id), 10), // Pastikan berupa number
-            therapySlotId: parseInt(String(therapySlot.id), 10), // Pastikan berupa number
+            therapySlotId: parseInt(String(slotIdToUse), 10), // PERBAIKAN: Gunakan slotIdToUse, bukan therapySlot.id
             notes: notes || "",
             status: "Scheduled",
             date: dateStr, // String date sesuai format
-            timeSlot: therapySlot.timeSlot || "",
+            timeSlot: slotToUse.timeSlot || "", // PERBAIKAN: Gunakan slotToUse.timeSlot untuk konsistensi
             sessionId: null,
             registrationNumber: null
           };
@@ -493,10 +493,10 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           ...appointmentResult,
           therapySlotDetails: {
             date: dateStr, // Gunakan string date yang sudah dikonversi
-            timeSlot: therapySlot.timeSlot,
+            timeSlot: slotToUse.timeSlot, // PERBAIKAN: Gunakan slotToUse.timeSlot untuk konsistensi
             formattedDate: format(new Date(dateStr), 'dd/MM/yyyy'),
             // Tambahkan format waktu yang benar untuk mengatasi bug 10:00-00:00
-            timeSlotFixed: fixTimeSlotFormat(therapySlot.timeSlot)
+            timeSlotFixed: fixTimeSlotFormat(slotToUse.timeSlot || '')
           }
         };
         
