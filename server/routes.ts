@@ -6441,11 +6441,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`🔄 Memulai verifikasi koneksi appointment untuk pasien ID ${patientId}...`);
+      
+      // Dapatkan data pasien dulu untuk digunakan dalam pesan respon
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({
+          success: false,
+          message: "Pasien tidak ditemukan"
+        });
+      }
+      
+      // Verifikasi appointment
       const result = await verifyAppointmentConnectionForPatient(patientId);
       
       return res.status(200).json({
         success: true,
-        message: `Verifikasi koneksi pasien-appointment selesai. ${result.fixed > 0 ? 'Berhasil membuat appointment baru.' : 'Tidak ada yang perlu diperbaiki.'}`,
+        message: `Verifikasi appointment untuk pasien ID ${patientId} (${patient.name}) selesai. ${result.fixed > 0 ? 'Berhasil membuat appointment baru.' : 'Tidak ada yang perlu diperbaiki.'}`,
         result
       });
     } catch (error) {
@@ -6458,9 +6469,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // API untuk verifikasi koneksi pasien-appointment
+  // API untuk verifikasi semua koneksi pasien-appointment (hanya admin)
   app.get("/api/verify/appointments", requireAdminRole, verifyAllPatientConnections);
-  app.get("/api/verify/patient/:id", requireAdminRole, verifyPatientConnection);
 
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);
