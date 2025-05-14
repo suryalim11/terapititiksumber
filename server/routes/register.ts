@@ -319,35 +319,31 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           });
         }
         
-        // PERBAIKAN: Cari slot terapi utama untuk mencegah duplikasi pendaftaran
-        const timeSlotKey = therapySlot.timeSlotKey || createTimeSlotKey(therapySlot.date, therapySlot.timeSlot);
-        console.log(`Mencari slot terapi utama dengan timeSlotKey: ${timeSlotKey}`);
+        // PERBAIKAN: Untuk menghindari bottleneck pencarian slot utama
+        // Sebagai optimasi performa, kita gunakan langsung slot yang dipilih
+        // tanpa mencari slot utama untuk kasus pendaftaran normal
         
-        const primarySlot = await findPrimaryTherapySlot(timeSlotKey, therapySlot.date, therapySlot.timeSlot);
-        
-        // Deklarasikan variabel untuk slot yang akan digunakan
         let slotToUse = therapySlot;
         let slotIdToUse = therapySlotId;
         
-        if (primarySlot && primarySlot.id !== therapySlot.id) {
-          console.log(`✅ Slot terapi utama ditemukan dengan ID=${primarySlot.id} (berbeda dari ID=${therapySlot.id})`);
-          console.log(`✅ Menggunakan slot terapi utama untuk konsistensi pendaftaran`);
-          
-          // Gunakan slot utama untuk mencegah duplikasi pendaftaran
-          const [updatedTherapySlot] = await db.select()
-            .from(schema.therapySlots)
-            .where(eq(schema.therapySlots.id, primarySlot.id))
-            .limit(1);
-            
-          if (updatedTherapySlot) {
-            slotToUse = updatedTherapySlot;
-            slotIdToUse = updatedTherapySlot.id; // Update ID slot yang digunakan
-            console.log(`✅ Slot terapi berhasil dialihkan ke slot utama ID=${slotIdToUse}`);
-          } else {
-            console.log(`⚠️ Gagal mengambil data slot utama, melanjutkan dengan slot awal`);
-          }
-        } else {
-          console.log(`✅ Slot terapi yang digunakan sudah merupakan slot utama atau tidak ada slot duplikat`);
+        // Jika ada timeSlotKey di slot, simpan untuk digunakan nanti
+        const timeSlotKey = therapySlot.timeSlotKey || createTimeSlotKey(therapySlot.date, therapySlot.timeSlot);
+        console.log(`Slot terapi dengan timeSlotKey: ${timeSlotKey} akan digunakan langsung`);
+        
+        // Bypass pencarian primarySlot untuk menghindari bottleneck
+        console.log(`✅ Menggunakan slot terapi yang dipilih langsung (ID=${therapySlot.id}) untuk percepatan proses`);
+        
+        // Kita akan menambahkan timeSlotKey jika belum ada, untuk konsistensi data
+        if (!therapySlot.timeSlotKey) {
+          console.log(`Slot tidak memiliki timeSlotKey, akan ditambahkan: ${timeSlotKey}`);
+          // Update timeSlotKey pada slot ini untuk penggunaan di masa depan
+          // tapi tidak menunggu hasilnya untuk mempercepat proses
+          db.update(schema.therapySlots)
+            .set({ timeSlotKey: timeSlotKey })
+            .where(eq(schema.therapySlots.id, therapySlotId))
+            .execute()
+            .then(() => console.log(`✅ TimeSlotKey berhasil ditambahkan ke slot ID=${therapySlotId}`))
+            .catch(err => console.error(`❌ Gagal menambahkan timeSlotKey: ${err}`));
         }
         
         // Validasi slot terapi - mode walk-in dapat mengabaikan validasi aktif
@@ -390,39 +386,31 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           console.log("Menambahkan tanda WALK-IN ke notes appointment");
         }
         
-        // FIXED: Konversi date ke string ISO agar kompatibel dengan tipe data di database
-        // FIXED: Konversi date ke format string dengan cara yang lebih aman
+        // OPTIMASI: Sederhanakan pemrosesan tanggal
+        // Hindari konversi yang berlebihan, gunakan nilai dari database saat memungkinkan
         let dateStr = '';
         
-        console.log("Original therapySlot.date:", therapySlot.date);
-        console.log("Type of therapySlot.date:", Object.prototype.toString.call(therapySlot.date));
-        
-        try {
-          if (typeof therapySlot.date === 'string') {
-            // Jika sudah string, gunakan langsung
-            dateStr = therapySlot.date;
-            console.log("Using string date directly:", dateStr);
-          } else if (therapySlot.date && typeof therapySlot.date.toISOString === 'function') {
-            // Jika object Date (dengan method toISOString)
-            dateStr = therapySlot.date.toISOString();
-            console.log("Converted date object to ISO string:", dateStr);
-          } else {
-            // Jika tipe tidak diketahui, gunakan tanggal hari ini
-            const today = new Date();
-            dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-            console.log("WARNING: Tipe data dari therapySlot.date tidak dikenali, menggunakan tanggal hari ini:", dateStr);
-          }
-        } catch (error) {
-          console.error("ERROR converting date:", error);
-          // Fallback ke tanggal hari ini jika terjadi error
+        // Untuk performa, proses secara minimal
+        if (typeof slotToUse.date === 'string') {
+          // Jika sudah string, gunakan langsung
+          dateStr = slotToUse.date;
+        } else if (slotToUse.date && typeof slotToUse.date.toISOString === 'function') {
+          // Jika object Date, konversi ke string ISO dan ambil tanggal saja
+          dateStr = slotToUse.date.toISOString().split('T')[0]; // YYYY-MM-DD
+        } else {
+          // Fallback jika semua cara gagal
           const today = new Date();
           dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-          console.log("ERROR: Menggunakan tanggal hari ini sebagai fallback:", dateStr);
+          console.log("Menggunakan tanggal hari ini:", dateStr);
         }
         
-        console.log("Type dari slot.date:", typeof slotToUse.date);
-        console.log("Original date:", slotToUse.date);
-        console.log("Converted date string:", dateStr);
+        // Validasi sederhana format tanggal
+        if (!dateStr || dateStr.length < 8) {
+          console.error("Format tanggal tidak valid:", dateStr);
+          const today = new Date();
+          dateStr = today.toISOString().split('T')[0];
+          console.log("Menggunakan tanggal hari ini sebagai fallback:", dateStr);
+        }
         
         // FIXED: Format data dengan benar untuk insert ke database
         const appointmentData = {
@@ -444,50 +432,54 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         console.log("Data appointment yang akan dibuat:", JSON.stringify(appointmentData, null, 2));
         console.log(`Pastikan: patientId=${patientToUse.id}, Nama pasien=${patientToUse.name}, therapySlotId=${slotIdToUse}`);
         
-        // Insert appointment langsung ke database
-        console.log("🔍 DEBUGGING WALKIN: Menyimpan appointment ke database dengan data:", JSON.stringify(appointmentData, null, 2));
+        // OPTIMASI: Sederhanakan insert appointment langsung ke database
+        // Menyederhanakan proses dan mengurangi langkah berlebihan
+        console.log("🔍 Menyimpan appointment ke database dengan data:", JSON.stringify(appointmentData, null, 2));
         
-        // Declare appointment variable here so it's in scope
+        // Variable untuk hasil appointment
         let appointmentResult;
         
         try {
-          // FIXED: Coba gunakan query langsung untuk memasukkan data
-          console.log("Mencoba insert appointment dengan format yang benar");
-          
-          // Pastikan semua field untuk appointment valid dengan format yang tepat
-          const formattedAppointmentData = {
-            patientId: parseInt(String(patientToUse.id), 10), // Pastikan berupa number
-            therapySlotId: parseInt(String(slotIdToUse), 10), // PERBAIKAN: Gunakan slotIdToUse, bukan therapySlot.id
+          // Persiapkan data dengan tipe data yang tepat, tanpa konversi berlebihan
+          const cleanAppointmentData = {
+            patientId: Number(patientToUse.id),
+            therapySlotId: Number(slotIdToUse),
             notes: notes || "",
             status: "Scheduled",
-            date: dateStr, // String date sesuai format
-            timeSlot: slotToUse.timeSlot || "", // PERBAIKAN: Gunakan slotToUse.timeSlot untuk konsistensi
+            date: dateStr, // String date sudah dalam format YYYY-MM-DD
+            timeSlot: slotToUse.timeSlot || "",
             sessionId: null,
             registrationNumber: null
           };
           
-          console.log("Menggunakan formatted data:", JSON.stringify(formattedAppointmentData, null, 2));
-          
+          // Insert data ke database dengan satu operasi
           const [appointment] = await db.insert(schema.appointments)
-            .values(formattedAppointmentData)
+            .values(cleanAppointmentData)
             .returning();
           
-          // Simpan appointment ke variabel lokal
           appointmentResult = appointment;
           
-          console.log("✅ SUKSES: Appointment berhasil dibuat:", JSON.stringify(appointmentResult, null, 2));
+          console.log("✅ Appointment berhasil dibuat dengan ID:", appointmentResult.id);
+          
+          // OPTIMASI: Perbarui quota slot terapi secara asynchronous
+          // Kita tidak perlu menunggu operasi ini selesai untuk mengembalikan response
+          db.update(schema.therapySlots)
+            .set({ 
+              quota: Math.max(0, (slotToUse.quota || 0) - 1)
+            })
+            .where(eq(schema.therapySlots.id, slotIdToUse))
+            .execute()
+            .then(() => console.log(`✅ Quota slot terapi ID=${slotIdToUse} berhasil diupdate`))
+            .catch(err => console.error(`❌ Gagal update quota: ${err}`));
         } catch (dbError: any) {
-          console.error("❌ KRITIS: Gagal menyimpan appointment ke database:", dbError);
+          console.error("❌ Gagal menyimpan appointment ke database:", dbError);
           throw new Error(`Gagal menyimpan appointment: ${dbError.message}`);
         }
         
-        // Pastikan appointment berhasil dibuat dan variabel appointment tersedia
+        // Pastikan appointment berhasil dibuat
         if (!appointmentResult) {
           throw new Error("Gagal membuat appointment: Data appointment kosong");
         }
-        
-        // Simpan appointment untuk digunakan nanti (FIXED: Gunakan dateStr yang sudah diformat dengan benar)
-        console.log("💾 DEBUGINFO: Membuat appointmentResponse dengan date:", dateStr);
         
         appointmentResponse = {
           ...appointmentResult,
@@ -512,22 +504,32 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       }
     }
     
-    // TAHAP 8: Berikan respons sukses
-    // FIXED: Sesuaikan pesan respons berdasarkan mode walk-in
+    // OPTIMASI: Sederhanakan respons untuk mengurangi ukuran data
+    // Filter dan kirim hanya data yang penting
     const successMessage = walkInDetected 
       ? "Pasien berhasil didaftarkan sebagai walk-in ke sesi terapi" 
       : "Pendaftaran berhasil";
     
+    // Siapkan respons minimal yang berisi informasi penting saja
+    // Menghindari pengiriman data lengkap yang tidak perlu
     return res.status(201).json({
       success: true,
       message: successMessage,
-      patient: patientToUse,
-      appointment: appointmentResponse,
-      isWalkIn: walkInDetected, // Tambahkan flag walk-in ke respons
-      registrationStatus: {
-        code: registrationCode,
-        updatedCount: registrationLink ? registrationLink.currentRegistrations + 1 : null
-      }
+      patient: {
+        id: patientToUse.id,
+        name: patientToUse.name,
+        phoneNumber: patientToUse.phoneNumber
+      },
+      appointment: {
+        id: appointmentResponse.id,
+        date: appointmentResponse.date,
+        timeSlot: appointmentResponse.timeSlot,
+        therapySlotId: appointmentResponse.therapySlotId,
+        status: appointmentResponse.status
+      },
+      isWalkIn: walkInDetected,
+      // Informasi registrasi minimal
+      registrationCode: registrationCode || null
     });
   } catch (error) {
     console.error("Error saat proses pendaftaran:", error);

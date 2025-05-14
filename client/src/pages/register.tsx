@@ -1073,25 +1073,34 @@ export default function RegisterPage() {
     };
     
     // Setup timeout untuk navigasi darurat jika server terlalu lama merespon
-    // Meningkatkan timeout menjadi 45 detik untuk memberikan lebih banyak waktu ke server
+    // Meningkatkan timeout menjadi 60 detik untuk memberikan lebih banyak waktu ke server
     const timeoutId = setTimeout(() => {
-      console.log("Timeout terjadi! Melakukan navigasi darurat");
+      console.log("Timeout terjadi! Melakukan navigasi darurat dengan status pending");
       
       // Simpan data lengkap untuk bisa diperiksa nanti
       localStorage.setItem('registrationData', JSON.stringify({
         ...simpleData,
         fullSubmission: dataToSend,
         fromTimeout: true,
-        timestamp: new Date().toISOString()
+        needsVerification: true, // Tandai bahwa data perlu diverifikasi
+        timeoutAt: new Date().toISOString()
       }));
       
-      // Tandai status sebagai pending untuk pemeriksaan di halaman sukses
-      localStorage.setItem('registrationStatus', 'pending');
+      // Tandai status sebagai pending_verification untuk pemeriksaan di halaman sukses
+      // Perubahan status ini penting agar sistem tahu data perlu diverifikasi
+      localStorage.setItem('registrationStatus', 'pending_verification');
+      
+      // Add visual feedback before navigation
+      toast({
+        title: "Menunggu server...",
+        description: "Proses pendaftaran membutuhkan waktu lebih lama dari biasanya. Data Anda sedang diproses.",
+        className: "bg-amber-50 border-amber-200 text-amber-800",
+      });
       
       // Force navigasi ke halaman sukses dengan parameter tambahan untuk tracking
       const timestamp = new Date().getTime();
-      window.location.href = `/registration-success?t=${timestamp}&src=timeout&retry=true`;
-    }, 45000); // 45 detik timeout - jauh lebih lama untuk memberi waktu server memproses
+      window.location.href = `/registration-success?t=${timestamp}&src=timeout&verify=true&retry=true`;
+    }, 60000); // 60 detik timeout - jauh lebih lama untuk memberi waktu server memproses
     
     // Implementasi mekanisme retry untuk API call
     const maxRetries = 2;
