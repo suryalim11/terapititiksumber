@@ -370,15 +370,31 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       });
     }
     
+    // Membuat koneksi transaksi database untuk memastikan integritas data
+    console.log("⏳ Memulai transaksi database untuk pendaftaran pasien...");
+    const client = await pool.connect();
+    
+    // Menandai bahwa kita sedang menggunakan transaksi
+    // Ini untuk membantu debugging jika terjadi error
+    let transactionActive = false;
+    
     if (therapySlotId) {
       try {
-        // Query slot terapi langsung dari database
-        const [therapySlot] = await db.select()
-          .from(schema.therapySlots)
-          .where(eq(schema.therapySlots.id, therapySlotId))
-          .limit(1);
+        // Mulai transaksi database
+        await client.query('BEGIN');
+        transactionActive = true;
+        console.log("✅ Transaksi database dimulai");
+        
+        // Query slot terapi dalam transaksi yang sama
+        const { rows: [therapySlot] } = await client.query(
+          'SELECT * FROM therapy_slots WHERE id = $1 LIMIT 1',
+          [therapySlotId]
+        );
         
         if (!therapySlot) {
+          // Rollback dan kembalikan error
+          await client.query('ROLLBACK');
+          transactionActive = false;
           console.error(`Slot terapi dengan ID ${therapySlotId} tidak ditemukan`);
           return res.status(404).json({ 
             message: "Slot terapi tidak ditemukan", 
@@ -497,8 +513,8 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         console.log("Data appointment yang akan dibuat:", JSON.stringify(appointmentData, null, 2));
         console.log(`Pastikan: patientId=${patientToUse.id}, Nama pasien=${patientToUse.name}, therapySlotId=${slotIdToUse}`);
         
-        // OPTIMASI: Sederhanakan insert appointment langsung ke database
-        // Menyederhanakan proses dan mengurangi langkah berlebihan
+        // OPTIMASI: Gunakan transaksi database untuk appointment dan slot update
+        // Ini memastikan integritas data secara atomic
         console.log("🔍 Menyimpan appointment ke database dengan data:", JSON.stringify(appointmentData, null, 2));
         
         // Variable untuk hasil appointment
@@ -519,19 +535,21 @@ export async function handlePatientRegistration(req: Request, res: Response) {
             registrationNumber: null
           };
           
-          console.log("🔄 DIAGNOSTIK DATA JANJI TEMU:");
+          console.log("🔄 DIAGNOSTIK DATA JANJI TEMU (DALAM TRANSAKSI):");
           console.log(`   - PatientId: ${cleanAppointmentData.patientId} (Tipe: ${typeof cleanAppointmentData.patientId})`);
           console.log(`   - TherapySlotId: ${cleanAppointmentData.therapySlotId} (Tipe: ${typeof cleanAppointmentData.therapySlotId})`);
           console.log(`   - Date: ${cleanAppointmentData.date} (Tipe: ${typeof cleanAppointmentData.date})`);
           console.log(`   - TimeSlot: ${cleanAppointmentData.timeSlot} (Tipe: ${typeof cleanAppointmentData.timeSlot})`);
+          console.log(`   - Status transaksi: ${transactionActive ? 'AKTIF' : 'TIDAK AKTIF'}`);
           
           // PERBAIKAN KRITIS: Tambahkan try/catch khusus untuk operasi insert data appointment
           try {
             // INTEGRASI KRITIS: Validasi bahwa data appointment yang akan dibuat sudah berisi
             // therapySlotId yang benar
-            console.log(`📋 VALIDASI INTEGRASI TERAPI-APPOINTMENT: `);
+            console.log(`📋 VALIDASI INTEGRASI TERAPI-APPOINTMENT (DALAM TRANSAKSI): `);
             console.log(`   - Slot terapi ID yang akan dipakai: ${slotIdToUse}`);
             console.log(`   - Data appointment therapySlotId: ${cleanAppointmentData.therapySlotId}`);
+            console.log(`   - Status transaksi: ${transactionActive ? 'AKTIF' : 'TIDAK AKTIF'}`);
 
             if (!cleanAppointmentData.therapySlotId || 
                 Number(cleanAppointmentData.therapySlotId) !== Number(slotIdToUse)) {
@@ -541,11 +559,26 @@ export async function handlePatientRegistration(req: Request, res: Response) {
               console.log(`✅ Data appointment diperbaiki dengan therapySlotId=${cleanAppointmentData.therapySlotId}`);
             }
             
-            // Insert data ke database dengan satu operasi
-            console.log(`⏳ Menyimpan appointment ke database dengan therapySlotId=${cleanAppointmentData.therapySlotId}...`);
-            const [appointment] = await db.insert(schema.appointments)
-              .values(cleanAppointmentData)
-              .returning();
+            // 1. Insert appointment dalam transaksi
+            console.log(`⏳ Menyimpan appointment ke database dalam transaksi dengan therapySlotId=${cleanAppointmentData.therapySlotId}...`);
+            
+            // Gunakan transaksi yang sudah dimulai sebelumnya
+            const { rows: [appointment] } = await client.query(
+              `INSERT INTO appointments 
+               (patient_id, therapy_slot_id, date, time_slot, status, notes, session_id, registration_number) 
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+               RETURNING *`,
+              [
+                cleanAppointmentData.patientId,
+                cleanAppointmentData.therapySlotId,
+                cleanAppointmentData.date,
+                cleanAppointmentData.timeSlot,
+                cleanAppointmentData.status,
+                cleanAppointmentData.notes,
+                cleanAppointmentData.sessionId,
+                cleanAppointmentData.registrationNumber
+              ]
+            );
             
             if (!appointment || !appointment.id) {
               throw new Error("Gagal membuat appointment: ID tidak ditemukan dalam hasil");
