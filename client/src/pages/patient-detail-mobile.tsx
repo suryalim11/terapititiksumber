@@ -570,7 +570,7 @@ export default function PatientDetail() {
                         }).then((response) => {
                           toast({
                             title: "Verifikasi selesai",
-                            description: `${response.fixed ? `${response.fixed} koneksi diperbaiki` : 'Semua koneksi sudah valid'}`
+                            description: `${response.result?.fixed ? `${response.result.fixed} koneksi diperbaiki` : 'Semua koneksi sudah valid'}`
                           });
                           // Muat ulang data pasien untuk menampilkan perubahan
                           queryClient.invalidateQueries({ queryKey: [`/api/appointments`] });
