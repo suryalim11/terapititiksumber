@@ -65,9 +65,15 @@ function PublicApp() {
   return (
     <PublicLayout>
       <Switch>
+        {/* 
+          Perhatikan: wouter tidak secara native mendukung query params dalam routes
+          Seluruh query parameters (seperti '?patientId=123&walkin=true') akan tetap diproses
+          di dalam komponen menggunakan window.location.search
+        */}
         <Route path="/daftar" component={Register} />
         <Route path="/register" component={Register} />
         <Route path="/registration-success" component={RegistrationSuccess} />
+        
         {/* Rute pendaftaran sederhana dinonaktifkan - diganti dengan register utama */}
         {/* <Route path="/register-simple" component={SimpleRegister} /> */}
         <Route component={NotFound} />
@@ -79,11 +85,17 @@ function PublicApp() {
 function App() {
   // Tentukan apakah ini halaman publik berdasarkan URL
   // Enhanced public page detection logic to handle redirects and query parameters
-  const isPublicPage = window.location.pathname.includes('/register') || 
-                      window.location.pathname.includes('/daftar') || 
-                      window.location.pathname.includes('/registration-success') ||
-                      // Include registration URLs with query parameters
-                      window.location.search.includes('walkin=true');
+  const pathname = window.location.pathname;
+  const search = window.location.search;
+  
+  // Cek apakah URL saat ini merupakan halaman publik atau URL dengan parameter pendaftaran
+  const isPublicPage = 
+    pathname.includes('/register') || 
+    pathname.includes('/daftar') || 
+    pathname.includes('/registration-success');
+    
+  // Catatan: Tidak perlu menggunakan window.location.search.includes('walkin=true') karena query parameter 
+  // seharusnya tidak mengubah routing, hanya memodifikasi behavior di dalam komponen register
   
   return (
     <QueryClientProvider client={queryClient}>
