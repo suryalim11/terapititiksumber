@@ -384,67 +384,75 @@ export class DatabaseStorage implements IStorage {
   async deletePatient(id: number): Promise<boolean> {
     try {
       console.log(`Menghapus pasien dengan ID ${id} dan semua data terkait...`);
+
+      // Simpan therapy slot IDs yang akan diupdate nanti
+      const appointmentsResult = await db.select({ therapySlotId: schema.appointments.therapySlotId })
+        .from(schema.appointments)
+        .where(
+          and(
+            eq(schema.appointments.patientId, id),
+            sql`status != 'Cancelled'`
+          )
+        );
       
-      // Gunakan transaksi database untuk memastikan semua operasi penghapusan berjalan bersama
-      const result = await pool.query(`
-        BEGIN;
-        
-        -- Simpan semua therapySlotId yang perlu diupdate kuotanya
-        CREATE TEMP TABLE temp_slots_to_update AS
-        SELECT therapy_slot_id 
-        FROM appointments 
-        WHERE patient_id = $1 AND status != 'Cancelled' AND therapy_slot_id IS NOT NULL;
-        
-        -- Hapus riwayat medis pasien
-        DELETE FROM medical_histories WHERE patient_id = $1;
-        
-        -- Hapus appointments pasien
-        DELETE FROM appointments WHERE patient_id = $1;
-        
-        -- Hapus sessions pasien
-        DELETE FROM sessions WHERE patient_id = $1;
-        
-        -- Hapus hubungan pasien dengan pasien lain
-        DELETE FROM patient_relationships 
-        WHERE patient_id = $1 OR related_patient_id = $1;
-        
-        -- Hapus debt payments pasien (jika ada)
-        DELETE FROM debt_payments
-        WHERE transaction_id IN (SELECT id FROM transactions WHERE patient_id = $1);
-        
-        -- Hapus transaksi pasien
-        DELETE FROM transactions WHERE patient_id = $1;
-        
-        -- Akhirnya hapus data pasien
-        DELETE FROM patients WHERE id = $1;
-        
-        COMMIT;
-      `, [id]);
+      const therapySlotIds = appointmentsResult
+        .map(a => a.therapySlotId)
+        .filter(id => id !== null) as number[];
       
-      // Update kuota slot terapi (tidak dimasukkan dalam transaksi karena bisa dilakukan terpisah)
-      const slots = await pool.query(`SELECT * FROM temp_slots_to_update`);
+      // Hapus semua data terkait pasien menggunakan Drizzle ORM secara berurutan
       
-      // Untuk setiap slot terapi, kurangi kuota
-      if (slots.rows && slots.rows.length > 0) {
-        for (const slot of slots.rows) {
-          if (slot.therapy_slot_id) {
-            await this.decrementTherapySlotUsage(slot.therapy_slot_id);
-            console.log(`Mengurangi kuota untuk slot terapi ID ${slot.therapy_slot_id}`);
-          }
-        }
+      // 1. Hapus riwayat medis
+      await db.delete(schema.medicalHistories)
+        .where(eq(schema.medicalHistories.patientId, id));
+      
+      // 2. Hapus appointments
+      await db.delete(schema.appointments)
+        .where(eq(schema.appointments.patientId, id));
+      
+      // 3. Hapus sessions
+      await db.delete(schema.sessions)
+        .where(eq(schema.sessions.patientId, id));
+      
+      // 4. Hapus relasi pasien
+      await db.delete(schema.patientRelationships)
+        .where(
+          or(
+            eq(schema.patientRelationships.patientId, id),
+            eq(schema.patientRelationships.relatedPatientId, id)
+          )
+        );
+      
+      // 5. Ambil ID transaksi untuk hapus debt_payments
+      const transactionsResult = await db.select({ id: schema.transactions.id })
+        .from(schema.transactions)
+        .where(eq(schema.transactions.patientId, id));
+      
+      const transactionIds = transactionsResult.map(t => t.id);
+      
+      // 6. Hapus debt payments jika ada transaksi
+      if (transactionIds.length > 0) {
+        await db.delete(schema.debtPayments)
+          .where(inArray(schema.debtPayments.transactionId, transactionIds));
       }
       
-      // Hapus tabel temporary
-      await pool.query(`DROP TABLE IF EXISTS temp_slots_to_update`);
+      // 7. Hapus transaksi
+      await db.delete(schema.transactions)
+        .where(eq(schema.transactions.patientId, id));
+      
+      // 8. Akhirnya hapus data pasien
+      await db.delete(schema.patients)
+        .where(eq(schema.patients.id, id));
+      
+      // Update kuota slot terapi
+      for (const slotId of therapySlotIds) {
+        await this.decrementTherapySlotUsage(slotId);
+        console.log(`Mengurangi kuota untuk slot terapi ID ${slotId}`);
+      }
       
       console.log(`Pasien dengan ID ${id} berhasil dihapus beserta semua data terkait`);
       return true;
     } catch (error) {
       console.error("Error saat menghapus pasien:", error);
-      // Rollback transaksi jika terjadi error
-      await pool.query(`ROLLBACK`);
-      // Hapus tabel temporary
-      await pool.query(`DROP TABLE IF EXISTS temp_slots_to_update`);
       return false;
     }
   }
