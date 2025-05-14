@@ -320,9 +320,33 @@ export default function RegisterPage() {
     console.log("Full URL saat akses halaman register:", window.location.href);
     console.log("URL search params:", window.location.search);
     
+    // Reset localStorage untuk membersihkan slotId lama yang mungkin tidak valid
+    localStorage.removeItem('selectedTherapySlotId');
+    
     const params = new URLSearchParams(window.location.search);
     // Mendukung parameter "code" dan "kode" untuk backward compatibility
     const code = params.get("code") || params.get("kode");
+    
+    // Periksa parameter walk-in
+    const isWalkInParam = 
+      params.get("walkin") === "true" || 
+      params.get("isWalkInMode") === "true" ||
+      params.get("iswalkinmode") === "true" ||
+      params.get("walkInMode") === "true";
+      
+    // Set mode pendaftaran berdasarkan parameter
+    setIsWalkInMode(isWalkInParam);
+    
+    if (isWalkInParam) {
+      console.log("Mode walk-in terdeteksi dari URL");
+      localStorage.removeItem('walkin_toast_shown');
+      toast({
+        title: "Mode Pendaftaran Walk-in",
+        description: "Anda berada di mode pendaftaran langsung (walk-in). Data akan langsung disimpan tanpa konfirmasi.",
+        className: "bg-blue-50 border-blue-200 text-blue-800",
+      });
+      localStorage.setItem('walkin_toast_shown', 'true');
+    }
     
     // Cek apakah ada parameter 'status=success' di URL
     const urlStatus = params.get('status');
