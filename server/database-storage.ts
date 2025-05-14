@@ -383,44 +383,68 @@ export class DatabaseStorage implements IStorage {
   
   async deletePatient(id: number): Promise<boolean> {
     try {
-      // Dapatkan semua janji temu pasien untuk mengurangi kuota slot terapi
-      const patientAppointments = await db
-        .select()
-        .from(schema.appointments)
-        .where(eq(schema.appointments.patientId, id));
+      console.log(`Menghapus pasien dengan ID ${id} dan semua data terkait...`);
       
-      // Untuk setiap janji temu yang aktif, kurangi kuota slot terapi
-      for (const appointment of patientAppointments) {
-        if (appointment.status !== "Cancelled" && appointment.therapySlotId) {
-          // Dapatkan slot terapi
-          const therapySlot = await this.getTherapySlot(appointment.therapySlotId);
-          
-          if (therapySlot && therapySlot.currentCount > 0) {
-            // Kurangi kuota terhitung pada slot terapi
-            await this.decrementTherapySlotUsage(appointment.therapySlotId);
-            console.log(`Mengurangi kuota untuk slot terapi ID ${appointment.therapySlotId}`);
+      // Gunakan transaksi database untuk memastikan semua operasi penghapusan berjalan bersama
+      const result = await pool.query(`
+        BEGIN;
+        
+        -- Simpan semua therapySlotId yang perlu diupdate kuotanya
+        CREATE TEMP TABLE temp_slots_to_update AS
+        SELECT therapy_slot_id 
+        FROM appointments 
+        WHERE patient_id = $1 AND status != 'Cancelled' AND therapy_slot_id IS NOT NULL;
+        
+        -- Hapus riwayat medis pasien
+        DELETE FROM medical_histories WHERE patient_id = $1;
+        
+        -- Hapus appointments pasien
+        DELETE FROM appointments WHERE patient_id = $1;
+        
+        -- Hapus sessions pasien
+        DELETE FROM sessions WHERE patient_id = $1;
+        
+        -- Hapus hubungan pasien dengan pasien lain
+        DELETE FROM patient_relationships 
+        WHERE patient_id = $1 OR related_patient_id = $1;
+        
+        -- Hapus debt payments pasien (jika ada)
+        DELETE FROM debt_payments
+        WHERE transaction_id IN (SELECT id FROM transactions WHERE patient_id = $1);
+        
+        -- Hapus transaksi pasien
+        DELETE FROM transactions WHERE patient_id = $1;
+        
+        -- Akhirnya hapus data pasien
+        DELETE FROM patients WHERE id = $1;
+        
+        COMMIT;
+      `, [id]);
+      
+      // Update kuota slot terapi (tidak dimasukkan dalam transaksi karena bisa dilakukan terpisah)
+      const slots = await pool.query(`SELECT * FROM temp_slots_to_update`);
+      
+      // Untuk setiap slot terapi, kurangi kuota
+      if (slots.rows && slots.rows.length > 0) {
+        for (const slot of slots.rows) {
+          if (slot.therapy_slot_id) {
+            await this.decrementTherapySlotUsage(slot.therapy_slot_id);
+            console.log(`Mengurangi kuota untuk slot terapi ID ${slot.therapy_slot_id}`);
           }
         }
       }
       
-      // Find and delete all related appointments
-      await db
-        .delete(schema.appointments)
-        .where(eq(schema.appointments.patientId, id));
+      // Hapus tabel temporary
+      await pool.query(`DROP TABLE IF EXISTS temp_slots_to_update`);
       
-      // Find and delete all related sessions
-      await db
-        .delete(schema.sessions)
-        .where(eq(schema.sessions.patientId, id));
-      
-      // Delete the patient
-      await db
-        .delete(schema.patients)
-        .where(eq(schema.patients.id, id));
-      
+      console.log(`Pasien dengan ID ${id} berhasil dihapus beserta semua data terkait`);
       return true;
     } catch (error) {
       console.error("Error saat menghapus pasien:", error);
+      // Rollback transaksi jika terjadi error
+      await pool.query(`ROLLBACK`);
+      // Hapus tabel temporary
+      await pool.query(`DROP TABLE IF EXISTS temp_slots_to_update`);
       return false;
     }
   }
