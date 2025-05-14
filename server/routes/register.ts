@@ -521,13 +521,14 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         name: patientToUse.name,
         phoneNumber: patientToUse.phoneNumber
       },
-      appointment: {
-        id: appointmentResponse.id,
-        date: appointmentResponse.date,
-        timeSlot: appointmentResponse.timeSlot,
-        therapySlotId: appointmentResponse.therapySlotId,
-        status: appointmentResponse.status
-      },
+      // Sertakan info appointment jika tersedia, hindari akses properti pada null/undefined
+      appointment: appointmentResponse ? {
+        id: appointmentResponse?.id,
+        date: appointmentResponse?.date,
+        timeSlot: appointmentResponse?.timeSlot,
+        therapySlotId: appointmentResponse?.therapySlotId,
+        status: appointmentResponse?.status
+      } : null,
       isWalkIn: walkInDetected,
       // Informasi registrasi minimal
       registrationCode: registrationCode || null
