@@ -79,10 +79,10 @@ export function VerifyAppointmentButton({ patientId, onSuccess }: VerifyButtonPr
   return (
     <>
       <Button
-        variant="outline"
+        variant="default"
         onClick={handleVerify}
         disabled={isLoading}
-        className="border-green-500 text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950 dark:border-green-600"
+        className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800"
       >
         {isLoading ? (
           <>
