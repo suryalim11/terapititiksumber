@@ -6405,6 +6405,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint untuk verifikasi dan perbaikan koneksi appointment dengan slot terapi
+  app.post("/api/maintenance/verify-appointments", requireAdminRole, async (req: Request, res: Response) => {
+    try {
+      // Import fungsi verifikasi
+      const { verifyAllAppointments } = await import('./verify-appointment-connection');
+      
+      console.log("🔄 Memulai verifikasi semua appointment...");
+      const result = await verifyAllAppointments();
+      
+      return res.status(200).json({
+        success: true,
+        message: `Verifikasi appointment selesai. ${result.verified} diverifikasi, ${result.fixed} diperbaiki.`,
+        result
+      });
+    } catch (error) {
+      console.error("Error saat memverifikasi appointment:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat memverifikasi appointment",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Endpoint untuk verifikasi dan perbaikan koneksi appointment untuk pasien tertentu
+  app.post("/api/maintenance/verify-patient-appointments/:id", requireAdminRole, async (req: Request, res: Response) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      
+      // Import fungsi verifikasi
+      const { verifyPatientAppointments } = await import('./verify-appointment-connection');
+      
+      console.log(`🔄 Memulai verifikasi appointment untuk pasien ID ${patientId}...`);
+      const result = await verifyPatientAppointments(patientId);
+      
+      return res.status(200).json({
+        success: true,
+        message: `Verifikasi appointment pasien selesai. ${result.verified} diverifikasi, ${result.fixed} diperbaiki.`,
+        result
+      });
+    } catch (error) {
+      console.error("Error saat memverifikasi appointment pasien:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat memverifikasi appointment pasien",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);
 
