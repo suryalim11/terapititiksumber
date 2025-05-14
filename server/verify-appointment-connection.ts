@@ -1,229 +1,259 @@
 /**
- * Module untuk memverifikasi dan memperbaiki koneksi antara appointment dan slot terapi
- * Berfungsi untuk memastikan pasien yang terdaftar muncul di slot tracker
+ * Modul untuk verifikasi koneksi antara pasien dan appointment
+ * Mencari pasien dengan therapySlotId tapi tidak memiliki appointment
+ * dan otomatis membuat appointment untuk pasien tersebut
  */
 
-import { db } from "./db";
-import { eq, and, sql } from "drizzle-orm";
-import * as schema from "../shared/schema";
+import { db } from './db';
+import { sql } from 'drizzle-orm';
+import * as schema from '@shared/schema';
+import { eq, and, isNull } from 'drizzle-orm';
+import { format } from 'date-fns';
 
-interface VerifyResult {
+interface VerificationResult {
   verified: number;
   fixed: number;
+  skipped: number;
   errors: any[];
 }
 
 /**
- * Memeriksa dan memperbaiki koneksi appointment berdasarkan patientId tertentu
- * @param patientId ID pasien yang akan diperiksa appointmentnya
- * @returns Hasil verifikasi dengan jumlah yang berhasil diperbaiki
+ * Memeriksa dan memperbaiki koneksi pasien dengan appointment
+ * @returns Hasil verifikasi dengan jumlah pasien yang diverifikasi dan diperbaiki
  */
-export async function verifyPatientAppointments(patientId: number): Promise<VerifyResult> {
-  const result: VerifyResult = {
+export async function verifyPatientAppointmentConnections(): Promise<VerificationResult> {
+  const result: VerificationResult = {
     verified: 0,
     fixed: 0,
+    skipped: 0,
     errors: []
   };
 
+  console.log("🔍 Memulai verifikasi koneksi pasien-appointment...");
+  
   try {
-    console.log(`🔍 Memverifikasi appointment untuk pasien ID ${patientId}...`);
+    // Cari pasien yang memiliki therapySlotId tapi tidak memiliki appointment
+    const query = `
+      SELECT p.id, p.name, p.therapy_slot_id, ts.date, ts.time_slot
+      FROM patients p
+      JOIN therapy_slots ts ON p.therapy_slot_id = ts.id
+      LEFT JOIN appointments a ON a.patient_id = p.id AND a.therapy_slot_id = p.therapy_slot_id
+      WHERE p.therapy_slot_id IS NOT NULL
+      AND a.id IS NULL
+    `;
     
-    // Ambil semua appointment untuk pasien tersebut
-    const appointments = await db.select()
-      .from(schema.appointments)
-      .where(eq(schema.appointments.patientId, patientId));
+    const { rows: patientsWithoutAppointments } = await db.execute(sql.raw(query));
     
-    console.log(`Ditemukan ${appointments.length} appointment untuk pasien ID ${patientId}`);
-    result.verified = appointments.length;
+    console.log(`✅ Ditemukan ${patientsWithoutAppointments.length} pasien yang perlu diperbaiki koneksi appointmentnya`);
+    result.verified = patientsWithoutAppointments.length;
     
-    if (appointments.length === 0) {
-      // Jika tidak ada appointment, kemungkinan belum terdaftar
-      console.log(`⚠️ Tidak ditemukan appointment untuk pasien ID ${patientId}`);
-      
-      // Cek jika pasien ada
-      const [patient] = await db.select()
-        .from(schema.patients)
-        .where(eq(schema.patients.id, patientId));
-      
-      if (!patient) {
-        console.error(`❌ Pasien dengan ID ${patientId} tidak ditemukan`);
-        result.errors.push({ message: `Pasien dengan ID ${patientId} tidak ditemukan` });
-        return result;
-      }
-      
-      // Jika pasien ada tapi tidak ada appointment, mungkin proses belum selesai
-      console.log(`ℹ️ Pasien ${patient.name} (ID: ${patient.patientId}) ada tetapi belum ada janji temu terdaftar`);
+    // Jika tidak ada pasien yang perlu diperbaiki, kembalikan hasil
+    if (patientsWithoutAppointments.length === 0) {
+      return result;
     }
     
-    // Periksa dan perbaiki setiap appointment
-    for (const appointment of appointments) {
-      // Verifikasi therapySlotId ada dan valid
-      if (!appointment.therapySlotId) {
-        console.error(`❌ Appointment ID ${appointment.id} tidak memiliki therapySlotId`);
-        result.errors.push({ 
-          appointmentId: appointment.id, 
-          message: "Appointment tidak memiliki therapySlotId" 
-        });
-        continue;
-      }
-      
-      // Verifikasi bahwa slot terapi benar-benar ada
-      const [therapySlot] = await db.select()
-        .from(schema.therapySlots)
-        .where(eq(schema.therapySlots.id, appointment.therapySlotId));
-      
-      if (!therapySlot) {
-        console.error(`❌ Slot terapi ID ${appointment.therapySlotId} tidak ditemukan`);
-        result.errors.push({ 
-          appointmentId: appointment.id, 
-          therapySlotId: appointment.therapySlotId,
-          message: "Slot terapi tidak ditemukan" 
-        });
-        continue;
-      }
-      
-      // Verifikasi bahwa currentCount slot terapi sudah diperbarui
-      // Jika currentCount masih 0 atau tidak sesuai dengan jumlah appointment, perlu diperbaiki
-      const appointmentsForSlot = await db.select()
-        .from(schema.appointments)
-        .where(eq(schema.appointments.therapySlotId, therapySlot.id));
-      
-      if (appointmentsForSlot.length > 0 && therapySlot.currentCount === 0) {
-        // Perbarui currentCount slot terapi
-        console.log(`🔄 Memperbaiki currentCount slot terapi ID ${therapySlot.id} (seharusnya ${appointmentsForSlot.length}, sekarang ${therapySlot.currentCount})`);
+    // Perbaiki setiap pasien dengan membuat appointment
+    for (const patient of patientsWithoutAppointments) {
+      try {
+        // Buat appointment baru untuk pasien
+        console.log(`⏳ Membuat appointment untuk pasien: ${patient.name} (ID: ${patient.id}) pada slot terapi ID: ${patient.therapy_slot_id}`);
         
-        try {
-          await db.execute(
-            sql`UPDATE therapy_slots SET current_count = ${appointmentsForSlot.length} WHERE id = ${therapySlot.id}`
-          );
-          console.log(`✅ CurrentCount slot terapi ID ${therapySlot.id} berhasil diperbarui ke ${appointmentsForSlot.length}`);
+        const [appointment] = await db.insert(schema.appointments)
+          .values({
+            patientId: patient.id,
+            therapySlotId: patient.therapy_slot_id,
+            date: patient.date,
+            timeSlot: patient.time_slot,
+            status: "Scheduled",
+            notes: "Dibuat otomatis oleh sistem verifikasi",
+            sessionId: null,
+            registrationNumber: null
+          })
+          .returning();
+        
+        if (appointment && appointment.id) {
+          console.log(`✅ Berhasil membuat appointment dengan ID: ${appointment.id}`);
           result.fixed++;
-        } catch (error) {
-          console.error(`❌ Gagal memperbarui currentCount slot terapi ID ${therapySlot.id}:`, error);
-          result.errors.push({ 
-            therapySlotId: therapySlot.id, 
-            message: `Gagal memperbarui currentCount: ${error}` 
+          
+          // Update currentCount pada therapy slot
+          try {
+            await db.execute(
+              sql`UPDATE therapy_slots SET current_count = current_count + 1 WHERE id = ${patient.therapy_slot_id}`
+            );
+            console.log(`✅ Berhasil mengupdate current_count pada slot terapi ID: ${patient.therapy_slot_id}`);
+          } catch (updateError) {
+            console.error(`❌ Gagal mengupdate current_count:`, updateError);
+            result.errors.push({
+              type: 'update_current_count_error',
+              patientId: patient.id,
+              therapySlotId: patient.therapy_slot_id,
+              error: updateError
+            });
+          }
+        } else {
+          console.error(`❌ Gagal membuat appointment untuk pasien ID: ${patient.id}`);
+          result.skipped++;
+          result.errors.push({
+            type: 'appointment_creation_failed',
+            patientId: patient.id,
+            therapySlotId: patient.therapy_slot_id
           });
         }
-      } else {
-        console.log(`✅ Appointment ID ${appointment.id} memiliki koneksi yang valid ke slot terapi ID ${therapySlot.id}`);
+      } catch (error) {
+        console.error(`❌ Error saat membuat appointment untuk pasien ID: ${patient.id}:`, error);
+        result.skipped++;
+        result.errors.push({
+          type: 'appointment_creation_error',
+          patientId: patient.id,
+          therapySlotId: patient.therapy_slot_id,
+          error
+        });
       }
     }
     
+    console.log(`🏁 Verifikasi selesai: ${result.verified} pasien diverifikasi, ${result.fixed} diperbaiki, ${result.skipped} dilewati`);
     return result;
   } catch (error) {
-    console.error("❌ Error saat memverifikasi appointment:", error);
-    result.errors.push({ message: `Error saat memverifikasi: ${error}` });
+    console.error("❌ Error saat melakukan verifikasi koneksi pasien-appointment:", error);
+    result.errors.push({
+      type: 'verification_error',
+      error
+    });
     return result;
   }
 }
 
 /**
- * Memverifikasi dan memperbaiki semua koneksi appointment untuk semua pasien
- * @returns Hasil verifikasi dengan jumlah yang berhasil diperbaiki
+ * Verifikasi koneksi untuk pasien tertentu
+ * @param patientId ID pasien yang akan diverifikasi
+ * @returns Hasil verifikasi untuk pasien tersebut
  */
-export async function verifyAllAppointments(): Promise<VerifyResult> {
-  const result: VerifyResult = {
-    verified: 0,
+export async function verifyAppointmentConnectionForPatient(patientId: number): Promise<VerificationResult> {
+  const result: VerificationResult = {
+    verified: 1,
     fixed: 0,
+    skipped: 0,
     errors: []
   };
   
+  console.log(`🔍 Memverifikasi koneksi appointment untuk pasien ID: ${patientId}`);
+  
   try {
-    console.log(`🔍 Memverifikasi semua appointment...`);
-    
-    // Ambil semua appointment
-    const appointments = await db.select()
-      .from(schema.appointments);
-    
-    console.log(`Ditemukan ${appointments.length} appointment total`);
-    result.verified = appointments.length;
-    
-    // Kelompokkan appointment berdasarkan therapySlotId
-    const appointmentsBySlot: { [key: number]: number } = {};
-    
-    for (const appointment of appointments) {
-      if (appointment.therapySlotId) {
-        const slotId = appointment.therapySlotId;
-        appointmentsBySlot[slotId] = (appointmentsBySlot[slotId] || 0) + 1;
-      }
-    }
-    
-    // Periksa dan perbaiki currentCount untuk setiap slot terapi
-    for (const [slotIdStr, count] of Object.entries(appointmentsBySlot)) {
-      const slotId = parseInt(slotIdStr);
-      
-      // Ambil data slot terapi
-      const [therapySlot] = await db.select()
-        .from(schema.therapySlots)
-        .where(eq(schema.therapySlots.id, slotId));
-      
-      if (!therapySlot) {
-        console.error(`❌ Slot terapi ID ${slotId} tidak ditemukan tetapi memiliki ${count} appointment`);
-        result.errors.push({ 
-          therapySlotId: slotId, 
-          message: "Slot terapi tidak ditemukan" 
-        });
-        continue;
-      }
-      
-      // Jika currentCount tidak sesuai dengan jumlah appointment, perbarui
-      if (therapySlot.currentCount !== count) {
-        console.log(`🔄 Memperbaiki currentCount slot terapi ID ${slotId} (seharusnya ${count}, sekarang ${therapySlot.currentCount})`);
-        
-        try {
-          await db.execute(
-            sql`UPDATE therapy_slots SET current_count = ${count} WHERE id = ${slotId}`
-          );
-          console.log(`✅ CurrentCount slot terapi ID ${slotId} berhasil diperbarui ke ${count}`);
-          result.fixed++;
-        } catch (error) {
-          console.error(`❌ Gagal memperbarui currentCount slot terapi ID ${slotId}:`, error);
-          result.errors.push({ 
-            therapySlotId: slotId, 
-            message: `Gagal memperbarui currentCount: ${error}` 
-          });
-        }
-      } else {
-        console.log(`✅ Slot terapi ID ${slotId} memiliki currentCount yang benar (${count})`);
-      }
-    }
-
-    // Deteksi pasien yang memiliki therapySlotId tetapi tidak memiliki appointment
-    console.log(`🔍 Mendeteksi pasien yang memiliki therapySlotId tetapi tidak memiliki appointment...`);
-    const patientsWithSlot = await db.select()
+    // Cari detail pasien
+    const [patient] = await db.select()
       .from(schema.patients)
-      .where(sql`therapy_slot_id IS NOT NULL`);
+      .where(eq(schema.patients.id, patientId))
+      .limit(1);
     
-    console.log(`Ditemukan ${patientsWithSlot.length} pasien dengan therapySlotId`);
+    if (!patient) {
+      console.error(`❌ Pasien dengan ID ${patientId} tidak ditemukan`);
+      result.skipped = 1;
+      result.errors.push({
+        type: 'patient_not_found',
+        patientId
+      });
+      return result;
+    }
     
-    // Periksa setiap pasien
-    for (const patient of patientsWithSlot) {
-      const patientAppointments = await db.select()
-        .from(schema.appointments)
-        .where(and(
-          eq(schema.appointments.patientId, patient.id),
-          eq(schema.appointments.therapySlotId, patient.therapySlotId!)
-        ));
+    // Jika pasien tidak memiliki therapySlotId, lewati
+    if (!patient.therapySlotId) {
+      console.log(`ℹ️ Pasien ID: ${patientId} tidak memiliki therapySlotId, dilewati`);
+      result.skipped = 1;
+      return result;
+    }
+    
+    // Cari appointment yang sudah ada
+    const [existingAppointment] = await db.select()
+      .from(schema.appointments)
+      .where(
+        and(
+          eq(schema.appointments.patientId, patientId),
+          eq(schema.appointments.therapySlotId, patient.therapySlotId)
+        )
+      )
+      .limit(1);
+    
+    if (existingAppointment) {
+      console.log(`✅ Pasien ID: ${patientId} sudah memiliki appointment (ID: ${existingAppointment.id})`);
+      return result;
+    }
+    
+    // Cari detail therapy slot
+    const [therapySlot] = await db.select()
+      .from(schema.therapySlots)
+      .where(eq(schema.therapySlots.id, patient.therapySlotId))
+      .limit(1);
+    
+    if (!therapySlot) {
+      console.error(`❌ Slot terapi dengan ID ${patient.therapySlotId} tidak ditemukan`);
+      result.skipped = 1;
+      result.errors.push({
+        type: 'therapy_slot_not_found',
+        patientId,
+        therapySlotId: patient.therapySlotId
+      });
+      return result;
+    }
+    
+    // Buat appointment baru
+    console.log(`⏳ Membuat appointment untuk pasien: ${patient.name} (ID: ${patientId}) pada slot terapi ID: ${patient.therapySlotId}`);
+    
+    // Format tanggal yang benar untuk appointment
+    const appointmentDate = typeof therapySlot.date === 'string' 
+      ? therapySlot.date 
+      : format(therapySlot.date, 'yyyy-MM-dd');
+    
+    const [appointment] = await db.insert(schema.appointments)
+      .values({
+        patientId,
+        therapySlotId: patient.therapySlotId,
+        date: appointmentDate,
+        timeSlot: therapySlot.timeSlot || "",
+        status: "Scheduled",
+        notes: "Dibuat oleh verifikasi pasien otomatis",
+        sessionId: null,
+        registrationNumber: null
+      })
+      .returning();
+    
+    if (appointment && appointment.id) {
+      console.log(`✅ Berhasil membuat appointment dengan ID: ${appointment.id}`);
+      result.fixed = 1;
       
-      if (patientAppointments.length === 0) {
-        console.log(`⚠️ Pasien ${patient.name} (ID: ${patient.patientId}) memiliki therapySlotId ${patient.therapySlotId} tetapi tidak memiliki appointment terkait`);
-        
-        // Tambahkan ke daftar error untuk dilaporkan
+      // Update currentCount pada therapy slot
+      try {
+        await db.execute(
+          sql`UPDATE therapy_slots SET current_count = current_count + 1 WHERE id = ${patient.therapySlotId}`
+        );
+        console.log(`✅ Berhasil mengupdate current_count pada slot terapi ID: ${patient.therapySlotId}`);
+      } catch (updateError) {
+        console.error(`❌ Gagal mengupdate current_count:`, updateError);
         result.errors.push({
-          patientId: patient.id,
-          patientName: patient.name,
-          patientCode: patient.patientId,
+          type: 'update_current_count_error',
+          patientId,
           therapySlotId: patient.therapySlotId,
-          message: "Pasien memiliki therapySlotId tetapi tidak memiliki appointment"
+          error: updateError
         });
       }
+    } else {
+      console.error(`❌ Gagal membuat appointment untuk pasien ID: ${patientId}`);
+      result.skipped = 1;
+      result.errors.push({
+        type: 'appointment_creation_failed',
+        patientId,
+        therapySlotId: patient.therapySlotId
+      });
     }
     
     return result;
   } catch (error) {
-    console.error("❌ Error saat memverifikasi semua appointment:", error);
-    result.errors.push({ message: `Error saat memverifikasi: ${error}` });
+    console.error(`❌ Error saat memverifikasi pasien ID: ${patientId}:`, error);
+    result.skipped = 1;
+    result.errors.push({
+      type: 'verification_error',
+      patientId,
+      error
+    });
     return result;
   }
 }
