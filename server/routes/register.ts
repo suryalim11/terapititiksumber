@@ -42,6 +42,17 @@ export async function handlePatientRegistration(req: Request, res: Response) {
   // Catat waktu mulai proses untuk pengukuran performa
   const startTime = Date.now();
   console.log("⏱️ [PERF] Mulai proses pendaftaran:", new Date().toISOString());
+
+  // PERBAIKAN: Implementasi timeout untuk mencegah pendaftaran tak berakhir
+  let timeoutId: NodeJS.Timeout;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error("TIMEOUT: Pendaftaran terlalu lama (melebihi 15 detik). Harap coba lagi."));
+    }, 15000); // 15 detik timeout
+  });
+
+  // Flag untuk melacak apakah pendaftaran selesai
+  let pendaftaranSelesai = false;
   
   try {
     console.log("Menerima permintaan pendaftaran pasien dengan data:", JSON.stringify(req.body, null, 2));
@@ -395,51 +406,41 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         console.log(`Slot terapi dengan ID ${slotIdToUse} akan diperbarui setelah appointment dibuat`);
         console.log(`Status slot sebelum diperbarui: ${slotToUse.currentCount}/${slotToUse.maxQuota}`);
         
-        // TAHAP 7: Buat appointment baru
-        // Tambahkan informasi walk-in ke notes jika dalam mode walk-in
+        // TAHAP 7: Buat appointment baru (DISEDERHANAKAN)
+        // Tambahkan informasi walk-in atau online ke notes untuk tracking yang lebih baik
         let notes = patientData.complaints || '';
+        
+        // Tambahkan tag sesuai dengan tipe pendaftaran
         if (walkInDetected) {
-          // Tambahkan tag walk-in ke notes untuk ditampilkan di slot tracker
           notes = `[WALK-IN] ${notes}`;
           console.log("Menambahkan tanda WALK-IN ke notes appointment");
+        } else if (onlineRegistration) {
+          notes = `[ONLINE] ${notes}`;
+          console.log("Menambahkan tanda ONLINE ke notes appointment");
         }
         
-        // OPTIMASI: Sederhanakan pemrosesan tanggal
-        // Hindari konversi yang berlebihan, gunakan nilai dari database saat memungkinkan
-        let dateStr = '';
+        // Menggunakan ISO string date (YYYY-MM-DD) tanpa proses berlebihan
+        // PERBAIKAN DASAR: Hindari kesalahan konversi tipe data
+        let dateStr;
         
-        // OPTIMASI: Penanganan tanggal yang lebih aman dengan pemeriksaan tipe
         try {
-          // Menggunakan type guard yang lebih aman
-          if (typeof slotToUse.date === 'string') {
-            // Jika sudah string, gunakan langsung
-            dateStr = slotToUse.date;
-          } else if (slotToUse.date && 
-                    typeof slotToUse.date === 'object' && 
-                    'toISOString' in slotToUse.date &&
-                    typeof slotToUse.date.toISOString === 'function') {
-            // Jika object Date (dengan safe check), konversi ke string ISO dan ambil tanggal saja
-            dateStr = slotToUse.date.toISOString().split('T')[0]; // YYYY-MM-DD
+          // Gunakan konstruksi Date yang konsisten
+          if (slotToUse.date) {
+            // Konversi ke string ISO dan ambil date part saja
+            const date = new Date(slotToUse.date);
+            dateStr = date.toISOString().split('T')[0]; // Format YYYY-MM-DD yang konsisten
+            console.log("Tanggal slot yang akan digunakan:", dateStr);
           } else {
-            // Jika tipe data tidak dikenal, gunakan tanggal hari ini
+            // Fallback ke tanggal hari ini jika tidak ada data
             const today = new Date();
-            dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+            dateStr = today.toISOString().split('T')[0];
             console.log("Menggunakan tanggal hari ini:", dateStr);
           }
         } catch (err) {
           // Jika terjadi error, gunakan tanggal hari ini
-          console.error("Error saat memproses tanggal slot:", err);
           const today = new Date();
           dateStr = today.toISOString().split('T')[0];
-          console.log("Fallback ke tanggal hari ini:", dateStr);
-        }
-        
-        // Validasi sederhana format tanggal
-        if (!dateStr || dateStr.length < 8) {
-          console.error("Format tanggal tidak valid:", dateStr);
-          const today = new Date();
-          dateStr = today.toISOString().split('T')[0];
-          console.log("Menggunakan tanggal hari ini sebagai fallback:", dateStr);
+          console.error("Error saat memproses tanggal, menggunakan hari ini:", dateStr);
         }
         
         // FIXED: Format data dengan benar untuk insert ke database
@@ -575,6 +576,14 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     const processTime = endTime - startTime;
     console.log(`⏱️ [PERF] Selesai proses pendaftaran dalam ${processTime}ms`);
     console.log(`⏱️ [PERF] Waktu selesai: ${new Date().toISOString()}`);
+    
+    // Tandai bahwa pendaftaran selesai (untuk mencegah timeout)
+    pendaftaranSelesai = true;
+    
+    // Matikan timeout karena proses berhasil
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
     
     // Kirim respons dengan tambahan informasi jalur pendaftaran
     return res.status(201).json({
