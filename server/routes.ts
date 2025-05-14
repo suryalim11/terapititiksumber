@@ -6471,6 +6471,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // API untuk verifikasi semua koneksi pasien-appointment (hanya admin)
   app.get("/api/verify/appointments", requireAdminRole, verifyAllPatientConnections);
+  
+  // Endpoint POST untuk verifikasi pasien mobile
+  app.post("/api/verify-connection/patient/:id", allowAnyAccess, verifyPatientConnection);
 
   // Create an HTTP server to attach both Express and WebSocket
   const httpServer = createServer(app);
