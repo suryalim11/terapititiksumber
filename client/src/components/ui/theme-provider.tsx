@@ -44,32 +44,72 @@ export function ThemeProvider({
 
   // Fungsi untuk menerapkan tema langsung ke dokumen
   const applyTheme = (newTheme: Theme) => {
-    const root = window.document.documentElement;
-    
-    // Hapus kelas tema sebelumnya
-    root.classList.remove("light", "dark");
-
-    // Jika tema adalah "system", tentukan berdasarkan preferensi sistem
-    if (newTheme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-
-      root.classList.add(systemTheme);
-      console.log("Tema sistem diterapkan:", systemTheme);
+    // Jalankan hanya jika window dan document tersedia (client-side)
+    if (typeof window === 'undefined' || !window.document?.documentElement) {
       return;
     }
-
-    // Tambahkan kelas yang sesuai dengan tema
-    root.classList.add(newTheme);
-    console.log("Tema diterapkan langsung:", newTheme);
+    
+    try {
+      const root = window.document.documentElement;
+      
+      // Hapus kelas tema sebelumnya dengan cara yang lebih aman
+      if (root.classList.contains("light")) root.classList.remove("light");
+      if (root.classList.contains("dark")) root.classList.remove("dark");
+  
+      // Jika tema adalah "system", tentukan berdasarkan preferensi sistem
+      if (newTheme === "system") {
+        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+          .matches
+          ? "dark"
+          : "light";
+  
+        root.classList.add(systemTheme);
+        console.log("Tema sistem diterapkan:", systemTheme);
+        return;
+      }
+  
+      // Tambahkan kelas yang sesuai dengan tema
+      root.classList.add(newTheme);
+      console.log("Tema diterapkan langsung:", newTheme);
+    } catch (error) {
+      console.error("Error saat menerapkan tema:", error);
+    }
   };
 
-  // Terapkan tema awal
+  // Terapkan tema awal dan dengarkan perubahan tema
   useEffect(() => {
+    // Jika window dan document tidak tersedia, jangan lakukan apa-apa
+    if (typeof window === 'undefined' || !window.document?.documentElement) {
+      return;
+    }
+    
+    // Terapkan tema saat tema berubah
     applyTheme(theme);
-  }, []);
+    
+    // Setup listener untuk dark mode di sistem
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      
+      // Handler untuk perubahan tema sistem
+      const handleChange = () => {
+        applyTheme('system');
+      };
+      
+      // Tambahkan listener
+      try {
+        // Modern API (standard)
+        mediaQuery.addEventListener('change', handleChange);
+        
+        // Cleanup function
+        return () => {
+          mediaQuery.removeEventListener('change', handleChange);
+        };
+      } catch (err) {
+        // Fallback untuk browser lama
+        console.error('Error adding media query listener:', err);
+      }
+    }
+  }, [theme]);
 
   // Sediakan nilai dan fungsi untuk konteks
   const value = {

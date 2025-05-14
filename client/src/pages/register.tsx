@@ -320,8 +320,9 @@ export default function RegisterPage() {
     console.log("Full URL saat akses halaman register:", window.location.href);
     console.log("URL search params:", window.location.search);
     
-    // Reset localStorage untuk membersihkan slotId lama yang mungkin tidak valid
+    // Reset localStorage dan sessionStorage untuk membersihkan slotId lama yang mungkin tidak valid
     localStorage.removeItem('selectedTherapySlotId');
+    sessionStorage.removeItem('selectedSlotId');
     
     const params = new URLSearchParams(window.location.search);
     // Mendukung parameter "code" dan "kode" untuk backward compatibility
@@ -337,9 +338,8 @@ export default function RegisterPage() {
     // Set mode pendaftaran berdasarkan parameter
     setIsWalkInMode(isWalkInParam);
     
-    if (isWalkInParam) {
+    if (isWalkInParam && localStorage.getItem('walkin_toast_shown') !== 'true') {
       console.log("Mode walk-in terdeteksi dari URL");
-      localStorage.removeItem('walkin_toast_shown');
       toast({
         title: "Mode Pendaftaran Walk-in",
         description: "Anda berada di mode pendaftaran langsung (walk-in). Data akan langsung disimpan tanpa konfirmasi.",
@@ -510,17 +510,20 @@ export default function RegisterPage() {
     
     const setUpSelectedSlot = async () => {
       if (therapySlots && therapySlots.length > 0) {
-        // Cek parameter dari URL dan sessionStorage
-        const savedSlotId = sessionStorage.getItem("selectedSlotId");
+        // Cek parameter dari URL dan sessionStorage - prioritaskan URL parameters
+        // Jangan gunakan nilai yang tersimpan di storage jika ada parameter walk-in
         const params = new URLSearchParams(window.location.search);
-        const slotIdParam = params.get("slotId");
-        const timeSlotKeyParam = params.get("timeSlotKey");
-        // FIXED: Dukungan semua format parameter walk-in
         const isWalkInParam = 
           params.get("walkin") === "true" || 
           params.get("isWalkInMode") === "true" ||
           params.get("iswalkinmode") === "true" ||
-          params.get("walkInMode") === "true"; // Tambahkan format walkInMode
+          params.get("walkInMode") === "true"; 
+        
+        const slotIdParam = params.get("slotId");
+        const timeSlotKeyParam = params.get("timeSlotKey");
+        
+        // Hanya gunakan savedSlotId jika ini bukan mode walk-in
+        const savedSlotId = isWalkInParam ? null : sessionStorage.getItem("selectedSlotId");
           
         // Reset localStorage untuk notifikasi walk-in setiap kali halaman di-load
         // Reset localStorage untuk semua toast notifikasi
@@ -588,20 +591,39 @@ export default function RegisterPage() {
           
           if (slotIdToUse) {
             const slotId = parseInt(slotIdToUse);
-            matchingSlot = therapySlots.find((slot: any) => slot.id === slotId);
             
-            if (matchingSlot) {
-              console.log("Menemukan slot berdasarkan ID:", matchingSlot);
-            } else {
-              // Jika slot tidak ditemukan tapi ini adalah walk-in (dari admin)
-              if (isWalkInParam) {
-                console.log("Mode walk-in terdeteksi, akan tetap menggunakan slot meskipun tidak tersedia di daftar lokal");
-                // Untuk walk-in, kita akan mencoba mendapatkan slot tersebut meskipun tidak aktif
+            // Hanya lanjutkan jika ID valid
+            if (!isNaN(slotId)) {
+              matchingSlot = therapySlots.find((slot: any) => slot.id === slotId);
+              
+              if (matchingSlot) {
+                console.log("Menemukan slot berdasarkan ID:", matchingSlot);
+              } else if (isWalkInParam) {
+                // Jika mode walk-in, dan slot tidak ada, kita tidak perlu fetch
+                // Cukup gunakan slot yang tersedia
+                console.log("Mode walk-in terdeteksi, tidak perlu mencari slot spesifik");
+                
+                // Pilih slot terapi pertama yang tersedia sebagai default
+                if (therapySlots.length > 0) {
+                  matchingSlot = therapySlots[0];
+                  console.log("Menggunakan slot terapi default untuk mode walk-in:", matchingSlot);
+                }
+              } else if (slotId === 449) {
+                // Kasus khusus untuk ID 449 yang sering muncul sebagai invalid
+                console.log("Mendeteksi ID 449 yang tidak valid, mengabaikan");
+                // Bersihkan storage terkait
+                localStorage.removeItem('selectedTherapySlotId');
+                sessionStorage.removeItem('selectedSlotId');
+              } else {
+                // Coba ambil slot dari server termasuk yang tidak aktif
+                console.log("Mencoba mengambil detail slot dari server:", slotId);
                 matchingSlot = await fetchSlotDetails(slotId);
                 if (matchingSlot) {
                   console.log("Slot berhasil diambil dari server (termasuk tidak aktif):", matchingSlot);
                 }
               }
+            } else {
+              console.error("ID slot tidak valid:", slotIdToUse);
             }
           }
         }
