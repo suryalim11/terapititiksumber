@@ -43,18 +43,31 @@ export async function handlePatientRegistration(req: Request, res: Response) {
   const startTime = Date.now();
   console.log("⏱️ [PERF] Mulai proses pendaftaran:", new Date().toISOString());
 
-  // PERBAIKAN: Implementasi timeout untuk mencegah pendaftaran tak berakhir
-  let timeoutId: NodeJS.Timeout;
+  // PERBAIKAN: Implementasi timeout tunggal untuk mencegah pendaftaran tak berakhir
+  const TIMEOUT_DURATION = 15000; // 15 detik
+  const TIMEOUT_MESSAGE = "TIMEOUT: Pendaftaran terlalu lama (melebihi 15 detik). Harap coba lagi.";
+  
+  // Gunakan variable untuk timeout ID
+  const timeoutObj = {
+    id: null as NodeJS.Timeout | null
+  };
+  
+  // Promise tunggal yang akan reject jika timeout tercapai
   const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error("TIMEOUT: Pendaftaran terlalu lama (melebihi 15 detik). Harap coba lagi."));
-    }, 15000); // 15 detik timeout
+    timeoutObj.id = setTimeout(() => {
+      console.error("⏱️ [TIMEOUT] Pendaftaran timeout setelah", TIMEOUT_DURATION/1000, "detik");
+      reject(new Error(TIMEOUT_MESSAGE));
+    }, TIMEOUT_DURATION);
   });
-
-  // Flag untuk melacak apakah pendaftaran selesai
-  let pendaftaranSelesai = false;
   
   try {
+    // Gunakan Promise.race untuk race antara proses pendaftaran dan timeout
+    // Jika timeout terjadi lebih dulu, maka error akan dilempar
+    await Promise.race([
+      // Promise kosong yang akan segera diselesaikan dan proses pendaftaran berlanjut
+      Promise.resolve(),
+      timeoutPromise
+    ]);
     console.log("Menerima permintaan pendaftaran pasien dengan data:", JSON.stringify(req.body, null, 2));
     
     // DEBUGGING: Log semua parameter walk-in dan online yang mungkin untuk deteksi konsistensi
@@ -577,12 +590,10 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     console.log(`⏱️ [PERF] Selesai proses pendaftaran dalam ${processTime}ms`);
     console.log(`⏱️ [PERF] Waktu selesai: ${new Date().toISOString()}`);
     
-    // Tandai bahwa pendaftaran selesai (untuk mencegah timeout)
-    pendaftaranSelesai = true;
-    
     // Matikan timeout karena proses berhasil
-    if (timeoutId) {
-      clearTimeout(timeoutId);
+    if (timeoutObj.id) {
+      clearTimeout(timeoutObj.id);
+      timeoutObj.id = null;
     }
     
     // Kirim respons dengan tambahan informasi jalur pendaftaran
@@ -615,10 +626,33 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       }
     });
   } catch (error) {
+    // Pastikan timeout dibersihkan
+    if (timeoutObj.id) {
+      clearTimeout(timeoutObj.id);
+      timeoutObj.id = null;
+    }
+    
     console.error("Error saat proses pendaftaran:", error);
+    
+    // Deteksi jika error disebabkan oleh timeout
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isTimeout = errorMessage.includes("TIMEOUT");
+    
+    // Kirim respons error yang lebih spesifik
     return res.status(500).json({ 
       success: false, 
-      message: "Terjadi kesalahan saat memproses pendaftaran" 
+      message: isTimeout 
+        ? "Pendaftaran gagal karena waktu habis. Silakan coba lagi." 
+        : "Terjadi kesalahan saat memproses pendaftaran",
+      details: errorMessage,
+      code: isTimeout ? "REGISTRATION_TIMEOUT" : "REGISTRATION_ERROR",
+      timeout: isTimeout
     });
+  } finally {
+    // Pastikan timeout dibersihkan dalam semua kondisi
+    if (timeoutObj.id) {
+      clearTimeout(timeoutObj.id);
+      timeoutObj.id = null;
+    }
   }
 }
