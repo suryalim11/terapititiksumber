@@ -560,12 +560,12 @@ export default function PatientDetail() {
                   size="sm" 
                   className="h-8 text-xs"
                   onClick={() => {
-                    // Pastikan patientId diteruskan sebagai string di URL
-                    navigate(`/register?patientId=${patientId ? String(patientId) : ''}`);
+                    // Pastikan patientId diteruskan sebagai string dan tambahkan parameter walkin=true
+                    navigate(`/register?patientId=${patientId ? String(patientId) : ''}&walkin=true`);
                     
                     toast({
                       title: "Membuat janji temu baru",
-                      description: `Mengarahkan ke form pendaftaran pasien`
+                      description: `Mengarahkan ke form pendaftaran pasien (mode walk-in)`
                     });
                   }}
                 >
