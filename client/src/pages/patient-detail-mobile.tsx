@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -556,31 +557,61 @@ export default function PatientDetail() {
             <div className="space-y-4">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-lg font-semibold">Janji Temu</h3>
-                <Button 
-                  size="sm" 
-                  className="h-8 text-xs"
-                  onClick={() => {
-                    // Gunakan pendekatan reload untuk menghindari problem routing
-                    // Dengan langsung memuat URL, kita memastikan bahwa App.tsx akan diproses dari awal
-                    // dan status isPublicPage akan dievaluasi dengan benar
-                    
-                    // Simpan parameter temporary di localStorage
-                    localStorage.setItem('temp_redirect_walkin', 'true');
-                    localStorage.setItem('temp_redirect_patientId', patientId ? String(patientId) : '');
-                    
-                    // Tampilkan toast info
-                    toast({
-                      title: "Membuat janji temu baru",
-                      description: `Mengarahkan ke form pendaftaran pasien (mode walk-in)`
-                    });
-                    
-                    // Gunakan location.href sebagai alternatif navigate() untuk memastikan full page load
-                    window.location.href = `/register?patientId=${patientId ? String(patientId) : ''}&walkin=true`;
-                    // Catatan: navigate() tidak digunakan karena menyebabkan 404
-                  }}
-                >
-                  + Tambah
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="default"
+                    size="sm" 
+                    className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800"
+                    onClick={() => {
+                      if (patientId) {
+                        const id = Number(patientId);
+                        apiRequest(`/api/verify-connection/patient/${id.toString()}`, {
+                          method: 'POST'
+                        }).then((response) => {
+                          toast({
+                            title: "Verifikasi selesai",
+                            description: `${response.fixed ? `${response.fixed} koneksi diperbaiki` : 'Semua koneksi sudah valid'}`
+                          });
+                          // Muat ulang data pasien untuk menampilkan perubahan
+                          queryClient.invalidateQueries({ queryKey: [`/api/appointments`] });
+                        }).catch(error => {
+                          toast({
+                            title: "Gagal memverifikasi koneksi",
+                            description: error.message,
+                            variant: "destructive"
+                          });
+                        });
+                      }
+                    }}
+                  >
+                    Verifikasi
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      // Gunakan pendekatan reload untuk menghindari problem routing
+                      // Dengan langsung memuat URL, kita memastikan bahwa App.tsx akan diproses dari awal
+                      // dan status isPublicPage akan dievaluasi dengan benar
+                      
+                      // Simpan parameter temporary di localStorage
+                      localStorage.setItem('temp_redirect_walkin', 'true');
+                      localStorage.setItem('temp_redirect_patientId', patientId ? String(patientId) : '');
+                      
+                      // Tampilkan toast info
+                      toast({
+                        title: "Membuat janji temu baru",
+                        description: `Mengarahkan ke form pendaftaran pasien (mode walk-in)`
+                      });
+                      
+                      // Gunakan location.href sebagai alternatif navigate() untuk memastikan full page load
+                      window.location.href = `/register?patientId=${patientId ? String(patientId) : ''}&walkin=true`;
+                      // Catatan: navigate() tidak digunakan karena menyebabkan 404
+                    }}
+                  >
+                    + Tambah
+                  </Button>
+                </div>
               </div>
 
               {isLoadingAppointments ? (
