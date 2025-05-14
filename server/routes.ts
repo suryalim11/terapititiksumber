@@ -5638,6 +5638,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/backup/restore/:filename", restoreData);
   app.post("/api/backup/upload", upload.single('backupFile'), uploadBackup);
   
+  // Endpoint untuk konsolidasi data appointment dan slot terapi
+  app.post("/api/maintenance/consolidate-appointments", async (req, res) => {
+    try {
+      const { consolidateAppointmentsToMainSlots } = await import("./appointment-slot-consolidator");
+      const result = await consolidateAppointmentsToMainSlots();
+      
+      res.json({
+        success: true,
+        result
+      });
+    } catch (error) {
+      console.error("Error saat konsolidasi appointment:", error);
+      res.status(500).json({
+        success: false,
+        error: error?.toString() || "Unknown error"
+      });
+    }
+  });
+  
+  // Endpoint untuk memindahkan appointment dari satu slot ke slot utama
+  app.post("/api/maintenance/migrate-slot-appointments/:slotId", async (req, res) => {
+    try {
+      const slotId = parseInt(req.params.slotId, 10);
+      
+      if (isNaN(slotId)) {
+        return res.status(400).json({
+          success: false,
+          error: "ID slot tidak valid"
+        });
+      }
+      
+      const { migrateAppointmentsFromSlot } = await import("./appointment-slot-consolidator");
+      const result = await migrateAppointmentsFromSlot(slotId);
+      
+      res.json({
+        success: true,
+        result
+      });
+    } catch (error) {
+      console.error(`Error saat migrasi appointment dari slot ${req.params.slotId}:`, error);
+      res.status(500).json({
+        success: false,
+        error: error?.toString() || "Unknown error"
+      });
+    }
+  });
+  
   // Endpoint untuk memperbaiki session paket Darukni - tanpa middleware autentikasi apapun
   app.post("/api/fix/darukni-session", async (req: Request, res: Response) => {
     try {

@@ -22,6 +22,7 @@ export default function AdminPage() {
     fixPackages: boolean;
     fixAgusIsrofin: boolean;
     cleanDuplicateSlots: boolean;
+    consolidateAppointments: boolean;
   }>({
     sessions: false,
     slots: false,
@@ -29,7 +30,8 @@ export default function AdminPage() {
     transactions: false,
     fixPackages: false,
     fixAgusIsrofin: false,
-    cleanDuplicateSlots: false
+    cleanDuplicateSlots: false,
+    consolidateAppointments: false
   });
   
   // Handler untuk memeriksa integritas sesi paket
@@ -228,6 +230,39 @@ export default function AdminPage() {
       setLoading(prev => ({ ...prev, cleanDuplicateSlots: false }));
     }
   };
+  
+  // Handler untuk konsolidasi appointment ke slot utama
+  const handleConsolidateAppointments = async () => {
+    try {
+      setLoading(prev => ({ ...prev, consolidateAppointments: true }));
+      
+      // Konfirmasi dari pengguna
+      if (!window.confirm("Anda yakin ingin mengkonsolidasikan semua appointment ke slot terapi utama? Proses ini akan memindahkan seluruh janji temu ke slot terapi yang paling aktif.")) {
+        setLoading(prev => ({ ...prev, consolidateAppointments: false }));
+        return;
+      }
+      
+      const result = await apiRequest("/api/maintenance/consolidate-appointments", {
+        method: "POST"
+      });
+      
+      toast({
+        title: "Konsolidasi Selesai",
+        description: `${result?.result?.fixed || 0} appointment berhasil dikonsolidasikan ke slot utama`,
+      });
+      
+      console.log("Hasil konsolidasi appointment:", result);
+    } catch (error) {
+      console.error("Error consolidating appointments:", error);
+      toast({
+        title: "Terjadi Kesalahan",
+        description: error instanceof Error ? error.message : "Tidak dapat mengkonsolidasikan appointment",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, consolidateAppointments: false }));
+    }
+  };
 
   // Memeriksa apakah pengguna adalah admin
   if (user?.role !== 'admin') {
@@ -373,6 +408,22 @@ export default function AdminPage() {
                   </>
                 ) : (
                   "Bersihkan Slot Terapi Duplikat"
+                )}
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="justify-start text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                onClick={handleConsolidateAppointments}
+                disabled={loading.consolidateAppointments}
+              >
+                {loading.consolidateAppointments ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Mengkonsolidasi...
+                  </>
+                ) : (
+                  "Konsolidasi Appointment ke Slot Utama"
                 )}
               </Button>
             </div>
