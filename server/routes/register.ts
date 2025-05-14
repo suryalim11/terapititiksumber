@@ -692,6 +692,28 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       timeoutObj.id = null;
     }
     
+    // PERBAIKAN KRITIKAL: Verifikasi koneksi appointment pasien yang baru didaftarkan
+    try {
+      // Lakukan verifikasi tanpa menunggu hasil (non-blocking) untuk pasien yang terdaftar
+      if (patientToUse && patientToUse.id && appointmentResponse && appointmentResponse.id) {
+        // Import module verifikasi secara dinamis
+        console.log(`🔄 Menjalankan verifikasi cepat untuk appointment baru (ID: ${appointmentResponse.id})...`);
+        
+        // Kirim ke antrian eksekusi untuk diproses setelah respons dikirim
+        setTimeout(async () => {
+          try {
+            const { verifyPatientAppointments } = await import('../verify-appointment-connection');
+            const result = await verifyPatientAppointments(patientToUse.id);
+            console.log(`✅ Verifikasi appointment selesai untuk pasien: ${result.verified} appointment diverifikasi, ${result.fixed} diperbaiki`);
+          } catch (verifyError) {
+            console.error("❌ Error saat verifikasi appointment:", verifyError);
+          }
+        }, 10); // Eksekusi hampir segera setelah respons dikirim
+      }
+    } catch (verifySetupError) {
+      console.error("❌ Gagal mengatur verifikasi appointment:", verifySetupError);
+    }
+    
     // Kirim respons dengan tambahan informasi jalur pendaftaran
     return res.status(201).json({
       success: true,
