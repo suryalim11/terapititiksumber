@@ -188,6 +188,37 @@ export async function verifyAllAppointments(): Promise<VerifyResult> {
         console.log(`✅ Slot terapi ID ${slotId} memiliki currentCount yang benar (${count})`);
       }
     }
+
+    // Deteksi pasien yang memiliki therapySlotId tetapi tidak memiliki appointment
+    console.log(`🔍 Mendeteksi pasien yang memiliki therapySlotId tetapi tidak memiliki appointment...`);
+    const patientsWithSlot = await db.select()
+      .from(schema.patients)
+      .where(sql`therapy_slot_id IS NOT NULL`);
+    
+    console.log(`Ditemukan ${patientsWithSlot.length} pasien dengan therapySlotId`);
+    
+    // Periksa setiap pasien
+    for (const patient of patientsWithSlot) {
+      const patientAppointments = await db.select()
+        .from(schema.appointments)
+        .where(and(
+          eq(schema.appointments.patientId, patient.id),
+          eq(schema.appointments.therapySlotId, patient.therapySlotId!)
+        ));
+      
+      if (patientAppointments.length === 0) {
+        console.log(`⚠️ Pasien ${patient.name} (ID: ${patient.patientId}) memiliki therapySlotId ${patient.therapySlotId} tetapi tidak memiliki appointment terkait`);
+        
+        // Tambahkan ke daftar error untuk dilaporkan
+        result.errors.push({
+          patientId: patient.id,
+          patientName: patient.name,
+          patientCode: patient.patientId,
+          therapySlotId: patient.therapySlotId,
+          message: "Pasien memiliki therapySlotId tetapi tidak memiliki appointment"
+        });
+      }
+    }
     
     return result;
   } catch (error) {
