@@ -461,16 +461,17 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           
           console.log("✅ Appointment berhasil dibuat dengan ID:", appointmentResult.id);
           
-          // OPTIMASI: Perbarui quota slot terapi secara asynchronous
+          // OPTIMASI: Perbarui currentCount slot terapi (bukan quota) secara asynchronous
           // Kita tidak perlu menunggu operasi ini selesai untuk mengembalikan response
           db.update(schema.therapySlots)
             .set({ 
-              quota: Math.max(0, (slotToUse.quota || 0) - 1)
+              // Gunakan currentCount, bukan quota yang merupakan field yang salah
+              currentCount: slotToUse.currentCount + 1
             })
             .where(eq(schema.therapySlots.id, slotIdToUse))
             .execute()
-            .then(() => console.log(`✅ Quota slot terapi ID=${slotIdToUse} berhasil diupdate`))
-            .catch(err => console.error(`❌ Gagal update quota: ${err}`));
+            .then(() => console.log(`✅ CurrentCount slot terapi ID=${slotIdToUse} berhasil diupdate`))
+            .catch(err => console.error(`❌ Gagal update currentCount: ${err}`));
         } catch (dbError: any) {
           console.error("❌ Gagal menyimpan appointment ke database:", dbError);
           throw new Error(`Gagal menyimpan appointment: ${dbError.message}`);
