@@ -581,32 +581,57 @@ export async function handlePatientRegistration(req: Request, res: Response) {
             );
             
             if (!appointment || !appointment.id) {
+              // Rollback transaksi jika tidak dapat membuat appointment
+              if (transactionActive) {
+                await client.query('ROLLBACK');
+                transactionActive = false;
+                console.log("⚠️ Transaksi di-rollback karena gagal membuat appointment");
+              }
               throw new Error("Gagal membuat appointment: ID tidak ditemukan dalam hasil");
             }
             
-            appointmentResult = appointment;
+            // 2. Perbarui currentCount pada slot terapi dalam transaksi yang sama
+            console.log("⏳ Memperbarui current_count pada slot terapi ID:", slotIdToUse);
+            await client.query(
+              `UPDATE therapy_slots 
+               SET current_count = current_count + 1 
+               WHERE id = $1`,
+              [slotIdToUse]
+            );
+            
+            // 3. Commit transaksi database
+            await client.query('COMMIT');
+            transactionActive = false;
+            console.log("✅ Transaksi database berhasil di-commit");
+            
+            // Konversi properti database dari snake_case ke camelCase untuk konsistensi
+            appointmentResult = {
+              id: appointment.id,
+              patientId: appointment.patient_id,
+              therapySlotId: appointment.therapy_slot_id,
+              date: appointment.date,
+              timeSlot: appointment.time_slot,
+              status: appointment.status,
+              notes: appointment.notes,
+              sessionId: appointment.session_id,
+              registrationNumber: appointment.registration_number
+            };
             
             console.log("✅ Appointment berhasil dibuat dengan ID:", appointmentResult.id);
-            console.log("✅ Memastikan appointment diassign ke slot terapi ID:", appointmentResult.therapySlotId);
+            console.log("✅ Appointment diassign ke slot terapi ID:", appointmentResult.therapySlotId);
             console.log("⏱️ Waktu pembuatan appointment:", new Date().toISOString());
-            
-            // Verifikasi hasil
-            if (appointmentResult.therapySlotId !== Number(slotIdToUse)) {
-              console.error(`❌ ERROR KRITIKAL: Appointment dibuat tetapi therapySlotId tidak sesuai!`);
-              console.error(`   Expected: ${slotIdToUse}, Actual: ${appointmentResult.therapySlotId}`);
-              
-              // Coba perbaiki appointment yang baru dibuat
+          } catch (error) {
+            // Rollback transaksi jika terjadi error
+            if (transactionActive) {
               try {
-                console.log(`🔄 Mencoba memperbaiki therapySlotId pada appointment yang baru dibuat...`);
-                await db.update(schema.appointments)
-                  .set({ therapySlotId: Number(slotIdToUse) })
-                  .where(eq(schema.appointments.id, appointmentResult.id));
-                console.log(`✅ Perbaikan appointment berhasil!`);
-              } catch (fixError) {
-                console.error(`❌ Gagal memperbaiki appointment:`, fixError);
+                await client.query('ROLLBACK');
+                transactionActive = false;
+                console.log("⚠️ Transaksi di-rollback karena terjadi error");
+              } catch (rollbackError) {
+                console.error("❌ Gagal melakukan rollback transaksi:", rollbackError);
               }
             }
-          } catch (error) {
+            
             // Handle error dengan tipe yang benar
             const insertError = error as Error;
             console.error("❌ ERROR KRITIS: Gagal menyimpan appointment ke database:", insertError);
@@ -748,6 +773,16 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     }
     
     // Kirim respons dengan tambahan informasi jalur pendaftaran
+    // Pastikan koneksi database dilepaskan
+    if (client) {
+      try {
+        await client.release();
+        console.log("✅ Koneksi database dilepaskan");
+      } catch (releaseError) {
+        console.error("❌ Gagal melepaskan koneksi database:", releaseError);
+      }
+    }
+    
     return res.status(201).json({
       success: true,
       message: successMessage,
