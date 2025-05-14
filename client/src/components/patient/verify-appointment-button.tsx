@@ -1,75 +1,129 @@
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { apiRequest } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { Loader2, RefreshCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-interface VerifyAppointmentButtonProps {
-  patientId: number;
-  label?: string;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-  className?: string;
+interface VerifyButtonProps {
+  patientId?: number;
+  onSuccess?: () => void;
 }
 
-export function VerifyAppointmentButton({
-  patientId,
-  label = "Periksa Janji Temu",
-  variant = "outline",
-  className = ""
-}: VerifyAppointmentButtonProps) {
-  const [isVerifying, setIsVerifying] = useState(false);
+/**
+ * Tombol untuk verifikasi koneksi pasien-appointment
+ * Dapat digunakan untuk verifikasi semua pasien (tanpa patientId)
+ * atau verifikasi pasien tertentu (dengan patientId)
+ */
+export function VerifyAppointmentButton({ patientId, onSuccess }: VerifyButtonProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [result, setResult] = useState<any>(null);
   const { toast } = useToast();
 
   const handleVerify = async () => {
-    if (!patientId) {
-      toast({
-        title: "Error",
-        description: "ID pasien tidak valid",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsVerifying(true);
+    setIsLoading(true);
     try {
-      const response = await apiRequest({
-        url: `/api/maintenance/verify-patient-appointments/${patientId}`,
-        method: 'POST',
-        credentials: 'include'
+      const url = patientId 
+        ? `/api/verify/patient/${patientId}` 
+        : "/api/verify/appointments";
+        
+      const response = await fetch(url, {
+        method: "GET",
+        credentials: "include"
       });
-
-      if (response.success) {
-        toast({
-          title: "Berhasil",
-          description: response.message || "Verifikasi janji temu berhasil",
-        });
-      } else {
-        toast({
-          title: "Gagal",
-          description: response.message || "Gagal melakukan verifikasi janji temu",
-          variant: "destructive"
-        });
+      
+      if (!response.ok) {
+        throw new Error(`Verifikasi gagal dengan status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      setResult(data);
+      setIsDialogOpen(true);
+      
+      toast({
+        title: "Verifikasi berhasil",
+        description: data.message
+      });
+      
+      if (onSuccess) {
+        onSuccess();
       }
     } catch (error) {
-      console.error("Error verifying appointment:", error);
+      console.error("Error saat verifikasi:", error);
       toast({
-        title: "Error",
-        description: "Terjadi kesalahan saat melakukan verifikasi janji temu",
+        title: "Verifikasi gagal",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan saat verifikasi",
         variant: "destructive"
       });
     } finally {
-      setIsVerifying(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <Button
-      variant={variant}
-      size="sm"
-      onClick={handleVerify}
-      disabled={isVerifying}
-      className={className}
-    >
-      {isVerifying ? "Memeriksa..." : label}
-    </Button>
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleVerify}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Verifikasi...
+          </>
+        ) : (
+          <>
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            {patientId ? "Verifikasi Koneksi" : "Verifikasi Semua"}
+          </>
+        )}
+      </Button>
+      
+      <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hasil Verifikasi</AlertDialogTitle>
+            <AlertDialogDescription>
+              {result?.message}
+              
+              {result?.result && (
+                <div className="mt-4 p-4 bg-muted rounded-md text-xs">
+                  <p><strong>Diverifikasi:</strong> {result.result.verified}</p>
+                  <p><strong>Diperbaiki:</strong> {result.result.fixed}</p>
+                  <p><strong>Dilewati:</strong> {result.result.skipped}</p>
+                  {result.result.errors.length > 0 && (
+                    <div className="mt-2">
+                      <p><strong>Error:</strong> {result.result.errors.length}</p>
+                      <details>
+                        <summary>Detail Error</summary>
+                        <pre className="text-xs overflow-auto max-h-40 p-2 bg-background mt-2">
+                          {JSON.stringify(result.result.errors, null, 2)}
+                        </pre>
+                      </details>
+                    </div>
+                  )}
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Tutup</AlertDialogCancel>
+            <AlertDialogAction onClick={() => setIsDialogOpen(false)}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

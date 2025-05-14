@@ -36,6 +36,7 @@ import {
 import { AppointmentDetailDialog } from "@/components/appointments/appointment-detail-dialog";
 import { MedicalHistoryList } from "@/components/medical-history/medical-history-list";
 import FixAppointmentButton from "@/components/FixAppointmentButton";
+import { VerifyAppointmentButton } from "@/components/patient/verify-appointment-button";
 
 // Add formats for Indonesia locale
 // Menggunakan formatBirthDate dari utils untuk tanggal lahir
@@ -419,6 +420,7 @@ export default function PatientDetail() {
           <Button variant="outline" size="icon" onClick={refreshAll}>
             <RefreshCcw className="h-4 w-4" />
           </Button>
+          <VerifyAppointmentButton patientId={patientId} onSuccess={refreshAll} />
           <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
             <AlertDialogTrigger asChild>
               <Button variant="destructive">Hapus Pasien</Button>
