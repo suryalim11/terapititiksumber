@@ -328,18 +328,26 @@ export default function RegisterPage() {
     // Mendukung parameter "code" dan "kode" untuk backward compatibility
     const code = params.get("code") || params.get("kode");
     
-    // Periksa parameter walk-in
-    const isWalkInParam = 
+    // Periksa parameter walk-in dari URL atau localStorage
+    let isWalkInParam = 
       params.get("walkin") === "true" || 
       params.get("isWalkInMode") === "true" ||
       params.get("iswalkinmode") === "true" ||
       params.get("walkInMode") === "true";
       
+    // Cek juga localStorage untuk parameter temporary dari redirect
+    const tempWalkin = localStorage.getItem('temp_redirect_walkin');
+    if (tempWalkin === 'true') {
+      isWalkInParam = true;
+      // Bersihkan temporary storage setelah digunakan
+      localStorage.removeItem('temp_redirect_walkin');
+    }
+      
     // Set mode pendaftaran berdasarkan parameter
     setIsWalkInMode(isWalkInParam);
     
     if (isWalkInParam && localStorage.getItem('walkin_toast_shown') !== 'true') {
-      console.log("Mode walk-in terdeteksi dari URL");
+      console.log("Mode walk-in terdeteksi dari URL atau localStorage");
       toast({
         title: "Mode Pendaftaran Walk-in",
         description: "Anda berada di mode pendaftaran langsung (walk-in). Data akan langsung disimpan tanpa konfirmasi.",
@@ -404,10 +412,19 @@ export default function RegisterPage() {
       }
     }
     
-    // Mendapatkan patientId dari URL jika ada (navigasi dari halaman detail pasien)
-    const patientIdParam = params.get("patientId");
+    // Mendapatkan patientId dari URL atau localStorage (jika ada dari navigasi halaman detail pasien)
+    let patientIdParam = params.get("patientId");
+    
+    // Cek juga apakah ada patientId di localStorage (untuk kasus redirect)
+    const tempPatientId = localStorage.getItem('temp_redirect_patientId');
+    if (!patientIdParam && tempPatientId) {
+      patientIdParam = tempPatientId;
+      // Bersihkan temporary storage setelah digunakan
+      localStorage.removeItem('temp_redirect_patientId');
+    }
+    
     if (patientIdParam) {
-      console.log("PatientId yang ditemukan di URL:", patientIdParam);
+      console.log("PatientId yang ditemukan di URL/localStorage:", patientIdParam);
       
       // Cari data pasien menggunakan ID yang diberikan
       searchPatientById(parseInt(patientIdParam));

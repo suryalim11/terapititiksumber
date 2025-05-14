@@ -560,13 +560,23 @@ export default function PatientDetail() {
                   size="sm" 
                   className="h-8 text-xs"
                   onClick={() => {
-                    // Pastikan patientId diteruskan sebagai string dan tambahkan parameter walkin=true
-                    navigate(`/register?patientId=${patientId ? String(patientId) : ''}&walkin=true`);
+                    // Gunakan pendekatan reload untuk menghindari problem routing
+                    // Dengan langsung memuat URL, kita memastikan bahwa App.tsx akan diproses dari awal
+                    // dan status isPublicPage akan dievaluasi dengan benar
                     
+                    // Simpan parameter temporary di localStorage
+                    localStorage.setItem('temp_redirect_walkin', 'true');
+                    localStorage.setItem('temp_redirect_patientId', patientId ? String(patientId) : '');
+                    
+                    // Tampilkan toast info
                     toast({
                       title: "Membuat janji temu baru",
                       description: `Mengarahkan ke form pendaftaran pasien (mode walk-in)`
                     });
+                    
+                    // Gunakan location.href sebagai alternatif navigate() untuk memastikan full page load
+                    window.location.href = `/register?patientId=${patientId ? String(patientId) : ''}&walkin=true`;
+                    // Catatan: navigate() tidak digunakan karena menyebabkan 404
                   }}
                 >
                   + Tambah
