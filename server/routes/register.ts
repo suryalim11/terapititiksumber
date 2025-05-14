@@ -39,6 +39,10 @@ function fixTimeSlotFormat(timeSlot: string): string {
  * - Menghindari kueri berulang yang tidak perlu
  */
 export async function handlePatientRegistration(req: Request, res: Response) {
+  // Catat waktu mulai proses untuk pengukuran performa
+  const startTime = Date.now();
+  console.log("⏱️ [PERF] Mulai proses pendaftaran:", new Date().toISOString());
+  
   try {
     console.log("Menerima permintaan pendaftaran pasien dengan data:", JSON.stringify(req.body, null, 2));
     
@@ -68,7 +72,17 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       req.body.online === true || 
       req.query.online === 'true';
       
-    console.log("Hasil deteksi jalur pendaftaran - Walk-in:", walkInDetected, "Online:", onlineRegistration);
+    console.log("🚦 JALUR PENDAFTARAN:");
+    console.log("🧑‍⚕️ Walk-in =", walkInDetected);
+    console.log("🖥️ Online  =", onlineRegistration);
+    console.log("🔍 URL Search:", req.url);
+    console.log("🔍 Query Params:", JSON.stringify(req.query));
+    console.log("🔍 Body Params:", JSON.stringify({
+      online: req.body.online,
+      walkin: req.body.walkin,
+      isWalkInMode: req.body.isWalkInMode,
+      walkInMode: req.body.walkInMode
+    }));
     
     // Validasi body request - jika kosong atau tidak valid, kembalikan error
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -542,6 +556,13 @@ export async function handlePatientRegistration(req: Request, res: Response) {
     
     // Siapkan respons minimal yang berisi informasi penting saja
     // Menghindari pengiriman data lengkap yang tidak perlu
+    // Hitung waktu proses total untuk analisis performa
+    const endTime = Date.now();
+    const processTime = endTime - startTime;
+    console.log(`⏱️ [PERF] Selesai proses pendaftaran dalam ${processTime}ms`);
+    console.log(`⏱️ [PERF] Waktu selesai: ${new Date().toISOString()}`);
+    
+    // Kirim respons dengan tambahan informasi jalur pendaftaran
     return res.status(201).json({
       success: true,
       message: successMessage,
@@ -558,12 +579,17 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         therapySlotId: appointmentResponse?.therapySlotId,
         status: appointmentResponse?.status
       } : null,
-      // Informasi jalur pendaftaran
+      // Informasi jalur pendaftaran yang jelas untuk memudahkan debugging
       registrationType: walkInDetected ? "walk-in" : (onlineRegistration ? "online" : "standard"),
       isWalkIn: walkInDetected,
       isOnlineRegistration: onlineRegistration,
       // Informasi registrasi minimal
-      registrationCode: registrationCode || null
+      registrationCode: registrationCode || null,
+      // Tambahkan info performa untuk debugging (akan berguna di client logs)
+      _debug: {
+        processTimeMs: processTime,
+        timestamp: new Date().toISOString()
+      }
     });
   } catch (error) {
     console.error("Error saat proses pendaftaran:", error);
