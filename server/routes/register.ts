@@ -390,14 +390,10 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           console.log(`Walk-in: Mengizinkan pendaftaran meskipun slot terapi sudah penuh (${slotToUse.currentCount}/${slotToUse.maxQuota})`);
         }
         
-        // Tingkatkan jumlah penggunaan slot terapi langsung ke database
-        await db.update(schema.therapySlots)
-          .set({ 
-            currentCount: slotToUse.currentCount + 1
-          })
-          .where(eq(schema.therapySlots.id, slotIdToUse));
-        
-        console.log(`Slot terapi dengan ID ${slotIdToUse} diperbarui: ${slotToUse.currentCount + 1}/${slotToUse.maxQuota}`);
+        // PERBAIKAN: Tidak perlu update currentCount di sini - ini menyebabkan double-update
+        // Update currentCount hanya sekali setelah appointment benar-benar dibuat
+        console.log(`Slot terapi dengan ID ${slotIdToUse} akan diperbarui setelah appointment dibuat`);
+        console.log(`Status slot sebelum diperbarui: ${slotToUse.currentCount}/${slotToUse.maxQuota}`);
         
         // TAHAP 7: Buat appointment baru
         // Tambahkan informasi walk-in ke notes jika dalam mode walk-in
@@ -475,6 +471,8 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         
         try {
           // Persiapkan data dengan tipe data yang tepat, tanpa konversi berlebihan
+          // PERBAIKAN: Pastikan semua field memiliki tipe data yang benar
+          // dan therapySlotId terkait dengan benar ke slot yang dipilih
           const cleanAppointmentData = {
             patientId: Number(patientToUse.id),
             therapySlotId: Number(slotIdToUse),
@@ -486,6 +484,12 @@ export async function handlePatientRegistration(req: Request, res: Response) {
             registrationNumber: null
           };
           
+          console.log("🔄 DIAGNOSTIK DATA JANJI TEMU:");
+          console.log(`   - PatientId: ${cleanAppointmentData.patientId} (Tipe: ${typeof cleanAppointmentData.patientId})`);
+          console.log(`   - TherapySlotId: ${cleanAppointmentData.therapySlotId} (Tipe: ${typeof cleanAppointmentData.therapySlotId})`);
+          console.log(`   - Date: ${cleanAppointmentData.date} (Tipe: ${typeof cleanAppointmentData.date})`);
+          console.log(`   - TimeSlot: ${cleanAppointmentData.timeSlot} (Tipe: ${typeof cleanAppointmentData.timeSlot})`);
+          
           // Insert data ke database dengan satu operasi
           const [appointment] = await db.insert(schema.appointments)
             .values(cleanAppointmentData)
@@ -496,21 +500,31 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           console.log("✅ Appointment berhasil dibuat dengan ID:", appointmentResult.id);
           console.log("⏱️ Waktu pembuatan appointment:", new Date().toISOString());
           
-          // OPTIMASI: Perbarui currentCount slot terapi (bukan quota) secara asynchronous
-          // Kita tidak perlu menunggu operasi ini selesai untuk mengembalikan response
-          db.update(schema.therapySlots)
-            .set({ 
-              // Gunakan currentCount, bukan quota yang merupakan field yang salah
-              currentCount: slotToUse.currentCount + 1
-            })
-            .where(eq(schema.therapySlots.id, slotIdToUse))
-            .execute()
-            .then(() => {
-              const updateTime = new Date().toISOString();
-              console.log(`✅ CurrentCount slot terapi ID=${slotIdToUse} berhasil diupdate pada ${updateTime}`);
-              console.log(`📊 Status sekarang: ${slotToUse.currentCount + 1}/${slotToUse.maxQuota}`);
-            })
-            .catch(err => console.error(`❌ Gagal update currentCount: ${err}`));
+          // PERBAIKAN: Perbarui currentCount slot terapi dan pastikan selalu tereksekusi
+          // Gunakan await agar update selesai sebelum data dikirimkan ke klien
+          try {
+            const [updatedSlot] = await db.update(schema.therapySlots)
+              .set({ 
+                // Gunakan currentCount, bukan quota yang merupakan field yang salah
+                currentCount: slotToUse.currentCount + 1
+              })
+              .where(eq(schema.therapySlots.id, slotIdToUse))
+              .returning();
+              
+            const updateTime = new Date().toISOString();
+            console.log(`✅ CurrentCount slot terapi ID=${slotIdToUse} berhasil diupdate pada ${updateTime}`);
+            console.log(`📊 Status slot terakhir: ${updatedSlot.currentCount}/${updatedSlot.maxQuota}`);
+            
+            // Notifikasi bahwa slot telah diperbarui dan memiliki data lengkap
+            console.log(`🎯 Slot telah diperbarui dengan data lengkap untuk ditampilkan di tracker:`);
+            console.log(`   - SlotId: ${updatedSlot.id}`);
+            console.log(`   - Tanggal: ${updatedSlot.date}`);
+            console.log(`   - Waktu: ${updatedSlot.timeSlot}`);
+            console.log(`   - CurrentCount: ${updatedSlot.currentCount}`);
+          } catch (err) {
+            console.error(`❌ Gagal update currentCount: ${err}`);
+            // Tetap lanjutkan karena appointment sudah terbuat
+          }
         } catch (dbError: any) {
           console.error("❌ Gagal menyimpan appointment ke database:", dbError);
           throw new Error(`Gagal menyimpan appointment: ${dbError.message}`);
