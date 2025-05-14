@@ -420,7 +420,6 @@ export default function PatientDetail() {
           <Button variant="outline" size="icon" onClick={refreshAll}>
             <RefreshCcw className="h-4 w-4" />
           </Button>
-          <VerifyAppointmentButton patientId={patientId} onSuccess={refreshAll} />
           <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
             <AlertDialogTrigger asChild>
               <Button variant="destructive">Hapus Pasien</Button>
@@ -549,11 +548,14 @@ export default function PatientDetail() {
 
             <TabsContent value="appointments">
               <Card>
-                <CardHeader>
-                  <CardTitle>Riwayat Janji Temu</CardTitle>
-                  <CardDescription>
-                    Daftar seluruh janji terapi pasien
-                  </CardDescription>
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+                  <div>
+                    <CardTitle>Riwayat Janji Temu</CardTitle>
+                    <CardDescription>
+                      Daftar seluruh janji terapi pasien
+                    </CardDescription>
+                  </div>
+                  <VerifyAppointmentButton patientId={parseInt(patientId as string)} onSuccess={refreshAll} />
                 </CardHeader>
                 <CardContent>
                   {isLoadingAppointments ? (

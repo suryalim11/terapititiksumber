@@ -124,6 +124,15 @@ export async function verifyPatientAppointmentConnections(): Promise<Verificatio
 }
 
 /**
+ * Verifikasi dan perbaiki koneksi pasien dengan appointment
+ * @param patientId ID pasien yang akan diverifikasi
+ * @returns Hasil verifikasi untuk pasien tersebut
+ */
+export async function verifyPatientAppointments(patientId: number): Promise<VerificationResult> {
+  return await verifyAppointmentConnectionForPatient(patientId);
+}
+
+/**
  * Verifikasi koneksi untuk pasien tertentu
  * @param patientId ID pasien yang akan diverifikasi
  * @returns Hasil verifikasi untuk pasien tersebut
