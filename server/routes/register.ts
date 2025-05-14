@@ -5,7 +5,7 @@ import { InsertPatient, insertPatientSchema } from "@shared/schema";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import crypto from "crypto";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import * as schema from "../../shared/schema";
 import { findPrimaryTherapySlot, createTimeSlotKey } from '../findPrimaryTherapySlot';
 
@@ -527,7 +527,22 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           
           // PERBAIKAN KRITIS: Tambahkan try/catch khusus untuk operasi insert data appointment
           try {
-            // Insert data ke database dengan satu operasi dengan retry option
+            // INTEGRASI KRITIS: Validasi bahwa data appointment yang akan dibuat sudah berisi
+            // therapySlotId yang benar
+            console.log(`📋 VALIDASI INTEGRASI TERAPI-APPOINTMENT: `);
+            console.log(`   - Slot terapi ID yang akan dipakai: ${slotIdToUse}`);
+            console.log(`   - Data appointment therapySlotId: ${cleanAppointmentData.therapySlotId}`);
+
+            if (!cleanAppointmentData.therapySlotId || 
+                Number(cleanAppointmentData.therapySlotId) !== Number(slotIdToUse)) {
+              console.error(`⚠️ KETIDAKCOCOKAN ID SLOT TERAPI: cleanAppointmentData=${cleanAppointmentData.therapySlotId}, slotIdToUse=${slotIdToUse}`);
+              // Perbaiki data jika tidak cocok
+              cleanAppointmentData.therapySlotId = Number(slotIdToUse);
+              console.log(`✅ Data appointment diperbaiki dengan therapySlotId=${cleanAppointmentData.therapySlotId}`);
+            }
+            
+            // Insert data ke database dengan satu operasi
+            console.log(`⏳ Menyimpan appointment ke database dengan therapySlotId=${cleanAppointmentData.therapySlotId}...`);
             const [appointment] = await db.insert(schema.appointments)
               .values(cleanAppointmentData)
               .returning();
@@ -539,8 +554,25 @@ export async function handlePatientRegistration(req: Request, res: Response) {
             appointmentResult = appointment;
             
             console.log("✅ Appointment berhasil dibuat dengan ID:", appointmentResult.id);
-            console.log("✅ Memastikan appointment diassign ke slot terapi ID:", slotIdToUse);
+            console.log("✅ Memastikan appointment diassign ke slot terapi ID:", appointmentResult.therapySlotId);
             console.log("⏱️ Waktu pembuatan appointment:", new Date().toISOString());
+            
+            // Verifikasi hasil
+            if (appointmentResult.therapySlotId !== Number(slotIdToUse)) {
+              console.error(`❌ ERROR KRITIKAL: Appointment dibuat tetapi therapySlotId tidak sesuai!`);
+              console.error(`   Expected: ${slotIdToUse}, Actual: ${appointmentResult.therapySlotId}`);
+              
+              // Coba perbaiki appointment yang baru dibuat
+              try {
+                console.log(`🔄 Mencoba memperbaiki therapySlotId pada appointment yang baru dibuat...`);
+                await db.update(schema.appointments)
+                  .set({ therapySlotId: Number(slotIdToUse) })
+                  .where(eq(schema.appointments.id, appointmentResult.id));
+                console.log(`✅ Perbaikan appointment berhasil!`);
+              } catch (fixError) {
+                console.error(`❌ Gagal memperbaiki appointment:`, fixError);
+              }
+            }
           } catch (error) {
             // Handle error dengan tipe yang benar
             const insertError = error as Error;
@@ -551,14 +583,32 @@ export async function handlePatientRegistration(req: Request, res: Response) {
           // PERBAIKAN: Perbarui currentCount slot terapi dan pastikan selalu tereksekusi
           // Gunakan await agar update selesai sebelum data dikirimkan ke klien
           try {
-            const [updatedSlot] = await db.update(schema.therapySlots)
-              .set({ 
-                // Gunakan currentCount, bukan quota yang merupakan field yang salah
-                currentCount: slotToUse.currentCount + 1
-              })
-              .where(eq(schema.therapySlots.id, slotIdToUse))
-              .returning();
+            // PERBAIKAN KRITIKAL: Validasi data sebelum update
+            if (!slotIdToUse || isNaN(Number(slotIdToUse))) {
+              throw new Error(`ID slot terapi tidak valid: ${slotIdToUse}`);
+            }
+            
+            // Pastikan currentCount tidak undefined sebelum increment
+            const currentCount = (typeof slotToUse.currentCount === 'number') 
+              ? slotToUse.currentCount 
+              : 0;
+            
+            console.log(`🔄 Mengupdate slot terapi ID ${slotIdToUse} dari count=${currentCount} ke count=${currentCount + 1}`);
+            
+            // Gunakan SQL mentah untuk memastikan update berjalan
+            await db.execute(
+              sql`UPDATE therapy_slots SET current_count = current_count + 1 WHERE id = ${slotIdToUse}`
+            );
+            
+            // Ambil data terbaru slot terapi setelah update
+            const [updatedSlot] = await db.select()
+              .from(schema.therapySlots)
+              .where(eq(schema.therapySlots.id, slotIdToUse));
               
+            if (!updatedSlot) {
+              throw new Error(`Tidak dapat menemukan slot terapi dengan ID ${slotIdToUse} setelah update`);
+            }
+            
             const updateTime = new Date().toISOString();
             console.log(`✅ CurrentCount slot terapi ID=${slotIdToUse} berhasil diupdate pada ${updateTime}`);
             console.log(`📊 Status slot terakhir: ${updatedSlot.currentCount}/${updatedSlot.maxQuota}`);
@@ -569,8 +619,20 @@ export async function handlePatientRegistration(req: Request, res: Response) {
             console.log(`   - Tanggal: ${updatedSlot.date}`);
             console.log(`   - Waktu: ${updatedSlot.timeSlot}`);
             console.log(`   - CurrentCount: ${updatedSlot.currentCount}`);
-          } catch (err) {
-            console.error(`❌ Gagal update currentCount: ${err}`);
+          } catch (error) {
+            const updateError = error as Error;
+            console.error(`❌ ERROR KRITIKAL: Gagal mengupdate slot terapi ID ${slotIdToUse}:`, updateError.message);
+            
+            try {
+              // Coba lagi dengan pendekatan yang lebih sederhana
+              console.log("🔄 Mencoba kembali update slot terapi dengan cara alternatif...");
+              await db.execute(
+                sql`UPDATE therapy_slots SET current_count = current_count + 1 WHERE id = ${slotIdToUse}`
+              );
+              console.log("✅ Update alternatif berhasil");
+            } catch (retryError) {
+              console.error("❌ Gagal mencoba kembali update slot terapi:", retryError);
+            }
             // Tetap lanjutkan karena appointment sudah terbuat
           }
         } catch (dbError: any) {
