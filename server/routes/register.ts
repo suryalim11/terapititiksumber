@@ -302,11 +302,11 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       }
       
       // Periksa apakah slot terapi memiliki kuota
-      const isSlotFull = therapySlot.used_quota >= therapySlot.quota;
+      const isSlotFull = therapySlot.current_count >= therapySlot.max_quota;
       if (isSlotFull) {
         await client.query('ROLLBACK');
         transactionActive = false;
-        console.error(`❌ Slot terapi dengan ID ${therapySlotId} sudah penuh (quota: ${therapySlot.quota}, used_quota: ${therapySlot.used_quota})`);
+        console.error(`❌ Slot terapi dengan ID ${therapySlotId} sudah penuh (max_quota: ${therapySlot.max_quota}, current_count: ${therapySlot.current_count})`);
         return res.status(400).json({
           success: false,
           message: "Slot terapi sudah penuh, silakan pilih slot lain",
@@ -314,8 +314,8 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         });
       }
       
-      // Gunakan langsung nilai time_slot dari database
-      const timeSlot = therapySlot.time_slot;
+      // Gunakan langsung nilai timeSlot dari database
+      const timeSlot = therapySlot.time_slot || therapySlot.timeSlot;
       
       // Buat nomor registrasi yang unik (ID-[YYYYMMDD]-[4 angka random])
       const today = new Date();
@@ -363,9 +363,9 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         ]
       );
       
-      // Perbarui used_quota untuk slot terapi
+      // Perbarui current_count untuk slot terapi
       await client.query(
-        'UPDATE therapy_slots SET used_quota = used_quota + 1 WHERE id = $1',
+        'UPDATE therapy_slots SET current_count = current_count + 1 WHERE id = $1',
         [therapySlotId]
       );
       
