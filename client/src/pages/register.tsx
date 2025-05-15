@@ -12,28 +12,8 @@ import { format, parseISO, isAfter, isSameDay, addHours } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { formatDateDDMMYYYY, formatBirthDate, cn } from "@/lib/utils";
 
-/**
- * Fungsi untuk memperbaiki format time slot yang salah (10:00-00:00)
- * @param timeSlot waktu dalam format "HH:MM-HH:MM"
- * @returns waktu yang sudah diperbaiki
- */
-function fixTimeSlotFormat(timeSlot: string): string {
-  if (!timeSlot) return "";
-  
-  // Cek pola waktu yang salah (10:00-00:00)
-  if (timeSlot.endsWith("-00:00")) {
-    // Ambil waktu awal dari time slot
-    const startTime = timeSlot.split("-")[0];
-    // Cek apakah ini pola waktu yang bisa diperbaiki, dan tentukan akhirnya
-    if (startTime === "10:00") return "10:00-12:00";
-    if (startTime === "13:00") return "13:00-15:00"; 
-    if (startTime === "15:00") return "15:00-17:00";
-    if (startTime === "17:00") return "17:00-19:00";
-  }
-  
-  // Jika tidak ada pola yang cocok, tampilkan apa adanya
-  return timeSlot;
-}
+// Fungsi fixTimeSlotFormat sudah tidak diperlukan karena slot terapi sudah menyimpan
+// format time_slot yang benar langsung dari database
 import { Calendar } from "@/components/ui/calendar";
 import { RegistrationPDF } from "@/components/registration/registration-pdf";
 import {
@@ -329,11 +309,8 @@ export default function RegisterPage() {
     const code = params.get("code") || params.get("kode");
     
     // Periksa parameter walk-in dari URL atau localStorage
-    let isWalkInParam = 
-      params.get("walkin") === "true" || 
-      params.get("isWalkInMode") === "true" ||
-      params.get("iswalkinmode") === "true" ||
-      params.get("walkInMode") === "true";
+    // Gunakan hanya 'walkin' parameter untuk konsistensi dengan server
+    let isWalkInParam = params.get("walkin") === "true";
       
     // Cek juga localStorage untuk parameter temporary dari redirect
     const tempWalkin = localStorage.getItem('temp_redirect_walkin');
