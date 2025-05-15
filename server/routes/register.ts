@@ -334,9 +334,9 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       // Tentukan status appointment berdasarkan mode pendaftaran
       let appointmentStatus = "pending";
       
-      // Status langsung confirmed untuk walk-in dari admin
+      // Status langsung active untuk walk-in dari admin
       if (isWalkIn) {
-        appointmentStatus = "confirmed";
+        appointmentStatus = "Active";
       }
       
       const appointmentData = {
