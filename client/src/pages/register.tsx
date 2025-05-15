@@ -547,19 +547,32 @@ export default function RegisterPage() {
           // Pisahkan bagian tanggal dan waktu
           const [dateString, timeString] = timeSlotKeyParam.split('_');
           
+          console.log("DEBUG timeSlotKey parsing:", { dateString, timeString });
+          
           // Cari slot dengan tanggal dan timeSlot yang sesuai
           matchingSlot = therapySlots.find((slot: any) => {
-            // Extract tanggal dari slot, dapat berbentuk "2025-05-08" atau "2025-05-08 00:00:00"
+            // Extract tanggal dari slot, dapat berbentuk "2025-05-08" atau "2025-05-08 00:00:00" atau "2025-05-08T00:00:00"
             let slotDateStr;
             if (typeof slot.date === 'string') {
-              slotDateStr = slot.date.split(' ')[0]; // Ambil bagian YYYY-MM-DD
+              if (slot.date.includes('T')) {
+                slotDateStr = slot.date.split('T')[0]; // Format ISO
+              } else if (slot.date.includes(' ')) {
+                slotDateStr = slot.date.split(' ')[0]; // Format SQL
+              } else {
+                slotDateStr = slot.date; // Sudah format YYYY-MM-DD
+              }
             } else {
               const slotDate = new Date(slot.date);
               slotDateStr = `${slotDate.getFullYear()}-${String(slotDate.getMonth() + 1).padStart(2, '0')}-${String(slotDate.getDate()).padStart(2, '0')}`;
             }
             
+            // Pencarian lebih toleran untuk timeSlot (mungkin dengan atau tanpa spasi)
+            const normalizedSlotTime = slot.timeSlot.replace(/\s+/g, '');
+            const normalizedTimeString = timeString.replace(/\s+/g, '');
+            
             // Bandingkan tanggal dan timeSlot
-            const isMatch = slotDateStr === dateString && slot.timeSlot === timeString;
+            const isMatch = slotDateStr === dateString && 
+                          (slot.timeSlot === timeString || normalizedSlotTime === normalizedTimeString);
             if (isMatch) {
               console.log("Menemukan slot berdasarkan timeSlotKey:", slot);
             }
@@ -682,10 +695,9 @@ export default function RegisterPage() {
             slotId: slotIdParam || savedSlotId
           });
           
-          // Gunakan ID toast untuk menghindari duplikasi notifikasi
+          // Gunakan localStorage untuk menghindari duplikasi notifikasi
           if (!window.localStorage.getItem('slot_not_available_shown')) {
             toast({
-              id: "slot-not-available",
               title: "Slot Tidak Tersedia",
               description: "Slot terapi yang dipilih tidak tersedia atau telah berubah. Silakan pilih slot terapi lainnya.",
               variant: "destructive",
