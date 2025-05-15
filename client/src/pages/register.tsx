@@ -682,11 +682,17 @@ export default function RegisterPage() {
             slotId: slotIdParam || savedSlotId
           });
           
-          toast({
-            title: "Slot Tidak Tersedia",
-            description: "Slot terapi yang dipilih tidak tersedia atau telah berubah. Silakan pilih slot terapi lainnya.",
-            variant: "destructive",
-          });
+          // Gunakan ID toast untuk menghindari duplikasi notifikasi
+          if (!window.localStorage.getItem('slot_not_available_shown')) {
+            toast({
+              id: "slot-not-available",
+              title: "Slot Tidak Tersedia",
+              description: "Slot terapi yang dipilih tidak tersedia atau telah berubah. Silakan pilih slot terapi lainnya.",
+              variant: "destructive",
+            });
+            // Simpan flag untuk menghindari notifikasi berulang
+            window.localStorage.setItem('slot_not_available_shown', 'true');
+          }
         }
       }
     };
