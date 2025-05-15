@@ -302,16 +302,21 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       }
       
       // Periksa apakah slot terapi memiliki kuota
-      const isSlotFull = therapySlot.current_count >= therapySlot.max_quota;
-      if (isSlotFull) {
-        await client.query('ROLLBACK');
-        transactionActive = false;
-        console.error(`❌ Slot terapi dengan ID ${therapySlotId} sudah penuh (max_quota: ${therapySlot.max_quota}, current_count: ${therapySlot.current_count})`);
-        return res.status(400).json({
-          success: false,
-          message: "Slot terapi sudah penuh, silakan pilih slot lain",
-          code: "SLOT_FULL"
-        });
+      // Untuk walk-in, abaikan pemeriksaan kuota karena pasien datang langsung
+      if (!isWalkIn) {
+        const isSlotFull = therapySlot.current_count >= therapySlot.max_quota;
+        if (isSlotFull) {
+          await client.query('ROLLBACK');
+          transactionActive = false;
+          console.error(`❌ Slot terapi dengan ID ${therapySlotId} sudah penuh (max_quota: ${therapySlot.max_quota}, current_count: ${therapySlot.current_count})`);
+          return res.status(400).json({
+            success: false,
+            message: "Slot terapi sudah penuh, silakan pilih slot lain",
+            code: "SLOT_FULL"
+          });
+        }
+      } else {
+        console.log(`Mode walk-in: Mengabaikan pemeriksaan kuota penuh untuk slot ID ${therapySlotId}`);
       }
       
       // Gunakan langsung nilai timeSlot dari database

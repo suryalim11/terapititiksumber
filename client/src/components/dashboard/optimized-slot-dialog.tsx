@@ -637,6 +637,9 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                           queryParams.append('timeSlotKey', generatedTimeSlotKey);
                         }
                         
+                        // Tambahkan parameter walk-in untuk menandai ini adalah pendaftaran walk-in dari admin
+                        queryParams.append('walkin', 'true');
+                        
                         // Gunakan URL yang benar: /daftar
                         window.open(`/daftar?${queryParams.toString()}`, '_blank');
                       }
