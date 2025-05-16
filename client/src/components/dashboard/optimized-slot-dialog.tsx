@@ -513,7 +513,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     navigate(`/patients/${patientId}`);
   };
   
-  // Navigasi ke halaman transaksi - Versi yang lebih sederhana
+  // Navigasi ke halaman transaksi
   const handleTransactionClick = (patientInput: any, event?: React.MouseEvent) => {
     if (event) {
       event.stopPropagation();
@@ -546,11 +546,18 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     
     onClose();
     
-    // Buat query parameters yang lebih sederhana
+    // Simpan ID pasien ke localStorage agar halaman transaksi bisa mengaksesnya
+    localStorage.setItem('pendingTransactionPatientId', patientId.toString());
+    localStorage.setItem('pendingTransactionPatientName', patientName);
+    localStorage.setItem('openTransactionFormDirectly', 'true');
+    localStorage.setItem('transactionTimestamp', Date.now().toString());
+    
+    // Buat query parameters dengan timestamp untuk menghindari caching
     const params = new URLSearchParams({
       patientId: patientId.toString(),
       patientName: patientName,
-      source: 'slot-dialog'
+      openForm: 'true',
+      t: Date.now().toString()
     });
     
     // Navigasi ke halaman transaksi
@@ -771,6 +778,9 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
       </DropdownMenu>
     );
   };
+  
+  // Fungsi handleTransactionClick sudah dideklarasikan di tempat lain
+  // Kode dihapus untuk menghindari deklarasi ganda
   
   // Fungsi untuk mengirim pengingat via WhatsApp
   const handleReminderClick = (patient: any, appointment: any, event?: React.MouseEvent) => {
