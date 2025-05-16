@@ -62,8 +62,39 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
           try {
             const { rows: specialRows } = await pool.query(specialQuery);
             console.log(`[ROUTE] Ditemukan ${specialRows.length} pasien di slot ID 454`);
-            specialRows.forEach(row => console.log(`[ROUTE] - Pasien: ${row.patient_name}`));
-            allAppointments = specialRows;
+            
+            // Tampilkan daftar pasien untuk debugging
+            if (specialRows.length > 0) {
+              console.log(`[ROUTE] Daftar pasien dari slot ID 454:`);
+              specialRows.forEach(row => console.log(`[ROUTE] - Pasien: ${row.patient_name} (ID: ${row.patient_id})`));
+            } else {
+              console.log(`[ROUTE] Tidak ada pasien di slot ID 454`);
+            }
+            
+            // Query juga untuk appointments dari slot ID 473 itu sendiri
+            const currentSlotQuery = `
+              SELECT 
+                a.id as appointment_id,
+                a.therapy_slot_id,
+                a.patient_id,
+                a.status,
+                a.notes,
+                p.id as patient_id,
+                p.name as patient_name,
+                p.phone_number as patient_phone_number
+              FROM appointments a
+              JOIN patients p ON a.patient_id = p.id
+              WHERE a.therapy_slot_id = ${slotId}
+              ORDER BY a.id DESC
+            `;
+            
+            // Eksekusi query untuk slot ID 473
+            const { rows: currentSlotRows } = await pool.query(currentSlotQuery);
+            console.log(`[ROUTE] Ditemukan ${currentSlotRows.length} pasien di slot ID 473 (saat ini)`);
+            
+            // Gabungkan hasil dari kedua query
+            allAppointments = [...specialRows, ...currentSlotRows];
+            console.log(`[ROUTE] Total setelah penggabungan: ${allAppointments.length} pasien`);
           } catch (error) {
             console.error(`[ROUTE] Error saat mengambil data pasien dari slot 454: ${error}`);
           }
