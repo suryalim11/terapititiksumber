@@ -559,34 +559,6 @@ export default function PatientDetail() {
                 <h3 className="text-lg font-semibold">Janji Temu</h3>
                 <div className="flex gap-2">
                   <Button 
-                    variant="default"
-                    size="sm" 
-                    className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800"
-                    onClick={() => {
-                      if (patientId) {
-                        const id = Number(patientId);
-                        apiRequest(`/api/verify-connection/patient/${id.toString()}`, {
-                          method: 'POST'
-                        }).then((response) => {
-                          toast({
-                            title: "Verifikasi selesai",
-                            description: `${response.result?.fixed ? `${response.result.fixed} koneksi diperbaiki` : 'Semua koneksi sudah valid'}`
-                          });
-                          // Muat ulang data pasien untuk menampilkan perubahan
-                          queryClient.invalidateQueries({ queryKey: [`/api/appointments`] });
-                        }).catch(error => {
-                          toast({
-                            title: "Gagal memverifikasi koneksi",
-                            description: error.message,
-                            variant: "destructive"
-                          });
-                        });
-                      }
-                    }}
-                  >
-                    Verifikasi
-                  </Button>
-                  <Button 
                     size="sm" 
                     className="h-8 text-xs"
                     onClick={() => {
