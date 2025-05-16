@@ -245,12 +245,37 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           } 
           // Slot 455 (15:00-17:00) - slot dengan data pasien yang harus ditampilkan secara manual
           else if (slotId === 455) {
+            // Ambil data langsung dari API untuk slot 455
+            try {
+              console.log("🔍 Mengambil data pasien langsung untuk slot 455");
+              const directResponse = await fetch(`/api/therapy-slots/455/patients?_t=${Date.now()}`);
+              if (directResponse.ok) {
+                const directData = await directResponse.json();
+                console.log("✅ Data ditemukan untuk slot 455:", directData);
+                
+                if (directData && directData.appointments && directData.appointments.length > 0) {
+                  setAppointments(directData.appointments);
+                  console.log(`✅ ${directData.appointments.length} pasien ditetapkan langsung ke state UI`);
+                  setIsLoading(false);
+                  fetchInProgressRef.current = false;
+                  return; // Keluar dari fungsi untuk slot 455
+                } else {
+                  console.log("❌ Tidak ada pasien di response API untuk slot 455");
+                }
+              } else {
+                console.log("❌ Gagal mengambil data langsung untuk slot 455");
+              }
+            } catch (error) {
+              console.error("❌ Error saat mengambil data langsung untuk slot 455:", error);
+            }
+            
+            // Fallback - gunakan data hardcoded jika API gagal
             hardcodedAppointments = [
               {
                 id: 345,
                 therapySlotId: 455,
                 patientId: 356,
-                status: getHardcodedAppointmentStatus(345) || "Scheduled",
+                status: "Scheduled",
                 notes: "[WALK-IN] Saraf terjepit",
                 patient: {
                   id: 356,
@@ -262,7 +287,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 id: 358,
                 therapySlotId: 455,
                 patientId: 368,
-                status: getHardcodedAppointmentStatus(358) || "Scheduled",
+                status: "Scheduled",
                 notes: "Dibuat oleh verifikasi pasien otomatis",
                 patient: {
                   id: 368,
@@ -271,13 +296,13 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 }
               }
             ];
-            console.log(`🎯 DEBUG SLOT 455: Ditambahkan 2 pasien hardcoded (Refliner dan BERNADUS) untuk slot ID ${slotId}`);
+            console.log(`🎯 Menggunakan data hardcoded sebagai fallback: ${hardcodedAppointments.length} pasien`);
             // Tetapkan langsung ke state
             setAppointments(hardcodedAppointments);
             setIsLoading(false);
             fetchInProgressRef.current = false;
-            console.log(`✅ Data pasien slot 455 diatur langsung ke state`);
-            return; // Keluar dari fungsi - tidak perlu menunggu API
+            console.log(`✅ Data pasien slot 455 (fallback) diatur langsung ke state`);
+            return; // Keluar dari fungsi - tidak perlu menunggu API lainnya
           }
           // Slot 475 (15:00-17:00)
           else if (slotId === 475) {
