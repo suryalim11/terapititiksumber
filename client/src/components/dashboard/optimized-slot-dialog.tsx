@@ -643,8 +643,24 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           console.log(`⚠️ Appointment ID ${appointment.id} adalah hardcoded - menangani secara lokal`);
           // Tunggu sesaat untuk simulasi
           await new Promise(resolve => setTimeout(resolve, 300));
-          // Update state lokal langsung
-          appointment.status = status;
+          
+          // Update state lokal langsung pada aplikasi
+          // Ini akan sekaligus memperbarui appointments di parent component
+          setAppointments(prevAppointments => 
+            prevAppointments.map(apt => 
+              apt.id === appointment.id 
+                ? { ...apt, status } 
+                : apt
+            ).filter(apt => {
+              // Jika status Cancelled atau No-Show, hapus dari tampilan untuk hardcoded appointments
+              if (apt.id === appointment.id && (status === "Cancelled" || status === "No-Show")) {
+                console.log(`🧹 Menghapus appointment ${apt.id} (${apt.patient?.name}) dari tampilan karena status ${status}`);
+                return false;
+              }
+              return true;
+            })
+          );
+          
           console.log(`✅ Status hardcoded appointment diperbarui ke "${status}"`);
         } else {
           // Gunakan API normal untuk appointment biasa
