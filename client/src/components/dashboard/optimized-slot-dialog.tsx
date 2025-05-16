@@ -638,7 +638,19 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           duration: 3000,
         });
         
-        await handleStatusChange(appointment.id, status);
+        // Cek apakah ini appointment hardcoded (ID >= 1000)
+        if (appointment.id >= 1000 && appointment.id < 2000) {
+          console.log(`⚠️ Appointment ID ${appointment.id} adalah hardcoded - menangani secara lokal`);
+          // Tunggu sesaat untuk simulasi
+          await new Promise(resolve => setTimeout(resolve, 300));
+          // Update state lokal langsung
+          appointment.status = status;
+          console.log(`✅ Status hardcoded appointment diperbarui ke "${status}"`);
+        } else {
+          // Gunakan API normal untuk appointment biasa
+          await handleStatusChange(appointment.id, status);
+        }
+        
         console.log(`✅ Berhasil mengubah status menjadi: "${status}"`);
       } catch (error) {
         console.error("❌ Gagal mengubah status:", error);
