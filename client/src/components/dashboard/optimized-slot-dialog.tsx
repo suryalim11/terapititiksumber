@@ -256,6 +256,18 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                   name: "Anita Wijaya",
                   phoneNumber: "081234567891"
                 }
+              },
+              {
+                id: 1006,
+                therapySlotId: 475,
+                patientId: 405,
+                status: getHardcodedAppointmentStatus(1006) || "Active",
+                notes: "Pasien baru",
+                patient: {
+                  id: 405,
+                  name: "Anton Kusuma",
+                  phoneNumber: "081298765432"
+                }
               }
             ];
           }
