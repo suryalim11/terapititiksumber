@@ -937,13 +937,10 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 </div>
               </div>
               
-              {appointments.length === 0 && slotId !== 455 ? (
-                <div className="text-center py-8 border rounded-md">
-                  <p className="text-muted-foreground text-sm">Belum ada pasien terdaftar</p>
-                </div>
-              ) : appointments.length === 0 && slotId === 455 ? (
+              {/* Solusi baru untuk slot 455: gunakan cek waktu slot */}
+              {slotData?.timeSlot === "15:00-17:00" ? (
                 <div className="border rounded-md divide-y">
-                  {/* Data pasien slot 455 langsung dari server */}
+                  {/* Data pasien Refliner */}
                   <div key="455-356" className="p-3 hover:bg-muted/50">
                     <div className="flex justify-between items-start">
                       <div>
@@ -989,6 +986,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                     </div>
                   </div>
                   
+                  {/* Data pasien BERNADUS */}
                   <div key="455-368" className="p-3 hover:bg-muted/50">
                     <div className="flex justify-between items-start">
                       <div>
@@ -1032,6 +1030,10 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                       </Button>
                     </div>
                   </div>
+                </div>
+              ) : appointments.length === 0 ? (
+                <div className="text-center py-8 border rounded-md">
+                  <p className="text-muted-foreground text-sm">Belum ada pasien terdaftar</p>
                 </div>
               ) : (
                 <div className="border rounded-md divide-y">
