@@ -513,7 +513,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     navigate(`/patients/${patientId}`);
   };
   
-  // Navigasi ke halaman transaksi
+  // Navigasi ke halaman transaksi - Versi yang lebih sederhana
   const handleTransactionClick = (patientInput: any, event?: React.MouseEvent) => {
     if (event) {
       event.stopPropagation();
@@ -530,9 +530,6 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
       
       if (foundPatient && foundPatient.patient) {
         patientName = foundPatient.patient.name || 'pasien';
-        console.log(`✅ Data pasien ditemukan dari appointments: ${patientName}`);
-      } else {
-        console.log(`⚠️ Tidak menemukan data lengkap untuk pasien dengan ID ${patientId}, menggunakan ID saja`);
       }
     } else if (patientInput && patientInput.id) {
       // Jika menerima objek lengkap
@@ -544,63 +541,26 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
         description: "Data pasien tidak lengkap",
         variant: "destructive"
       });
-      console.error("❌ Data pasien tidak valid:", patientInput);
       return;
     }
     
     onClose();
     
-    // Tambahkan parameter untuk memastikan form transaksi terbuka langsung
-    navigate(`/transactions?patientId=${patientId}&patientName=${encodeURIComponent(patientName)}&hideDropdown=true&delay=2000&source=optimized-dialog&timestamp=${Date.now()}`);
+    // Buat query parameters yang lebih sederhana
+    const params = new URLSearchParams({
+      patientId: patientId.toString(),
+      patientName: patientName,
+      source: 'slot-dialog'
+    });
     
-    // Tambahkan toast untuk memberikan feedback
+    // Navigasi ke halaman transaksi
+    navigate(`/transactions?${params.toString()}`);
+    
+    // Feedback untuk pengguna
     toast({
       title: "Membuat transaksi baru",
       description: `Mempersiapkan transaksi untuk ${patientName}`,
-      duration: 3000
     });
-    
-    // Tunggu sebentar untuk memastikan halaman transaksi sudah dimuat, lalu kirim event
-    setTimeout(() => {
-      // Log yang lebih jelas untuk debugging
-      console.log("🚀 Mempersiapkan event openTransactionForm dari OptimizedSlotDialog");
-      
-      try {
-        // Buat custom event untuk membuka form transaksi dengan data pasien
-        // PENTING: Gunakan nama event yang sama persis dengan yang digunakan di transactions.tsx
-        const evt = new CustomEvent('openTransactionForm', { 
-          detail: { 
-            patientId: patientId, 
-            patientName: patientName,
-            timestamp: Date.now(),
-            source: 'optimized-dialog' 
-          }
-        });
-        
-        // Log dan kirim event
-        console.log("📤 Mengirim event openTransactionForm dengan detail:", evt.detail);
-        window.dispatchEvent(evt);
-        console.log("✅ Event openTransactionForm telah terkirim");
-        
-        // Tambahan: simpan di localStorage sebagai fallback
-        localStorage.setItem('pendingTransactionPatientId', String(patientId));
-        localStorage.setItem('pendingTransactionPatientName', patientName);
-        
-        // Menambahkan notifikasi toast untuk informasi pengguna bahwa proses sedang berlangsung
-        toast({
-          title: "Membuka form transaksi",
-          description: "Mohon tunggu sebentar, halaman transaksi sedang disiapkan...",
-          duration: 3000
-        });
-      } catch (error) {
-        console.error("⚠️ Error saat mengirim event openTransactionForm:", error);
-        toast({
-          title: "Terjadi Kesalahan",
-          description: "Gagal membuka form transaksi. Coba lagi nanti.",
-          variant: "destructive"
-        });
-      }
-    }, 300);
   };
   
   // Fungsi untuk mengubah status appointment

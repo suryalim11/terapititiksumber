@@ -1,0 +1,736 @@
+Original: 2025-05-16T12:33:00.443Z -> Corrected date (WIB): 2025-05-16T05:33:00.443Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-16T12:02:29.481Z
+transactions.tsx:580 Original: 2025-05-16T12:02:29.481Z -> Corrected date (WIB): 2025-05-16T05:02:29.481Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-15T18:15:48.249Z
+transactions.tsx:580 Original: 2025-05-15T18:15:48.249Z -> Corrected date (WIB): 2025-05-15T11:15:48.249Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-15T18:11:09.689Z
+transactions.tsx:580 Original: 2025-05-15T18:11:09.689Z -> Corrected date (WIB): 2025-05-15T11:11:09.689Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-15T18:09:56.942Z
+transactions.tsx:580 Original: 2025-05-15T18:09:56.942Z -> Corrected date (WIB): 2025-05-15T11:09:56.942Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-15T18:07:06.193Z
+transactions.tsx:580 Original: 2025-05-15T18:07:06.193Z -> Corrected date (WIB): 2025-05-15T11:07:06.193Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-15T17:26:39.897Z
+transactions.tsx:580 Original: 2025-05-15T17:26:39.897Z -> Corrected date (WIB): 2025-05-15T10:26:39.897Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-14T15:25:39.234Z
+transactions.tsx:580 Original: 2025-05-14T15:25:39.234Z -> Corrected date (WIB): 2025-05-14T08:25:39.234Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-14T15:11:39.687Z
+transactions.tsx:580 Original: 2025-05-14T15:11:39.687Z -> Corrected date (WIB): 2025-05-14T08:11:39.687Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-14T14:48:41.442Z
+transactions.tsx:580 Original: 2025-05-14T14:48:41.442Z -> Corrected date (WIB): 2025-05-14T07:48:41.442Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-14T14:31:32.908Z
+transactions.tsx:580 Original: 2025-05-14T14:31:32.908Z -> Corrected date (WIB): 2025-05-14T07:31:32.908Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-14T14:29:36.584Z
+transactions.tsx:580 Original: 2025-05-14T14:29:36.584Z -> Corrected date (WIB): 2025-05-14T07:29:36.584Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-13T14:34:35.136Z
+transactions.tsx:580 Original: 2025-05-13T14:34:35.136Z -> Corrected date (WIB): 2025-05-13T07:34:35.136Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-13T13:48:30.182Z
+transactions.tsx:580 Original: 2025-05-13T13:48:30.182Z -> Corrected date (WIB): 2025-05-13T06:48:30.182Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-13T13:46:08.255Z
+transactions.tsx:580 Original: 2025-05-13T13:46:08.255Z -> Corrected date (WIB): 2025-05-13T06:46:08.255Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-13T11:49:22.278Z
+transactions.tsx:580 Original: 2025-05-13T11:49:22.278Z -> Corrected date (WIB): 2025-05-13T04:49:22.278Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-12T17:53:48.513Z
+transactions.tsx:580 Original: 2025-05-12T17:53:48.513Z -> Corrected date (WIB): 2025-05-12T10:53:48.513Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-12T17:50:26.460Z
+transactions.tsx:580 Original: 2025-05-12T17:50:26.460Z -> Corrected date (WIB): 2025-05-12T10:50:26.460Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-12T17:35:27.280Z
+transactions.tsx:580 Original: 2025-05-12T17:35:27.280Z -> Corrected date (WIB): 2025-05-12T10:35:27.280Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-09T11:22:24.563Z
+transactions.tsx:580 Original: 2025-05-09T11:22:24.563Z -> Corrected date (WIB): 2025-05-09T04:22:24.563Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-09T11:05:14.285Z
+transactions.tsx:580 Original: 2025-05-09T11:05:14.285Z -> Corrected date (WIB): 2025-05-09T04:05:14.285Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-09T10:10:09.625Z
+transactions.tsx:580 Original: 2025-05-09T10:10:09.625Z -> Corrected date (WIB): 2025-05-09T03:10:09.625Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-08T16:40:33.645Z
+transactions.tsx:580 Original: 2025-05-08T16:40:33.645Z -> Corrected date (WIB): 2025-05-08T09:40:33.645Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-08T16:37:37.524Z
+transactions.tsx:580 Original: 2025-05-08T16:37:37.524Z -> Corrected date (WIB): 2025-05-08T09:37:37.524Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-08T12:14:58.745Z
+transactions.tsx:580 Original: 2025-05-08T12:14:58.745Z -> Corrected date (WIB): 2025-05-08T05:14:58.745Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-08T10:27:09.710Z
+transactions.tsx:580 Original: 2025-05-08T10:27:09.710Z -> Corrected date (WIB): 2025-05-08T03:27:09.710Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-08T09:59:19.526Z
+transactions.tsx:580 Original: 2025-05-08T09:59:19.526Z -> Corrected date (WIB): 2025-05-08T02:59:19.526Z
+transactions.tsx:515 Transaction metadata: {notes: 'Pembayaran utang transaksi #T-20250505-557', displayName: 'original', isDebtPayment: true, paymentAmount: '1500000.00', debtTransactionId: 368, …}
+transactions.tsx:546 Formatting date string: 2025-05-07T18:14:13.888Z
+transactions.tsx:580 Original: 2025-05-07T18:14:13.888Z -> Corrected date (WIB): 2025-05-07T11:14:13.888Z
+transactions.tsx:515 Transaction metadata: {notes: 'Pembayaran utang transaksi #T-20250505-919', displayName: 'original', isDebtPayment: true, paymentAmount: '50000', debtTransactionId: 367, …}
+transactions.tsx:546 Formatting date string: 2025-05-07T18:10:31.199Z
+transactions.tsx:580 Original: 2025-05-07T18:10:31.199Z -> Corrected date (WIB): 2025-05-07T11:10:31.199Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-07T18:07:43.217Z
+transactions.tsx:580 Original: 2025-05-07T18:07:43.217Z -> Corrected date (WIB): 2025-05-07T11:07:43.217Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-07T12:05:53.269Z
+transactions.tsx:580 Original: 2025-05-07T12:05:53.269Z -> Corrected date (WIB): 2025-05-07T05:05:53.269Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-07T09:42:10.883Z
+transactions.tsx:580 Original: 2025-05-07T09:42:10.883Z -> Corrected date (WIB): 2025-05-07T02:42:10.883Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-06T15:22:54.620Z
+transactions.tsx:580 Original: 2025-05-06T15:22:54.620Z -> Corrected date (WIB): 2025-05-06T08:22:54.620Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-06T11:10:42.645Z
+transactions.tsx:580 Original: 2025-05-06T11:10:42.645Z -> Corrected date (WIB): 2025-05-06T04:10:42.645Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-05T17:58:28.257Z
+transactions.tsx:580 Original: 2025-05-05T17:58:28.257Z -> Corrected date (WIB): 2025-05-05T10:58:28.257Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-05T17:54:06.387Z
+transactions.tsx:580 Original: 2025-05-05T17:54:06.387Z -> Corrected date (WIB): 2025-05-05T10:54:06.387Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-05T17:09:09.999Z
+transactions.tsx:580 Original: 2025-05-05T17:09:09.999Z -> Corrected date (WIB): 2025-05-05T10:09:09.999Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-05T17:08:15.001Z
+transactions.tsx:580 Original: 2025-05-05T17:08:15.001Z -> Corrected date (WIB): 2025-05-05T10:08:15.001Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-05T17:07:15.697Z
+transactions.tsx:580 Original: 2025-05-05T17:07:15.697Z -> Corrected date (WIB): 2025-05-05T10:07:15.697Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-05T16:28:17.837Z
+transactions.tsx:580 Original: 2025-05-05T16:28:17.837Z -> Corrected date (WIB): 2025-05-05T09:28:17.837Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-05T15:29:06.127Z
+transactions.tsx:580 Original: 2025-05-05T15:29:06.127Z -> Corrected date (WIB): 2025-05-05T08:29:06.127Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-05T10:42:18.475Z
+transactions.tsx:580 Original: 2025-05-05T10:42:18.475Z -> Corrected date (WIB): 2025-05-05T03:42:18.475Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-04T19:01:18.101Z
+transactions.tsx:580 Original: 2025-05-04T19:01:18.101Z -> Corrected date (WIB): 2025-05-04T12:01:18.101Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-04T18:47:09.618Z
+transactions.tsx:580 Original: 2025-05-04T18:47:09.618Z -> Corrected date (WIB): 2025-05-04T11:47:09.618Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-04T16:53:00.397Z
+transactions.tsx:580 Original: 2025-05-04T16:53:00.397Z -> Corrected date (WIB): 2025-05-04T09:53:00.397Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-03T16:20:19.859Z
+transactions.tsx:580 Original: 2025-05-03T16:20:19.859Z -> Corrected date (WIB): 2025-05-03T09:20:19.859Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-03T15:51:11.225Z
+transactions.tsx:580 Original: 2025-05-03T15:51:11.225Z -> Corrected date (WIB): 2025-05-03T08:51:11.225Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-03T15:28:47.305Z
+transactions.tsx:580 Original: 2025-05-03T15:28:47.305Z -> Corrected date (WIB): 2025-05-03T08:28:47.305Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-03T14:44:24.246Z
+transactions.tsx:580 Original: 2025-05-03T14:44:24.246Z -> Corrected date (WIB): 2025-05-03T07:44:24.246Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-03T14:28:45.025Z
+transactions.tsx:580 Original: 2025-05-03T14:28:45.025Z -> Corrected date (WIB): 2025-05-03T07:28:45.025Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-03T11:23:11.483Z
+transactions.tsx:580 Original: 2025-05-03T11:23:11.483Z -> Corrected date (WIB): 2025-05-03T04:23:11.483Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-02T17:07:06.223Z
+transactions.tsx:580 Original: 2025-05-02T17:07:06.223Z -> Corrected date (WIB): 2025-05-02T10:07:06.223Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-02T16:32:03.464Z
+transactions.tsx:580 Original: 2025-05-02T16:32:03.464Z -> Corrected date (WIB): 2025-05-02T09:32:03.464Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-02T16:13:05.568Z
+transactions.tsx:580 Original: 2025-05-02T16:13:05.568Z -> Corrected date (WIB): 2025-05-02T09:13:05.568Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-02T11:45:31.720Z
+transactions.tsx:580 Original: 2025-05-02T11:45:31.720Z -> Corrected date (WIB): 2025-05-02T04:45:31.720Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-02T10:39:42.969Z
+transactions.tsx:580 Original: 2025-05-02T10:39:42.969Z -> Corrected date (WIB): 2025-05-02T03:39:42.969Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-01T19:41:29.990Z
+transactions.tsx:580 Original: 2025-05-01T19:41:29.990Z -> Corrected date (WIB): 2025-05-01T12:41:29.990Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-01T19:07:05.767Z
+transactions.tsx:580 Original: 2025-05-01T19:07:05.767Z -> Corrected date (WIB): 2025-05-01T12:07:05.767Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-05-01T18:33:24.376Z
+transactions.tsx:580 Original: 2025-05-01T18:33:24.376Z -> Corrected date (WIB): 2025-05-01T11:33:24.376Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-30T15:59:44.704Z
+transactions.tsx:580 Original: 2025-04-30T15:59:44.704Z -> Corrected date (WIB): 2025-04-30T08:59:44.704Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-30T15:59:01.394Z
+transactions.tsx:580 Original: 2025-04-30T15:59:01.394Z -> Corrected date (WIB): 2025-04-30T08:59:01.394Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-30T15:41:23.152Z
+transactions.tsx:580 Original: 2025-04-30T15:41:23.152Z -> Corrected date (WIB): 2025-04-30T08:41:23.152Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-30T14:02:48.806Z
+transactions.tsx:580 Original: 2025-04-30T14:02:48.806Z -> Corrected date (WIB): 2025-04-30T07:02:48.806Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-29T15:57:24.577Z
+transactions.tsx:580 Original: 2025-04-29T15:57:24.577Z -> Corrected date (WIB): 2025-04-29T08:57:24.577Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-29T15:08:24.286Z
+transactions.tsx:580 Original: 2025-04-29T15:08:24.286Z -> Corrected date (WIB): 2025-04-29T08:08:24.286Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-29T14:29:36.294Z
+transactions.tsx:580 Original: 2025-04-29T14:29:36.294Z -> Corrected date (WIB): 2025-04-29T07:29:36.294Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-29T13:39:19.623Z
+transactions.tsx:580 Original: 2025-04-29T13:39:19.623Z -> Corrected date (WIB): 2025-04-29T06:39:19.623Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-29T12:07:16.510Z
+transactions.tsx:580 Original: 2025-04-29T12:07:16.510Z -> Corrected date (WIB): 2025-04-29T05:07:16.510Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-28T18:18:12.201Z
+transactions.tsx:580 Original: 2025-04-28T18:18:12.201Z -> Corrected date (WIB): 2025-04-28T11:18:12.201Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-28T16:36:48.311Z
+transactions.tsx:580 Original: 2025-04-28T16:36:48.311Z -> Corrected date (WIB): 2025-04-28T09:36:48.311Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-28T15:53:44.989Z
+transactions.tsx:580 Original: 2025-04-28T15:53:44.989Z -> Corrected date (WIB): 2025-04-28T08:53:44.989Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-28T15:53:20.540Z
+transactions.tsx:580 Original: 2025-04-28T15:53:20.540Z -> Corrected date (WIB): 2025-04-28T08:53:20.540Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-28T14:48:42.074Z
+transactions.tsx:580 Original: 2025-04-28T14:48:42.074Z -> Corrected date (WIB): 2025-04-28T07:48:42.074Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-28T14:00:09.619Z
+transactions.tsx:580 Original: 2025-04-28T14:00:09.619Z -> Corrected date (WIB): 2025-04-28T07:00:09.619Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-28T13:03:00.206Z
+transactions.tsx:580 Original: 2025-04-28T13:03:00.206Z -> Corrected date (WIB): 2025-04-28T06:03:00.206Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-28T13:00:44.159Z
+transactions.tsx:580 Original: 2025-04-28T13:00:44.159Z -> Corrected date (WIB): 2025-04-28T06:00:44.159Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-28T12:44:23.780Z
+transactions.tsx:580 Original: 2025-04-28T12:44:23.780Z -> Corrected date (WIB): 2025-04-28T05:44:23.780Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-28T12:34:00.212Z
+transactions.tsx:580 Original: 2025-04-28T12:34:00.212Z -> Corrected date (WIB): 2025-04-28T05:34:00.212Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-27T17:21:14.948Z
+transactions.tsx:580 Original: 2025-04-27T17:21:14.948Z -> Corrected date (WIB): 2025-04-27T10:21:14.948Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-27T16:53:41.025Z
+transactions.tsx:580 Original: 2025-04-27T16:53:41.025Z -> Corrected date (WIB): 2025-04-27T09:53:41.025Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-27T16:40:54.866Z
+transactions.tsx:580 Original: 2025-04-27T16:40:54.866Z -> Corrected date (WIB): 2025-04-27T09:40:54.866Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-27T16:39:11.824Z
+transactions.tsx:580 Original: 2025-04-27T16:39:11.824Z -> Corrected date (WIB): 2025-04-27T09:39:11.824Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-26T16:09:51.668Z
+transactions.tsx:580 Original: 2025-04-26T16:09:51.668Z -> Corrected date (WIB): 2025-04-26T09:09:51.668Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-26T16:04:41.227Z
+transactions.tsx:580 Original: 2025-04-26T16:04:41.227Z -> Corrected date (WIB): 2025-04-26T09:04:41.227Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-26T15:50:07.688Z
+transactions.tsx:580 Original: 2025-04-26T15:50:07.688Z -> Corrected date (WIB): 2025-04-26T08:50:07.688Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-26T15:24:40.414Z
+transactions.tsx:580 Original: 2025-04-26T15:24:40.414Z -> Corrected date (WIB): 2025-04-26T08:24:40.414Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-26T15:12:38.650Z
+transactions.tsx:580 Original: 2025-04-26T15:12:38.650Z -> Corrected date (WIB): 2025-04-26T08:12:38.650Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-26T15:10:51.910Z
+transactions.tsx:580 Original: 2025-04-26T15:10:51.910Z -> Corrected date (WIB): 2025-04-26T08:10:51.910Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-26T14:46:27.183Z
+transactions.tsx:580 Original: 2025-04-26T14:46:27.183Z -> Corrected date (WIB): 2025-04-26T07:46:27.183Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-26T11:54:49.462Z
+transactions.tsx:580 Original: 2025-04-26T11:54:49.462Z -> Corrected date (WIB): 2025-04-26T04:54:49.462Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-26T11:31:44.963Z
+transactions.tsx:580 Original: 2025-04-26T11:31:44.963Z -> Corrected date (WIB): 2025-04-26T04:31:44.963Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-25T16:28:21.560Z
+transactions.tsx:580 Original: 2025-04-25T16:28:21.560Z -> Corrected date (WIB): 2025-04-25T09:28:21.560Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-25T16:25:41.588Z
+transactions.tsx:580 Original: 2025-04-25T16:25:41.588Z -> Corrected date (WIB): 2025-04-25T09:25:41.588Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-25T14:54:43.476Z
+transactions.tsx:580 Original: 2025-04-25T14:54:43.476Z -> Corrected date (WIB): 2025-04-25T07:54:43.476Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-25T14:17:28.275Z
+transactions.tsx:580 Original: 2025-04-25T14:17:28.275Z -> Corrected date (WIB): 2025-04-25T07:17:28.275Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-25T14:15:24.522Z
+transactions.tsx:580 Original: 2025-04-25T14:15:24.522Z -> Corrected date (WIB): 2025-04-25T07:15:24.522Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-25T14:01:26.939Z
+transactions.tsx:580 Original: 2025-04-25T14:01:26.939Z -> Corrected date (WIB): 2025-04-25T07:01:26.939Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-25T13:59:20.616Z
+transactions.tsx:580 Original: 2025-04-25T13:59:20.616Z -> Corrected date (WIB): 2025-04-25T06:59:20.616Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-25T13:50:29.529Z
+transactions.tsx:580 Original: 2025-04-25T13:50:29.529Z -> Corrected date (WIB): 2025-04-25T06:50:29.529Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-24T17:10:23.385Z
+transactions.tsx:580 Original: 2025-04-24T17:10:23.385Z -> Corrected date (WIB): 2025-04-24T10:10:23.385Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-24T17:02:35.777Z
+transactions.tsx:580 Original: 2025-04-24T17:02:35.777Z -> Corrected date (WIB): 2025-04-24T10:02:35.777Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-24T16:58:41.868Z
+transactions.tsx:580 Original: 2025-04-24T16:58:41.868Z -> Corrected date (WIB): 2025-04-24T09:58:41.868Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-24T15:20:47.397Z
+transactions.tsx:580 Original: 2025-04-24T15:20:47.397Z -> Corrected date (WIB): 2025-04-24T08:20:47.397Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-24T12:34:27.579Z
+transactions.tsx:580 Original: 2025-04-24T12:34:27.579Z -> Corrected date (WIB): 2025-04-24T05:34:27.579Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-24T12:33:10.528Z
+transactions.tsx:580 Original: 2025-04-24T12:33:10.528Z -> Corrected date (WIB): 2025-04-24T05:33:10.528Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-24T12:11:52.481Z
+transactions.tsx:580 Original: 2025-04-24T12:11:52.481Z -> Corrected date (WIB): 2025-04-24T05:11:52.481Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-24T11:24:21.477Z
+transactions.tsx:580 Original: 2025-04-24T11:24:21.477Z -> Corrected date (WIB): 2025-04-24T04:24:21.477Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-23T18:35:59.293Z
+transactions.tsx:580 Original: 2025-04-23T18:35:59.293Z -> Corrected date (WIB): 2025-04-23T11:35:59.293Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-23T16:07:19.330Z
+transactions.tsx:580 Original: 2025-04-23T16:07:19.330Z -> Corrected date (WIB): 2025-04-23T09:07:19.330Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-23T15:11:36.225Z
+transactions.tsx:580 Original: 2025-04-23T15:11:36.225Z -> Corrected date (WIB): 2025-04-23T08:11:36.225Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-23T14:52:52.707Z
+transactions.tsx:580 Original: 2025-04-23T14:52:52.707Z -> Corrected date (WIB): 2025-04-23T07:52:52.707Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-23T12:56:26.329Z
+transactions.tsx:580 Original: 2025-04-23T12:56:26.329Z -> Corrected date (WIB): 2025-04-23T05:56:26.329Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-23T12:53:39.143Z
+transactions.tsx:580 Original: 2025-04-23T12:53:39.143Z -> Corrected date (WIB): 2025-04-23T05:53:39.143Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-23T12:53:30.800Z
+transactions.tsx:580 Original: 2025-04-23T12:53:30.800Z -> Corrected date (WIB): 2025-04-23T05:53:30.800Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-23T12:53:18.007Z
+transactions.tsx:580 Original: 2025-04-23T12:53:18.007Z -> Corrected date (WIB): 2025-04-23T05:53:18.007Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-23T12:53:02.432Z
+transactions.tsx:580 Original: 2025-04-23T12:53:02.432Z -> Corrected date (WIB): 2025-04-23T05:53:02.432Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-22T17:14:20.443Z
+transactions.tsx:580 Original: 2025-04-22T17:14:20.443Z -> Corrected date (WIB): 2025-04-22T10:14:20.443Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-22T16:44:10.239Z
+transactions.tsx:580 Original: 2025-04-22T16:44:10.239Z -> Corrected date (WIB): 2025-04-22T09:44:10.239Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-22T15:48:44.661Z
+transactions.tsx:580 Original: 2025-04-22T15:48:44.661Z -> Corrected date (WIB): 2025-04-22T08:48:44.661Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-22T14:30:32.080Z
+transactions.tsx:580 Original: 2025-04-22T14:30:32.080Z -> Corrected date (WIB): 2025-04-22T07:30:32.080Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-22T13:48:40.957Z
+transactions.tsx:580 Original: 2025-04-22T13:48:40.957Z -> Corrected date (WIB): 2025-04-22T06:48:40.957Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-22T11:48:44.146Z
+transactions.tsx:580 Original: 2025-04-22T11:48:44.146Z -> Corrected date (WIB): 2025-04-22T04:48:44.146Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-22T11:47:35.263Z
+transactions.tsx:580 Original: 2025-04-22T11:47:35.263Z -> Corrected date (WIB): 2025-04-22T04:47:35.263Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-21T17:12:40.059Z
+transactions.tsx:580 Original: 2025-04-21T17:12:40.059Z -> Corrected date (WIB): 2025-04-21T10:12:40.059Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-21T17:11:35.256Z
+transactions.tsx:580 Original: 2025-04-21T17:11:35.256Z -> Corrected date (WIB): 2025-04-21T10:11:35.256Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-21T17:11:12.003Z
+transactions.tsx:580 Original: 2025-04-21T17:11:12.003Z -> Corrected date (WIB): 2025-04-21T10:11:12.003Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-21T17:09:10.815Z
+transactions.tsx:580 Original: 2025-04-21T17:09:10.815Z -> Corrected date (WIB): 2025-04-21T10:09:10.815Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-21T16:59:41.090Z
+transactions.tsx:580 Original: 2025-04-21T16:59:41.090Z -> Corrected date (WIB): 2025-04-21T09:59:41.090Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-21T15:52:54.685Z
+transactions.tsx:580 Original: 2025-04-21T15:52:54.685Z -> Corrected date (WIB): 2025-04-21T08:52:54.685Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-21T12:20:52.536Z
+transactions.tsx:580 Original: 2025-04-21T12:20:52.536Z -> Corrected date (WIB): 2025-04-21T05:20:52.536Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-21T11:28:54.901Z
+transactions.tsx:580 Original: 2025-04-21T11:28:54.901Z -> Corrected date (WIB): 2025-04-21T04:28:54.901Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-21T11:13:03.771Z
+transactions.tsx:580 Original: 2025-04-21T11:13:03.771Z -> Corrected date (WIB): 2025-04-21T04:13:03.771Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-20T18:34:12.022Z
+transactions.tsx:580 Original: 2025-04-20T18:34:12.022Z -> Corrected date (WIB): 2025-04-20T11:34:12.022Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-20T18:33:56.138Z
+transactions.tsx:580 Original: 2025-04-20T18:33:56.138Z -> Corrected date (WIB): 2025-04-20T11:33:56.138Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-20T18:11:31.828Z
+transactions.tsx:580 Original: 2025-04-20T18:11:31.828Z -> Corrected date (WIB): 2025-04-20T11:11:31.828Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-20T18:03:49.257Z
+transactions.tsx:580 Original: 2025-04-20T18:03:49.257Z -> Corrected date (WIB): 2025-04-20T11:03:49.257Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-20T18:03:37.278Z
+transactions.tsx:580 Original: 2025-04-20T18:03:37.278Z -> Corrected date (WIB): 2025-04-20T11:03:37.278Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-20T18:03:26.978Z
+transactions.tsx:580 Original: 2025-04-20T18:03:26.978Z -> Corrected date (WIB): 2025-04-20T11:03:26.978Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-20T18:03:16.795Z
+transactions.tsx:580 Original: 2025-04-20T18:03:16.795Z -> Corrected date (WIB): 2025-04-20T11:03:16.795Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-20T18:02:43.395Z
+transactions.tsx:580 Original: 2025-04-20T18:02:43.395Z -> Corrected date (WIB): 2025-04-20T11:02:43.395Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-20T17:41:40.826Z
+transactions.tsx:580 Original: 2025-04-20T17:41:40.826Z -> Corrected date (WIB): 2025-04-20T10:41:40.826Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-20T17:14:22.732Z
+transactions.tsx:580 Original: 2025-04-20T17:14:22.732Z -> Corrected date (WIB): 2025-04-20T10:14:22.732Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-20T17:05:48.876Z
+transactions.tsx:580 Original: 2025-04-20T17:05:48.876Z -> Corrected date (WIB): 2025-04-20T10:05:48.876Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-19T16:38:19.951Z
+transactions.tsx:580 Original: 2025-04-19T16:38:19.951Z -> Corrected date (WIB): 2025-04-19T09:38:19.951Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-19T16:24:40.082Z
+transactions.tsx:580 Original: 2025-04-19T16:24:40.082Z -> Corrected date (WIB): 2025-04-19T09:24:40.082Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-19T16:01:35.739Z
+transactions.tsx:580 Original: 2025-04-19T16:01:35.739Z -> Corrected date (WIB): 2025-04-19T09:01:35.739Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-19T15:42:25.399Z
+transactions.tsx:580 Original: 2025-04-19T15:42:25.399Z -> Corrected date (WIB): 2025-04-19T08:42:25.399Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-19T15:05:46.530Z
+transactions.tsx:580 Original: 2025-04-19T15:05:46.530Z -> Corrected date (WIB): 2025-04-19T08:05:46.530Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-19T13:47:01.789Z
+transactions.tsx:580 Original: 2025-04-19T13:47:01.789Z -> Corrected date (WIB): 2025-04-19T06:47:01.789Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-19T12:45:55.867Z
+transactions.tsx:580 Original: 2025-04-19T12:45:55.867Z -> Corrected date (WIB): 2025-04-19T05:45:55.867Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-19T11:13:02.964Z
+transactions.tsx:580 Original: 2025-04-19T11:13:02.964Z -> Corrected date (WIB): 2025-04-19T04:13:02.964Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-18T17:05:16.085Z
+transactions.tsx:580 Original: 2025-04-18T17:05:16.085Z -> Corrected date (WIB): 2025-04-18T10:05:16.085Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-18T17:02:40.603Z
+transactions.tsx:580 Original: 2025-04-18T17:02:40.603Z -> Corrected date (WIB): 2025-04-18T10:02:40.603Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-18T14:53:38.036Z
+transactions.tsx:580 Original: 2025-04-18T14:53:38.036Z -> Corrected date (WIB): 2025-04-18T07:53:38.036Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-18T14:44:27.644Z
+transactions.tsx:580 Original: 2025-04-18T14:44:27.644Z -> Corrected date (WIB): 2025-04-18T07:44:27.644Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-18T12:56:39.316Z
+transactions.tsx:580 Original: 2025-04-18T12:56:39.316Z -> Corrected date (WIB): 2025-04-18T05:56:39.316Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-18T12:53:10.945Z
+transactions.tsx:580 Original: 2025-04-18T12:53:10.945Z -> Corrected date (WIB): 2025-04-18T05:53:10.945Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-18T12:41:48.878Z
+transactions.tsx:580 Original: 2025-04-18T12:41:48.878Z -> Corrected date (WIB): 2025-04-18T05:41:48.878Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-18T12:08:44.546Z
+transactions.tsx:580 Original: 2025-04-18T12:08:44.546Z -> Corrected date (WIB): 2025-04-18T05:08:44.546Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-18T12:02:35.579Z
+transactions.tsx:580 Original: 2025-04-18T12:02:35.579Z -> Corrected date (WIB): 2025-04-18T05:02:35.579Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-17T17:53:49.341Z
+transactions.tsx:580 Original: 2025-04-17T17:53:49.341Z -> Corrected date (WIB): 2025-04-17T10:53:49.341Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-17T13:31:41.078Z
+transactions.tsx:580 Original: 2025-04-17T13:31:41.078Z -> Corrected date (WIB): 2025-04-17T06:31:41.078Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-16T22:34:53.901Z
+transactions.tsx:580 Original: 2025-04-16T22:34:53.901Z -> Corrected date (WIB): 2025-04-16T15:34:53.901Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-16T18:02:04.034Z
+transactions.tsx:580 Original: 2025-04-16T18:02:04.034Z -> Corrected date (WIB): 2025-04-16T11:02:04.034Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-16T16:45:47.335Z
+transactions.tsx:580 Original: 2025-04-16T16:45:47.335Z -> Corrected date (WIB): 2025-04-16T09:45:47.335Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-16T15:32:17.958Z
+transactions.tsx:580 Original: 2025-04-16T15:32:17.958Z -> Corrected date (WIB): 2025-04-16T08:32:17.958Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-16T15:13:30.591Z
+transactions.tsx:580 Original: 2025-04-16T15:13:30.591Z -> Corrected date (WIB): 2025-04-16T08:13:30.591Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-16T14:27:15.513Z
+transactions.tsx:580 Original: 2025-04-16T14:27:15.513Z -> Corrected date (WIB): 2025-04-16T07:27:15.513Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-16T11:02:34.323Z
+transactions.tsx:580 Original: 2025-04-16T11:02:34.323Z -> Corrected date (WIB): 2025-04-16T04:02:34.323Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-15T16:36:08.076Z
+transactions.tsx:580 Original: 2025-04-15T16:36:08.076Z -> Corrected date (WIB): 2025-04-15T09:36:08.076Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-15T16:23:18.662Z
+transactions.tsx:580 Original: 2025-04-15T16:23:18.662Z -> Corrected date (WIB): 2025-04-15T09:23:18.662Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-15T16:22:43.833Z
+transactions.tsx:580 Original: 2025-04-15T16:22:43.833Z -> Corrected date (WIB): 2025-04-15T09:22:43.833Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-15T13:53:15.027Z
+transactions.tsx:580 Original: 2025-04-15T13:53:15.027Z -> Corrected date (WIB): 2025-04-15T06:53:15.027Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-15T13:37:12.904Z
+transactions.tsx:580 Original: 2025-04-15T13:37:12.904Z -> Corrected date (WIB): 2025-04-15T06:37:12.904Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-15T13:35:52.971Z
+transactions.tsx:580 Original: 2025-04-15T13:35:52.971Z -> Corrected date (WIB): 2025-04-15T06:35:52.971Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-15T12:02:20.481Z
+transactions.tsx:580 Original: 2025-04-15T12:02:20.481Z -> Corrected date (WIB): 2025-04-15T05:02:20.481Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-15T10:55:29.676Z
+transactions.tsx:580 Original: 2025-04-15T10:55:29.676Z -> Corrected date (WIB): 2025-04-15T03:55:29.676Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-10T12:07:14.977Z
+transactions.tsx:580 Original: 2025-04-10T12:07:14.977Z -> Corrected date (WIB): 2025-04-10T05:07:14.977Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-10T11:40:00.666Z
+transactions.tsx:580 Original: 2025-04-10T11:40:00.666Z -> Corrected date (WIB): 2025-04-10T04:40:00.666Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-10T11:23:35.073Z
+transactions.tsx:580 Original: 2025-04-10T11:23:35.073Z -> Corrected date (WIB): 2025-04-10T04:23:35.073Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-10T11:17:19.336Z
+transactions.tsx:580 Original: 2025-04-10T11:17:19.336Z -> Corrected date (WIB): 2025-04-10T04:17:19.336Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-10T10:39:14.189Z
+transactions.tsx:580 Original: 2025-04-10T10:39:14.189Z -> Corrected date (WIB): 2025-04-10T03:39:14.189Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-09T16:42:42.253Z
+transactions.tsx:580 Original: 2025-04-09T16:42:42.253Z -> Corrected date (WIB): 2025-04-09T09:42:42.253Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-09T14:28:37.711Z
+transactions.tsx:580 Original: 2025-04-09T14:28:37.711Z -> Corrected date (WIB): 2025-04-09T07:28:37.711Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-09T14:09:28.593Z
+transactions.tsx:580 Original: 2025-04-09T14:09:28.593Z -> Corrected date (WIB): 2025-04-09T07:09:28.593Z
+transactions.tsx:515 Transaction metadata: {displayName: 'original'}
+transactions.tsx:546 Formatting date string: 2025-04-09T13:48:40.247Z
+transactions.tsx:580 Original: 2025-04-09T13:48:40.247Z -> Corrected date (WIB): 2025-04-09T06:48:40.247Z
+transactions.tsx:515 Transaction metadata: {displayName: 'alternative'}
+transactions.tsx:521 Using alternative display name for transaction: T-20250409-799
+transactions.tsx:532 Found alternative name for patient 115: Syafliana
+transactions.tsx:546 Formatting date string: 2025-04-09T13:22:57.563Z
+transactions.tsx:580 Original: 2025-04-09T13:22:57.563Z -> Corrected date (WIB): 2025-04-09T06:22:57.563Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-09T13:02:19.248Z
+transactions.tsx:580 Original: 2025-04-09T13:02:19.248Z -> Corrected date (WIB): 2025-04-09T06:02:19.248Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-09T12:05:36.360Z
+transactions.tsx:580 Original: 2025-04-09T12:05:36.360Z -> Corrected date (WIB): 2025-04-09T05:05:36.360Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-09T11:03:04.701Z
+transactions.tsx:580 Original: 2025-04-09T11:03:04.701Z -> Corrected date (WIB): 2025-04-09T04:03:04.701Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-08T16:38:02.457Z
+transactions.tsx:580 Original: 2025-04-08T16:38:02.457Z -> Corrected date (WIB): 2025-04-08T09:38:02.457Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-08T16:34:30.016Z
+transactions.tsx:580 Original: 2025-04-08T16:34:30.016Z -> Corrected date (WIB): 2025-04-08T09:34:30.016Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-08T15:45:30.434Z
+transactions.tsx:580 Original: 2025-04-08T15:45:30.434Z -> Corrected date (WIB): 2025-04-08T08:45:30.434Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-08T15:07:14.415Z
+transactions.tsx:580 Original: 2025-04-08T15:07:14.415Z -> Corrected date (WIB): 2025-04-08T08:07:14.415Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-08T14:42:13.207Z
+transactions.tsx:580 Original: 2025-04-08T14:42:13.207Z -> Corrected date (WIB): 2025-04-08T07:42:13.207Z
+transactions.tsx:546 Formatting date string: 2025-04-08T13:23:24.426Z
+transactions.tsx:580 Original: 2025-04-08T13:23:24.426Z -> Corrected date (WIB): 2025-04-08T06:23:24.426Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-08T13:13:19.504Z
+transactions.tsx:580 Original: 2025-04-08T13:13:19.504Z -> Corrected date (WIB): 2025-04-08T06:13:19.504Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-08T13:08:25.817Z
+transactions.tsx:580 Original: 2025-04-08T13:08:25.817Z -> Corrected date (WIB): 2025-04-08T06:08:25.817Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-08T12:52:52.204Z
+transactions.tsx:580 Original: 2025-04-08T12:52:52.204Z -> Corrected date (WIB): 2025-04-08T05:52:52.204Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-08T12:41:26.940Z
+transactions.tsx:580 Original: 2025-04-08T12:41:26.940Z -> Corrected date (WIB): 2025-04-08T05:41:26.940Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-08T12:04:51.596Z
+transactions.tsx:580 Original: 2025-04-08T12:04:51.596Z -> Corrected date (WIB): 2025-04-08T05:04:51.596Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-07T17:17:31.185Z
+transactions.tsx:580 Original: 2025-04-07T17:17:31.185Z -> Corrected date (WIB): 2025-04-07T10:17:31.185Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-07T16:13:05.258Z
+transactions.tsx:580 Original: 2025-04-07T16:13:05.258Z -> Corrected date (WIB): 2025-04-07T09:13:05.258Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-07T15:45:43.677Z
+transactions.tsx:580 Original: 2025-04-07T15:45:43.677Z -> Corrected date (WIB): 2025-04-07T08:45:43.677Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-07T15:35:46.589Z
+transactions.tsx:580 Original: 2025-04-07T15:35:46.589Z -> Corrected date (WIB): 2025-04-07T08:35:46.589Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-07T14:05:11.127Z
+transactions.tsx:580 Original: 2025-04-07T14:05:11.127Z -> Corrected date (WIB): 2025-04-07T07:05:11.127Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-07T12:12:41.745Z
+transactions.tsx:580 Original: 2025-04-07T12:12:41.745Z -> Corrected date (WIB): 2025-04-07T05:12:41.745Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-06T21:09:43.158Z
+transactions.tsx:580 Original: 2025-04-06T21:09:43.158Z -> Corrected date (WIB): 2025-04-06T14:09:43.158Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-06T18:50:32.551Z
+transactions.tsx:580 Original: 2025-04-06T18:50:32.551Z -> Corrected date (WIB): 2025-04-06T11:50:32.551Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-06T18:48:40.869Z
+transactions.tsx:580 Original: 2025-04-06T18:48:40.869Z -> Corrected date (WIB): 2025-04-06T11:48:40.869Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-06T17:52:59.638Z
+transactions.tsx:580 Original: 2025-04-06T17:52:59.638Z -> Corrected date (WIB): 2025-04-06T10:52:59.638Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-06T17:40:51.146Z
+transactions.tsx:580 Original: 2025-04-06T17:40:51.146Z -> Corrected date (WIB): 2025-04-06T10:40:51.146Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-06T17:39:24.033Z
+transactions.tsx:580 Original: 2025-04-06T17:39:24.033Z -> Corrected date (WIB): 2025-04-06T10:39:24.033Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-06T16:55:04.996Z
+transactions.tsx:580 Original: 2025-04-06T16:55:04.996Z -> Corrected date (WIB): 2025-04-06T09:55:04.996Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-06T16:43:53.703Z
+transactions.tsx:580 Original: 2025-04-06T16:43:53.703Z -> Corrected date (WIB): 2025-04-06T09:43:53.703Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-06T16:42:02.174Z
+transactions.tsx:580 Original: 2025-04-06T16:42:02.174Z -> Corrected date (WIB): 2025-04-06T09:42:02.174Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-05T17:37:55.988Z
+transactions.tsx:580 Original: 2025-04-05T17:37:55.988Z -> Corrected date (WIB): 2025-04-05T10:37:55.988Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-05T17:05:58.937Z
+transactions.tsx:580 Original: 2025-04-05T17:05:58.937Z -> Corrected date (WIB): 2025-04-05T10:05:58.937Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-05T16:42:18.327Z
+transactions.tsx:580 Original: 2025-04-05T16:42:18.327Z -> Corrected date (WIB): 2025-04-05T09:42:18.327Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-05T16:34:50.478Z
+transactions.tsx:580 Original: 2025-04-05T16:34:50.478Z -> Corrected date (WIB): 2025-04-05T09:34:50.478Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-05T16:16:07.584Z
+transactions.tsx:580 Original: 2025-04-05T16:16:07.584Z -> Corrected date (WIB): 2025-04-05T09:16:07.584Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-05T16:06:45.986Z
+transactions.tsx:580 Original: 2025-04-05T16:06:45.986Z -> Corrected date (WIB): 2025-04-05T09:06:45.986Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-05T15:44:43.717Z
+transactions.tsx:580 Original: 2025-04-05T15:44:43.717Z -> Corrected date (WIB): 2025-04-05T08:44:43.717Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-05T14:28:46.940Z
+transactions.tsx:580 Original: 2025-04-05T14:28:46.940Z -> Corrected date (WIB): 2025-04-05T07:28:46.940Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-05T12:39:37.669Z
+transactions.tsx:580 Original: 2025-04-05T12:39:37.669Z -> Corrected date (WIB): 2025-04-05T05:39:37.669Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-05T12:20:08.028Z
+transactions.tsx:580 Original: 2025-04-05T12:20:08.028Z -> Corrected date (WIB): 2025-04-05T05:20:08.028Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-05T10:55:01.710Z
+transactions.tsx:580 Original: 2025-04-05T10:55:01.710Z -> Corrected date (WIB): 2025-04-05T03:55:01.710Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T21:39:26.645Z
+transactions.tsx:580 Original: 2025-04-04T21:39:26.645Z -> Corrected date (WIB): 2025-04-04T14:39:26.645Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T17:36:42.204Z
+transactions.tsx:580 Original: 2025-04-04T17:36:42.204Z -> Corrected date (WIB): 2025-04-04T10:36:42.204Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T16:48:56.241Z
+transactions.tsx:580 Original: 2025-04-04T16:48:56.241Z -> Corrected date (WIB): 2025-04-04T09:48:56.241Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T16:44:20.050Z
+transactions.tsx:580 Original: 2025-04-04T16:44:20.050Z -> Corrected date (WIB): 2025-04-04T09:44:20.050Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T16:25:13.701Z
+transactions.tsx:580 Original: 2025-04-04T16:25:13.701Z -> Corrected date (WIB): 2025-04-04T09:25:13.701Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T13:48:25.708Z
+transactions.tsx:580 Original: 2025-04-04T13:48:25.708Z -> Corrected date (WIB): 2025-04-04T06:48:25.708Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T13:14:04.900Z
+transactions.tsx:580 Original: 2025-04-04T13:14:04.900Z -> Corrected date (WIB): 2025-04-04T06:14:04.900Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T13:11:18.219Z
+transactions.tsx:580 Original: 2025-04-04T13:11:18.219Z -> Corrected date (WIB): 2025-04-04T06:11:18.219Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T12:55:06.544Z
+transactions.tsx:580 Original: 2025-04-04T12:55:06.544Z -> Corrected date (WIB): 2025-04-04T05:55:06.544Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T11:33:07.194Z
+transactions.tsx:580 Original: 2025-04-04T11:33:07.194Z -> Corrected date (WIB): 2025-04-04T04:33:07.194Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T11:32:06.535Z
+transactions.tsx:580 Original: 2025-04-04T11:32:06.535Z -> Corrected date (WIB): 2025-04-04T04:32:06.535Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-04T11:22:10.508Z
+transactions.tsx:580 Original: 2025-04-04T11:22:10.508Z -> Corrected date (WIB): 2025-04-04T04:22:10.508Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-03T18:02:01.025Z
+transactions.tsx:580 Original: 2025-04-03T18:02:01.025Z -> Corrected date (WIB): 2025-04-03T11:02:01.025Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-03T16:05:32.592Z
+transactions.tsx:580 Original: 2025-04-03T16:05:32.592Z -> Corrected date (WIB): 2025-04-03T09:05:32.592Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-03T15:21:36.729Z
+transactions.tsx:580 Original: 2025-04-03T15:21:36.729Z -> Corrected date (WIB): 2025-04-03T08:21:36.729Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-03T14:49:47.755Z
+transactions.tsx:580 Original: 2025-04-03T14:49:47.755Z -> Corrected date (WIB): 2025-04-03T07:49:47.755Z
+transactions.tsx:515 Transaction metadata: {}
+transactions.tsx:546 Formatting date string: 2025-04-03T12:56:44.699Z
+transactions.tsx:580 Original: 2025-04-03T12:56:44.699Z -> Corrected date (WIB): 2025-04-03T05:56:44.699Z
+transactions.tsx:515 Transaction metadata: {}
+transaction-form.tsx:262 TransactionForm initialized with: {selectedPatientId: 375, hidePatientSearch: true}
+transaction-form.tsx:279 TransactionForm - hidePatientSearch prop: true
+transaction-form.tsx:280 TransactionForm - selectedPatientId: 375
+transaction-form.tsx:292 Setting up form with initialPatientId: 375 from selectedPatientId: 375
