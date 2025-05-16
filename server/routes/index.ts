@@ -6,12 +6,7 @@ import { setupAppointmentRoutes } from "./api/appointments";
 import { setupTherapySlotsRoutes } from "./api/therapy-slots";
 import { setupPatientRoutes } from "./api/patients";
 import { setupAuthRoutes } from "./api/auth";
-import { setupSystemRoutes } from "./api/system";
-import { setupProductRoutes } from "./api/products";
-import { setupPackageRoutes } from "./api/packages";
-import { setupTransactionRoutes } from "./api/transactions";
 import { setupUserRoutes } from "./api/users";
-import { setupMedicalHistoryRoutes } from "./api/medical-histories";
 
 /**
  * Setup semua rute API dan middleware
@@ -24,9 +19,4 @@ export function setupRoutes(app: Express) {
   setupPatientRoutes(app);
   setupTherapySlotsRoutes(app);
   setupAppointmentRoutes(app);
-  setupProductRoutes(app);
-  setupPackageRoutes(app);
-  setupTransactionRoutes(app);
-  setupSystemRoutes(app);
-  setupMedicalHistoryRoutes(app);
 }

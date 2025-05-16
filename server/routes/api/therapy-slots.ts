@@ -2,7 +2,7 @@
  * API endpoint untuk manajemen slot terapi
  */
 import { Express, Request, Response } from "express";
-import { requireAuth } from "../../middleware/auth";
+import { requireAuth, requireAdmin } from "../../middleware/auth";
 import { storage } from "../../storage";
 import { z } from "zod";
 import { insertTherapySlotSchema } from "@shared/schema";
@@ -11,191 +11,247 @@ import { getWIBDate, formatDateString } from "../../utils/date-utils";
 /**
  * Mendaftarkan rute-rute untuk slot terapi
  */
-export function setupTherapySlotRoutes(app: Express) {
-  // Mendapatkan semua slot terapi dengan filter
-  app.get("/api/therapy-slots", async (req: Request, res: Response) => {
+export function setupTherapySlotsRoutes(app: Express) {
+  // Mendapatkan semua slot terapi
+  app.get("/api/therapy-slots", requireAuth, async (req: Request, res: Response) => {
     try {
-      const date = req.query.date as string;
-      const activeOnly = req.query.activeOnly === 'true';
-      const availableOnly = req.query.availableOnly === 'true';
-      
-      console.log(`Fetching therapy slots with params - date: ${date}, activeOnly: ${activeOnly}, availableOnly: ${availableOnly}`);
-      console.log(`Executing optimized therapy slots query`);
-      
-      let slots;
-      
-      if (date) {
-        slots = await storage.getTherapySlotsByDate(date);
-      } else {
-        slots = await storage.getAllTherapySlots();
-      }
-      
-      console.log(`Optimized query completed in ${Math.random() * 100}ms, found ${slots.length} slots`);
-      
-      // Menerapkan filter
-      if (activeOnly) {
-        slots = slots.filter(slot => slot.isActive);
-      }
-      
-      if (availableOnly) {
-        slots = slots.filter(slot => slot.currentCount < slot.maxQuota);
-      }
-      
-      console.log(`Returning ${slots.length} slots after all filtering`);
-      res.json(slots);
+      const therapySlots = await storage.getAllTherapySlots();
+      res.json(therapySlots);
     } catch (error) {
       console.error("Error getting therapy slots:", error);
-      res.status(500).json({ error: "Failed to get therapy slots" });
+      res.status(500).json({ error: "Gagal mendapatkan daftar slot terapi" });
+    }
+  });
+
+  // Mendapatkan slot terapi aktif
+  app.get("/api/therapy-slots/active", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const activeSlots = await storage.getActiveTherapySlots();
+      res.json(activeSlots);
+    } catch (error) {
+      console.error("Error getting active therapy slots:", error);
+      res.status(500).json({ error: "Gagal mendapatkan daftar slot terapi aktif" });
     }
   });
 
   // Mendapatkan slot terapi berdasarkan ID
-  app.get("/api/therapy-slots/:id", async (req: Request, res: Response) => {
+  app.get("/api/therapy-slots/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const slot = await storage.getTherapySlot(id);
+      const therapySlot = await storage.getTherapySlot(id);
       
-      if (!slot) {
-        return res.status(404).json({ error: "Therapy slot not found" });
+      if (!therapySlot) {
+        return res.status(404).json({ error: "Slot terapi tidak ditemukan" });
       }
       
-      res.json(slot);
+      res.json(therapySlot);
     } catch (error) {
       console.error("Error getting therapy slot:", error);
-      res.status(500).json({ error: "Failed to get therapy slot" });
+      res.status(500).json({ error: "Gagal mendapatkan detail slot terapi" });
     }
   });
 
   // Mendapatkan slot terapi berdasarkan tanggal
-  app.get("/api/therapy-slots/date/:date", async (req: Request, res: Response) => {
+  app.get("/api/therapy-slots/date/:date", requireAuth, async (req: Request, res: Response) => {
     try {
       const date = req.params.date;
-      const slots = await storage.getTherapySlotsByDate(date);
-      res.json(slots);
+      const therapySlots = await storage.getTherapySlotsByDate(date);
+      res.json(therapySlots);
     } catch (error) {
-      console.error(`Error getting therapy slots for date ${req.params.date}:`, error);
-      res.status(500).json({ error: "Failed to get therapy slots" });
+      console.error("Error getting therapy slots by date:", error);
+      res.status(500).json({ error: "Gagal mendapatkan slot terapi berdasarkan tanggal" });
     }
   });
 
-  // Membuat slot terapi baru
-  app.post("/api/therapy-slots", requireAuth, async (req: Request, res: Response) => {
+  // Membuat slot terapi baru (hanya admin)
+  app.post("/api/therapy-slots", requireAdmin, async (req: Request, res: Response) => {
     try {
       const slotData = insertTherapySlotSchema.parse(req.body);
+      
+      // Generate timeSlotKey jika belum ada
+      if (!slotData.timeSlotKey && slotData.date && slotData.timeSlot) {
+        slotData.timeSlotKey = `${slotData.date}_${slotData.timeSlot.replace(/\s+/g, '')}`;
+      }
+      
+      // Pastikan nilai default
+      if (slotData.currentCount === undefined) slotData.currentCount = 0;
+      if (slotData.isActive === undefined) slotData.isActive = true;
+      if (slotData.globalQuota === undefined) slotData.globalQuota = slotData.maxQuota || 10;
+      
       const newSlot = await storage.createTherapySlot(slotData);
+      
       res.status(201).json(newSlot);
     } catch (error) {
       console.error("Error creating therapy slot:", error);
       
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid therapy slot data", details: error.errors });
+        return res.status(400).json({ error: "Data slot terapi tidak valid", details: error.errors });
       }
       
-      res.status(500).json({ error: "Failed to create therapy slot" });
+      res.status(500).json({ error: "Gagal membuat slot terapi baru" });
     }
   });
 
-  // Update slot terapi
-  app.put("/api/therapy-slots/:id", requireAuth, async (req: Request, res: Response) => {
+  // Memperbarui slot terapi (hanya admin)
+  app.put("/api/therapy-slots/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const slotData = insertTherapySlotSchema.parse(req.body);
+      const slotData = req.body;
+      
+      const existingSlot = await storage.getTherapySlot(id);
+      
+      if (!existingSlot) {
+        return res.status(404).json({ error: "Slot terapi tidak ditemukan" });
+      }
+      
+      // Regenerate timeSlotKey jika tanggal atau waktu diubah
+      if ((slotData.date && slotData.date !== existingSlot.date) || 
+          (slotData.timeSlot && slotData.timeSlot !== existingSlot.timeSlot)) {
+        const date = slotData.date || existingSlot.date;
+        const timeSlot = slotData.timeSlot || existingSlot.timeSlot;
+        slotData.timeSlotKey = `${date}_${timeSlot.replace(/\s+/g, '')}`;
+      }
       
       const updatedSlot = await storage.updateTherapySlot(id, slotData);
-      
-      if (!updatedSlot) {
-        return res.status(404).json({ error: "Therapy slot not found" });
-      }
       
       res.json(updatedSlot);
     } catch (error) {
       console.error("Error updating therapy slot:", error);
-      
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid therapy slot data", details: error.errors });
-      }
-      
-      res.status(500).json({ error: "Failed to update therapy slot" });
+      res.status(500).json({ error: "Gagal memperbarui slot terapi" });
     }
   });
 
-  // Menambah jumlah penggunaan slot terapi
-  app.patch("/api/therapy-slots/:id/increment", requireAuth, async (req: Request, res: Response) => {
+  // Menambah penggunaan slot terapi
+  app.post("/api/therapy-slots/:id/increment", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const updatedSlot = await storage.incrementTherapySlotUsage(id);
+      const existingSlot = await storage.getTherapySlot(id);
       
-      if (!updatedSlot) {
-        return res.status(404).json({ error: "Therapy slot not found" });
+      if (!existingSlot) {
+        return res.status(404).json({ error: "Slot terapi tidak ditemukan" });
       }
+      
+      const updatedSlot = await storage.incrementTherapySlotUsage(id);
       
       res.json(updatedSlot);
     } catch (error) {
       console.error("Error incrementing therapy slot usage:", error);
-      res.status(500).json({ error: "Failed to increment therapy slot usage" });
+      res.status(500).json({ error: "Gagal menambah penggunaan slot terapi" });
     }
   });
 
-  // Mengurangi jumlah penggunaan slot terapi
-  app.patch("/api/therapy-slots/:id/decrement", requireAuth, async (req: Request, res: Response) => {
+  // Mengurangi penggunaan slot terapi
+  app.post("/api/therapy-slots/:id/decrement", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const updatedSlot = await storage.decrementTherapySlotUsage(id);
+      const existingSlot = await storage.getTherapySlot(id);
       
-      if (!updatedSlot) {
-        return res.status(404).json({ error: "Therapy slot not found" });
+      if (!existingSlot) {
+        return res.status(404).json({ error: "Slot terapi tidak ditemukan" });
       }
+      
+      const updatedSlot = await storage.decrementTherapySlotUsage(id);
       
       res.json(updatedSlot);
     } catch (error) {
       console.error("Error decrementing therapy slot usage:", error);
-      res.status(500).json({ error: "Failed to decrement therapy slot usage" });
+      res.status(500).json({ error: "Gagal mengurangi penggunaan slot terapi" });
     }
   });
 
-  // Menonaktifkan slot terapi
-  app.patch("/api/therapy-slots/:id/deactivate", requireAuth, async (req: Request, res: Response) => {
+  // Menonaktifkan slot terapi (hanya admin)
+  app.patch("/api/therapy-slots/:id/deactivate", requireAdmin, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const success = await storage.deactivateTherapySlot(id);
       
       if (!success) {
-        return res.status(404).json({ error: "Therapy slot not found" });
+        return res.status(404).json({ error: "Slot terapi tidak ditemukan atau gagal dinonaktifkan" });
       }
       
-      res.json({ success: true, message: "Therapy slot deactivated successfully" });
+      res.json({ success: true, message: "Slot terapi berhasil dinonaktifkan" });
     } catch (error) {
       console.error("Error deactivating therapy slot:", error);
-      res.status(500).json({ error: "Failed to deactivate therapy slot" });
+      res.status(500).json({ error: "Gagal menonaktifkan slot terapi" });
     }
   });
 
-  // Menghapus slot terapi
-  app.delete("/api/therapy-slots/:id", requireAuth, async (req: Request, res: Response) => {
+  // Menghapus slot terapi (hanya admin)
+  app.delete("/api/therapy-slots/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Periksa apakah slot digunakan oleh appointment
+      const appointments = await storage.getAppointmentsByTherapySlot(id);
+      
+      if (appointments.length > 0) {
+        return res.status(400).json({ 
+          error: "Slot terapi tidak dapat dihapus karena sedang digunakan oleh appointment",
+          appointmentCount: appointments.length
+        });
+      }
+      
       const success = await storage.deleteTherapySlot(id);
       
       if (!success) {
-        return res.status(404).json({ error: "Therapy slot not found" });
+        return res.status(404).json({ error: "Slot terapi tidak ditemukan atau gagal dihapus" });
       }
       
-      res.json({ success: true, message: "Therapy slot deleted successfully" });
+      res.json({ success: true, message: "Slot terapi berhasil dihapus" });
     } catch (error) {
       console.error("Error deleting therapy slot:", error);
-      res.status(500).json({ error: "Failed to delete therapy slot" });
+      res.status(500).json({ error: "Gagal menghapus slot terapi" });
     }
   });
 
-  // Mendapatkan appointment dalam slot terapi
-  app.get("/api/therapy-slots/:id/patients", async (req: Request, res: Response) => {
+  // Sinkronisasi kuota slot terapi
+  app.post("/api/therapy-slots/sync-quota", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const result = await storage.syncTherapySlotQuota();
+      res.json({
+        success: true,
+        message: `Berhasil menyinkronkan ${result.updatedSlots} slot terapi`,
+        details: result.results
+      });
+    } catch (error) {
+      console.error("Error syncing therapy slot quota:", error);
+      res.status(500).json({ error: "Gagal menyinkronkan kuota slot terapi" });
+    }
+  });
+
+  // Mendapatkan status slot terapi (untuk verifikasi)
+  app.get("/api/therapy-slots/:id/status", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      const therapySlot = await storage.getTherapySlot(id);
+      
+      if (!therapySlot) {
+        return res.status(404).json({ error: "Slot terapi tidak ditemukan" });
+      }
+      
+      // Mendapatkan jumlah appointment untuk slot ini
       const appointments = await storage.getAppointmentsByTherapySlot(id);
-      res.json(appointments);
+      
+      // Menghitung status kuota
+      const maxQuota = therapySlot.maxQuota || 0;
+      const currentUsage = appointments.length;
+      const isAvailable = therapySlot.isActive && currentUsage < maxQuota;
+      const remainingQuota = Math.max(0, maxQuota - currentUsage);
+      
+      res.json({
+        id: therapySlot.id,
+        date: therapySlot.date,
+        timeSlot: therapySlot.timeSlot,
+        maxQuota,
+        currentUsage,
+        remainingQuota,
+        isActive: therapySlot.isActive,
+        isAvailable,
+        appointments: appointments.length
+      });
     } catch (error) {
-      console.error("Error getting appointments for therapy slot:", error);
-      res.status(500).json({ error: "Failed to get appointments for therapy slot" });
+      console.error("Error getting therapy slot status:", error);
+      res.status(500).json({ error: "Gagal mendapatkan status slot terapi" });
     }
   });
 }
