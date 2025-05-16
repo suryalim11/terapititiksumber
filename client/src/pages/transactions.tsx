@@ -244,11 +244,8 @@ export default function Transactions() {
         return;
       }
       
-      console.log("Data pasien tersedia:", patients.length);
-      
       // Verifikasi pasien ada dalam data
       const patientExists = patients.some((p: any) => p.id === patientIdNumber);
-      console.log("Pasien ditemukan:", patientExists);
       
       if (patientExists) {
         // Set flag bahwa form sudah pernah dibuka
@@ -406,18 +403,13 @@ export default function Transactions() {
       }
     };
     
-    // Debugging yang lebih jelas
-    console.log("⚡ Memasang event listener untuk openTransactionForm di halaman transaksi");
-    
-    // Pasang event listener dengan logging tambahan untuk men-debug event yang terlewatkan
+    // Pasang event listener untuk menangkap event openTransactionForm
     window.addEventListener('openTransactionForm' as any, (event: Event) => {
-      console.log("🎯 Event openTransactionForm tertangkap di halaman transaksi:", event);
       handleOpenTransactionForm(event as unknown as CustomEvent);
     });
     
     return () => {
       // Cabut event listener saat komponen unmount
-      console.log("⚠️ Mencabut event listener openTransactionForm karena komponen unmount");
       window.removeEventListener('openTransactionForm' as any, handleOpenTransactionForm);
     };
   }, [patients, toast, apiRequest]); // Tambahkan dependensi yang diperlukan
@@ -432,13 +424,8 @@ export default function Transactions() {
     queryKey: ["/api/transactions"],
     staleTime: 0, // Tidak menggunakan cache untuk memastikan data selalu terbaru
     queryFn: async () => {
-      console.log("Fetching all transactions");
       try {
         const data = await apiRequest<Transaction[]>("/api/transactions");
-        console.log(`Retrieved ${data.length} transactions from API`);
-        if (data.length > 0) {
-          console.log("First transaction:", data[0].transactionId);
-        }
         return data;
       } catch (error) {
         console.error("Error fetching transactions:", error);
