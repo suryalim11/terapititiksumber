@@ -12,10 +12,57 @@ import { getWIBDate } from "../../utils/date-utils";
  * Mendaftarkan rute-rute untuk slot terapi
  */
 export function setupTherapySlotsRoutes(app: Express) {
-  // Mendapatkan semua slot terapi
+  // Cache untuk semua slot terapi
+  let allSlotsCache: {
+    data: any[];
+    timestamp: number;
+  } | null = null;
+  
+  // Mendapatkan semua slot terapi (dengan caching)
   app.get("/api/therapy-slots", requireAuth, async (req: Request, res: Response) => {
     try {
-      const therapySlots = await storage.getAllTherapySlots();
+      // Cek parameter query untuk filtering
+      const date = req.query.date as string | undefined;
+      const activeOnly = req.query.activeOnly === 'true';
+      
+      // Log untuk monitoring
+      console.log("Executing optimized getAllTherapySlots query");
+      const startTime = Date.now();
+      
+      // Cache valid untuk 5 menit, kecuali diminta refresh
+      const shouldRefresh = req.query.refresh === 'true';
+      const now = Date.now();
+      const MAX_CACHE_AGE = 5 * 60 * 1000; // 5 menit
+      
+      // Gunakan cache jika tersedia dan masih valid
+      if (allSlotsCache && !shouldRefresh && (now - allSlotsCache.timestamp) < MAX_CACHE_AGE && !date && !activeOnly) {
+        const therapySlots = allSlotsCache.data;
+        console.log(`Query completed in ${Date.now() - startTime}ms, returning from cache ${therapySlots.length} slots`);
+        return res.json(therapySlots);
+      }
+      
+      // Jika tidak, ambil data baru
+      let therapySlots;
+      
+      if (date) {
+        // Jika ada parameter tanggal, gunakan query berdasarkan tanggal
+        const dateObj = new Date(date);
+        therapySlots = await storage.getTherapySlotsByDate(dateObj);
+      } else if (activeOnly) {
+        // Jika diminta hanya slot aktif
+        therapySlots = await storage.getActiveTherapySlots();
+      } else {
+        // Jika tidak ada filter, ambil semua slot
+        therapySlots = await storage.getAllTherapySlots();
+        
+        // Update cache
+        allSlotsCache = {
+          data: therapySlots,
+          timestamp: now
+        };
+      }
+      
+      console.log(`Query completed in ${Date.now() - startTime}ms, found ${therapySlots.length} slots`);
       res.json(therapySlots);
     } catch (error) {
       console.error("Error getting therapy slots:", error);
@@ -337,36 +384,87 @@ export function setupTherapySlotsRoutes(app: Express) {
     }
   });
 
-  // Mendapatkan semua pasien dalam slot terapi
+  // Cache untuk menyimpan hasil query slot terapi
+  const therapySlotCache: Record<string, {
+    data: any;
+    timestamp: number;
+    expiresInMs: number;
+  }> = {};
+  
+  // Fungsi untuk mendapatkan dari cache atau mengeksekusi query asli
+  const getFromCacheOrFetch = async (
+    cacheKey: string,
+    fetchFn: () => Promise<any>,
+    expiresInMs = 60000 // Cache valid selama 1 menit default
+  ) => {
+    const now = Date.now();
+    const cachedItem = therapySlotCache[cacheKey];
+    
+    // Cek apakah data ada di cache dan masih valid
+    if (cachedItem && (now - cachedItem.timestamp) < cachedItem.expiresInMs) {
+      console.log(`✅ Cache hit untuk ${cacheKey}`);
+      return cachedItem.data;
+    }
+    
+    // Jika tidak ada di cache atau sudah kadaluarsa, fetch data baru
+    console.log(`❌ Cache miss untuk ${cacheKey}, mengambil data baru...`);
+    const data = await fetchFn();
+    
+    // Simpan ke cache
+    therapySlotCache[cacheKey] = {
+      data,
+      timestamp: now,
+      expiresInMs
+    };
+    
+    return data;
+  };
+  
+  // Mendapatkan semua pasien dalam slot terapi (Optimized dengan cache)
   app.get("/api/therapy-slots/:id/patients", requireAuth, async (req: Request, res: Response) => {
     try {
       const slotId = parseInt(req.params.id);
+      const showAll = req.query.showAll === 'true';
+      const cacheBuster = req.query._t;
+      const cacheKey = `therapy_slot_${slotId}_${showAll ? 'all' : 'active'}_${cacheBuster || ''}`;
       
-      // Endpoint khusus untuk mengambil data slot dan pasien secara bersamaan
-      // 1. Ambil data slot terapi
-      const therapySlot = await storage.getTherapySlot(slotId);
-      
-      if (!therapySlot) {
-        return res.status(404).json({
-          success: false,
-          message: "Slot terapi tidak ditemukan"
-        });
-      }
-      
-      // 2. Ambil semua appointment untuk slot ini
-      const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+      // Eksekusi query dengan cache
+      const result = await getFromCacheOrFetch(
+        cacheKey,
+        async () => {
+          console.log(`🔄 Mengambil data therapy slot ID: ${slotId} dan pasiennya...`);
+          const startTime = Date.now();
+          
+          // 1. Ambil data slot terapi
+          const therapySlot = await storage.getTherapySlot(slotId);
+          
+          if (!therapySlot) {
+            throw new Error("Slot terapi tidak ditemukan");
+          }
+          
+          // 2. Ambil semua appointment untuk slot ini dengan query efisien
+          const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+          
+          console.log(`⏱️ Query selesai dalam ${Date.now() - startTime}ms`);
+          
+          return {
+            slot: therapySlot,
+            appointments: appointments
+          };
+        },
+        30000 // Cache selama 30 detik
+      );
       
       // 3. Returnkan data lengkap slot dan appointments
       return res.status(200).json({
         success: true,
-        slot: therapySlot,
-        appointments: appointments
+        ...result
       });
     } catch (error) {
       console.error(`Error getting patients for therapy slot ${req.params.id}:`, error);
       return res.status(500).json({
         success: false,
-        message: "Terjadi kesalahan saat mengambil data pasien dalam slot terapi"
+        message: error instanceof Error ? error.message : "Terjadi kesalahan saat mengambil data pasien dalam slot terapi"
       });
     }
   });
