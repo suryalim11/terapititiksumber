@@ -332,9 +332,14 @@ export default function Dashboard() {
               const slotDate = new Date(slotDateStr);
               const slotDateAlternative = slotDate.toISOString().split('T')[0];
               console.log(`  Format Alternatif: ${slotDateAlternative} = ${todayWIBStr}? ${slotDateAlternative === todayWIBStr}`);
+              
+              // Periksa dengan beberapa cara berbeda untuk memastikan kecocokan
+              return slotDateStr === todayWIBStr || slotDateAlternative === todayWIBStr;
             }
             
-            // Periksa dengan beberapa cara berbeda untuk memastikan kecocokan
+            // Untuk slot lain yang tidak di-log, lakukan perbandingan langsung
+            const slotDate = new Date(slotDateStr);
+            const slotDateAlternative = slotDate.toISOString().split('T')[0];
             return slotDateStr === todayWIBStr || slotDateAlternative === todayWIBStr;
           });
           

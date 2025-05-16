@@ -23,7 +23,10 @@ export async function apiRequest<T = Record<string, unknown>>(
   url: string,
   options?: RequestInit & { data?: any }
 ): Promise<T> {
-  console.log(`API Request to ${url} with credentials included`);
+  // Filter log untuk mengurangi duplikasi
+  if (!url.includes('/api/auth/status')) {
+    console.log(`API Request to ${url} with credentials included`);
+  }
   
   // Jika ada data dalam options, konversikan ke JSON string dan atur Content-Type
   let finalOptions = { ...options };
@@ -55,7 +58,12 @@ export async function apiRequest<T = Record<string, unknown>>(
     }
   });
 
-  console.log(`API Response from ${url}: status=${res.status}`);
+  // Nonaktifkan debug log untuk mengurangi output konsol
+  // Kecuali untuk endpoint tertentu yang membutuhkan debugging
+  // Menggunakan variabel isDebugMode yang sudah ada di atas
+  if (!url.includes('/api/auth/status')) {
+    // console.log(`API Response from ${url}: status=${res.status}`);
+  }
 
   // Clone response sebelum memeriksanya
   const clonedRes = res.clone();
@@ -64,9 +72,13 @@ export async function apiRequest<T = Record<string, unknown>>(
   try {
     // Gunakan response asli untuk parse JSON
     const data = await res.json() as T;
-    console.log(`API data from ${url}:`, 
-      Array.isArray(data) ? `Array with ${data.length} items` : 
-      (data === null ? 'null' : typeof data));
+    
+    if (isDebugMode || !url.includes('/api/auth/status')) {
+      // console.log(`API data from ${url}:`, 
+      //   Array.isArray(data) ? `Array with ${data.length} items` : 
+      //   (data === null ? 'null' : typeof data));
+    }
+    
     return data;
   } catch (error) {
     console.warn("Failed to parse response as JSON:", error);
