@@ -29,24 +29,24 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
     
     try {
       // Gunakan SQL query langsung untuk mendapatkan daftar appointment sekaligus dengan data pasien
-      // Ubah query untuk memastikan semua status yang aktif terdaftar dengan benar
-      // Gunakan UPPER untuk mengatasi inkonsistensi kapitalisasi status
+      // Ubah query untuk menampilkan SEMUA pasien tanpa filter status
+      // Ini mengatasi masalah dimana appointment dengan status berbeda tidak muncul
       const rawQuery = `
         SELECT 
           a.id as appointment_id,
           a.patient_id,
           a.status,
+          a.notes,
           p.id as patient_id,
           p.name as patient_name,
           p.phone_number as patient_phone_number
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         WHERE a.therapy_slot_id = $1
-        AND (
-          UPPER(a.status) IN ('ACTIVE', 'BOOKED', 'CONFIRMED', 'SCHEDULED') 
-          OR a.status IS NULL
-        )
+        ORDER BY a.id DESC
       `;
+      
+      console.log(`[ROUTE] Query SQL untuk slot ID ${slotId} tanpa filter status`);
       
       console.log(`[ROUTE] Execute query for slot ID ${slotId} with optimized query`);
       
@@ -59,16 +59,20 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
       slot.currentCount = rows.length;
       
       // Transformasikan hasil query ke format yang diharapkan frontend
+      // Transformasi data dengan menambahkan field notes untuk menandai walk-in
       const patientsData = rows.map(row => ({
         id: row.appointment_id,
         patientId: row.patient_id,
         status: row.status,
+        notes: row.notes, // Pastikan field notes ikut dikirim ke frontend
         patient: {
           id: row.patient_id,
           name: row.patient_name,
           phoneNumber: row.patient_phone_number
         }
       }));
+      
+      console.log(`[ROUTE] Detail data pasien: ${JSON.stringify(patientsData)}`); // Debug detail data
       
       console.log(`[ROUTE] Prepared ${patientsData.length} patient records for response`);
       
