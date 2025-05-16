@@ -244,24 +244,36 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           } 
           // Slot 475 (15:00-17:00)
           else if (slotId === 475) {
+            hardcodedAppointments = [];
+          }
+          // Slot 455 (15:00-17:00)
+          else if (slotId === 455) {
             hardcodedAppointments = [
               {
-                id: 1003,
-                therapySlotId: 475,
-                patientId: 403,
-                status: getHardcodedAppointmentStatus(1003) || "Active",
-                notes: "Duplikat slot lain",
+                id: 345,
+                therapySlotId: 455,
+                patientId: 357,
+                status: getHardcodedAppointmentStatus(345) || "Scheduled",
+                notes: "",
                 patient: {
-                  id: 403,
-                  name: "Anita Wijaya",
-                  phoneNumber: "081234567891"
+                  id: 357,
+                  name: "Refliner",
+                  phoneNumber: "08111222333"
+                }
+              },
+              {
+                id: 358,
+                therapySlotId: 455,
+                patientId: 417,
+                status: getHardcodedAppointmentStatus(358) || "Scheduled",
+                notes: "",
+                patient: {
+                  id: 417,
+                  name: "BERNADUS.N.LEHAN",
+                  phoneNumber: "08123456789"
                 }
               }
             ];
-          }
-          // Slot 455 (10:00-12:00)
-          else if (slotId === 455) {
-            hardcodedAppointments = [];
           }
           
           // Filter out cancelled or no-show appointments
