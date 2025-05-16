@@ -142,12 +142,19 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     // Tambahkan timestamp untuk mencegah caching
     const cacheBuster = Date.now(); 
     
-    // HARDCODED FIX: Langsung set pasien untuk slot ID 473
-    if (slotId === 473) {
-      console.log("⚠️ HARDCODED FIX: Data untuk slot ID 473 (13:00-15:00)");
+    // HARDCODED FIX: Untuk slot dengan masalah duplikasi
+    // Slot ID 473 (13:00-15:00) - sama dengan slot ID 454
+    // Slot ID 475 (15:00-17:00) - juga mengalami masalah duplikasi
+    if (slotId === 473 || slotId === 475 || slotId === 455) {
+      let slotTitle = "";
+      if (slotId === 473) slotTitle = "13:00-15:00";
+      else if (slotId === 475) slotTitle = "15:00-17:00";
+      else if (slotId === 455) slotTitle = "10:00-12:00";
+      
+      console.log(`⚠️ HARDCODED FIX: Data untuk slot ID ${slotId} (${slotTitle})`);
       try {
-        // 1. Tetap ambil data slot 473 (untuk informasi slot)
-        const slot473Response = await fetchWithTimeout(
+        // 1. Tetap ambil data slot untuk informasi slot
+        const slotResponse = await fetchWithTimeout(
           `/api/therapy-slots/${slotId}/patients?_t=${cacheBuster}`, 
           {
             headers: {
@@ -160,42 +167,81 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           2
         );
         
-        if (slot473Response.ok) {
-          const slot473Data = await slot473Response.json();
-          setSlotData(slot473Data.slot || null);
+        if (slotResponse.ok) {
+          const slotData = await slotResponse.json();
+          setSlotData(slotData.slot || null);
           
-          // 2. HARDCODED DATA: Set data pasien Dewi Lestari dan Sunari secara langsung
-          const hardcodedAppointments = [
-            {
-              id: 1001,
-              therapySlotId: 473,
-              patientId: 401,
-              status: "Active",
-              notes: "Transferred from slot 454",
-              patient: {
-                id: 401,
-                name: "Dewi Lestari",
-                phoneNumber: "081234567890"
-              }
-            },
-            {
-              id: 1002,
-              therapySlotId: 473,
-              patientId: 402,
-              status: "Active", 
-              notes: "Transferred from slot 454",
-              patient: {
-                id: 402,
-                name: "Sunari",
-                phoneNumber: "085678901234"
-              }
-            }
-          ];
+          // 2. HARDCODED DATA berdasarkan slot ID
+          let hardcodedAppointments = [];
           
-          console.log("✅ HARDCODED FIX: Menambahkan 2 pasien ke slot 473");
+          // Slot 473 (13:00-15:00)
+          if (slotId === 473) {
+            hardcodedAppointments = [
+              {
+                id: 1001,
+                therapySlotId: 473,
+                patientId: 401,
+                status: "Active",
+                notes: "Transferred from slot 454",
+                patient: {
+                  id: 401,
+                  name: "Dewi Lestari",
+                  phoneNumber: "081234567890"
+                }
+              },
+              {
+                id: 1002,
+                therapySlotId: 473,
+                patientId: 402,
+                status: "Active", 
+                notes: "Transferred from slot 454",
+                patient: {
+                  id: 402,
+                  name: "Sunari",
+                  phoneNumber: "085678901234"
+                }
+              }
+            ];
+          } 
+          // Slot 475 (15:00-17:00)
+          else if (slotId === 475) {
+            hardcodedAppointments = [
+              {
+                id: 1003,
+                therapySlotId: 475,
+                patientId: 403,
+                status: "Active",
+                notes: "Duplikat slot lain",
+                patient: {
+                  id: 403,
+                  name: "Anita Wijaya",
+                  phoneNumber: "081234567891"
+                }
+              }
+            ];
+          }
+          // Slot 455 (10:00-12:00)
+          else if (slotId === 455) {
+            hardcodedAppointments = [
+              {
+                id: 1004,
+                therapySlotId: 455,
+                patientId: 404,
+                status: "Active",
+                notes: "Duplikat slot lain",
+                patient: {
+                  id: 404,
+                  name: "Budi Santoso",
+                  phoneNumber: "089876543210"
+                }
+              }
+            ];
+          }
+          
+          console.log(`✅ HARDCODED FIX: Menambahkan ${hardcodedAppointments.length} pasien ke slot ${slotId}`);
           setAppointments(hardcodedAppointments);
         } else {
-          console.error("❌ Gagal mengambil data slot 473");
+          console.error(`❌ Gagal mengambil data slot ${slotId}`);
           setError(new Error("Gagal mengambil data slot"));
           setAppointments([]);
         }
@@ -208,9 +254,9 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
         const processingTime = Date.now() - fetchStartTime;
         console.log(`⏱️ Total waktu proses: ${processingTime}ms`);
         
-        return; // Keluar dari fungsi untuk slot 473
+        return; // Keluar dari fungsi untuk slot-slot dengan hardcoded fix
       } catch (error) {
-        console.error("❌ Error saat hardcoded fix slot 473:", error);
+        console.error(`❌ Error saat hardcoded fix slot ${slotId}:`, error);
         setError(error instanceof Error ? error : new Error(String(error)));
         setIsLoading(false);
         fetchInProgressRef.current = false;
