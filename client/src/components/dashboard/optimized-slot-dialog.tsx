@@ -963,8 +963,8 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 </div>
               </div>
               
-              {/* Tampilan khusus untuk Slot ID 455 (15:00-17:00) */}
-              {slotId === 455 ? (
+              {/* Tampilan khusus untuk Slot ID 455 dan 475 (15:00-17:00) */}
+              {(slotId === 455 || slotId === 475) ? (
                 <div className="border rounded-md divide-y">
                   {/* Pasien 1: Refliner */}
                   <div key="slot455-patient356" className="p-3 hover:bg-muted/50">
