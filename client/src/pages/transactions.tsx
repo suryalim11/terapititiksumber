@@ -118,6 +118,32 @@ export default function Transactions() {
   
   // Effect untuk langsung membuka form transaksi saat patientId ada di URL
   useEffect(() => {
+    // Selalu cek localStorage dulu setiap kali komponen dimounting
+    if (!localStorageCheckedRef.current) {
+      const storedPatientId = localStorage.getItem('pendingTransactionPatientId');
+      const storedPatientName = localStorage.getItem('pendingTransactionPatientName');
+      const shouldOpenForm = localStorage.getItem('openTransactionFormDirectly');
+      
+      if (storedPatientId && shouldOpenForm === 'true') {
+        const patientIdNumber = parseInt(storedPatientId);
+        setSelectedPatientId(patientIdNumber);
+        setIsTransactionFormOpen(true);
+        
+        toast({
+          title: "Form transaksi dibuka",
+          description: `Silahkan lengkapi data transaksi untuk ${storedPatientName || 'pasien'}`
+        });
+        
+        // Hapus data dari localStorage setelah digunakan
+        localStorage.removeItem('pendingTransactionPatientId');
+        localStorage.removeItem('pendingTransactionPatientName');
+        localStorage.removeItem('openTransactionFormDirectly');
+      }
+      
+      localStorageCheckedRef.current = true;
+    }
+    
+    // Tetap memproses URL parameter seperti sebelumnya
     if (patientIdFromUrl && patients.length > 0 && !isTransactionFormOpen) {
       const patientIdNumber = parseInt(patientIdFromUrl);
       const patient = patients.find((p: any) => p.id === patientIdNumber);
