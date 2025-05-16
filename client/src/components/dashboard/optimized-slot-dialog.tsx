@@ -180,7 +180,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
       else if (slotId === 475) slotTitle = "15:00-17:00";
       else if (slotId === 455) slotTitle = "15:00-17:00";
       
-      console.log(`⚠️ HARDCODED FIX: Data untuk slot ID ${slotId} (${slotTitle})`);
+      // Log debugging dinonaktifkan
       try {
         // 1. Tetap ambil data slot untuk informasi slot
         const slotResponse = await fetchWithTimeout(
@@ -309,7 +309,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           // console.log(`✅ HARDCODED FIX: Menambahkan ${hardcodedAppointments.length} pasien ke slot ${slotId}`);
           setAppointments(hardcodedAppointments);
         } else {
-          console.error(`❌ Gagal mengambil data slot ${slotId}`);
+          // Log error dikurangi untuk mengurangi noise
           setError(new Error("Gagal mengambil data slot"));
           setAppointments([]);
         }

@@ -326,12 +326,12 @@ export default function Dashboard() {
             
             // Debug log dinonaktifkan untuk slot khusus (ID 456, 473, 475)
             if ([456, 473, 475].includes(slot.id)) {
-              // console.log(`Slot ID:${slot.id} Tanggal Slot:${slotDateStr} = Hari Ini:${todayWIBStr}? ${slotDateStr === todayWIBStr}`);
+              /* Filter slot khusus tanpa log debug */
               
               // Percobaan tanggal alternatif jika format tidak cocok
               const slotDate = new Date(slotDateStr);
               const slotDateAlternative = slotDate.toISOString().split('T')[0];
-              // console.log(`  Format Alternatif: ${slotDateAlternative} = ${todayWIBStr}? ${slotDateAlternative === todayWIBStr}`);
+              // Log debug dimatikan sepenuhnya
               
               // Periksa dengan beberapa cara berbeda untuk memastikan kecocokan
               return slotDateStr === todayWIBStr || slotDateAlternative === todayWIBStr;
