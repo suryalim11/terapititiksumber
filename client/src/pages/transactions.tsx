@@ -116,6 +116,28 @@ export default function Transactions() {
   // Dapatkan parameter delay dari URL jika ada
   const delayParamFromUrl = urlParams.get("delay");
   
+  // Effect untuk langsung membuka form transaksi saat patientId ada di URL
+  useEffect(() => {
+    if (patientIdFromUrl && patients.length > 0 && !isTransactionFormOpen) {
+      const patientIdNumber = parseInt(patientIdFromUrl);
+      const patient = patients.find((p: any) => p.id === patientIdNumber);
+      
+      if (patient) {
+        // Set ID pasien
+        setSelectedPatientId(patientIdNumber);
+        
+        // Buka form transaksi langsung
+        setIsTransactionFormOpen(true);
+        
+        // Notifikasi
+        toast({
+          title: "Form transaksi dibuka",
+          description: `Silahkan lengkapi data transaksi untuk ${patient.name}`
+        });
+      }
+    }
+  }, [patientIdFromUrl, patients, isTransactionFormOpen, toast]);
+  
   // Effect untuk memeriksa localStorage (recovery mechanism)
   useEffect(() => {
     // Skip jika form sudah dibuka dari URL param atau localStorage sudah diperiksa
