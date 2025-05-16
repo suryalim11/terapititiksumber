@@ -200,6 +200,18 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                   name: "Sunari",
                   phoneNumber: "085678901234"
                 }
+              },
+              {
+                id: 1005,
+                therapySlotId: 473,
+                patientId: 111,
+                status: "Active",
+                notes: "walk-in",
+                patient: {
+                  id: 111,
+                  name: "Agus Lim",
+                  phoneNumber: "08127003608"
+                }
               }
             ];
           } 
