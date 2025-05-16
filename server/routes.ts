@@ -3563,7 +3563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Endpoint untuk membersihkan duplikasi slot terapi
+  // Endpoint untuk membersihkan duplikasi slot terapi (metode lama)
   app.post("/api/therapy-slots/clean-duplicates", async (req: Request, res: Response) => {
     try {
       if (!req.isAuthenticated() || req.user.role !== "admin") {
@@ -3673,6 +3673,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Endpoint untuk memperbarui time_slot_key yang kosong
+  // Endpoint baru untuk konsolidasi slot terapi dengan waktu yang sama
+  app.post("/api/therapy-slots/consolidate-duplicates", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated() || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Unauthorized. Hanya admin yang dapat melakukan operasi ini." });
+      }
+      
+      console.log("Memulai proses konsolidasi slot terapi duplikat menggunakan metode baru...");
+      return await consolidateDuplicateSlots(req, res);
+    } catch (error) {
+      console.error("Error saat mengkonsolidasi slot duplikat:", error);
+      return res.status(500).json({
+        status: "error",
+        message: "Terjadi kesalahan saat konsolidasi slot duplikat",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.post("/api/therapy-slots/update-time-slot-keys", async (req: Request, res: Response) => {
     try {
       if (!req.isAuthenticated() || req.user.role !== "admin") {

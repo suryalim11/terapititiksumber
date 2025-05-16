@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DuplicatePatients from "@/components/admin/duplicate-patients";
 import SystemLogs from "@/components/admin/system-logs";
+import SlotConsolidator from "@/components/dashboard/slot-consolidator";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -289,6 +290,7 @@ export default function AdminPage() {
       <Tabs defaultValue="duplicates" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="duplicates">Pasien Duplikat</TabsTrigger>
+          <TabsTrigger value="slots">Konsolidasi Slot</TabsTrigger>
           <TabsTrigger value="database">Integritas Database</TabsTrigger>
           <TabsTrigger value="logs">Log Sistem</TabsTrigger>
         </TabsList>
@@ -297,6 +299,13 @@ export default function AdminPage() {
           <div className="bg-white rounded-lg shadow p-4">
             <h2 className="text-lg font-semibold mb-4">Manajemen Pasien Duplikat</h2>
             <DuplicatePatients />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="slots" className="space-y-4">
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-semibold mb-4">Konsolidasi Slot Terapi Duplikat</h2>
+            <SlotConsolidator />
           </div>
         </TabsContent>
 
