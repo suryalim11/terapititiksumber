@@ -188,10 +188,19 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           console.log(`📊 Ditemukan ${allSlots.length} slot pada tanggal yang sama`);
           
           // Filter slot yang sama waktu slotnya
-          const sameTimeSlots = allSlots.filter((s: any) => 
-            s.timeSlot === currentSlot.timeSlot && 
-            new Date(s.date).toISOString().split('T')[0] === new Date(currentSlot.date).toISOString().split('T')[0]
-          );
+          const sameTimeSlots = allSlots.filter((s: any) => {
+            // Debug log tambahan
+            console.log(`Membandingkan slot ${s.id} (${s.timeSlot}) dengan ${currentSlot.id} (${currentSlot.timeSlot})`);
+            
+            const isSameTimeSlot = s.timeSlot === currentSlot.timeSlot;
+            const dateA = new Date(s.date).toISOString().split('T')[0];
+            const dateB = new Date(currentSlot.date).toISOString().split('T')[0];
+            const isSameDate = dateA === dateB;
+            
+            console.log(`Slot ${s.id}: Same time = ${isSameTimeSlot}, Same date = ${isSameDate} (${dateA} vs ${dateB})`);
+            
+            return isSameTimeSlot && isSameDate;
+          });
           
           console.log(`🕒 Ditemukan ${sameTimeSlots.length} slot dengan waktu ${currentSlot.timeSlot}:`);
           sameTimeSlots.forEach((s: any) => console.log(`   - ID: ${s.id}, Quota: ${s.maxQuota}, Used: ${s.currentCount}`));
@@ -199,15 +208,27 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           // Kumpulkan semua pasien dari slot dengan waktu yang sama
           let allAppointments: any[] = result.appointments || [];
           
-          // Jika ada slot lain dengan waktu yang sama, ambil pasiennya juga
-          if (sameTimeSlots.length > 1) {
-            console.log(`⚠️ Ditemukan duplikasi slot dengan waktu yang sama (${currentSlot.timeSlot}). Mengambil data dari semua slot...`);
+          // Ambil data pasien dari semua slot dengan waktu yang sama
+          console.log(`⚠️ Memeriksa slot-slot dengan waktu sama (${currentSlot.timeSlot}) untuk tanggal ${new Date(currentSlot.date).toISOString().split('T')[0]}`);
+          
+          // Buat daftar appointment dari semua slot dengan waktu yang sama
+          allAppointments = [...allAppointments]; // Appointment dari slot saat ini
+          
+          // Periksa semua slot dengan waktu yang sama (termasuk slot saat ini untuk debugging)
+          for (const otherSlot of sameTimeSlots) {
+            // Log untuk semua slot
+            console.log(`Memeriksa slot ID ${otherSlot.id} dengan waktu ${otherSlot.timeSlot}...`);
             
-            for (const otherSlot of sameTimeSlots) {
-              // Skip jika slot ini sama dengan yang sedang dilihat
-              if (otherSlot.id === slotId) continue;
-              
-              console.log(`🔄 Mengambil data pasien untuk slot ID ${otherSlot.id} (waktu: ${otherSlot.timeSlot})`);
+            // Skip jika slot ini sama dengan yang sedang dilihat
+            if (otherSlot.id === slotId) {
+              console.log(`Slot ID ${otherSlot.id} adalah slot yang sedang dilihat, skip pengambilan data tambahan`);
+              continue;
+            }
+            
+            console.log(`🔄 Mengambil data pasien untuk slot ID ${otherSlot.id} (waktu: ${otherSlot.timeSlot}) dengan tanggal ${new Date(otherSlot.date).toISOString().split('T')[0]}`);
+            
+            try {
+              // Ambil data pasien untuk slot lain dengan waktu yang sama
               const otherSlotResponse = await fetch(`/api/therapy-slots/${otherSlot.id}/patients?_t=${Date.now()}&showAll=true`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
@@ -217,10 +238,22 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
               if (otherSlotResponse.ok) {
                 const otherResult = await otherSlotResponse.json();
                 if (otherResult.appointments && otherResult.appointments.length > 0) {
-                  console.log(`✅ Ditemukan ${otherResult.appointments.length} pasien di slot ID ${otherSlot.id}`);
+                  console.log(`✅ BERHASIL! Ditemukan ${otherResult.appointments.length} pasien di slot ID ${otherSlot.id}:`);
+                  // Log nama pasien yang ditemukan
+                  otherResult.appointments.forEach((app: any) => {
+                    console.log(`   - Pasien: ${app.patient?.name || 'Unknown'}, Status: ${app.status || 'Unknown'}`);
+                  });
+                  
+                  // Gabungkan dengan daftar pasien
                   allAppointments = [...allAppointments, ...otherResult.appointments];
+                } else {
+                  console.log(`ℹ️ Tidak ada pasien di slot ID ${otherSlot.id}`);
                 }
+              } else {
+                console.error(`❌ Gagal mengambil data dari slot ID ${otherSlot.id} - Status: ${otherSlotResponse.status}`);
               }
+            } catch (error) {
+              console.error(`❌ Error saat mengambil data dari slot ID ${otherSlot.id}:`, error);
             }
           }
           
