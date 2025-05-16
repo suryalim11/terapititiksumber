@@ -169,12 +169,15 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
         const result = await response.json();
         console.log(`✅ Data diterima dari endpoint optimized dengan ${result.appointments ? result.appointments.length : 0} pasien`);
         
-        // Debug appointments data
+        // Debug appointments data untuk logging yang lebih lengkap
         if (result.appointments && result.appointments.length > 0) {
           console.log("📋 Detail status pasien yang diterima:");
           result.appointments.forEach((app: any) => {
-            console.log(`   - Pasien: ${app.patient?.name || 'Unknown'}, Status: ${app.status || 'Unknown'}, ID: ${app.id}`);
+            console.log(`   - Pasien: ${app.patient?.name || 'Unknown'}, Status: ${app.status || 'Unknown'}, ID: ${app.id}, TherapySlotId: ${result.slot?.id}`);
           });
+        } else {
+          // Tampilkan informasi jika tidak ada pasien terdaftar
+          console.log(`ℹ️ Tidak ada pasien terdaftar untuk slot ID ${slotId}, Tanggal: ${result.slot?.date}, Waktu: ${result.slot?.timeSlot}`);
         }
         
         // Set data to state

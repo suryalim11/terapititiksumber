@@ -1,0 +1,26 @@
+Pastikan Data Diterima di Frontend: Periksa apakah data dari endpoint /api/therapy-slots/:id/patients benar-benar mengembalikan data pasien yang terdaftar untuk slot terapi terkait. Saat ini, Anda memiliki implementasi yang menangani ini dalam fungsi fetchSlotAndPatients di file client/src/components/dashboard/optimized-slot-dialog.tsx. Pastikan checklist berikut ini sudah terpenuhi:
+
+Response dari Server: Confirm bahwa server mengembalikan data pasien yang benar sesuai dengan pernyataan SQL dan bahwa data ini diolah dengan benar dalam frontend.
+// Debug log menambahkan ini untuk memastikan bahwa data pasien dikembalikan
+console.log(`Appointment data:`, result.appointments);
+Query Data Appointment di Server: Cek bagian kode Anda di server, di file server/routes/therapy-slot-patients.ts, yang menjalankan query SQL untuk mendapatkan daftar pasien berdasarkan slot terapi. Pastikan query di file ini mencakup semua status appointment yang sesuai dan mengembalikan hasil yang diharapkan.
+// Pastikan query SQL mencakup semua status sesuai
+const rawQuery = `
+  SELECT 
+    a.id as appointment_id,
+    a.patient_id,
+    a.status,
+    p.id as patient_id,
+    p.name as patient_name,
+    p.phone_number as patient_phone_number
+  FROM appointments a
+  JOIN patients p ON a.patient_id = p.id
+  WHERE a.therapy_slot_id = $1
+  AND a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled') // Validasi status
+`;
+Memastikan Konsistensi Data Klien dan Server: Pastikan terdapat konsistensi antara data yang ada di database dan yang ada di view atau komponen frontend. Mengingat laporan adanya pasien yang telah mendaftar tetapi tidak muncul, Anda bisa menggunakan scrip bantuan untuk memulihkan janji yang mungkin tidak terdaftar dengan benar.
+// Optional: Gunakan script perbaikan jika banyak pasien yang memiliki therapy_slot_id tapi tidak ada appointment
+import { fixMissingAppointments } from './server/fix-missing-appointments.ts';
+fixMissingAppointments().then(result => {
+  console.log(`${result.created} appointments created.`);
+});

@@ -29,6 +29,8 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
     
     try {
       // Gunakan SQL query langsung untuk mendapatkan daftar appointment sekaligus dengan data pasien
+      // Ubah query untuk memastikan semua status yang aktif terdaftar dengan benar
+      // Gunakan UPPER untuk mengatasi inkonsistensi kapitalisasi status
       const rawQuery = `
         SELECT 
           a.id as appointment_id,
@@ -40,8 +42,13 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         WHERE a.therapy_slot_id = $1
-        AND a.status IN ('Active', 'Booked', 'Confirmed', 'Scheduled')
+        AND (
+          UPPER(a.status) IN ('ACTIVE', 'BOOKED', 'CONFIRMED', 'SCHEDULED') 
+          OR a.status IS NULL
+        )
       `;
+      
+      console.log(`[ROUTE] Execute query for slot ID ${slotId} with optimized query`);
       
       // Execute query langsung dengan pool
       const { rows } = await pool.query(rawQuery, [slotId]);
