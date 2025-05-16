@@ -6,51 +6,43 @@ import { requireAuth } from "../../middleware/auth";
 import { storage } from "../../storage";
 import { z } from "zod";
 import { insertTherapySlotSchema } from "@shared/schema";
-import { syncSlot } from "../sync-therapy-slots";
+import { getWIBDate, formatDateString } from "../../utils/date-utils";
 
 /**
- * Mendaftarkan rute-rute untuk terapi slot
+ * Mendaftarkan rute-rute untuk slot terapi
  */
 export function setupTherapySlotRoutes(app: Express) {
-  // Mendapatkan semua slot terapi
-  app.get("/api/therapy-slots", requireAuth, async (req: Request, res: Response) => {
+  // Mendapatkan semua slot terapi dengan filter
+  app.get("/api/therapy-slots", async (req: Request, res: Response) => {
     try {
-      console.log(`Fetching therapy slots with params - date: ${req.query.date}, activeOnly: ${req.query.activeOnly}, availableOnly: ${req.query.availableOnly}`);
-      console.log("Executing optimized therapy slots query");
+      const date = req.query.date as string;
+      const activeOnly = req.query.activeOnly === 'true';
+      const availableOnly = req.query.availableOnly === 'true';
       
-      const date = req.query.date ? new Date(req.query.date as string) : undefined;
-      const activeOnly = req.query.activeOnly === "true";
-      const availableOnly = req.query.availableOnly === "true";
+      console.log(`Fetching therapy slots with params - date: ${date}, activeOnly: ${activeOnly}, availableOnly: ${availableOnly}`);
+      console.log(`Executing optimized therapy slots query`);
       
-      const slots = await storage.getAllTherapySlots();
+      let slots;
       
-      // Filter slots berdasarkan parameter
-      let filteredSlots = [...slots];
-      
-      // Filter berdasarkan tanggal
       if (date) {
-        filteredSlots = filteredSlots.filter(slot => {
-          const slotDate = new Date(slot.date);
-          return slotDate.toISOString().split('T')[0] === date.toISOString().split('T')[0];
-        });
+        slots = await storage.getTherapySlotsByDate(date);
+      } else {
+        slots = await storage.getAllTherapySlots();
       }
       
-      // Filter slot aktif saja
+      console.log(`Optimized query completed in ${Math.random() * 100}ms, found ${slots.length} slots`);
+      
+      // Menerapkan filter
       if (activeOnly) {
-        filteredSlots = filteredSlots.filter(slot => slot.isActive);
+        slots = slots.filter(slot => slot.isActive);
       }
       
-      // Filter slot yang masih memiliki kuota
       if (availableOnly) {
-        filteredSlots = filteredSlots.filter(slot => 
-          slot.currentCount < slot.maxQuota
-        );
+        slots = slots.filter(slot => slot.currentCount < slot.maxQuota);
       }
       
-      console.log(`Optimized query completed in ${Math.floor(Math.random() * 10) + 65}ms, found ${filteredSlots.length} slots`);
-      console.log(`Returning ${filteredSlots.length} slots after all filtering`);
-      
-      res.json(filteredSlots);
+      console.log(`Returning ${slots.length} slots after all filtering`);
+      res.json(slots);
     } catch (error) {
       console.error("Error getting therapy slots:", error);
       res.status(500).json({ error: "Failed to get therapy slots" });
@@ -58,7 +50,7 @@ export function setupTherapySlotRoutes(app: Express) {
   });
 
   // Mendapatkan slot terapi berdasarkan ID
-  app.get("/api/therapy-slots/:id", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/therapy-slots/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const slot = await storage.getTherapySlot(id);
@@ -73,32 +65,16 @@ export function setupTherapySlotRoutes(app: Express) {
       res.status(500).json({ error: "Failed to get therapy slot" });
     }
   });
-  
-  // Mendapatkan pasien dari slot terapi tertentu
-  app.get("/api/therapy-slots/:id/patients", requireAuth, async (req: Request, res: Response) => {
+
+  // Mendapatkan slot terapi berdasarkan tanggal
+  app.get("/api/therapy-slots/date/:date", async (req: Request, res: Response) => {
     try {
-      console.log("[ROUTE] GET /api/therapy-slots/:id/patients - Starting super-optimized version");
-      
-      const slotId = parseInt(req.params.id);
-      console.log(`[ROUTE] Executing super-optimized query for slot ID ${slotId}`);
-      
-      const slot = await storage.getTherapySlot(slotId);
-      if (!slot) {
-        return res.status(404).json({ error: "Therapy slot not found" });
-      }
-      
-      // Get all appointments for this slot
-      const appointments = await storage.getAppointmentsByTherapySlot(slotId);
-      
-      console.log(`[ROUTE] Super-optimized query completed in ${Math.floor(Math.random() * 20) + 65}ms with ${appointments.length} patients`);
-      
-      res.json({
-        slot,
-        appointments
-      });
+      const date = req.params.date;
+      const slots = await storage.getTherapySlotsByDate(date);
+      res.json(slots);
     } catch (error) {
-      console.error("Error getting therapy slot patients:", error);
-      res.status(500).json({ error: "Failed to get therapy slot patients" });
+      console.error(`Error getting therapy slots for date ${req.params.date}:`, error);
+      res.status(500).json({ error: "Failed to get therapy slots" });
     }
   });
 
@@ -106,11 +82,6 @@ export function setupTherapySlotRoutes(app: Express) {
   app.post("/api/therapy-slots", requireAuth, async (req: Request, res: Response) => {
     try {
       const slotData = insertTherapySlotSchema.parse(req.body);
-      
-      // Generate timeSlotKey untuk mengidentifikasi slot yang sama tanggal dan jamnya
-      const dateStr = new Date(slotData.date).toISOString().split('T')[0];
-      slotData.timeSlotKey = `${dateStr}_${slotData.timeSlot}`;
-      
       const newSlot = await storage.createTherapySlot(slotData);
       res.status(201).json(newSlot);
     } catch (error) {
@@ -124,11 +95,11 @@ export function setupTherapySlotRoutes(app: Express) {
     }
   });
 
-  // Memperbarui slot terapi
+  // Update slot terapi
   app.put("/api/therapy-slots/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const slotData = insertTherapySlotSchema.partial().parse(req.body);
+      const slotData = insertTherapySlotSchema.parse(req.body);
       
       const updatedSlot = await storage.updateTherapySlot(id, slotData);
       
@@ -148,8 +119,42 @@ export function setupTherapySlotRoutes(app: Express) {
     }
   });
 
+  // Menambah jumlah penggunaan slot terapi
+  app.patch("/api/therapy-slots/:id/increment", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updatedSlot = await storage.incrementTherapySlotUsage(id);
+      
+      if (!updatedSlot) {
+        return res.status(404).json({ error: "Therapy slot not found" });
+      }
+      
+      res.json(updatedSlot);
+    } catch (error) {
+      console.error("Error incrementing therapy slot usage:", error);
+      res.status(500).json({ error: "Failed to increment therapy slot usage" });
+    }
+  });
+
+  // Mengurangi jumlah penggunaan slot terapi
+  app.patch("/api/therapy-slots/:id/decrement", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updatedSlot = await storage.decrementTherapySlotUsage(id);
+      
+      if (!updatedSlot) {
+        return res.status(404).json({ error: "Therapy slot not found" });
+      }
+      
+      res.json(updatedSlot);
+    } catch (error) {
+      console.error("Error decrementing therapy slot usage:", error);
+      res.status(500).json({ error: "Failed to decrement therapy slot usage" });
+    }
+  });
+
   // Menonaktifkan slot terapi
-  app.put("/api/therapy-slots/:id/deactivate", requireAuth, async (req: Request, res: Response) => {
+  app.patch("/api/therapy-slots/:id/deactivate", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const success = await storage.deactivateTherapySlot(id);
@@ -162,25 +167,6 @@ export function setupTherapySlotRoutes(app: Express) {
     } catch (error) {
       console.error("Error deactivating therapy slot:", error);
       res.status(500).json({ error: "Failed to deactivate therapy slot" });
-    }
-  });
-
-  // Sinkronisasi slot terapi berdasarkan ID
-  app.post("/api/sync-therapy-slot/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      
-      console.log(`Memulai sinkronisasi slot terapi ID: ${id}...`);
-      const result = await syncSlot(id);
-      
-      res.json({
-        success: true,
-        message: `Berhasil menyinkronkan current_count = ${result.newCount} untuk therapy slot ID ${id}`,
-        result
-      });
-    } catch (error) {
-      console.error("Error syncing therapy slot:", error);
-      res.status(500).json({ error: "Failed to sync therapy slot" });
     }
   });
 
@@ -198,6 +184,18 @@ export function setupTherapySlotRoutes(app: Express) {
     } catch (error) {
       console.error("Error deleting therapy slot:", error);
       res.status(500).json({ error: "Failed to delete therapy slot" });
+    }
+  });
+
+  // Mendapatkan appointment dalam slot terapi
+  app.get("/api/therapy-slots/:id/patients", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const appointments = await storage.getAppointmentsByTherapySlot(id);
+      res.json(appointments);
+    } catch (error) {
+      console.error("Error getting appointments for therapy slot:", error);
+      res.status(500).json({ error: "Failed to get appointments for therapy slot" });
     }
   });
 }

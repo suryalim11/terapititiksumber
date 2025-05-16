@@ -1,21 +1,18 @@
 /**
- * API Endpoints untuk manajemen pasien
+ * API endpoint untuk manajemen pasien
  */
 import { Express, Request, Response } from "express";
-import { z } from "zod";
-import { storage } from "../../storage";
 import { requireAuth } from "../../middleware/auth";
+import { storage } from "../../storage";
+import { z } from "zod";
 import { insertPatientSchema } from "@shared/schema";
-import { like } from "drizzle-orm";
-import { db } from "../../db";
-import { patients } from "@shared/schema";
-import { verifyAppointmentConnectionForPatient } from "../../verify-appointment-connection";
+import { getWIBDate, formatDateString } from "../../utils/date-utils";
 
 /**
- * Mendaftarkan semua rute terkait pasien
+ * Mendaftarkan rute-rute untuk pasien
  */
 export function setupPatientRoutes(app: Express) {
-  // Get all patients
+  // Mendapatkan semua pasien
   app.get("/api/patients", requireAuth, async (req: Request, res: Response) => {
     try {
       const patients = await storage.getAllPatients();
@@ -26,23 +23,7 @@ export function setupPatientRoutes(app: Express) {
     }
   });
 
-  // Search patients by name or phone
-  app.get("/api/patients/search", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const query = req.query.q as string;
-      if (!query) {
-        return res.status(400).json({ error: "Search query is required" });
-      }
-
-      const patients = await storage.searchPatientByNameOrPhone(query);
-      res.json(patients);
-    } catch (error) {
-      console.error("Error searching patients:", error);
-      res.status(500).json({ error: "Failed to search patients" });
-    }
-  });
-
-  // Get patient by ID
+  // Mendapatkan pasien berdasarkan ID
   app.get("/api/patients/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
@@ -59,30 +40,7 @@ export function setupPatientRoutes(app: Express) {
     }
   });
 
-  // Get related patients by phone
-  app.get("/api/patients/:id/related", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const patient = await storage.getPatient(id);
-      
-      if (!patient) {
-        return res.status(404).json({ error: "Patient not found" });
-      }
-      
-      // Find other patients with same phone number
-      const relatedPatients = await db.select()
-        .from(patients)
-        .where(like(patients.phoneNumber, patient.phoneNumber))
-        .where(id => id.not(patients.id.equals(id)));
-      
-      res.json(relatedPatients);
-    } catch (error) {
-      console.error("Error getting related patients:", error);
-      res.status(500).json({ error: "Failed to get related patients" });
-    }
-  });
-
-  // Create new patient
+  // Membuat pasien baru
   app.post("/api/patients", requireAuth, async (req: Request, res: Response) => {
     try {
       const patientData = insertPatientSchema.parse(req.body);
@@ -99,7 +57,7 @@ export function setupPatientRoutes(app: Express) {
     }
   });
 
-  // Update patient
+  // Update pasien
   app.put("/api/patients/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
@@ -123,7 +81,7 @@ export function setupPatientRoutes(app: Express) {
     }
   });
 
-  // Delete patient
+  // Menghapus pasien
   app.delete("/api/patients/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
@@ -140,20 +98,15 @@ export function setupPatientRoutes(app: Express) {
     }
   });
 
-  // Verify patient connection
-  app.post("/api/verify-connection/patient/:id", requireAuth, async (req: Request, res: Response) => {
+  // Pencarian pasien berdasarkan nama atau nomor telepon
+  app.get("/api/patients/search/:query", requireAuth, async (req: Request, res: Response) => {
     try {
-      const patientId = parseInt(req.params.id);
-      const result = await verifyAppointmentConnectionForPatient(patientId);
-      
-      res.json({
-        success: true,
-        message: "Verifikasi koneksi pasien berhasil",
-        result
-      });
+      const query = req.params.query;
+      const patients = await storage.searchPatientByNameOrPhone(query);
+      res.json(patients);
     } catch (error) {
-      console.error("Error verifying patient connection:", error);
-      res.status(500).json({ error: "Failed to verify patient connection" });
+      console.error("Error searching patients:", error);
+      res.status(500).json({ error: "Failed to search patients" });
     }
   });
 }

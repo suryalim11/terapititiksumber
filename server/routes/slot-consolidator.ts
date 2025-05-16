@@ -1,198 +1,292 @@
 /**
- * Modul untuk mengkonsolidasikan slot terapi dengan waktu yang sama
- * Menggabungkan slot duplikat (seperti 455 dan 475 dengan waktu 15:00-17:00)
- * dan memigrasi semua appointment ke slot utama
+ * Modul untuk menangani konsolidasi slot terapi
  */
-
-import { Request, Response } from 'express';
-import { storage } from '../storage';
-import { db } from '../db';
-import * as schema from '../../shared/schema';
-import { eq, and, sql } from 'drizzle-orm';
-
-interface ConsolidationResult {
-  migratedSlots: number;
-  migratedAppointments: number;
-  details: { 
-    originalSlotId: number;
-    targetSlotId: number;
-    timeSlot: string;
-    movedAppointments: number;
-  }[];
-  errors: any[];
-}
+import { storage } from "../storage";
+import { getWIBDate, formatDateString } from "../utils/date-utils";
 
 /**
- * Mencari semua slot terapi duplikat dengan waktu dan tanggal yang sama
- * @returns Daftar slot duplikat yang ditemukan
+ * Fungsi untuk mengkonsolidasikan slot terapi yang duplikat
+ * @returns Hasil konsolidasi
  */
-export async function findDuplicateSlots() {
+export async function consolidateSlots() {
+  console.log("Memulai proses konsolidasi slot terapi...");
+  
   try {
-    // Query untuk mencari slot dengan tanggal dan waktu yang sama tetapi ID berbeda
-    const duplicates = await db.execute(sql`
-      SELECT date, time_slot, COUNT(*) as count, 
-      ARRAY_AGG(id) as slot_ids, ARRAY_AGG(current_count) as current_counts
-      FROM therapy_slots
-      GROUP BY date, time_slot
-      HAVING COUNT(*) > 1
-      ORDER BY date ASC, time_slot ASC
-    `);
-
-    return duplicates.rows;
+    // Mendapatkan semua slot terapi aktif
+    const allSlots = await storage.getAllTherapySlots();
+    
+    // Menghitung jumlah slot sebelum konsolidasi
+    const initialSlotCount = allSlots.length;
+    console.log(`Total slot sebelum konsolidasi: ${initialSlotCount}`);
+    
+    // Mengelompokkan slot berdasarkan kombinasi date+timeSlot
+    const slotGroups = new Map();
+    
+    for (const slot of allSlots) {
+      const key = `${slot.date}_${slot.timeSlot}`;
+      
+      if (!slotGroups.has(key)) {
+        slotGroups.set(key, []);
+      }
+      
+      slotGroups.get(key).push(slot);
+    }
+    
+    // Mengidentifikasi kelompok dengan lebih dari satu slot (duplikat)
+    const duplicateGroups = [];
+    
+    for (const [key, slots] of slotGroups.entries()) {
+      if (slots.length > 1) {
+        duplicateGroups.push({ key, slots });
+      }
+    }
+    
+    console.log(`Ditemukan ${duplicateGroups.length} kelompok slot duplikat`);
+    
+    // Array untuk menyimpan hasil konsolidasi
+    const consolidationResults = [];
+    
+    // Melakukan konsolidasi untuk setiap kelompok duplikat
+    for (const group of duplicateGroups) {
+      const { key, slots } = group;
+      
+      console.log(`Memproses kelompok duplikat ${key} dengan ${slots.length} slot`);
+      
+      // Mengurutkan slot berdasarkan ID (yang lebih rendah biasanya lebih lama)
+      slots.sort((a, b) => a.id - b.id);
+      
+      // Slot pertama akan menjadi slot utama
+      const primarySlot = slots[0];
+      const secondarySlots = slots.slice(1);
+      
+      console.log(`Slot utama: ID ${primarySlot.id}, kuota ${primarySlot.maxQuota}, penggunaan ${primarySlot.currentCount}`);
+      
+      let totalAppointments = 0;
+      
+      // Memproses setiap slot sekunder
+      for (const slot of secondarySlots) {
+        console.log(`Memproses slot sekunder: ID ${slot.id}, kuota ${slot.maxQuota}, penggunaan ${slot.currentCount}`);
+        
+        try {
+          // Mendapatkan semua appointment dalam slot sekunder
+          const appointments = await storage.getAppointmentsByTherapySlot(slot.id);
+          totalAppointments += appointments.length;
+          
+          console.log(`Ditemukan ${appointments.length} appointment dalam slot ID ${slot.id}`);
+          
+          // Memindahkan semua appointment ke slot utama
+          for (const appointment of appointments) {
+            try {
+              // Update appointment ke slot utama
+              await storage.updateAppointment(appointment.id, {
+                ...appointment,
+                therapySlotId: primarySlot.id
+              });
+              
+              console.log(`Memindahkan appointment ID ${appointment.id} dari slot ID ${slot.id} ke slot ID ${primarySlot.id}`);
+            } catch (updateErr) {
+              console.error(`Error saat memindahkan appointment ID ${appointment.id}:`, updateErr);
+              consolidationResults.push({
+                success: false,
+                message: `Gagal memindahkan appointment ID ${appointment.id}`,
+                error: String(updateErr)
+              });
+            }
+          }
+          
+          // Memperbarui jumlah penggunaan pada slot utama
+          const updatedPrimarySlot = await storage.incrementTherapySlotUsageByCount(primarySlot.id, slot.currentCount);
+          
+          if (updatedPrimarySlot) {
+            console.log(`Slot utama ID ${primarySlot.id} diperbarui, penggunaan baru: ${updatedPrimarySlot.currentCount}`);
+          }
+          
+          // Menonaktifkan slot sekunder
+          try {
+            await storage.deactivateTherapySlot(slot.id);
+            console.log(`Slot sekunder ID ${slot.id} dinonaktifkan`);
+            
+            consolidationResults.push({
+              success: true,
+              message: `Berhasil mengkonsolidasikan slot ID ${slot.id} ke ID ${primarySlot.id} dengan ${appointments.length} appointment`,
+              primarySlotId: primarySlot.id,
+              secondarySlotId: slot.id,
+              appointmentCount: appointments.length
+            });
+          } catch (slotErr) {
+            console.error(`Error saat menonaktifkan slot ID ${slot.id}:`, slotErr);
+            consolidationResults.push({
+              success: false,
+              message: `Gagal menonaktifkan slot ID ${slot.id}`,
+              error: String(slotErr)
+            });
+          }
+        } catch (error) {
+          console.error(`Error saat mengkonsolidasikan slot ID ${slot.id}:`, error);
+          consolidationResults.push({
+            success: false,
+            message: `Gagal mengkonsolidasikan slot ID ${slot.id}`,
+            error: String(error)
+          });
+        }
+      }
+      
+      console.log(`Total ${totalAppointments} appointment dipindahkan ke slot utama ID ${primarySlot.id}`);
+    }
+    
+    // Mendapatkan jumlah slot setelah konsolidasi
+    const finalSlots = await storage.getActiveTherapySlots();
+    const finalSlotCount = finalSlots.length;
+    
+    console.log(`Konsolidasi selesai. Slot aktif sebelum: ${initialSlotCount}, setelah: ${finalSlotCount}`);
+    
+    return {
+      success: true,
+      initialSlotCount,
+      finalSlotCount,
+      consolidatedGroups: duplicateGroups.length,
+      details: consolidationResults
+    };
   } catch (error) {
-    console.error("Error saat mencari slot duplikat:", error);
-    throw error;
+    console.error("Error saat proses konsolidasi:", error);
+    return {
+      success: false,
+      message: "Terjadi kesalahan saat mengkonsolidasikan slot",
+      error: String(error)
+    };
   }
 }
 
 /**
- * Mengkonsolidasikan slot terapi duplikat
- * Memigrasi semua appointment dari slot duplikat ke slot utama
- * @param req.body.autoConsolidate Boolean untuk menentukan apakah akan otomatis konsolidasi (true) atau hanya scan (false)
+ * Fungsi untuk menggabungkan slot terapi yang dipilih ke dalam slot target
+ * @param targetSlotId ID slot target (utama)
+ * @param sourceSlotIds Array ID slot yang akan digabungkan
+ * @returns Hasil penggabungan
  */
-export async function consolidateDuplicateSlots(req: Request, res: Response) {
+export async function mergeSlots(targetSlotId: number, sourceSlotIds: number[]) {
+  console.log(`Memulai penggabungan slot: ${sourceSlotIds.length} slot ke slot target ID ${targetSlotId}`);
+  
   try {
-    const { autoConsolidate = false } = req.body;
-    
-    const result: ConsolidationResult = {
-      migratedSlots: 0,
-      migratedAppointments: 0,
-      details: [],
-      errors: []
-    };
-
-    // Temukan semua slot duplikat
-    const duplicates = await findDuplicateSlots();
-    
-    if (!duplicates || duplicates.length === 0) {
-      return res.status(200).json({
-        status: "success",
-        message: "Tidak ditemukan slot duplikat",
-        result
-      });
-    }
-
-    console.log(`Ditemukan ${duplicates.length} kelompok slot duplikat`);
-    
-    // Jika hanya scan, kembalikan informasi duplikat saja
-    if (!autoConsolidate) {
-      return res.status(200).json({
-        status: "success",
-        message: `Ditemukan ${duplicates.length} kelompok slot duplikat. Gunakan mode autoConsolidate=true untuk menggabungkan secara otomatis.`,
-        duplicateGroups: duplicates
-      });
+    // Validasi input
+    if (!targetSlotId || !sourceSlotIds || sourceSlotIds.length === 0) {
+      return {
+        success: false,
+        message: "ID slot target dan sumber diperlukan"
+      };
     }
     
-    // Jika autoConsolidate, lakukan konsolidasi
-    for (const group of duplicates) {
+    // Validasi bahwa slot target ada dan aktif
+    const targetSlot = await storage.getTherapySlot(targetSlotId);
+    
+    if (!targetSlot) {
+      return {
+        success: false,
+        message: "Slot target tidak ditemukan"
+      };
+    }
+    
+    if (!targetSlot.isActive) {
+      return {
+        success: false,
+        message: "Slot target tidak aktif"
+      };
+    }
+    
+    console.log(`Slot target: ID ${targetSlot.id}, tanggal ${targetSlot.date}, waktu ${targetSlot.timeSlot}`);
+    
+    // Array untuk menyimpan hasil penggabungan
+    const mergeResults = [];
+    let totalAppointments = 0;
+    
+    // Memproses setiap slot sumber
+    for (const sourceId of sourceSlotIds) {
+      // Pastikan kita tidak mencoba menggabungkan slot dengan dirinya sendiri
+      if (sourceId === targetSlotId) {
+        console.log(`Melewati slot ID ${sourceId} karena sama dengan slot target`);
+        continue;
+      }
+      
       try {
-        const slotIds = group.slot_ids;
-        if (!slotIds || !Array.isArray(slotIds) || slotIds.length < 2) {
-          result.errors.push({
-            message: "Format slot_ids tidak valid",
-            group
+        // Validasi bahwa slot sumber ada
+        const sourceSlot = await storage.getTherapySlot(sourceId);
+        
+        if (!sourceSlot) {
+          mergeResults.push({
+            slotId: sourceId,
+            success: false,
+            message: "Slot sumber tidak ditemukan"
           });
           continue;
         }
-
-        // Pilih ID slot terkecil sebagai target
-        const targetSlotId = Math.min(...slotIds);
-        const otherSlotIds = slotIds.filter(id => id !== targetSlotId);
         
-        console.log(`Mengkonsolidasi ${otherSlotIds.length} slot (${otherSlotIds.join(', ')}) ke slot target ${targetSlotId}`);
+        console.log(`Memproses slot sumber: ID ${sourceSlot.id}, tanggal ${sourceSlot.date}, waktu ${sourceSlot.timeSlot}, penggunaan ${sourceSlot.currentCount}`);
         
-        // Untuk setiap slot lain, pindahkan appointment ke slot target
-        for (const sourceSlotId of otherSlotIds) {
+        // Mendapatkan semua appointment dalam slot sumber
+        const appointments = await storage.getAppointmentsByTherapySlot(sourceId);
+        console.log(`Ditemukan ${appointments.length} appointment dalam slot ID ${sourceId}`);
+        
+        // Memindahkan semua appointment ke slot target
+        for (const appointment of appointments) {
           try {
-            // Cari semua appointment di slot yang akan dihapus
-            const appointments = await db
-              .select()
-              .from(schema.appointments)
-              .where(eq(schema.appointments.therapySlotId, sourceSlotId));
-            
-            console.log(`Ditemukan ${appointments.length} appointment di slot ${sourceSlotId}`);
-            
-            // Pindahkan setiap appointment ke slot target
-            let movedCount = 0;
-            for (const appointment of appointments) {
-              try {
-                await db
-                  .update(schema.appointments)
-                  .set({ therapySlotId: targetSlotId })
-                  .where(eq(schema.appointments.id, appointment.id));
-                
-                movedCount++;
-              } catch (error) {
-                result.errors.push({
-                  message: `Gagal memindahkan appointment ${appointment.id}`,
-                  sourceSlotId,
-                  targetSlotId,
-                  error
-                });
-              }
-            }
-            
-            // Update counter di slot target
-            if (movedCount > 0) {
-              await db
-                .update(schema.therapySlots)
-                .set({
-                  currentCount: sql`current_count + ${movedCount}`
-                })
-                .where(eq(schema.therapySlots.id, targetSlotId));
-                
-              result.migratedAppointments += movedCount;
-            }
-            
-            // Nonaktifkan slot yang tidak digunakan lagi
-            await db
-              .update(schema.therapySlots)
-              .set({ 
-                isActive: false,
-                currentCount: 0
-              })
-              .where(eq(schema.therapySlots.id, sourceSlotId));
-            
-            // Tambahkan detail ke hasil
-            result.details.push({
-              originalSlotId: sourceSlotId,
-              targetSlotId,
-              timeSlot: group.time_slot,
-              movedAppointments: movedCount
+            // Update appointment ke slot target
+            await storage.updateAppointment(appointment.id, {
+              ...appointment,
+              therapySlotId: targetSlotId
             });
             
-            result.migratedSlots++;
-            
-          } catch (error) {
-            result.errors.push({
-              message: `Gagal memproses slot ${sourceSlotId}`,
-              sourceSlotId,
-              targetSlotId,
-              error
+            console.log(`Memindahkan appointment ID ${appointment.id} dari slot ID ${sourceId} ke slot ID ${targetSlotId}`);
+            totalAppointments++;
+          } catch (updateErr) {
+            console.error(`Error saat memindahkan appointment ID ${appointment.id}:`, updateErr);
+            mergeResults.push({
+              appointmentId: appointment.id,
+              success: false,
+              message: `Gagal memindahkan appointment`,
+              error: String(updateErr)
             });
           }
         }
+        
+        // Memperbarui jumlah penggunaan pada slot target
+        const updatedTargetSlot = await storage.incrementTherapySlotUsageByCount(targetSlotId, sourceSlot.currentCount);
+        
+        if (updatedTargetSlot) {
+          console.log(`Slot target ID ${targetSlotId} diperbarui, penggunaan baru: ${updatedTargetSlot.currentCount}`);
+        }
+        
+        // Menonaktifkan slot sumber
+        await storage.deactivateTherapySlot(sourceId);
+        console.log(`Slot sumber ID ${sourceId} dinonaktifkan`);
+        
+        mergeResults.push({
+          slotId: sourceId,
+          success: true,
+          message: `Berhasil menggabungkan ke slot target ID ${targetSlotId}`,
+          appointmentCount: appointments.length
+        });
       } catch (error) {
-        result.errors.push({
-          message: "Gagal memproses kelompok duplikat",
-          group,
-          error
+        console.error(`Error saat menggabungkan slot ID ${sourceId}:`, error);
+        mergeResults.push({
+          slotId: sourceId,
+          success: false,
+          message: "Gagal menggabungkan slot",
+          error: String(error)
         });
       }
     }
     
-    return res.status(200).json({
-      status: "success",
-      message: `Berhasil mengkonsolidasi ${result.migratedSlots} slot terapi dengan ${result.migratedAppointments} appointment`,
-      result
-    });
-    
+    return {
+      success: true,
+      targetSlotId,
+      totalAppointmentsMoved: totalAppointments,
+      details: mergeResults
+    };
   } catch (error) {
-    console.error("Error saat konsolidasi slot:", error);
-    return res.status(500).json({
-      status: "error",
-      message: "Terjadi kesalahan saat mengkonsolidasi slot terapi",
-      error: error instanceof Error ? error.message : String(error)
-    });
+    console.error("Error saat proses penggabungan:", error);
+    return {
+      success: false,
+      message: "Terjadi kesalahan saat menggabungkan slot",
+      error: String(error)
+    };
   }
 }
