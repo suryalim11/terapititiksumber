@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import crypto from "crypto";
 import { eq, and } from "drizzle-orm";
 import * as schema from "../../shared/schema";
+import { verifyAppointmentConnectionForPatient } from "../verify-appointment-connection";
 
 /**
  * Menangani proses pendaftaran pasien dengan dua jalur yang jelas:
@@ -390,6 +391,27 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       const endTime = Date.now();
       const processingTime = endTime - startTime;
       console.log(`⏱️ [PERF] Pendaftaran selesai dalam ${processingTime}ms`);
+      
+      // FITUR BARU: Jalankan verifikasi koneksi appointment secara otomatis setelah pendaftaran
+      // Ini dibuat sebagai proses background agar tidak mempengaruhi waktu respon
+      if (isOnlineRegistration && patientToUse && patientToUse.id) {
+        try {
+          console.log(`🔄 Menjadwalkan verifikasi koneksi pasien-appointment untuk pasien ID: ${patientToUse.id}...`);
+          // Jalankan sebagai proses background tanpa menunggu
+          setTimeout(async () => {
+            try {
+              console.log(`🔄 Memulai verifikasi otomatis untuk pasien ID: ${patientToUse.id}...`);
+              const result = await verifyAppointmentConnectionForPatient(patientToUse.id);
+              console.log(`✅ Verifikasi otomatis untuk pasien ID: ${patientToUse.id} selesai. Fixed: ${result.fixed}`);
+            } catch (verifyErr) {
+              console.error(`❌ Error saat verifikasi otomatis untuk pasien ID: ${patientToUse.id}:`, verifyErr);
+            }
+          }, 500); // Jalankan setelah 500ms untuk memastikan transaksi utama sudah selesai
+        } catch (verifyError) {
+          console.error(`❌ Error saat menjadwalkan verifikasi otomatis:`, verifyError);
+          // Tidak mempengaruhi proses respons pendaftaran
+        }
+      }
       
       return res.status(201).json({
         success: true,
