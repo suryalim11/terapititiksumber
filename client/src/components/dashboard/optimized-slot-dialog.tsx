@@ -889,7 +889,12 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
             {/* Patient list */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium">Daftar Pasien</h3>
+                <h3 className="text-sm font-medium">
+                  Daftar Pasien 
+                  <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                    ID: {slotId || slotData?.id || 'Unknown'}
+                  </span>
+                </h3>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
                     {appointments.length} pasien
