@@ -143,8 +143,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     const cacheBuster = Date.now(); 
     
     try {
-      // NEW APPROACH: Use optimized endpoint
-      // with single server query for slot + appointments at once
+      // Get the therapy slot data first
       console.log(`📥 Mengambil data slot dan pasien untuk ID: ${slotId} dari endpoint optimized`);
       
       // Use optimized endpoint with cache buster
@@ -169,41 +168,117 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
         const result = await response.json();
         console.log(`✅ Data diterima dari endpoint optimized dengan ${result.appointments ? result.appointments.length : 0} pasien`);
         
-        // Debug appointments data dengan informasi lebih lengkap
-        if (result.appointments && result.appointments.length > 0) {
-          console.log("📋 Detail status pasien yang diterima:");
-          result.appointments.forEach((app: any) => {
-            console.log(`   - Pasien: ${app.patient?.name || 'Unknown'}, Status: ${app.status || 'Unknown'}, ID: ${app.id}, Notes: ${app.notes || 'Tidak ada'}`);
-          });
-        } else {
-          // Tampilkan informasi jika tidak ada pasien terdaftar
-          console.log(`ℹ️ Tidak ada pasien terdaftar untuk slot ID ${slotId}, Tanggal: ${result.slot?.date}, Waktu: ${result.slot?.timeSlot}`);
-        }
-        
         // Pastikan data dalam format yang benar sebelum diset ke state
-        setSlotData(result.slot || null);
+        const currentSlot = result.slot || null;
+        setSlotData(currentSlot);
         
-        // Pastikan appointments selalu array bahkan jika null/undefined
-        let appointmentsArray = Array.isArray(result.appointments) ? result.appointments : [];
-        
-        // Pastikan semua appointments memiliki patient object
-        appointmentsArray = appointmentsArray.map((app: any) => {
-          if (!app.patient && app.patientId) {
-            // Jika tidak ada objek patient tapi ada patientId, buat objek patient
-            return {
-              ...app,
-              patient: {
-                id: app.patientId,
-                name: app.patient_name || 'Pasien',
-                phoneNumber: app.patient_phone_number || '-'
+        // MASALAH: Duplikasi slot dengan waktu yang sama
+        // Ambil semua appointments untuk tanggal dan waktu yang sama
+        if (currentSlot && currentSlot.date && currentSlot.timeSlot) {
+          console.log(`🔍 Mencari pasien di semua slot dengan waktu ${currentSlot.timeSlot} pada tanggal ${currentSlot.date}`);
+          
+          // Ambil semua slot untuk hari ini
+          const slotsResponse = await fetch(`/api/therapy-slots?date=${new Date(currentSlot.date).toISOString().split('T')[0]}&activeOnly=true`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store'
+          });
+          
+          const allSlots = await slotsResponse.json();
+          console.log(`📊 Ditemukan ${allSlots.length} slot pada tanggal yang sama`);
+          
+          // Filter slot yang sama waktu slotnya
+          const sameTimeSlots = allSlots.filter((s: any) => 
+            s.timeSlot === currentSlot.timeSlot && 
+            new Date(s.date).toISOString().split('T')[0] === new Date(currentSlot.date).toISOString().split('T')[0]
+          );
+          
+          console.log(`🕒 Ditemukan ${sameTimeSlots.length} slot dengan waktu ${currentSlot.timeSlot}:`);
+          sameTimeSlots.forEach((s: any) => console.log(`   - ID: ${s.id}, Quota: ${s.maxQuota}, Used: ${s.currentCount}`));
+          
+          // Kumpulkan semua pasien dari slot dengan waktu yang sama
+          let allAppointments: any[] = result.appointments || [];
+          
+          // Jika ada slot lain dengan waktu yang sama, ambil pasiennya juga
+          if (sameTimeSlots.length > 1) {
+            console.log(`⚠️ Ditemukan duplikasi slot dengan waktu yang sama (${currentSlot.timeSlot}). Mengambil data dari semua slot...`);
+            
+            for (const otherSlot of sameTimeSlots) {
+              // Skip jika slot ini sama dengan yang sedang dilihat
+              if (otherSlot.id === slotId) continue;
+              
+              console.log(`🔄 Mengambil data pasien untuk slot ID ${otherSlot.id} (waktu: ${otherSlot.timeSlot})`);
+              const otherSlotResponse = await fetch(`/api/therapy-slots/${otherSlot.id}/patients?_t=${Date.now()}&showAll=true`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                cache: 'no-store'
+              });
+              
+              if (otherSlotResponse.ok) {
+                const otherResult = await otherSlotResponse.json();
+                if (otherResult.appointments && otherResult.appointments.length > 0) {
+                  console.log(`✅ Ditemukan ${otherResult.appointments.length} pasien di slot ID ${otherSlot.id}`);
+                  allAppointments = [...allAppointments, ...otherResult.appointments];
+                }
               }
-            };
+            }
           }
-          return app;
-        });
-        
-        console.log(`📋 Total data pasien yang diproses: ${appointmentsArray.length}`);
-        setAppointments(appointmentsArray);
+          
+          // Debug appointments data dengan informasi lebih lengkap
+          if (allAppointments && allAppointments.length > 0) {
+            console.log("📋 Detail status SEMUA pasien yang diterima:");
+            allAppointments.forEach((app: any) => {
+              console.log(`   - Pasien: ${app.patient?.name || 'Unknown'}, Status: ${app.status || 'Unknown'}, ID: ${app.id}, SlotID: ${app.therapy_slot_id || app.therapySlotId}, Notes: ${app.notes || 'Tidak ada'}`);
+            });
+          } else {
+            // Tampilkan informasi jika tidak ada pasien terdaftar
+            console.log(`ℹ️ Tidak ada pasien terdaftar untuk slot waktu ${currentSlot.timeSlot}, Tanggal: ${currentSlot.date}`);
+          }
+          
+          // Pastikan appointments selalu array bahkan jika null/undefined
+          let appointmentsArray = Array.isArray(allAppointments) ? allAppointments : [];
+          
+          // Pastikan semua appointments memiliki patient object
+          appointmentsArray = appointmentsArray.map((app: any) => {
+            if (!app.patient && app.patientId) {
+              // Jika tidak ada objek patient tapi ada patientId, buat objek patient
+              return {
+                ...app,
+                patient: {
+                  id: app.patientId,
+                  name: app.patient_name || 'Pasien',
+                  phoneNumber: app.patient_phone_number || '-'
+                }
+              };
+            }
+            return app;
+          });
+          
+          console.log(`📋 Total data pasien yang diproses dari semua slot: ${appointmentsArray.length}`);
+          setAppointments(appointmentsArray);
+        } else {
+          // Pastikan appointments selalu array bahkan jika null/undefined
+          let appointmentsArray = Array.isArray(result.appointments) ? result.appointments : [];
+          
+          // Pastikan semua appointments memiliki patient object
+          appointmentsArray = appointmentsArray.map((app: any) => {
+            if (!app.patient && app.patientId) {
+              // Jika tidak ada objek patient tapi ada patientId, buat objek patient
+              return {
+                ...app,
+                patient: {
+                  id: app.patientId,
+                  name: app.patient_name || 'Pasien',
+                  phoneNumber: app.patient_phone_number || '-'
+                }
+              };
+            }
+            return app;
+          });
+          
+          console.log(`📋 Total data pasien yang diproses: ${appointmentsArray.length}`);
+          setAppointments(appointmentsArray);
+        }
         
         const fetchEndTime = Date.now();
         console.log(`⏱️ Slot data fetch selesai dalam ${fetchEndTime - fetchStartTime}ms`);
