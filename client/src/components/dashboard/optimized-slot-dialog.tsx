@@ -647,16 +647,16 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     const statusOptions = ["Scheduled", "Completed", "Cancelled", "No-Show"];
     const currentStatus = appointment?.status || "Pending";
     
-    // Debug pada render komponen
-    useEffect(() => {
-      console.log(`🔍 StatusDropdown mounted for ${appointment?.patient?.name || 'Unknown'}`);
-      console.log(`   - Current status: ${currentStatus}`);
-      console.log(`   - Appointment ID: ${appointment?.id}`);
-      
-      return () => {
-        console.log(`🔍 StatusDropdown unmounted for appointment ID: ${appointment?.id}`);
-      };
-    }, [appointment?.id, appointment?.patient?.name, currentStatus]);
+    // Debugging dinonaktifkan untuk mengurangi log ganda
+    // useEffect(() => {
+    //   console.log(`🔍 StatusDropdown mounted for ${appointment?.patient?.name || 'Unknown'}`);
+    //   console.log(`   - Current status: ${currentStatus}`);
+    //   console.log(`   - Appointment ID: ${appointment?.id}`);
+    //   
+    //   return () => {
+    //     console.log(`🔍 StatusDropdown unmounted for appointment ID: ${appointment?.id}`);
+    //   };
+    // }, [appointment?.id, appointment?.patient?.name, currentStatus]);
     
     const updateStatus = async (status: string) => {
       if (status === currentStatus) {

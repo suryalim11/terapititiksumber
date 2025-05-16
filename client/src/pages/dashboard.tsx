@@ -156,7 +156,8 @@ export default function Dashboard() {
         resultDate = new Date(slot.date).toISOString().split('T')[0];
       }
       
-      console.log(`Memproses slot ID:${slot.id}, tanggal asli: "${slot.date}" -> hasil format: "${resultDate}"`);
+      // Log debug dinonaktifkan untuk mengurangi spam konsol
+      // console.log(`Memproses slot ID:${slot.id}, tanggal asli: "${slot.date}" -> hasil format: "${resultDate}"`);
       return resultDate;
     } catch (error) {
       console.error("Error memproses tanggal slot:", error, slot);
@@ -317,17 +318,21 @@ export default function Dashboard() {
           
           // Untuk "Hari Ini", filter berdasarkan tanggal hari ini tanpa memperhatikan waktu
           // Perbaikan: Konversi format tanggal untuk memastikan kesamaan
+          // Log hari ini hanya sekali saat debugging diperlukan
           console.log("Hari ini (WIB):", todayWIBStr);
           
           filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             const slotDateStr = getSlotDateStr(slot);
-            // Log tanggal dengan jelas untuk memeriksa format
-            console.log(`Slot ID:${slot.id} Tanggal Slot:${slotDateStr} = Hari Ini:${todayWIBStr}? ${slotDateStr === todayWIBStr}`);
             
-            // Percobaan tanggal alternatif jika format tidak cocok
-            const slotDate = new Date(slotDateStr);
-            const slotDateAlternative = slotDate.toISOString().split('T')[0];
-            console.log(`  Format Alternatif: ${slotDateAlternative} = ${todayWIBStr}? ${slotDateAlternative === todayWIBStr}`);
+            // Menampilkan log hanya untuk beberapa slot pilihan saja untuk debugging (ID 456, 473, 475)
+            if ([456, 473, 475].includes(slot.id)) {
+              console.log(`Slot ID:${slot.id} Tanggal Slot:${slotDateStr} = Hari Ini:${todayWIBStr}? ${slotDateStr === todayWIBStr}`);
+              
+              // Percobaan tanggal alternatif jika format tidak cocok
+              const slotDate = new Date(slotDateStr);
+              const slotDateAlternative = slotDate.toISOString().split('T')[0];
+              console.log(`  Format Alternatif: ${slotDateAlternative} = ${todayWIBStr}? ${slotDateAlternative === todayWIBStr}`);
+            }
             
             // Periksa dengan beberapa cara berbeda untuk memastikan kecocokan
             return slotDateStr === todayWIBStr || slotDateAlternative === todayWIBStr;
