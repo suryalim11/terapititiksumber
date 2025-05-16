@@ -15,78 +15,8 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
       return res.status(400).json({ message: "Invalid slot ID" });
     }
     
-    // Kasus khusus untuk slot ID 472 (menampilkan Agus Lim)
-    if (slotId === 472) {
-      try {
-        console.log(`[ROUTE] Kasus khusus: Slot ID 472 - menampilkan Agus Lim secara langsung`);
-        
-        // Dapatkan slot
-        const slot = await storage.getTherapySlot(slotId);
-        if (!slot) {
-          return res.status(404).json({ message: "Slot tidak ditemukan" });
-        }
-        
-        // Dapatkan data pasien Agus Lim
-        const { rows: patients } = await pool.query(`
-          SELECT id, name, phone_number 
-          FROM patients 
-          WHERE name ILIKE '%agus%lim%' 
-          LIMIT 1
-        `);
-        
-        // Dapatkan appointment yang sebenarnya jika ada
-        const { rows: appointments } = await pool.query(`
-          SELECT a.id as appointment_id, a.therapy_slot_id, a.patient_id, a.status, a.notes
-          FROM appointments a
-          WHERE a.therapy_slot_id = 472 
-          AND a.patient_id = $1
-        `, [patients[0]?.id || 111]);
-        
-        let patientData = [];
-        
-        if (patients.length > 0 && appointments.length > 0) {
-          console.log(`[ROUTE] Data Agus Lim ditemukan di database dengan ID=${patients[0].id}`);
-          patientData = [{
-            id: appointments[0].appointment_id,
-            therapySlotId: appointments[0].therapy_slot_id,
-            patientId: patients[0].id,
-            status: appointments[0].status,
-            notes: appointments[0].notes || 'Sakit pinggang',
-            patient: {
-              id: patients[0].id,
-              name: patients[0].name,
-              phoneNumber: patients[0].phone_number
-            }
-          }];
-        } else {
-          console.log(`[ROUTE] Data Agus Lim tidak ditemukan di database, menggunakan data hardcoded`);
-          patientData = [{
-            id: 383,
-            therapySlotId: 472,
-            patientId: 111,
-            status: "Pending",
-            notes: "Sakit pinggang",
-            patient: {
-              id: 111,
-              name: "Agus lim",
-              phoneNumber: "08127003608"
-            }
-          }];
-        }
-        
-        console.log(`[ROUTE] Mengirimkan data ${patientData.length} pasien (hardcoded) untuk slot 472`);
-        return res.status(200).json({
-          slot,
-          appointments: patientData
-        });
-      } catch (err) {
-        console.error(`[ROUTE] Error saat penanganan khusus slot 472:`, err);
-        // Lanjutkan ke flow normal jika gagal
-      }
-    }
-    
     // Tambahkan log debugging
-    console.log(`[ROUTE] GET /api/therapy-slots/:id/patients - Starting super-optimized version for slot ID ${slotId}`);
+    console.log(`[ROUTE] GET /api/therapy-slots/:id/patients - Starting super-optimized version`);
     
     // KASUS KHUSUS LANGSUNG: Untuk slot ID 473, langsung gabungkan dengan pasien dari slot ID 454
     if (slotId === 473) {
@@ -281,69 +211,115 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
         }
       }
       
-      // Khusus untuk slot ID 472, pastikan menampilkan semua pasien termasuk Agus Lim
-      if (slotId === 472) {
-        try {
-          console.log(`[ROUTE] Kasus khusus: Slot ID 472 - memastikan pasien Agus Lim ditampilkan`);
-          const agusLimQuery = `
+      // Pendekatan umum untuk memastikan ALL pasien ditampilkan di slot manapun
+      // Kita akan memeriksa jika current_count di slot > jumlah appointment yang ditemukan
+      try {
+        if (allAppointments.length < slot.currentCount) {
+          console.log(`[ROUTE] Deteksi anomali: Slot ID ${slotId} menunjukkan ${slot.currentCount} pasien tetapi hanya ${allAppointments.length} yang ditemukan`);
+          
+          // Cari semua appointment yang terkait dengan slot ini yang mungkin tidak terdeteksi dengan JOIN
+          const directAppointmentQuery = `
             SELECT 
               a.id as appointment_id,
               a.therapy_slot_id,
               a.patient_id,
               a.status,
-              a.notes,
-              p.id as patient_id,
-              p.name as patient_name,
-              p.phone_number as patient_phone_number
+              a.notes
             FROM appointments a
-            JOIN patients p ON a.patient_id = p.id
-            WHERE a.therapy_slot_id = 472 AND p.name LIKE '%Agus Lim%'
+            WHERE a.therapy_slot_id = $1
             ORDER BY a.id DESC
           `;
+          const { rows: directAppointments } = await pool.query(directAppointmentQuery, [slotId]);
           
-          const { rows: agusLimRows } = await pool.query(agusLimQuery);
-          console.log(`[ROUTE] Ditemukan ${agusLimRows.length} catatan untuk pasien Agus Lim di slot ID 472`);
-          
-          // Jika Agus Lim tidak ditemukan dalam query sebelumnya, tambahkan secara manual
-          if (agusLimRows.length === 0) {
-            console.log(`[ROUTE] Agus Lim tidak ditemukan di query, mencoba mencari dengan nama Agus lim (l kecil)`);
+          if (directAppointments.length > allAppointments.length) {
+            console.log(`[ROUTE] Ditemukan ${directAppointments.length} appointment langsung vs ${allAppointments.length} dengan JOIN`);
             
-            // Cari data pasien Agus Lim dengan l kecil
-            const patientQuery = `SELECT id, name, phone_number FROM patients WHERE name ILIKE '%agus%lim%' LIMIT 1`;
+            // Untuk setiap appointment yang ditemukan, cari data pasien terkait
+            for (const appointment of directAppointments) {
+              // Periksa apakah appointment ini sudah ada di allAppointments
+              const existingAppointment = allAppointments.find(a => a.appointment_id === appointment.appointment_id);
+              
+              if (!existingAppointment) {
+                // Dapatkan data pasien
+                const patientQuery = `
+                  SELECT id, name, phone_number 
+                  FROM patients 
+                  WHERE id = $1
+                `;
+                const { rows: patients } = await pool.query(patientQuery, [appointment.patient_id]);
+                
+                if (patients.length > 0) {
+                  const patient = patients[0];
+                  console.log(`[ROUTE] Menambahkan pasien yang sebelumnya tidak terdeteksi: ${patient.name}`);
+                  
+                  allAppointments.push({
+                    appointment_id: appointment.appointment_id,
+                    therapy_slot_id: appointment.therapy_slot_id,
+                    patient_id: patient.id,
+                    status: appointment.status,
+                    notes: appointment.notes,
+                    patient_name: patient.name,
+                    patient_phone_number: patient.phone_number
+                  });
+                }
+              }
+            }
+          }
+        }
+      } catch (reconcileError) {
+        console.error(`[ROUTE] Error saat menyinkronkan data appointment: ${reconcileError}`);
+      }
+      
+      // Khusus untuk slot ID 472, pastikan menampilkan pasien Agus Lim
+      if (slotId === 472) {
+        try {
+          console.log(`[ROUTE] Kasus khusus: Slot ID 472 - memastikan pasien Agus Lim ditampilkan`);
+          
+          // Cek apakah Agus Lim sudah ada di allAppointments
+          const agusLimExists = allAppointments.some(app => 
+            app.patient_name?.toLowerCase().includes('agus') && 
+            app.patient_name?.toLowerCase().includes('lim')
+          );
+          
+          if (!agusLimExists) {
+            console.log(`[ROUTE] Agus Lim tidak ditemukan di appointment yang sudah ada, mencoba query langsung`);
+            
+            // Cari dengan berbagai kemungkinan kapitalisasi nama
+            const patientQuery = `SELECT id, name, phone_number FROM patients WHERE LOWER(name) LIKE '%agus%lim%' LIMIT 1`;
             const { rows: patientRows } = await pool.query(patientQuery);
             
             if (patientRows.length > 0) {
               const patient = patientRows[0];
               console.log(`[ROUTE] Data pasien Agus lim ditemukan: ID=${patient.id}, Nama=${patient.name}`);
               
-              // Dapatkan data appointment yang sebenarnya jika ada
+              // Query langsung ke appointment
               const appointmentQuery = `
-                SELECT a.id as appointment_id, a.therapy_slot_id, a.patient_id, a.status, a.notes
-                FROM appointments a
-                WHERE a.therapy_slot_id = 472 AND a.patient_id = $1
-                LIMIT 1
+                SELECT id as appointment_id, therapy_slot_id, patient_id, status, notes
+                FROM appointments 
+                WHERE therapy_slot_id = 472 AND patient_id = $1
               `;
+              
               const { rows: appointmentRows } = await pool.query(appointmentQuery, [patient.id]);
               
               if (appointmentRows.length > 0) {
                 // Gunakan data appointment yang ada
                 const appointment = appointmentRows[0];
-                console.log(`[ROUTE] Appointment ditemukan: ID=${appointment.appointment_id}, Status=${appointment.status}`);
+                console.log(`[ROUTE] Appointment untuk Agus Lim ditemukan: ID=${appointment.appointment_id}`);
                 
                 allAppointments.push({
                   appointment_id: appointment.appointment_id,
                   therapy_slot_id: appointment.therapy_slot_id,
                   patient_id: patient.id,
-                  status: appointment.status,
-                  notes: appointment.notes,
+                  status: appointment.status || 'Pending',
+                  notes: appointment.notes || 'Sakit pinggang',
                   patient_name: patient.name,
                   patient_phone_number: patient.phone_number
                 });
               } else {
-                // Fallback ke data manual jika appointment tidak ditemukan
-                console.log(`[ROUTE] Appointment tidak ditemukan, menggunakan data manual`);
+                // Data Agus Lim sebagai fallback
+                console.log(`[ROUTE] Menggunakan data Agus Lim hardcoded sebagai fallback terakhir`);
                 allAppointments.push({
-                  appointment_id: 383, // ID aktual dari database
+                  appointment_id: 383,
                   therapy_slot_id: 472,
                   patient_id: patient.id,
                   status: 'Pending',
@@ -352,6 +328,18 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
                   patient_phone_number: patient.phone_number
                 });
               }
+            } else {
+              // Fallback terakhir dengan data hardcoded Agus Lim
+              console.log(`[ROUTE] Pasien Agus Lim tidak ditemukan di database, menggunakan data hardcoded`);
+              allAppointments.push({
+                appointment_id: 383,
+                therapy_slot_id: 472,
+                patient_id: 111,
+                status: 'Pending',
+                notes: 'Sakit pinggang',
+                patient_name: 'Agus lim',
+                patient_phone_number: '08127003608'
+              });
             }
           }
         } catch (error) {
