@@ -509,8 +509,6 @@ export default function Transactions() {
     const displayName = transaction?.metadata?.displayName;
     if (displayName && 
         ['alternative', 'alias', 'Syafliana', 'syafliana'].includes(String(displayName))) {
-      console.log("Using alternative display name for transaction:", transaction.transactionId);
-      
       // Kita mencoba mencari data pasien alternatif (dengan nomor telepon yang sama)
       try {
         // Cari pasien terkait dengan nama berbeda (alternatif)
@@ -520,11 +518,10 @@ export default function Transactions() {
         
         if (relatedPatients.length > 0) {
           // Gunakan nama dari pasien alternatif pertama yang ditemukan
-          console.log(`Found alternative name for patient ${patientId}: ${relatedPatients[0].name}`);
           return relatedPatients[0].name;
         }
       } catch (err) {
-        console.error("Error finding alternative name:", err);
+        // Error silenced
       }
     }
     
