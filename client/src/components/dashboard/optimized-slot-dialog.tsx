@@ -261,20 +261,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           }
           // Slot 455 (10:00-12:00)
           else if (slotId === 455) {
-            hardcodedAppointments = [
-              {
-                id: 1004,
-                therapySlotId: 455,
-                patientId: 404,
-                status: getHardcodedAppointmentStatus(1004) || "Active",
-                notes: "Duplikat slot lain",
-                patient: {
-                  id: 404,
-                  name: "Budi Santoso",
-                  phoneNumber: "089876543210"
-                }
-              }
-            ];
+            hardcodedAppointments = [];
           }
           
           // Filter out cancelled or no-show appointments
