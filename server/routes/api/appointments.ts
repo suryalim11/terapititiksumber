@@ -124,7 +124,34 @@ export function setupAppointmentRoutes(app: Express) {
   // Membuat appointment baru
   app.post("/api/appointments", requireAuth, async (req: Request, res: Response) => {
     try {
+      // Log untuk debugging
+      console.log(`📝 Menerima request pendaftaran appointment dengan data:`, 
+        JSON.stringify({
+          walkin: req.body.walkin,
+          notes: req.body.notes,
+          status: req.body.status,
+          patientId: req.body.patientId,
+          date: req.body.date
+        }, null, 2)
+      );
+      
       const appointmentData = insertAppointmentSchema.parse(req.body);
+      
+      // Deteksi apakah pendaftaran ini adalah walk-in (tambahkan deteksi dari notes atau parameter walkin)
+      const isWalkIn = Boolean(req.body.walkin === true || appointmentData.notes?.toLowerCase().includes('walk-in'));
+      
+      // Set status default yang sesuai dengan jalur pendaftaran
+      if (!appointmentData.status) {
+        appointmentData.status = isWalkIn ? 'Active' : 'Confirmed';
+        console.log(`📋 Status default disetel ke "${appointmentData.status}" (isWalkIn: ${isWalkIn})`);
+      }
+      
+      // Pastikan notes mencerminkan jalur pendaftaran
+      if (isWalkIn && (!appointmentData.notes || !appointmentData.notes.toLowerCase().includes('walk-in'))) {
+        appointmentData.notes = appointmentData.notes 
+          ? `${appointmentData.notes} (walk-in)`
+          : "Pendaftaran walk-in";
+      }
       
       // Periksa apakah pasien ada
       const patient = await storage.getPatient(appointmentData.patientId);
@@ -154,13 +181,18 @@ export function setupAppointmentRoutes(app: Express) {
           });
         }
         
-        // Periksa kuota jika bukan walk-in
-        if (!appointmentData.walkin && therapySlot.currentCount >= therapySlot.maxQuota) {
+        // Periksa kuota jika bukan walk-in (periksa dari parameter walkin atau notes)
+        if (!isWalkIn && therapySlot.currentCount >= therapySlot.maxQuota) {
+          console.log(`⚠️ Slot terapi ${therapySlot.id} sudah penuh: ${therapySlot.currentCount}/${therapySlot.maxQuota}`);
           return res.status(400).json({ 
             success: false, 
             message: "Slot terapi sudah penuh" 
           });
         }
+        
+        // Log informasi kuota untuk monitoring
+        console.log(`📊 Slot terapi ${therapySlot.id} - kuota: ${therapySlot.currentCount}/${therapySlot.maxQuota}, pendaftaran: ${isWalkIn ? 'walk-in' : 'online'}`);
+        
         
         // Set tanggal dan waktu dari slot terapi
         appointmentData.date = therapySlot.date;
@@ -201,15 +233,24 @@ export function setupAppointmentRoutes(app: Express) {
             success: true,
             appointment: updatedAppointment,
             sessionUpdated: true,
-            message: "Appointment berhasil dibuat dan dihubungkan dengan sesi yang ada"
+            registrationType: isWalkIn ? "walk-in" : "online",
+            message: isWalkIn 
+              ? "Appointment walk-in berhasil dibuat dengan status 'Active' dan dihubungkan dengan sesi yang ada"
+              : "Appointment online berhasil dibuat dengan status 'Confirmed' dan dihubungkan dengan sesi yang ada",
+            timestamp: new Date().toISOString()
           });
         }
       }
       
+      // Respons yang lebih informatif dengan kategori pendaftaran
       return res.status(201).json({
         success: true,
         appointment: newAppointment,
-        message: "Appointment berhasil dibuat"
+        registrationType: isWalkIn ? "walk-in" : "online",
+        message: isWalkIn 
+          ? "Appointment walk-in berhasil dibuat dengan status 'Active'" 
+          : "Appointment online berhasil dibuat dengan status 'Confirmed'",
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
       console.error("Error creating appointment:", error);
