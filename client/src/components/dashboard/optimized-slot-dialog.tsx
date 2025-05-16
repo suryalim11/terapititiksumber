@@ -57,17 +57,35 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
   // Prevent duplicate fetch
   const fetchInProgressRef = useRef(false);
   
-  // Fetch data method with timeout handler
-  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 8000, retryCount = 2): Promise<Response> => {
+  // Fetch data method with timeout handler - Improved
+  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 15000, retryCount = 3): Promise<Response> => {
     let lastError;
+    let attemptLog = [];
+    
+    // Notify user on first attempt
+    toast({
+      title: "Mengambil Data",
+      description: "Menghubungi server untuk mengambil data pasien...",
+      duration: 3000
+    });
     
     for (let attempt = 0; attempt <= retryCount; attempt++) {
       try {
         let timeoutId: number | null = null;
+        const attemptStartTime = Date.now();
+        
+        // Notify user on retry (not on first attempt)
+        if (attempt > 0) {
+          toast({
+            title: `Percobaan ${attempt} dari ${retryCount}`,
+            description: "Menunggu respons server...",
+            duration: 3000
+          });
+        }
         
         const timeoutPromise = new Promise<Response>((_, reject) => {
           timeoutId = window.setTimeout(() => {
-            reject(new Error(`Request timeout (${timeoutMs}ms)`));
+            reject(new Error(`Waktu respons server terlalu lama (${timeoutMs}ms)`));
           }, timeoutMs);
         });
         
@@ -86,30 +104,61 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
         if (timeoutId) clearTimeout(timeoutId);
         
         if (!window.navigator.onLine) {
-          throw new Error("Perangkat offline");
+          throw new Error("Perangkat tidak terhubung ke internet");
         }
+        
+        const attemptTime = Date.now() - attemptStartTime;
+        attemptLog.push(`Attempt ${attempt+1}: ${attemptTime}ms`);
         
         return response;
       } catch (err: any) {
         lastError = err;
         const waitTime = Math.min(500 * Math.pow(2, attempt), 4000);
         
+        // Log attempt info
+        attemptLog.push(`Attempt ${attempt+1} failed: ${err.message}`);
+        
         if (!window.navigator.onLine) {
+          // Notify user when offline
+          toast({
+            title: "Perangkat Offline",
+            description: "Menunggu koneksi internet tersedia kembali...",
+            duration: 5000
+          });
+          
           await new Promise<void>(resolve => {
             const onlineHandler = () => {
               window.removeEventListener('online', onlineHandler);
+              
+              // Notify when back online
+              toast({
+                title: "Kembali Online",
+                description: "Melanjutkan pengambilan data...",
+                duration: 3000
+              });
+              
               resolve();
             };
             window.addEventListener('online', onlineHandler);
           });
         }
         else if (attempt < retryCount) {
+          // Notify user about retry with delay
+          if (attempt > 0) {
+            toast({
+              title: "Mencoba Ulang",
+              description: `Percobaan ${attempt+1} dari ${retryCount+1}. Menunggu ${Math.round(waitTime/1000)} detik...`,
+              duration: waitTime
+            });
+          }
+          
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
     }
     
-    throw lastError || new Error(`Fetch gagal setelah ${retryCount + 1} percobaan`);
+    console.log("All fetch attempts failed:", attemptLog.join(", "));
+    throw lastError || new Error(`Gagal mendapatkan data setelah ${retryCount + 1} percobaan. Silakan coba lagi nanti.`);
   };
   
   // Fungsi untuk menyimpan status hardcoded appointment di localStorage
@@ -508,21 +557,47 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
         console.error(`❌ Error respons dari endpoint optimized: ${response.status}`);
         setError(new Error(`Gagal mengambil data: ${response.status}`));
         
-        // Tampilkan toast untuk user
+        // Tampilkan toast untuk user dengan pesan yang lebih spesifik
+        const errorMessages = {
+          408: "Waktu respons server habis. Server sedang sibuk.",
+          429: "Terlalu banyak permintaan. Mohon tunggu beberapa saat.",
+          500: "Kesalahan internal server. Tim teknis sudah diberitahu.",
+          502: "Server database tidak merespons. Mohon coba lagi nanti.",
+          503: "Layanan sementara tidak tersedia. Sedang dalam pemeliharaan.",
+          504: "Gateway timeout. Server membutuhkan waktu terlalu lama untuk merespons."
+        };
+        
+        const errorMessage = errorMessages[response.status as keyof typeof errorMessages] || 
+                             `Server merespons dengan kode: ${response.status}`;
+        
         toast({
           title: "Gagal memuat data",
-          description: `Server merespons dengan kode: ${response.status}`,
+          description: errorMessage,
           variant: "destructive"
         });
       }
     } catch (error) {
       console.error("❌ Error saat mengambil data:", error);
-      setError(new Error("Terjadi kesalahan saat mengambil data. Coba lagi."));
       
-      // Tampilkan toast untuk user
+      // Set error state dengan pesan yang lebih informatif
+      let errorMessage = "Terjadi kesalahan saat mengambil data. Coba lagi.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("timeout") || error.message.includes("Waktu respons")) {
+          errorMessage = "Server membutuhkan waktu terlalu lama untuk merespons. Ini mungkin karena koneksi lambat atau server sedang sibuk.";
+        } else if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+          errorMessage = "Tidak dapat terhubung ke server. Periksa koneksi internet Anda dan coba lagi.";
+        } else if (error.message.includes("Fetch gagal setelah")) {
+          errorMessage = "Gagal mengambil data setelah beberapa percobaan. Server mungkin sedang sibuk.";
+        }
+      }
+      
+      setError(new Error(errorMessage));
+      
+      // Tampilkan toast untuk user dengan pesan yang lebih informatif
       toast({
         title: "Error",
-        description: `${(error as Error).message || 'Gagal memuat data. Silakan coba lagi.'}`,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
