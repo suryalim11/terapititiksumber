@@ -247,9 +247,9 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           }
           
           // Filter out cancelled or no-show appointments
-          // hardcodedAppointments = hardcodedAppointments.filter(app => 
-          //   app.status !== "Cancelled" && app.status !== "No-Show"
-          // );
+          hardcodedAppointments = hardcodedAppointments.filter(app => 
+            app.status !== "Cancelled" && app.status !== "No-Show"
+          );
           
           console.log(`✅ HARDCODED FIX: Menambahkan ${hardcodedAppointments.length} pasien ke slot ${slotId}`);
           setAppointments(hardcodedAppointments);
