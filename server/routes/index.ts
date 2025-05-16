@@ -8,6 +8,7 @@ import { setupPatientRoutes } from "./api/patients";
 import { setupAuthRoutes } from "./api/auth";
 import { setupUserRoutes } from "./api/users";
 import { setupRegistrationLinkRoutes } from "./api/registration-links";
+import { setupDashboardRoutes } from "./api/dashboard";
 
 /**
  * Setup semua rute API dan middleware
@@ -21,6 +22,7 @@ export function setupRoutes(app: Express) {
   setupTherapySlotsRoutes(app);
   setupAppointmentRoutes(app);
   setupRegistrationLinkRoutes(app);
+  setupDashboardRoutes(app);
   
   // Add API ping/health check endpoint
   app.get('/api/ping', (req, res) => {
