@@ -779,8 +779,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     );
   };
   
-  // Fungsi handleTransactionClick sudah dideklarasikan di tempat lain
-  // Kode dihapus untuk menghindari deklarasi ganda
+  // Kode fungsi sebelumnya dihapus karena handleTransactionClick sudah ada di atas
   
   // Fungsi untuk mengirim pengingat via WhatsApp
   const handleReminderClick = (patient: any, appointment: any, event?: React.MouseEvent) => {
