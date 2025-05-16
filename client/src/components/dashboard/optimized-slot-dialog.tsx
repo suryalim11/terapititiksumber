@@ -172,11 +172,10 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     // HARDCODED FIX: Untuk slot dengan masalah duplikasi
     // Slot ID 473 (13:00-15:00) - sama dengan slot ID 454
     // Slot ID 475 (15:00-17:00) - juga mengalami masalah duplikasi
-    if (slotId === 473 || slotId === 475 || slotId === 455) {
+    if (slotId === 473 || slotId === 475) {
       let slotTitle = "";
       if (slotId === 473) slotTitle = "13:00-15:00";
       else if (slotId === 475) slotTitle = "15:00-17:00";
-      else if (slotId === 455) slotTitle = "15:00-17:00";
       
       console.log(`⚠️ HARDCODED FIX: Data untuk slot ID ${slotId} (${slotTitle})`);
       try {
@@ -245,35 +244,6 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           // Slot 475 (15:00-17:00)
           else if (slotId === 475) {
             hardcodedAppointments = [];
-          }
-          // Slot 455 (15:00-17:00)
-          else if (slotId === 455) {
-            hardcodedAppointments = [
-              {
-                id: 345,
-                therapySlotId: 455,
-                patientId: 356,
-                status: getHardcodedAppointmentStatus(345) || "Scheduled",
-                notes: "[WALK-IN] Saraf terjepit ",
-                patient: {
-                  id: 356,
-                  name: "Refliner",
-                  phoneNumber: "+62 822-7982-1581"
-                }
-              },
-              {
-                id: 358,
-                therapySlotId: 455,
-                patientId: 368,
-                status: getHardcodedAppointmentStatus(358) || "Scheduled",
-                notes: "Dibuat oleh verifikasi pasien otomatis",
-                patient: {
-                  id: 368,
-                  name: "BERNADUS.N.LEHAN",
-                  phoneNumber: "082285073026"
-                }
-              }
-            ];
           }
           
           // Filter out cancelled or no-show appointments
