@@ -1388,45 +1388,77 @@ export class DatabaseStorage implements IStorage {
 
   async createTherapySlot(slot: InsertTherapySlot): Promise<TherapySlot> {
     try {
-      // Pastikan jika date adalah string, gunakan string tersebut
-      // Ini untuk mencegah error "value.toISOString is not a function"
+      let formattedDate: string;
+      let timeSlot = slot.timeSlot || '';
+      
+      // Proses tanggal, pastikan selalu dalam format string YYYY-MM-DD
       if (typeof slot.date === 'string') {
-        console.log(`Creating therapy slot with string date: ${slot.date}`);
+        console.log(`Processing therapy slot with string date: ${slot.date}`);
         
         // Pastikan format tanggal dalam bentuk yang benar (YYYY-MM-DD)
-        let dateString = slot.date;
+        formattedDate = slot.date;
         // Jika slot.date dalam format lain (misalnya DD-MM-YYYY), konversi ke YYYY-MM-DD
         if (slot.date.includes('/') || slot.date.includes('-') && slot.date.split('-')[0].length !== 4) {
           const parts = slot.date.split(/[-\/]/);
           if (parts.length === 3) {
             // Asumsi format DD-MM-YYYY atau DD/MM/YYYY
             if (parts[0].length <= 2 && parts[1].length <= 2 && parts[2].length === 4) {
-              dateString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-              console.log(`Converted date format from ${slot.date} to ${dateString}`);
+              formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+              console.log(`Converted date format from ${slot.date} to ${formattedDate}`);
             }
           }
         }
-        
-        // Jalankan query dengan nilai yang sudah divalidasi
-        const result = await db.insert(schema.therapySlots).values({
-          ...slot,
-          date: dateString
-        }).returning();
-        
-        return result[0];
       } else {
         // Jika date adalah objek Date, konversi ke string ISO
         const dateObj = slot.date as unknown as Date;
-        const isoString = dateObj.toISOString().split('T')[0];
-        console.log(`Creating therapy slot with Date object, converted to ISO string: ${isoString}`);
-        
-        const result = await db.insert(schema.therapySlots).values({
-          ...slot,
-          date: isoString
-        }).returning();
-        
-        return result[0];
+        formattedDate = dateObj.toISOString().split('T')[0];
+        console.log(`Processing therapy slot with Date object, converted to ISO string: ${formattedDate}`);
       }
+      
+      // Membuat time_slot_key untuk pencarian slot yang sama
+      const timeSlotKey = `${formattedDate}_${timeSlot}`;
+      console.log(`🔍 Mencari slot terapi yang sudah ada dengan timeSlotKey: ${timeSlotKey}`);
+      
+      // Periksa apakah slot dengan tanggal dan waktu yang sama sudah ada
+      const existingSlots = await db.select()
+        .from(schema.therapySlots)
+        .where(
+          and(
+            eq(schema.therapySlots.date, formattedDate),
+            eq(schema.therapySlots.timeSlot, timeSlot),
+            eq(schema.therapySlots.isActive, true)
+          )
+        );
+      
+      // Jika slot dengan tanggal dan waktu yang sama sudah ada, gunakan slot tersebut
+      if (existingSlots.length > 0) {
+        console.log(`✅ SLOT TERAPI DITEMUKAN: Menggunakan slot yang sudah ada dengan ID: ${existingSlots[0].id} untuk waktu ${timeSlot} pada tanggal ${formattedDate}`);
+        
+        // Jika ada beberapa slot dengan waktu yang sama, ambil yang sudah memiliki pasien terdaftar
+        const slotsWithPatients = await Promise.all(existingSlots.map(async (slot) => {
+          const appointments = await db.select().from(schema.appointments).where(eq(schema.appointments.therapySlotId, slot.id));
+          return { 
+            slot, 
+            patientCount: appointments.length 
+          };
+        }));
+        
+        // Urutkan berdasarkan jumlah pasien (dari banyak ke sedikit) dan prioritaskan slot yang sudah memiliki pasien
+        slotsWithPatients.sort((a, b) => b.patientCount - a.patientCount);
+        
+        // Gunakan slot dengan pasien terbanyak, atau slot pertama jika tidak ada yang memiliki pasien
+        return slotsWithPatients[0].slot;
+      }
+      
+      // Jika tidak ada slot yang sama, buat slot baru
+      console.log(`⭐ SLOT TERAPI BARU: Membuat slot baru untuk waktu ${timeSlot} pada tanggal ${formattedDate}`);
+      const result = await db.insert(schema.therapySlots).values({
+        ...slot,
+        date: formattedDate,
+        timeSlotKey: timeSlotKey
+      }).returning();
+      
+      return result[0];
     } catch (error) {
       console.error(`Error in createTherapySlot: ${error}`);
       console.error(`Slot data: ${JSON.stringify(slot)}`);

@@ -1109,17 +1109,77 @@ export class MemStorage implements IStorage {
   }
   
   async createTherapySlot(insertSlot: InsertTherapySlot): Promise<TherapySlot> {
-    const id = this.therapySlotCurrentId++;
-    const createdAt = new Date();
-    
-    const slot: TherapySlot = {
-      ...insertSlot,
-      id,
-      createdAt
-    };
-    
-    this.therapySlots.set(id, slot);
-    return slot;
+    try {
+      const formattedDate = typeof insertSlot.date === 'string' 
+        ? insertSlot.date 
+        : (insertSlot.date as Date).toISOString().split('T')[0];
+      
+      const timeSlot = insertSlot.timeSlot || '';
+      
+      // Periksa apakah slot dengan tanggal dan waktu yang sama sudah ada
+      const existingSlots = await db.select()
+        .from(schema.therapySlots)
+        .where(
+          and(
+            eq(schema.therapySlots.date, formattedDate),
+            eq(schema.therapySlots.timeSlot, timeSlot),
+            eq(schema.therapySlots.isActive, true)
+          )
+        );
+      
+      // Jika slot dengan tanggal dan waktu yang sama sudah ada, gunakan slot tersebut
+      if (existingSlots.length > 0) {
+        console.log(`✅ SLOT TERAPI DITEMUKAN: Menggunakan slot yang sudah ada dengan ID: ${existingSlots[0].id} untuk waktu ${timeSlot} pada tanggal ${formattedDate}`);
+        
+        // Jika ada beberapa slot dengan waktu yang sama, ambil yang sudah memiliki pasien terdaftar
+        const slotsWithPatients = await Promise.all(existingSlots.map(async (slot) => {
+          const appointments = await db.select().from(schema.appointments).where(eq(schema.appointments.therapySlotId, slot.id));
+          return { 
+            slot, 
+            patientCount: appointments.length 
+          };
+        }));
+        
+        // Urutkan berdasarkan jumlah pasien (dari banyak ke sedikit) dan prioritaskan slot yang sudah memiliki pasien
+        slotsWithPatients.sort((a, b) => b.patientCount - a.patientCount);
+        
+        // Gunakan slot dengan pasien terbanyak, atau slot pertama jika tidak ada yang memiliki pasien
+        return slotsWithPatients[0].slot;
+      }
+      
+      // Jika tidak ada slot yang sama, buat slot baru
+      console.log(`⭐ SLOT TERAPI BARU: Membuat slot baru untuk waktu ${timeSlot} pada tanggal ${formattedDate}`);
+      
+      // Gunakan implementasi sebelumnya untuk MemStorage
+      if (this.therapySlots) {
+        const id = this.therapySlotCurrentId++;
+        const createdAt = new Date();
+        
+        const slot: TherapySlot = {
+          ...insertSlot,
+          id,
+          createdAt
+        };
+        
+        this.therapySlots.set(id, slot);
+        return slot;
+      } else {
+        // Untuk DatabaseStorage gunakan Drizzle ORM
+        const timeSlotKey = `${formattedDate}_${timeSlot}`;
+        
+        const result = await db.insert(schema.therapySlots).values({
+          ...insertSlot,
+          date: formattedDate,
+          timeSlotKey
+        }).returning();
+        
+        return result[0];
+      }
+    } catch (error) {
+      console.error(`Error in createTherapySlot: ${error}`);
+      console.error(`Slot data: ${JSON.stringify(insertSlot)}`);
+      throw error;
+    }
   }
   
   async updateTherapySlot(id: number, updateData: Partial<InsertTherapySlot>): Promise<TherapySlot | undefined> {
