@@ -225,11 +225,11 @@ export default function Transactions() {
   useEffect(() => {
     if (patientIdFromUrl) {
       const patientIdNumber = parseInt(patientIdFromUrl);
-      console.log("Ditemukan patientId di URL:", patientIdNumber);
+      // Ditemukan patientId di URL
       
       // Jangan lakukan apa-apa sampai patients sudah terload
       if (!patients || patients.length === 0) {
-        console.log("Menunggu data pasien tersedia...");
+        // Menunggu data pasien tersedia
         // Kirim toast untuk memberitahu pengguna
         toast({
           title: "Membuat transaksi baru",
@@ -240,7 +240,7 @@ export default function Transactions() {
       
       // Jika form sudah pernah dibuka untuk patientId ini, jangan buka lagi
       if (hasOpenedFormRef.current) {
-        console.log("Form sudah pernah dibuka untuk patientId ini");
+        // Form sudah pernah dibuka untuk patientId ini
         return;
       }
       
@@ -326,9 +326,9 @@ export default function Transactions() {
         }
         
         // Verifikasi pasien ada dalam data
-        console.log("Memeriksa data pasien. Total pasien:", patients?.length || 0);
+        // Memeriksa ketersediaan data pasien
         if (patients && patients.length > 0) {
-          console.log("Sampel ID pasien yang tersedia:", patients.slice(0, 5).map((p: any) => p.id));
+          // Pasien tersedia dalam sistem
         }
         
         // Gunakan pendekatan yang lebih fleksibel untuk menemukan pasien
@@ -635,17 +635,7 @@ export default function Transactions() {
   
   // Filter dan sort transaksi berdasarkan pencarian, periode, dan urutan
   // Log data yang diterima
-  useEffect(() => {
-    if (transactions) {
-      console.log("Data transaksi tersedia:", transactions.length);
-    } else {
-      console.log("Data transaksi belum tersedia");
-    }
-    
-    if (patients) {
-      console.log("Data pasien tersedia:", patients.length);
-    }
-  }, [transactions, patients]);
+  // Pemeriksaan data dilakukan tanpa logging untuk performa yang lebih baik
   
   const filteredTransactions = transactions 
     ? transactions
@@ -906,9 +896,7 @@ export default function Transactions() {
         }
       }
       
-      // Lakukan logging untuk memastikan items valid
-      console.log("Items untuk WhatsApp sebelum diproses:", updatedTransaction.items);
-      console.log("Items untuk WhatsApp setelah diproses:", items);
+      // Menyiapkan items untuk pesan WhatsApp
       
       // Format pesan WhatsApp sesuai template yang diminta
       let message = `Yth. ${patient.name},\n\n`;
