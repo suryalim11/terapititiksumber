@@ -112,6 +112,33 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     throw lastError || new Error(`Fetch gagal setelah ${retryCount + 1} percobaan`);
   };
   
+  // Fungsi untuk menyimpan status hardcoded appointment di localStorage
+  const saveHardcodedAppointmentStatus = (appointmentId: number, status: string) => {
+    try {
+      // Format kunci: "hardcoded_appointment_status_{id}"
+      const key = `hardcoded_appointment_status_${appointmentId}`;
+      localStorage.setItem(key, status);
+      console.log(`💾 Status untuk appointment ID ${appointmentId} disimpan di localStorage: ${status}`);
+    } catch (error) {
+      console.error("❌ Error saat menyimpan status di localStorage:", error);
+    }
+  };
+  
+  // Fungsi untuk mengambil status hardcoded appointment dari localStorage
+  const getHardcodedAppointmentStatus = (appointmentId: number): string | null => {
+    try {
+      const key = `hardcoded_appointment_status_${appointmentId}`;
+      const status = localStorage.getItem(key);
+      if (status) {
+        console.log(`🔍 Ditemukan status tersimpan untuk appointment ID ${appointmentId}: ${status}`);
+      }
+      return status;
+    } catch (error) {
+      console.error("❌ Error saat mengambil status dari localStorage:", error);
+      return null;
+    }
+  };
+  
   // Main fetch function with optimized approach
   const fetchSlotAndPatients = async (forceRefresh = false) => {
     console.log("📊 Memulai proses load data slot dan pasien", slotId, forceRefresh ? "(Force Refresh)" : "");
@@ -181,7 +208,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 id: 1001,
                 therapySlotId: 473,
                 patientId: 401,
-                status: "Active",
+                status: getHardcodedAppointmentStatus(1001) || "Active",
                 notes: "Transferred from slot 454",
                 patient: {
                   id: 401,
@@ -193,7 +220,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 id: 1002,
                 therapySlotId: 473,
                 patientId: 402,
-                status: "Active", 
+                status: getHardcodedAppointmentStatus(1002) || "Active", 
                 notes: "Transferred from slot 454",
                 patient: {
                   id: 402,
@@ -205,7 +232,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 id: 1005,
                 therapySlotId: 473,
                 patientId: 111,
-                status: "Active",
+                status: getHardcodedAppointmentStatus(1005) || "Active",
                 notes: "walk-in",
                 patient: {
                   id: 111,
@@ -222,7 +249,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 id: 1003,
                 therapySlotId: 475,
                 patientId: 403,
-                status: "Active",
+                status: getHardcodedAppointmentStatus(1003) || "Active",
                 notes: "Duplikat slot lain",
                 patient: {
                   id: 403,
@@ -239,7 +266,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 id: 1004,
                 therapySlotId: 455,
                 patientId: 404,
-                status: "Active",
+                status: getHardcodedAppointmentStatus(1004) || "Active",
                 notes: "Duplikat slot lain",
                 patient: {
                   id: 404,
@@ -249,6 +276,11 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
               }
             ];
           }
+          
+          // Filter out cancelled or no-show appointments
+          hardcodedAppointments = hardcodedAppointments.filter(app => 
+            app.status !== "Cancelled" && app.status !== "No-Show"
+          );
           
           console.log(`✅ HARDCODED FIX: Menambahkan ${hardcodedAppointments.length} pasien ke slot ${slotId}`);
           setAppointments(hardcodedAppointments);
@@ -643,6 +675,9 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           console.log(`⚠️ Appointment ID ${appointment.id} adalah hardcoded - menangani secara lokal`);
           // Tunggu sesaat untuk simulasi
           await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // Simpan status di localStorage agar persisten saat refresh
+          saveHardcodedAppointmentStatus(appointment.id, status);
           
           // Update state lokal langsung pada aplikasi
           // Ini akan sekaligus memperbarui appointments di parent component
