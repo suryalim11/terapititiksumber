@@ -420,20 +420,24 @@ export function setupTherapySlotsRoutes(app: Express) {
     return data;
   };
   
-  // Mendapatkan semua pasien dalam slot terapi (Super-Optimized dengan cache yang lebih agresif)
+  // Mendapatkan semua pasien dalam slot terapi (Ultra-Optimized dengan cache super agresif)
   app.get("/api/therapy-slots/:id/patients", requireAuth, async (req: Request, res: Response) => {
     try {
       const startTime = Date.now();
       const slotId = parseInt(req.params.id);
       const showAll = req.query.showAll === 'true';
-      const cacheBuster = req.query._t;
-      // Cache key sekarang menggunakan timestamp untuk mengurangi peluang timestamp yang sama
-      const cacheKey = `therapy_slot_${slotId}_${showAll ? 'all' : 'active'}_${cacheBuster || Date.now()}`;
+      const minimal = req.query.minimal === 'true';
+      const cacheBuster = req.query._cb || req.query._t;
       
-      // Set timeout untuk mencegah hanging request
+      // Cache key lebih dinamis untuk mengurangi kemungkinan collision
+      const cacheKey = `therapy_slot_${slotId}_${showAll ? 'all' : 'active'}_${minimal ? 'min' : 'full'}_${cacheBuster || Date.now()}`;
+      
+      console.log(`⚡ Request untuk slot ${slotId} patients dengan mode: ${minimal ? 'minimal' : 'full'}`);
+      
+      // Set timeout untuk monitor request
       const timeout = setTimeout(() => {
-        console.log(`⚠️ TIMEOUT WARNING: Request /api/therapy-slots/${slotId}/patients berjalan > 10 detik`);
-      }, 10000);
+        console.log(`⚠️ TIMEOUT WARNING: Request /api/therapy-slots/${slotId}/patients berjalan > 5 detik`);
+      }, 5000);
       
       // Eksekusi query dengan cache yang lebih agresif
       const result = await getFromCacheOrFetch(
@@ -452,15 +456,27 @@ export function setupTherapySlotsRoutes(app: Express) {
           }
           
           // 2. Ambil hanya data-data yang diperlukan untuk meringankan respons
-          const lighterAppointments = appointments.map(a => ({
-            id: a.id,
-            patientId: a.patientId,
-            status: a.status,
-            notes: a.notes,
-            date: a.date,
-            timeSlot: a.timeSlot,
-            sessionId: a.sessionId
-          }));
+          const lighterAppointments = appointments.map(a => {
+            // Jika mode minimal, kembalikan data sangat minimal
+            if (minimal) {
+              return {
+                id: a.id,
+                patientId: a.patientId,
+                status: a.status
+              };
+            }
+            
+            // Mode normal, data lebih lengkap tapi tetap efisien
+            return {
+              id: a.id,
+              patientId: a.patientId,
+              status: a.status,
+              notes: a.notes,
+              date: a.date,
+              timeSlot: a.timeSlot,
+              sessionId: a.sessionId
+            };
+          });
           
           // 3. Hitung status count untuk info tambahan
           const statusCounts = appointments.reduce((acc, a) => {
@@ -470,7 +486,23 @@ export function setupTherapySlotsRoutes(app: Express) {
           
           console.log(`⏱️ Query selesai dalam ${Date.now() - startTime}ms, ${appointments.length} appointments`);
           
-          return {
+          // Hasil disesuaikan dengan mode minimal atau full
+          return minimal ? {
+            // Mode minimal: Hanya kembalikan data esensial
+            slot: {
+              id: therapySlot.id,
+              date: therapySlot.date,
+              timeSlot: therapySlot.timeSlot,
+              maxQuota: therapySlot.maxQuota,
+              currentCount: therapySlot.currentCount,
+              isActive: therapySlot.isActive
+            },
+            appointmentCount: appointments.length,
+            statusCounts,
+            cached: true,
+            timestamp: new Date().toISOString()
+          } : {
+            // Mode full: Data lebih lengkap
             slot: therapySlot,
             appointments: lighterAppointments,
             statusCounts,
@@ -478,20 +510,29 @@ export function setupTherapySlotsRoutes(app: Express) {
             timestamp: new Date().toISOString()
           };
         },
-        60000 // Cache lebih lama: 1 menit untuk mengurangi beban database
+        minimal ? 120000 : 60000 // Cache lebih lama untuk mode minimal (2 menit vs 1 menit)
       );
       
       // Bersihkan timeout karena request sudah selesai
       clearTimeout(timeout);
       
       // Log waktu respons total
-      console.log(`✅ Total response time untuk slot ${slotId}: ${Date.now() - startTime}ms`);
+      const totalTime = Date.now() - startTime;
+      console.log(`✅ Total response time untuk slot ${slotId}: ${totalTime}ms, mode: ${minimal ? 'minimal' : 'full'}`);
       
       // 4. Return data dengan HTTP caching headers yang agresif
-      res.set('Cache-Control', 'private, max-age=30'); // Browser cache 30 detik
+      const maxAge = minimal ? 60 : 30; // Cache lebih lama untuk respons minimal
+      res.set('Cache-Control', `private, max-age=${maxAge}`);
+      
+      // Jika waktu respons terlalu lama, tambahkan header khusus
+      if (totalTime > 3000) {
+        res.set('X-Response-Time-Warning', `${totalTime}ms`);
+      }
+      
       return res.status(200).json({
         success: true,
-        responseTime: Date.now() - startTime,
+        responseTime: totalTime,
+        mode: minimal ? 'minimal' : 'full',
         ...result
       });
     } catch (error) {

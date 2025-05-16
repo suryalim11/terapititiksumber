@@ -69,108 +69,170 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
   // Prevent duplicate fetch
   const fetchInProgressRef = useRef(false);
   
-  // Fetch data method with timeout handler - Improved
-  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 15000, retryCount = 3): Promise<Response> => {
+  // Fetch data method with superior timeout and retry handling (Super-Optimized)
+  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 12000, retryCount = 2): Promise<Response> => {
     let lastError;
-    let attemptLog = [];
+    let attemptLog: string[] = [];
+    let logMetadata = { url, attempts: 0, startTime: Date.now() };
     
-    // Notify user on first attempt
-    toast({
-      title: "Mengambil Data",
-      description: "Menghubungi server untuk mengambil data pasien...",
-      duration: 3000
-    });
+    // Only show toast if operation will take time (not for background refresh)
+    if (!url.includes('refresh=true')) {
+      toast({
+        title: "Memuat Data",
+        description: "Menghubungi server, harap tunggu...",
+        duration: 2000
+      });
+    }
+    
+    // Mendeteksi apakah URL adalah untuk slot therapy
+    const isSlotPatientRequest = url.includes('/therapy-slots/') && url.includes('/patients');
+    
+    // Untuk endpoint bermasalah, kurangi timeout dan tambah parameter cacheBuster yang lebih reliable
+    if (isSlotPatientRequest && !url.includes('minimal=true')) {
+      // Tambahkan parameter untuk mendapatkan respons yang lebih minimal
+      url = url.includes('?') 
+        ? `${url}&minimal=true&_cb=${Date.now()}` 
+        : `${url}?minimal=true&_cb=${Date.now()}`;
+      
+      console.log(`🔄 URL request dioptimasi: ${url}`);
+    }
+    
+    // Mulai timer monitoring untuk seluruh operasi
+    const globalTimeoutId = window.setTimeout(() => {
+      console.warn(`⚠️ Operasi fetch untuk ${url} memakan waktu > 20 detik`);
+      toast({
+        title: "Peringatan",
+        description: "Server membutuhkan waktu lebih lama dari biasanya. Harap bersabar.",
+        duration: 8000
+      });
+    }, 20000);
     
     for (let attempt = 0; attempt <= retryCount; attempt++) {
+      logMetadata.attempts++;
       try {
-        let timeoutId: number | null = null;
         const attemptStartTime = Date.now();
+        let timeoutId: number | null = null;
         
-        // Notify user on retry (not on first attempt)
+        // Progress notification untuk retry
         if (attempt > 0) {
           toast({
-            title: `Percobaan ${attempt} dari ${retryCount}`,
-            description: "Menunggu respons server...",
-            duration: 3000
+            title: `Mencoba Lagi (${attempt}/${retryCount})`,
+            description: "Koneksi lambat, harap tunggu...",
+            duration: 2000
           });
         }
         
+        // Setup timeout promise
         const timeoutPromise = new Promise<Response>((_, reject) => {
           timeoutId = window.setTimeout(() => {
-            reject(new Error(`Waktu respons server terlalu lama (${timeoutMs}ms)`));
+            reject(new Error(`Server timeout (${timeoutMs}ms). Koneksi terlalu lambat.`));
           }, timeoutMs);
         });
         
+        // Setup fetch dengan signal untuk aborting jika terlalu lama
+        const controller = new AbortController();
+        const abortTimeoutId = window.setTimeout(() => controller.abort(), timeoutMs + 1000);
+        
         const fetchPromise = fetch(url, {
           ...options,
+          signal: controller.signal,
           headers: {
-            ...options.headers,
+            ...options?.headers,
             'Cache-Control': 'no-cache, no-store',
             'Pragma': 'no-cache',
+            'X-Client-Timestamp': Date.now().toString(),
           },
           credentials: 'include'
         });
         
+        // Race antara fetch dan timeout
         const response = await Promise.race([fetchPromise, timeoutPromise]);
         
+        // Clear timers
         if (timeoutId) clearTimeout(timeoutId);
+        clearTimeout(abortTimeoutId);
         
+        // Periksa jika koneksi offline
         if (!window.navigator.onLine) {
-          throw new Error("Perangkat tidak terhubung ke internet");
+          throw new Error("Tidak ada koneksi internet");
+        }
+        
+        // Jika response status 408 (timeout) atau 504 (gateway timeout), throw error
+        if (response.status === 408 || response.status === 504) {
+          throw new Error(`Server timeout dengan status ${response.status}`);
         }
         
         const attemptTime = Date.now() - attemptStartTime;
-        attemptLog.push(`Attempt ${attempt+1}: ${attemptTime}ms`);
+        attemptLog.push(`✓ Attempt ${attempt+1}: ${attemptTime}ms`);
+        
+        // Log metrik ke konsol
+        console.log(`✅ Fetch berhasil untuk ${url} pada percobaan ke-${attempt+1} dalam ${attemptTime}ms`);
+        
+        // Clear global monitoring timeout
+        clearTimeout(globalTimeoutId);
         
         return response;
       } catch (err: any) {
         lastError = err;
-        const waitTime = Math.min(500 * Math.pow(2, attempt), 4000);
+        const isAbortError = err.name === 'AbortError';
+        const waitTime = Math.min(800 * Math.pow(1.5, attempt), 5000); // Exponential backoff tapi lebih lambat
         
-        // Log attempt info
-        attemptLog.push(`Attempt ${attempt+1} failed: ${err.message}`);
+        // Log tipe error
+        const errorType = isAbortError ? 'ABORT' : err.name || 'UNKNOWN';
+        attemptLog.push(`✗ Attempt ${attempt+1} failed (${errorType}): ${err.message}`);
         
+        // Handling terpisah untuk offline dan network error
         if (!window.navigator.onLine) {
-          // Notify user when offline
           toast({
-            title: "Perangkat Offline",
-            description: "Menunggu koneksi internet tersedia kembali...",
-            duration: 5000
+            title: "Tidak Ada Koneksi Internet",
+            description: "Menunggu sampai perangkat online kembali...",
+            duration: 10000
           });
           
+          // Tunggu sampai online kembali
           await new Promise<void>(resolve => {
             const onlineHandler = () => {
               window.removeEventListener('online', onlineHandler);
-              
-              // Notify when back online
               toast({
                 title: "Kembali Online",
                 description: "Melanjutkan pengambilan data...",
-                duration: 3000
+                duration: 2000
               });
-              
               resolve();
             };
             window.addEventListener('online', onlineHandler);
           });
         }
-        else if (attempt < retryCount) {
-          // Notify user about retry with delay
-          if (attempt > 0) {
-            toast({
-              title: "Mencoba Ulang",
-              description: `Percobaan ${attempt+1} dari ${retryCount+1}. Menunggu ${Math.round(waitTime/1000)} detik...`,
-              duration: waitTime
-            });
-          }
-          
+        else if (isAbortError) {
+          toast({
+            title: "Koneksi Timeout",
+            description: "Server terlalu lambat merespon. Mencoba dengan timeout lebih lama...",
+            duration: 3000
+          });
+          // Untuk abort errors, tambahkan timeout
+          timeoutMs = Math.min(timeoutMs * 1.5, 30000);
+        }
+        
+        // Jika masih ada retry yang tersisa
+        if (attempt < retryCount) {
+          console.log(`⏳ Menunggu ${waitTime}ms sebelum retry ke-${attempt+2}`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
     }
     
-    console.log("All fetch attempts failed:", attemptLog.join(", "));
-    throw lastError || new Error(`Gagal mendapatkan data setelah ${retryCount + 1} percobaan. Silakan coba lagi nanti.`);
+    // Clear global monitoring timeout
+    clearTimeout(globalTimeoutId);
+    
+    // Log semua percobaan gagal
+    const totalTime = Date.now() - logMetadata.startTime;
+    console.error(`❌ Semua percobaan gagal untuk ${url} dalam ${totalTime}ms:`, 
+      attemptLog.join(", "), 
+      lastError
+    );
+    
+    // Throw error yang lebih informatif dengan semua detail
+    throw lastError || new Error(`Server tidak merespon setelah ${retryCount + 1} percobaan. Silakan refresh halaman atau hubungi administrator.`);
   };
   
   // Fungsi untuk menyimpan status hardcoded appointment di localStorage
@@ -200,23 +262,51 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     }
   };
   
-  // Main fetch function with optimized approach
+  // Ref untuk menyimpan timeout ID (lebih aman daripada window global)
+  const fetchTimeoutRef = useRef<number | undefined>();
+  
+  // Main fetch function with super-optimized approach and progressive loading
   const fetchSlotAndPatients = async (forceRefresh = false) => {
-    // Debug log dinonaktifkan untuk mengurangi noise di konsol
-    // console.log("📊 Memulai proses load data slot dan pasien", slotId, forceRefresh ? "(Force Refresh)" : "");
+    console.log(`📊 Memulai fetch untuk slot ID ${slotId} ${forceRefresh ? "(Force Refresh)" : ""}`);
     
-    // Skip if already fetching, unless force refresh
-    if (fetchInProgressRef.current && !forceRefresh) {
-      // console.log("⚠️ Ada fetch yang sedang berjalan, skip request");
+    // Tambahkan deteksi kesehatan jaringan
+    if (!navigator.onLine) {
+      toast({
+        title: "Tidak Ada Koneksi Internet",
+        description: "Periksa koneksi internet Anda dan coba lagi.",
+        duration: 5000
+      });
       return;
     }
     
-    // Set flag that fetch is in progress
-    fetchInProgressRef.current = true;
+    // Skip if already fetching, unless force refresh
+    if (fetchInProgressRef.current && !forceRefresh) {
+      console.log("⚠️ Fetch diabaikan: Ada fetching yang sedang berjalan");
+      return;
+    }
     
-    // Reset state
+    // Set flag that fetch is in progress + reset state
+    fetchInProgressRef.current = true;
     setIsLoading(true);
     setError(null);
+    
+    // Bersihkan timer jika ada
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+      fetchTimeoutRef.current = undefined;
+    }
+    
+    // Set global timeout untuk keseluruhan operasi (30 detik)
+    fetchTimeoutRef.current = window.setTimeout(() => {
+      console.error("⏱️ Operasi slot fetching timeout total - 30 detik telah berlalu");
+      
+      // Bersihkan flag untuk allow retry
+      if (fetchInProgressRef.current) {
+        fetchInProgressRef.current = false;
+        setIsLoading(false);
+        setError(new Error("Server membutuhkan waktu terlalu lama untuk merespon. Silakan coba lagi."));
+      }
+    }, 30000);
     
     if (!slotId) {
       // Missing slot ID handling
@@ -224,6 +314,13 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
       setIsLoading(false);
       setError(new Error("Slot ID tidak tersedia"));
       fetchInProgressRef.current = false;
+      
+      // Bersihkan timeout
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = undefined;
+      }
+      
       return;
     }
     
@@ -657,7 +754,14 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     
     // Cleanup function
     return () => {
-      // No cleanup needed as we're using refs to handle loading state
+      // Cleanup any ongoing fetches and timeouts
+      fetchInProgressRef.current = false;
+      
+      // Bersihkan timeout jika ada
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = undefined;
+      }
     };
   }, [isOpen, slotId]);
   
