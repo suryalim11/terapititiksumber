@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { requireAuth, requireAdminRole, allowPublicOrAuth, allowAnyAccess } from "./middleware/auth";
 import { z } from "zod";
 import { db, pool } from "./db";
-import { verifyPatientAppointmentConnections, verifyAppointmentConnectionForPatient } from "./verify-appointment-connection";
+import { verifyAppointmentConnectionForPatient } from "./verify-appointment-connection";
 
 // import { registerAgusFixRoutes } from "./routes-agus-fix"; // File tidak ditemukan
 import { 
@@ -47,6 +47,7 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { verifyAllPatientConnections, verifyPatientConnection } from "./api-verify-connections";
 import { consolidateDuplicateSlots } from "./routes/slot-consolidator";
+import { syncAllSlots, syncSlot } from "./routes/sync-therapy-slots";
 import {
   exportData,
   getBackupFiles,
@@ -6245,6 +6246,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Registrar os endpoints para detecção e correção de pacientes duplicados
   addFixPatientDuplicatesEndpoint(app);
+  
+  // Endpoint untuk sinkronisasi jumlah pasien di therapy slot
+  app.post("/api/sync-therapy-slots", async (req: Request, res: Response) => {
+    try {
+      console.log("Memulai sinkronisasi semua slot terapi...");
+      await syncAllSlots(req, res);
+    } catch (error) {
+      console.error("Error saat sinkronisasi slot terapi:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error saat sinkronisasi slot terapi",
+        error: String(error)
+      });
+    }
+  });
+  
+  app.post("/api/sync-therapy-slot/:id", async (req: Request, res: Response) => {
+    try {
+      console.log(`Memulai sinkronisasi slot terapi ID: ${req.params.id}...`);
+      await syncSlot(req, res);
+    } catch (error) {
+      console.error(`Error saat sinkronisasi slot terapi ID: ${req.params.id}:`, error);
+      return res.status(500).json({
+        success: false,
+        message: "Error saat sinkronisasi slot terapi",
+        error: String(error)
+      });
+    }
+  });
   
   // Endpoint untuk laporan jumlah pasien per hari dalam sebulan
   app.get("/api/reports/patients-per-day", allowPublicOrAuth, async (req: Request, res: Response) => {
