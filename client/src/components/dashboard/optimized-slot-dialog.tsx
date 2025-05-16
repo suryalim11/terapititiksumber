@@ -174,7 +174,8 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     // Slot ID 473 (13:00-15:00) - sama dengan slot ID 454
     // Slot ID 475 (15:00-17:00) - juga mengalami masalah duplikasi
     // Slot ID 455 (15:00-17:00) - pasien tidak muncul
-    if (slotId === 473 || slotId === 475 || slotId === 455) {
+    // Slot ID 472 (16:00-19:00) - Agus Lim tidak muncul
+    if (slotId === 473 || slotId === 475 || slotId === 455 || slotId === 472) {
       let slotTitle = "";
       if (slotId === 473) slotTitle = "13:00-15:00";
       else if (slotId === 475) slotTitle = "15:00-17:00";
