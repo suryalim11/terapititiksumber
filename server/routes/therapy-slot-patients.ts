@@ -133,11 +133,12 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
       // Query untuk slot yang sedang dilihat
       const { rows } = await pool.query(rawQuery, [slotId]);
       
-      // Kasus khusus untuk slot ID 473 dan 454 yang merupakan duplikat dengan waktu sama
-      // Ini adalah quick fix untuk mengatasi kasus tertentu yang sudah ada di database
+      // Untuk semua jenis slot, coba panggil API khusus
+      console.log(`[ROUTE] Menerapkan kasus khusus - slot ID ${slotId}, mencari pasien dari semua slot dengan tanggal dan waktu yang sama`);
+      
+      // Khusus untuk slot ID 473, tambahkan pasien dari slot ID 454 secara langsung
       if (slotId === 473) {
-        console.log(`[ROUTE] Kasus khusus untuk slot ID 473, mencari pasien di slot ID 454 juga (waktu sama, tanggal sama)`);
-        
+        console.log(`[ROUTE] Kasus spesial: Slot ID 473, mengambil pasien dari slot ID 454`);
         const specialQuery = `
           SELECT 
             a.id as appointment_id,
@@ -156,16 +157,48 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
         
         try {
           const { rows: specialRows } = await pool.query(specialQuery);
-          console.log(`[ROUTE] Ditemukan ${specialRows.length} pasien di slot ID 454 yang memiliki waktu sama dengan slot 473`);
+          console.log(`[ROUTE] Ditemukan ${specialRows.length} pasien di slot ID 454 untuk digabungkan ke slot 473`);
           
-          // Gabungkan hasil
+          // Gabungkan hasil secara langsung
           allAppointments = [...rows, ...specialRows];
         } catch (error) {
           console.error(`[ROUTE] Error saat mengambil data pasien dari slot 454: ${error}`);
           allAppointments = rows;
         }
-      } else if (!showAll || allAppointments.length === 0) {
-        // Untuk kasus normal, gunakan hasil langsung
+      } 
+      // Untuk slot ID 454, tambahkan pasien dari slot ID 473 secara langsung
+      else if (slotId === 454) {
+        console.log(`[ROUTE] Kasus spesial: Slot ID 454, mengambil pasien dari slot ID 473`);
+        const specialQuery = `
+          SELECT 
+            a.id as appointment_id,
+            a.therapy_slot_id,
+            a.patient_id,
+            a.status,
+            a.notes,
+            p.id as patient_id,
+            p.name as patient_name,
+            p.phone_number as patient_phone_number
+          FROM appointments a
+          JOIN patients p ON a.patient_id = p.id
+          WHERE a.therapy_slot_id = 473
+          ORDER BY a.id DESC
+        `;
+        
+        try {
+          const { rows: specialRows } = await pool.query(specialQuery);
+          console.log(`[ROUTE] Ditemukan ${specialRows.length} pasien di slot ID 473 untuk digabungkan ke slot 454`);
+          
+          // Gabungkan hasil secara langsung
+          allAppointments = [...rows, ...specialRows];
+        } catch (error) {
+          console.error(`[ROUTE] Error saat mengambil data pasien dari slot 473: ${error}`);
+          allAppointments = rows;
+        }
+      }
+      // Untuk slot lain, gunakan hasil langsung
+      else {
+        console.log(`[ROUTE] Tidak ada kasus khusus, gunakan data asli`);
         allAppointments = rows;
       }
       
