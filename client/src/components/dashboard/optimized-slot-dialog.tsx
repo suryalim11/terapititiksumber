@@ -1,7 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, CalendarIcon, User, ShoppingCart, MessageSquare, Check, MoreHorizontal } from "lucide-react";
+import { 
+  Loader2, 
+  CalendarIcon, 
+  User, 
+  ShoppingCart, 
+  MessageSquare, 
+  Check, 
+  MoreHorizontal,
+  AlertCircle,
+  RefreshCw,
+  WifiOff,
+  Clock
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -1267,9 +1279,78 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                 size="sm"
                 onClick={() => fetchSlotAndPatients(true)}
                 className="w-full"
+                disabled={isLoading}
               >
-                Refresh Data
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Memuat Data...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Refresh Data
+                  </>
+                )}
               </Button>
+            </div>
+          </div>
+        )}
+        
+        {/* Error state - with better user guidance and retry button */}
+        {error && !isLoading && (
+          <div className="p-6">
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-4 mb-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  {error.message.includes("timeout") || error.message.includes("waktu terlalu lama") ? (
+                    <Clock className="h-5 w-5 text-amber-500" />
+                  ) : error.message.includes("offline") || error.message.includes("internet") ? (
+                    <WifiOff className="h-5 w-5 text-amber-500" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-amber-500" />
+                  )}
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-amber-800">
+                    {error.message.includes("timeout") || error.message.includes("waktu terlalu lama") 
+                      ? "Server membutuhkan waktu terlalu lama" 
+                      : error.message.includes("offline") || error.message.includes("internet")
+                      ? "Masalah koneksi internet"
+                      : "Gagal memuat data"}
+                  </h3>
+                  <div className="mt-2 text-sm text-amber-700">
+                    <p>{error.message}</p>
+                  </div>
+                  <div className="mt-4">
+                    <div className="-mx-2 -my-1.5 flex">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => fetchSlotAndPatients(true)}
+                        className="rounded-md bg-amber-50 px-2 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100 mr-2"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-1" />
+                        Coba Lagi
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={onClose}
+                        className="rounded-md bg-amber-50 px-2 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        Tutup
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mt-2">
+                Jika masalah berlanjut, coba refresh halaman atau hubungi administrator.
+              </p>
             </div>
           </div>
         )}
