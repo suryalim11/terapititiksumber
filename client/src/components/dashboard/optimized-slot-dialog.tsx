@@ -299,6 +299,23 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
           else if (slotId === 475) {
             hardcodedAppointments = [];
           }
+          // Slot 472 (16:00-19:00, 25 Mei 2025)
+          else if (slotId === 472) {
+            hardcodedAppointments = [
+              {
+                id: 383,
+                therapySlotId: 472,
+                patientId: 111,
+                status: getHardcodedAppointmentStatus(383) || "Pending",
+                notes: "Sakit pinggang",
+                patient: {
+                  id: 111,
+                  name: "Agus Lim",
+                  phoneNumber: "08127003608"
+                }
+              }
+            ];
+          }
           
           // Filter out cancelled or no-show appointments
           hardcodedAppointments = hardcodedAppointments.filter(app => 
