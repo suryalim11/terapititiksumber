@@ -88,13 +88,7 @@ export default function Transactions() {
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   
-  // Debug untuk parameter pasien
-  console.log("URL parameters:", {
-    location,
-    params: location.split("?")[1] || "",
-    patientIdFromUrl,
-    patientIdNumber: patientIdFromUrl ? parseInt(patientIdFromUrl) : null
-  });
+  // Parameter pasien dari URL (tidak perlu log debug)
   
   // State untuk dialog konfirmasi hapus
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -511,9 +505,6 @@ export default function Transactions() {
     const patient = patients?.find((p: any) => p.id === patientId);
     if (!patient) return "-";
     
-    // Cek jika transaksi memiliki metadata displayName dengan nilai 'alternative'
-    console.log("Transaction metadata:", transaction?.metadata);
-    
     // Perbaikan: Gunakan pendekatan string comparison untuk semua kemungkinan nilai displayName alternatif
     const displayName = transaction?.metadata?.displayName;
     if (displayName && 
@@ -543,8 +534,6 @@ export default function Transactions() {
   
   const formatDate = (dateString: string) => {
     try {
-      console.log("Formatting date string:", dateString);
-      
       // KOREKSI ZONA WAKTU:
       // Dari pengujian, tanggal dari database perlu dikurangi 14 jam
       // kemudian ditambahkan 7 jam untuk mendapatkan waktu WIB yang benar
@@ -577,12 +566,10 @@ export default function Transactions() {
         }
       }
       
-      console.log("Original:", dateString, "-> Corrected date (WIB):", date.toISOString());
-      
       // Format dengan locale Indonesia
       return format(date, "dd/MM/yyyy HH:mm", { locale: id });
     } catch (error) {
-      console.error("Error formatting date:", error, dateString);
+      // Jika terjadi error, kembalikan string asli
       return dateString;
     }
   };
