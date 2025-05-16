@@ -400,15 +400,16 @@ export default function Dashboard() {
           tomorrowWIB.setDate(tomorrowWIB.getDate() + 1);
           const tomorrowWIBStr = dateToWIBDateString(tomorrowWIB);
           
-          console.log("Filter mendatang - Hari ini:", todayWIBStr, "Besok:", tomorrowWIBStr);
+          // Debug log dinonaktifkan untuk mengurangi noise di konsol
+          // console.log("Filter mendatang - Hari ini:", todayWIBStr, "Besok:", tomorrowWIBStr);
           
           filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             try {
               const slotDateStr = getSlotDateStr(slot);
               if (!slotDateStr) return false;
               
-              // Log untuk debug
-              console.log(`Cek slot masa depan - ID:${slot.id}, Tanggal:${slotDateStr}, > Hari ini (${todayWIBStr})? ${slotDateStr > todayWIBStr}`);
+              // Log untuk debug dinonaktifkan untuk mengurangi noise di konsol
+              // console.log(`Cek slot masa depan - ID:${slot.id}, Tanggal:${slotDateStr}, > Hari ini (${todayWIBStr})? ${slotDateStr > todayWIBStr}`);
               
               // PERBAIKAN: Slot yang tanggalnya setelah hari ini (tanggal lebih besar)
               // Jika tanggal = hari ini, maka false (tidak masuk tab Mendatang)
