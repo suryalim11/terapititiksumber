@@ -56,15 +56,15 @@ export default function Patients() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
+  
   // Fetch patients data
   const { data: patients = [], isLoading } = useQuery<Patient[]>({
     queryKey: ['/api/patients'],
   });
-
+  
   // Deduplicasi pasien dengan membuat Map berdasarkan nama dan nomor telepon
   const patientDeduplication: Map<string, Patient> = new Map();
-
+  
   // Prioritas: ambil yang memiliki ID paling besar (terbaru)
   patients.sort((a, b) => b.id - a.id).forEach(patient => {
     const key = `${patient.name.toLowerCase()}_${patient.phoneNumber}`;
@@ -72,15 +72,15 @@ export default function Patients() {
       patientDeduplication.set(key, patient);
     }
   });
-
+  
   // Konversi Map kembali ke array
   const dedupedPatients = Array.from(patientDeduplication.values());
-
+  
   // Normalisasi nomor telepon untuk pencarian
   const normalizePhoneNumber = (phone: string) => {
     // Hapus semua karakter non-numerik
     const numericOnly = phone.replace(/\D/g, '');
-
+    
     // Normalisasi awalan +62 dan 0
     if (numericOnly.startsWith('62')) {
       return numericOnly; // Format 62xxx
@@ -97,32 +97,32 @@ export default function Patients() {
     if (!searchTerm.trim()) {
       return true;
     }
-
+    
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
-
+    
     // Perbaikan: Pastikan ada data pasien dan convert ke string untuk menghindari error
     const patientName = patient.name ? String(patient.name).toLowerCase() : '';
     const patientId = patient.patientId ? String(patient.patientId).toLowerCase() : '';
     const patientAddress = patient.address ? String(patient.address).toLowerCase() : '';
-
+    
     // Pencarian berdasarkan nama - gunakan includes() dan === untuk alternatif
     if (patientName.includes(lowerSearchTerm) || patientName === lowerSearchTerm) {
       return true;
     }
-
+    
     // Pencarian berdasarkan ID pasien
     if (patientId.includes(lowerSearchTerm)) {
       return true;
     }
-
+    
     // Pencarian berdasarkan nomor telepon yang dinormalisasi
     if (patient.phoneNumber) {
       const normalizedPatientPhone = normalizePhoneNumber(patient.phoneNumber);
-
+      
       // Cek jika search term adalah nomor telepon (berisi angka)
       if (/\d/.test(lowerSearchTerm)) {
         const normalizedSearchTerm = normalizePhoneNumber(lowerSearchTerm);
-
+        
         // Pencocokan lengkap atau sebagian nomor telepon
         if (normalizedPatientPhone.includes(normalizedSearchTerm) || 
             normalizedSearchTerm.includes(normalizedPatientPhone)) {
@@ -130,12 +130,12 @@ export default function Patients() {
         }
       }
     }
-
+    
     // Pencarian berdasarkan alamat
     if (patientAddress.includes(lowerSearchTerm)) {
       return true;
     }
-
+    
     // Tidak cocok dengan kriteria pencarian
     return false;
   });
@@ -163,12 +163,12 @@ export default function Patients() {
           'Content-Type': 'application/json'
         }
       });
-
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Gagal membatalkan janji temu');
       }
-
+      
       return await response.json();
     },
     onSuccess: () => {
@@ -177,9 +177,9 @@ export default function Patients() {
         description: "Janji temu pasien berhasil dibatalkan",
         variant: "default",
       });
-
+      
       setIsConfirmCancelOpen(false);
-
+      
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/appointments', selectedPatient?.id] });
@@ -204,12 +204,12 @@ export default function Patients() {
           'Content-Type': 'application/json'
         }
       });
-
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Gagal menghapus pasien');
       }
-
+      
       return await response.json();
     },
     onSuccess: () => {
@@ -218,10 +218,10 @@ export default function Patients() {
         description: "Data pasien berhasil dihapus dari sistem",
         variant: "default",
       });
-
+      
       setIsDeletePatientOpen(false);
       setSelectedPatient(null);
-
+      
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
@@ -253,40 +253,40 @@ export default function Patients() {
     setSelectedPatient(patient);
     setIsViewPatientOpen(true);
   };
-
+  
   const handleNewTransaction = (patient: Patient) => {
     // Navigasi ke halaman transaksi dengan parameter patientId
     navigate(`/transactions/new?patientId=${patient.id}`);
   };
-
+  
   const handleViewAppointments = (patient: Patient) => {
     setSelectedPatient(patient);
     setIsAppointmentsOpen(true);
   };
-
+  
   const handleCancelAppointment = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setIsConfirmCancelOpen(true);
   };
-
+  
   const confirmCancelAppointment = () => {
     if (selectedAppointment) {
       cancelAppointmentMutation.mutate(selectedAppointment.id);
     }
   };
-
+  
   const confirmDeletePatient = () => {
     if (selectedPatient) {
       deletePatientMutation.mutate(selectedPatient.id);
     }
   };
-
+  
   // Helper function to format appointment date and time
   const formatAppointmentDateTime = (date: string, timeSlot: string | null) => {
     const formattedDate = format(new Date(date), 'dd MMM yyyy');
     return timeSlot ? `${formattedDate}, ${timeSlot}` : formattedDate;
   };
-
+  
   // Helper function to get status badge variant
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -318,7 +318,7 @@ export default function Patients() {
           Tambah Pasien
         </Button>
       </div>
-
+      
       {/* Search Bar */}
       <div className="relative">
         <Search className="absolute left-2.5 top-3.5 md:top-2.5 h-4 w-4 text-muted-foreground" />
@@ -334,7 +334,7 @@ export default function Patients() {
           Cari berdasarkan nama, ID, atau nomor telepon
         </div>
       </div>
-
+      
       {/* Patients List */}
       {isLoading ? (
         <div className="flex justify-center py-8">
@@ -374,7 +374,6 @@ export default function Patients() {
                     <UserRound className="h-4 w-4 text-primary" />
                   </span>
                   {patient.name}
-                  <span className="text-xs text-muted-foreground ml-2">ID: {patient.patientId}</span>
                 </CardTitle>
                 <div className="mt-1 text-xs text-muted-foreground flex items-center justify-between">
                   <div className="flex items-center">
@@ -390,24 +389,24 @@ export default function Patients() {
                 <div className="grid grid-cols-2 gap-y-2 text-sm">
                   <div className="text-muted-foreground">ID Pasien</div>
                   <div className="font-medium">{patient.patientId}</div>
-
+                  
                   <div className="text-muted-foreground">Telepon</div>
                   <div className="font-medium">
                     <a href={`tel:${patient.phoneNumber}`} className="hover:text-primary">
                       {patient.phoneNumber}
                     </a>
                   </div>
-
+                  
                   <div className="text-muted-foreground">Usia</div>
                   <div className="font-medium">{calculateAge(patient.birthDate)} tahun</div>
-
+                  
                   <div className="text-muted-foreground">Jenis Kelamin</div>
                   <div className="font-medium">{patient.gender}</div>
-
+                  
                   <div className="text-muted-foreground">Terdaftar</div>
                   <div className="font-medium">{format(new Date(patient.createdAt), 'dd/MM/yyyy')}</div>
                 </div>
-
+                
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   <Button 
                     variant="outline" 
@@ -427,7 +426,7 @@ export default function Patients() {
                     <Pencil className="md:mr-1 h-3.5 w-3.5" />
                     <span className="hidden md:inline-block ml-1">Edit</span>
                   </Button>
-
+                
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -437,7 +436,7 @@ export default function Patients() {
                     <Trash2 className="md:mr-1 h-3.5 w-3.5" />
                     <span className="hidden md:inline-block ml-1">Hapus</span>
                   </Button>
-
+                  
                   <Button
                     variant="ghost"
                     size="sm"
@@ -447,7 +446,7 @@ export default function Patients() {
                     <Calendar className="md:mr-1 h-3.5 w-3.5" />
                     <span className="md:inline-block ml-1">Janji Temu</span>
                   </Button>
-
+                  
                   <Button
                     variant="ghost"
                     size="sm"
@@ -458,7 +457,7 @@ export default function Patients() {
                     <span className="md:inline-block ml-1">Riwayat</span>
                   </Button>
                 </div>
-
+                
                 {/* WhatsApp quick link for all devices */}
                 <div className="mt-3">
                   <a 
@@ -640,7 +639,7 @@ export default function Patients() {
           )}
         </DialogContent>
       </Dialog>
-
+      
       {/* Appointments Dialog */}
       <Dialog open={isAppointmentsOpen} onOpenChange={setIsAppointmentsOpen}>
         <DialogContent className="w-[95vw] max-w-[600px] p-4 md:p-6">
@@ -650,7 +649,7 @@ export default function Patients() {
               {selectedPatient ? `Daftar janji temu untuk pasien ${selectedPatient.name}` : 'Memuat data janji temu...'}
             </DialogDescription>
           </DialogHeader>
-
+          
           {isLoadingAppointments ? (
             <div className="flex justify-center py-8">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
@@ -665,13 +664,13 @@ export default function Patients() {
                     </div>
                     <div>{getStatusBadge(appointment.status)}</div>
                   </div>
-
+                  
                   {appointment.notes && (
                     <div className="text-sm text-muted-foreground mt-2">
                       <span className="font-medium">Catatan:</span> {appointment.notes}
                     </div>
                   )}
-
+                  
                   {appointment.status === 'scheduled' && (
                     <div className="mt-4 flex justify-end">
                       <Button 
@@ -687,7 +686,7 @@ export default function Patients() {
                   )}
                 </div>
               ))}
-
+              
               <DialogFooter className="mt-2 sm:mt-4">
                 <Button 
                   variant="outline" 
@@ -720,7 +719,7 @@ export default function Patients() {
           )}
         </DialogContent>
       </Dialog>
-
+      
       {/* Cancel Appointment Confirmation Dialog */}
       {/* Delete Patient Confirmation */}
       <AlertDialog open={isDeletePatientOpen} onOpenChange={setIsDeletePatientOpen}>
@@ -743,7 +742,7 @@ export default function Patients() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
+      
       {/* Cancel Appointment Confirmation */}
       <AlertDialog open={isConfirmCancelOpen} onOpenChange={setIsConfirmCancelOpen}>
         <AlertDialogContent className="w-[95vw] max-w-[500px]">
