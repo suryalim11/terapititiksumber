@@ -141,11 +141,12 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
   
   // Main fetch function with optimized approach
   const fetchSlotAndPatients = async (forceRefresh = false) => {
-    console.log("📊 Memulai proses load data slot dan pasien", slotId, forceRefresh ? "(Force Refresh)" : "");
+    // Debug log dinonaktifkan untuk mengurangi noise di konsol
+    // console.log("📊 Memulai proses load data slot dan pasien", slotId, forceRefresh ? "(Force Refresh)" : "");
     
     // Skip if already fetching, unless force refresh
     if (fetchInProgressRef.current && !forceRefresh) {
-      console.log("⚠️ Ada fetch yang sedang berjalan, skip request");
+      // console.log("⚠️ Ada fetch yang sedang berjalan, skip request");
       return;
     }
     
@@ -304,7 +305,8 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
             app.status !== "Cancelled" && app.status !== "No-Show"
           );
           
-          console.log(`✅ HARDCODED FIX: Menambahkan ${hardcodedAppointments.length} pasien ke slot ${slotId}`);
+          // Log dinonaktifkan untuk mengurangi noise di konsol
+          // console.log(`✅ HARDCODED FIX: Menambahkan ${hardcodedAppointments.length} pasien ke slot ${slotId}`);
           setAppointments(hardcodedAppointments);
         } else {
           console.error(`❌ Gagal mengambil data slot ${slotId}`);
@@ -316,9 +318,9 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
         setIsLoading(false);
         fetchInProgressRef.current = false;
         
-        // Hitung waktu proses
+        // Hitung waktu proses (log dinonaktifkan)
         const processingTime = Date.now() - fetchStartTime;
-        console.log(`⏱️ Total waktu proses: ${processingTime}ms`);
+        // console.log(`⏱️ Total waktu proses: ${processingTime}ms`);
         
         return; // Keluar dari fungsi untuk slot-slot dengan hardcoded fix
       } catch (error) {

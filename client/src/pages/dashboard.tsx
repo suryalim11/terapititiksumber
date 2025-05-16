@@ -318,20 +318,20 @@ export default function Dashboard() {
           
           // Untuk "Hari Ini", filter berdasarkan tanggal hari ini tanpa memperhatikan waktu
           // Perbaikan: Konversi format tanggal untuk memastikan kesamaan
-          // Log hari ini hanya sekali saat debugging diperlukan
-          console.log("Hari ini (WIB):", todayWIBStr);
+          // Log debug dinonaktifkan untuk mengurangi noise konsol
+          // console.log("Hari ini (WIB):", todayWIBStr);
           
           filteredByPeriod = uniqueSlots.filter((slot: TherapySlot) => {
             const slotDateStr = getSlotDateStr(slot);
             
-            // Menampilkan log hanya untuk beberapa slot pilihan saja untuk debugging (ID 456, 473, 475)
+            // Debug log dinonaktifkan untuk slot khusus (ID 456, 473, 475)
             if ([456, 473, 475].includes(slot.id)) {
-              console.log(`Slot ID:${slot.id} Tanggal Slot:${slotDateStr} = Hari Ini:${todayWIBStr}? ${slotDateStr === todayWIBStr}`);
+              // console.log(`Slot ID:${slot.id} Tanggal Slot:${slotDateStr} = Hari Ini:${todayWIBStr}? ${slotDateStr === todayWIBStr}`);
               
               // Percobaan tanggal alternatif jika format tidak cocok
               const slotDate = new Date(slotDateStr);
               const slotDateAlternative = slotDate.toISOString().split('T')[0];
-              console.log(`  Format Alternatif: ${slotDateAlternative} = ${todayWIBStr}? ${slotDateAlternative === todayWIBStr}`);
+              // console.log(`  Format Alternatif: ${slotDateAlternative} = ${todayWIBStr}? ${slotDateAlternative === todayWIBStr}`);
               
               // Periksa dengan beberapa cara berbeda untuk memastikan kecocokan
               return slotDateStr === todayWIBStr || slotDateAlternative === todayWIBStr;
