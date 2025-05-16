@@ -176,7 +176,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
       let slotTitle = "";
       if (slotId === 473) slotTitle = "13:00-15:00";
       else if (slotId === 475) slotTitle = "15:00-17:00";
-      else if (slotId === 455) slotTitle = "10:00-12:00";
+      else if (slotId === 455) slotTitle = "15:00-17:00";
       
       console.log(`⚠️ HARDCODED FIX: Data untuk slot ID ${slotId} (${slotTitle})`);
       try {
