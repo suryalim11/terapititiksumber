@@ -6,7 +6,7 @@ import { requireAuth, requireAdmin } from "../../middleware/auth";
 import { storage } from "../../storage";
 import { z } from "zod";
 import { insertRegistrationLinkSchema } from "@shared/schema";
-import crypto from "crypto";
+import { generateRegistrationNumber, formatPhoneNumber, validateRegistrationLink, getAvailableTherapySlots, checkExistingPatient } from "../../utils/registration-utils";
 
 /**
  * Mendaftarkan rute-rute untuk link registrasi
@@ -244,86 +244,28 @@ export function setupRegistrationLinkRoutes(app: Express) {
         });
       }
       
-      // Verifikasi link registrasi
-      const registrationLink = await storage.getRegistrationLinkByCode(code);
+      // Validasi link registrasi menggunakan fungsi utilitas
+      const validationResult = await validateRegistrationLink(code);
       
-      if (!registrationLink) {
-        return res.status(404).json({
-          success: false,
-          message: "Link registrasi tidak ditemukan"
-        });
-      }
-      
-      // Periksa apakah link masih aktif
-      if (!registrationLink.isActive) {
+      if (!validationResult.valid) {
         return res.status(400).json({
           success: false,
-          message: "Link registrasi tidak aktif"
+          message: validationResult.message
         });
       }
       
-      // Periksa apakah link belum kedaluwarsa
-      const now = new Date();
-      const expiryDate = new Date(registrationLink.expiryDate);
+      // Format nomor telepon
+      patientData.phoneNumber = formatPhoneNumber(patientData.phoneNumber);
       
-      if (now > expiryDate) {
-        return res.status(400).json({
-          success: false,
-          message: "Link registrasi telah kedaluwarsa"
-        });
-      }
-      
-      // Periksa apakah batas harian belum tercapai
-      const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
-      const registrationsToday = registrationLink.dailyRegistrationCount || 0;
-      
-      if (registrationsToday >= registrationLink.dailyLimit) {
-        return res.status(400).json({
-          success: false,
-          message: "Batas pendaftaran harian telah tercapai"
-        });
-      }
-      
-      // Periksa apakah link untuk tanggal tertentu dan tanggal hari ini
-      if (registrationLink.specificDate) {
-        const specificDate = new Date(registrationLink.specificDate).toISOString().split('T')[0];
-        
-        if (specificDate !== today) {
-          return res.status(400).json({
-            success: false,
-            message: `Link registrasi hanya berlaku untuk tanggal ${specificDate}`
-          });
-        }
-      }
-      
-      // Validasi format nomor telepon
-      if (patientData.phoneNumber) {
-        // Hapus karakter non-numerik
-        patientData.phoneNumber = patientData.phoneNumber.replace(/\D/g, '');
-        
-        // Tambahkan '0' di depan jika dimulai dengan '8'
-        if (patientData.phoneNumber.startsWith('8')) {
-          patientData.phoneNumber = '0' + patientData.phoneNumber;
-        }
-        
-        // Tambahkan +62 jika dimulai dengan 0
-        if (patientData.phoneNumber.startsWith('0')) {
-          patientData.phoneNumber = '+62' + patientData.phoneNumber.substring(1);
-        }
-      }
-      
-      // Periksa apakah pasien dengan nomor telepon dan nama yang sama sudah terdaftar
-      const existingPatients = await storage.searchPatientByNameOrPhone(patientData.phoneNumber);
-      const exactMatch = existingPatients.find(
-        p => p.name.toLowerCase() === patientData.name.toLowerCase() && 
-             p.phoneNumber === patientData.phoneNumber
-      );
+      // Periksa apakah pasien sudah terdaftar
+      const existingPatient = await checkExistingPatient(patientData.name, patientData.phoneNumber);
       
       let patientId;
       
-      if (exactMatch) {
+      if (existingPatient) {
         // Gunakan pasien yang sudah ada
-        patientId = exactMatch.id;
+        patientId = existingPatient.id;
+        console.log(`Menggunakan data pasien yang sudah ada: ${patientId}`);
       } else {
         // Buat pasien baru
         const newPatient = await storage.createPatient({
@@ -331,25 +273,19 @@ export function setupRegistrationLinkRoutes(app: Express) {
           phoneNumber: patientData.phoneNumber,
           address: patientData.address || '',
           gender: patientData.gender || '',
-          birthdate: patientData.birthdate || null,
-          email: patientData.email || '',
-          occupation: patientData.occupation || '',
-          emergencyContact: patientData.emergencyContact || '',
-          notes: patientData.notes || '',
+          birthDate: patientData.birthDate || null,
+          email: patientData.email || null,
+          complaints: patientData.complaints || '',
           registrationDate: new Date()
         });
         
         patientId = newPatient.id;
+        console.log(`Membuat pasien baru: ${patientId}`);
       }
       
       // Cari slot terapi berdasarkan tanggal
-      const dateToSearch = registrationLink.specificDate || today;
-      const therapySlots = await storage.getTherapySlotsByDate(dateToSearch);
-      
-      // Filter slot terapi yang masih tersedia
-      const availableSlots = therapySlots.filter(slot => {
-        return slot.isActive && slot.currentCount < slot.maxQuota;
-      });
+      const dateToSearch = validationResult.specificDate || new Date().toISOString().split('T')[0];
+      const availableSlots = await getAvailableTherapySlots(dateToSearch);
       
       if (availableSlots.length === 0) {
         return res.status(400).json({
@@ -358,19 +294,22 @@ export function setupRegistrationLinkRoutes(app: Express) {
         });
       }
       
-      // Buat appointment
-      const therapySlot = availableSlots[0]; // Gunakan slot pertama yang tersedia
+      // Gunakan therapySlotId dari request body jika ada, jika tidak gunakan yang pertama tersedia
+      const therapySlotId = patientData.therapySlotId || availableSlots[0].id;
+      const selectedSlot = availableSlots.find(slot => slot.id === therapySlotId) || availableSlots[0];
+      
+      // Buat appointment untuk registrasi online
+      // Penting: Jangan menggunakan flag walkin=true untuk registrasi online
       const appointment = await storage.createAppointment({
         patientId,
-        therapySlotId: therapySlot.id,
+        therapySlotId: selectedSlot.id,
         date: dateToSearch,
-        timeSlot: therapySlot.timeSlot,
+        timeSlot: selectedSlot.timeSlot,
         status: 'Confirmed', // Status default untuk pendaftaran online
         registrationNumber: generateRegistrationNumber(),
         notes: `Pendaftaran online melalui link registrasi: ${code}`
       });
       
-      // Incrementing therapySlot akan terjadi di dalam createAppointment
       // Update jumlah penggunaan link registrasi
       await storage.incrementRegistrationCount(code);
       
@@ -380,8 +319,9 @@ export function setupRegistrationLinkRoutes(app: Express) {
         patientId,
         appointmentId: appointment.id,
         therapySlot: {
-          date: therapySlot.date,
-          timeSlot: therapySlot.timeSlot
+          id: selectedSlot.id,
+          date: selectedSlot.date,
+          timeSlot: selectedSlot.timeSlot
         }
       });
     } catch (error) {
@@ -395,11 +335,4 @@ export function setupRegistrationLinkRoutes(app: Express) {
   });
 }
 
-/**
- * Menghasilkan nomor registrasi unik
- * @returns Nomor registrasi dengan format TTS-XXXXXX
- */
-function generateRegistrationNumber(): string {
-  const randomStr = crypto.randomBytes(3).toString('hex').toUpperCase();
-  return `TTS-${randomStr}`;
-}
+// Removed duplicate function since we use the one from registration-utils.ts
