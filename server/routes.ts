@@ -46,6 +46,7 @@ import path from "path";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { verifyAllPatientConnections, verifyPatientConnection } from "./api-verify-connections";
+import { consolidateDuplicateSlots } from "./routes/slot-consolidator";
 import {
   exportData,
   getBackupFiles,
