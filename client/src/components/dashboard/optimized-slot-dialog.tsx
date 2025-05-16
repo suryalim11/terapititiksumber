@@ -252,25 +252,25 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
               {
                 id: 345,
                 therapySlotId: 455,
-                patientId: 357,
+                patientId: 356,
                 status: getHardcodedAppointmentStatus(345) || "Scheduled",
-                notes: "",
+                notes: "[WALK-IN] Saraf terjepit ",
                 patient: {
-                  id: 357,
+                  id: 356,
                   name: "Refliner",
-                  phoneNumber: "08111222333"
+                  phoneNumber: "+62 822-7982-1581"
                 }
               },
               {
                 id: 358,
                 therapySlotId: 455,
-                patientId: 417,
+                patientId: 368,
                 status: getHardcodedAppointmentStatus(358) || "Scheduled",
-                notes: "",
+                notes: "Dibuat oleh verifikasi pasien otomatis",
                 patient: {
-                  id: 417,
+                  id: 368,
                   name: "BERNADUS.N.LEHAN",
-                  phoneNumber: "08123456789"
+                  phoneNumber: "082285073026"
                 }
               }
             ];
