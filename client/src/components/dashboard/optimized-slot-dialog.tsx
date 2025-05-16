@@ -148,7 +148,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
       console.log(`📥 Mengambil data slot dan pasien untuk ID: ${slotId} dari endpoint optimized`);
       
       // Use optimized endpoint with cache buster
-      const optimizedEndpoint = `/api/therapy-slots/${slotId}/patients?_t=${cacheBuster}`;
+      const optimizedEndpoint = `/api/therapy-slots/${slotId}/patients?_t=${cacheBuster}&showAll=true`;
       
       // Set proper cache control and timeout
       const response = await fetchWithTimeout(
@@ -160,8 +160,8 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
             'Pragma': 'no-cache'
           }
         },
-        8000,  // 8 second timeout (increased)
-        2      // 2 retries
+        10000,  // 10 second timeout (increased)
+        3       // 3 retries
       );
       
       if (response.ok) {
@@ -169,20 +169,41 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
         const result = await response.json();
         console.log(`✅ Data diterima dari endpoint optimized dengan ${result.appointments ? result.appointments.length : 0} pasien`);
         
-        // Debug appointments data untuk logging yang lebih lengkap
+        // Debug appointments data dengan informasi lebih lengkap
         if (result.appointments && result.appointments.length > 0) {
           console.log("📋 Detail status pasien yang diterima:");
           result.appointments.forEach((app: any) => {
-            console.log(`   - Pasien: ${app.patient?.name || 'Unknown'}, Status: ${app.status || 'Unknown'}, ID: ${app.id}, TherapySlotId: ${result.slot?.id}`);
+            console.log(`   - Pasien: ${app.patient?.name || 'Unknown'}, Status: ${app.status || 'Unknown'}, ID: ${app.id}, Notes: ${app.notes || 'Tidak ada'}`);
           });
         } else {
           // Tampilkan informasi jika tidak ada pasien terdaftar
           console.log(`ℹ️ Tidak ada pasien terdaftar untuk slot ID ${slotId}, Tanggal: ${result.slot?.date}, Waktu: ${result.slot?.timeSlot}`);
         }
         
-        // Set data to state
-        setSlotData(result.slot);
-        setAppointments(result.appointments || []);
+        // Pastikan data dalam format yang benar sebelum diset ke state
+        setSlotData(result.slot || null);
+        
+        // Pastikan appointments selalu array bahkan jika null/undefined
+        let appointmentsArray = Array.isArray(result.appointments) ? result.appointments : [];
+        
+        // Pastikan semua appointments memiliki patient object
+        appointmentsArray = appointmentsArray.map((app: any) => {
+          if (!app.patient && app.patientId) {
+            // Jika tidak ada objek patient tapi ada patientId, buat objek patient
+            return {
+              ...app,
+              patient: {
+                id: app.patientId,
+                name: app.patient_name || 'Pasien',
+                phoneNumber: app.patient_phone_number || '-'
+              }
+            };
+          }
+          return app;
+        });
+        
+        console.log(`📋 Total data pasien yang diproses: ${appointmentsArray.length}`);
+        setAppointments(appointmentsArray);
         
         const fetchEndTime = Date.now();
         console.log(`⏱️ Slot data fetch selesai dalam ${fetchEndTime - fetchStartTime}ms`);

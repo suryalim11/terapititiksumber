@@ -72,7 +72,7 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
         }
       }));
       
-      console.log(`[ROUTE] Detail data pasien: ${JSON.stringify(patientsData)}`); // Debug detail data
+      console.log(`[ROUTE] Ditemukan ${patientsData.length} data pasien untuk slot ID ${slotId}`); // Simplified logging
       
       console.log(`[ROUTE] Prepared ${patientsData.length} patient records for response`);
       
