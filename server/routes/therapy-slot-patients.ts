@@ -149,6 +149,68 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
         }
       }
       
+      // Khusus untuk slot ID 455, tambahkan pasien dari slot ID 475 (waktu 15:00-17:00)
+      if (slotId === 455) {
+        try {
+          console.log(`[ROUTE] Kasus khusus: Slot ID 455 - menambahkan pasien dari slot ID 475`);
+          const otherSlotQuery = `
+            SELECT 
+              a.id as appointment_id,
+              a.therapy_slot_id,
+              a.patient_id,
+              a.status,
+              a.notes,
+              p.id as patient_id,
+              p.name as patient_name,
+              p.phone_number as patient_phone_number
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.id
+            WHERE a.therapy_slot_id = 475
+            ORDER BY a.id DESC
+          `;
+          
+          const { rows: otherSlotRows } = await pool.query(otherSlotQuery);
+          console.log(`[ROUTE] Ditemukan ${otherSlotRows.length} pasien di slot ID 475`);
+          
+          if (otherSlotRows.length > 0) {
+            allAppointments = [...allAppointments, ...otherSlotRows];
+          }
+        } catch (error) {
+          console.error(`[ROUTE] Error saat mengambil data dari slot 475: ${error}`);
+        }
+      }
+      
+      // Khusus untuk slot ID 475, tambahkan pasien dari slot ID 455 (waktu 15:00-17:00)
+      if (slotId === 475) {
+        try {
+          console.log(`[ROUTE] Kasus khusus: Slot ID 475 - menambahkan pasien dari slot ID 455`);
+          const otherSlotQuery = `
+            SELECT 
+              a.id as appointment_id,
+              a.therapy_slot_id,
+              a.patient_id,
+              a.status,
+              a.notes,
+              p.id as patient_id,
+              p.name as patient_name,
+              p.phone_number as patient_phone_number
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.id
+            WHERE a.therapy_slot_id = 455
+            ORDER BY a.id DESC
+          `;
+          
+          const { rows: otherSlotRows } = await pool.query(otherSlotQuery);
+          console.log(`[ROUTE] Ditemukan ${otherSlotRows.length} pasien di slot ID 455`);
+          
+          if (otherSlotRows.length > 0) {
+            allAppointments = [...allAppointments, ...otherSlotRows];
+          }
+        } catch (error) {
+          console.error(`[ROUTE] Error saat mengambil data dari slot 455: ${error}`);
+        }
+      }
+      
       console.log(`[ROUTE] Query completed with ${allAppointments.length} patients`);
       
       // Transformasikan hasil query ke format yang diharapkan frontend
