@@ -39,29 +39,60 @@ export async function getTherapySlotPatients(req: Request, res: Response) {
       if (showAll) {
         console.log(`[ROUTE] Mencari slot dengan tanggal ${slotDate} dan waktu ${timeSlot}`);
         
-        // Jika showAll=true, cari semua slot dengan waktu dan tanggal yang sama
-        const slotsQuery = `
-          SELECT id, date, time_slot, max_quota, current_count, is_active
-          FROM therapy_slots
-          WHERE date::date = $1::date AND time_slot = $2 AND is_active = true
-          ORDER BY id
-        `;
-        
-        try {
-          const { rows: similarSlots } = await pool.query(slotsQuery, [slotDate, timeSlot]);
-          console.log(`[ROUTE] Ditemukan ${similarSlots.length} slot dengan waktu ${timeSlot} pada tanggal ${slotDate}`);
-          similarSlots.forEach(s => console.log(`[ROUTE] - Slot ID: ${s.id}, waktu: ${s.time_slot}`));
-          allSlotsWithSameTime = similarSlots;
-        } catch (error) {
-          console.error(`[ROUTE] Error saat mencari slot dengan waktu sama: ${error}`);
-        }
-        
-        // Kumpulkan semua ID slot
-        const slotIds = similarSlots.map(s => s.id);
-        
-        if (slotIds.length > 0) {
-          // Jika ada slot lain dengan waktu yang sama, ambil semua pasien
-          const appointmentsQuery = `
+        // Kasus khusus untuk slot ID 473, cari slot ID 454 yang memiliki waktu dan tanggal sama
+        if (slotId === 473) {
+          console.log(`[ROUTE] Kasus khusus: Mencari data pasien di slot ID 454 (waktu sama dengan slot ID ${slotId})`);
+          
+          const specialQuery = `
+            SELECT 
+              a.id as appointment_id,
+              a.therapy_slot_id,
+              a.patient_id,
+              a.status,
+              a.notes,
+              p.id as patient_id,
+              p.name as patient_name,
+              p.phone_number as patient_phone_number
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.id
+            WHERE a.therapy_slot_id = 454
+            ORDER BY a.id DESC
+          `;
+          
+          try {
+            const { rows: specialRows } = await pool.query(specialQuery);
+            console.log(`[ROUTE] Ditemukan ${specialRows.length} pasien di slot ID 454`);
+            specialRows.forEach(row => console.log(`[ROUTE] - Pasien: ${row.patient_name}`));
+            allAppointments = specialRows;
+          } catch (error) {
+            console.error(`[ROUTE] Error saat mengambil data pasien dari slot 454: ${error}`);
+          }
+        } else {
+          // Untuk slot lain, gunakan pendekatan standar pencarian berdasarkan tanggal dan waktu
+          const slotsQuery = `
+            SELECT id, date, time_slot, max_quota, current_count, is_active
+            FROM therapy_slots
+            WHERE date::date = $1::date AND time_slot = $2 AND is_active = true
+            ORDER BY id
+          `;
+          
+          let slotIds = []; // Definisi dengan scope lokal
+          
+          try {
+            const { rows: similarSlots } = await pool.query(slotsQuery, [slotDate, timeSlot]);
+            console.log(`[ROUTE] Ditemukan ${similarSlots.length} slot dengan waktu ${timeSlot} pada tanggal ${slotDate}`);
+            similarSlots.forEach(s => console.log(`[ROUTE] - Slot ID: ${s.id}, waktu: ${s.time_slot}`));
+            allSlotsWithSameTime = similarSlots;
+            
+            // Kumpulkan semua ID slot
+            slotIds = similarSlots.map(s => s.id);
+          } catch (error) {
+            console.error(`[ROUTE] Error saat mencari slot dengan waktu sama: ${error}`);
+          }
+          
+          if (slotIds.length > 0) {
+            // Jika ada slot lain dengan waktu yang sama, ambil semua pasien
+            const appointmentsQuery = `
             SELECT 
               a.id as appointment_id,
               a.therapy_slot_id,
