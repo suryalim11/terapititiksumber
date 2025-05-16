@@ -73,10 +73,11 @@ export async function apiRequest<T = Record<string, unknown>>(
     // Gunakan response asli untuk parse JSON
     const data = await res.json() as T;
     
-    if (isDebugMode || !url.includes('/api/auth/status')) {
-      // console.log(`API data from ${url}:`, 
-      //   Array.isArray(data) ? `Array with ${data.length} items` : 
-      //   (data === null ? 'null' : typeof data));
+    // Filter auth status response logs untuk mengurangi spam
+    if (!url.includes('/api/auth/status')) {
+      console.log(`API data from ${url}:`, 
+        Array.isArray(data) ? `Array with ${data.length} items` : 
+        (data === null ? 'null' : typeof data));
     }
     
     return data;
@@ -94,7 +95,10 @@ export const getQueryFn = <T,>({ on401: unauthorizedBehavior }: {
 }): QueryFunction<T> => {
   return async ({ queryKey }) => {
     const url = queryKey[0] as string;
-    console.log(`Fetching data with getQueryFn: ${url}`);
+    // Hanya log API yang bukan auth status check untuk mengurangi spam log
+    if (!url.includes('/api/auth/status')) {
+      console.log(`Fetching data with getQueryFn: ${url}`);
+    }
     
     const res = await fetch(url, {
       credentials: "include",
