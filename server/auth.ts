@@ -184,20 +184,11 @@ export function setupAuth(app: Express) {
   
   // Alias for auth status to maintain backward compatibility
   app.get("/api/auth/status", (req, res) => {
-    // Debug: log req.user and authenticity status
-    console.log("Auth status check - isAuthenticated:", req.isAuthenticated());
-    console.log("Auth status check - session ID:", req.sessionID);
-    console.log("Auth status check - user:", req.user);
-    if (req.user) {
-      console.log("Auth status check - user role:", req.user.role);
-    }
-    
     // Re-fetch user from session to ensure data integrity
     if (req.isAuthenticated() && req.user && req.user.id) {
       storage.getUser(req.user.id)
         .then(freshUser => {
           if (freshUser) {
-            console.log("Fresh user data fetched:", freshUser);
             // Update session user data
             req.user = freshUser;
             
@@ -206,7 +197,7 @@ export function setupAuth(app: Express) {
               user: freshUser
             });
           } else {
-            console.log("User not found in database, logging out");
+            // User tidak ditemukan di database, logout
             req.logout((err) => {
               if (err) console.error("Error logging out:", err);
               res.json({ 
