@@ -1,64 +1,81 @@
 /**
- * Utilitas untuk manipulasi tanggal dan waktu
+ * Utilitas untuk menangani tanggal dan waktu dalam aplikasi
+ * Terutama untuk konversi ke zona waktu WIB (GMT+7)
  */
 
 /**
- * Mengkonversi tanggal ke zona waktu WIB (Waktu Indonesia Barat)
- * @param date Objek tanggal
- * @returns Objek tanggal dalam zona waktu WIB
+ * Mengkonversi tanggal ke zona waktu WIB (GMT+7)
+ * @param date Tanggal yang akan dikonversi
+ * @returns Tanggal dalam zona waktu WIB
  */
 export function getWIBDate(date: Date): Date {
-  // Offset Jakarta/WIB adalah GMT+7
-  const wibOffset = 7 * 60; // dalam menit
-  const utcDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-  return new Date(utcDate.getTime() + wibOffset * 60000);
+  // Timezone WIB = GMT+7
+  const WIB_OFFSET = 7 * 60 * 60 * 1000; // 7 jam dalam milidetik
+  
+  // UTC timestamp
+  const utcTimestamp = date.getTime() + (date.getTimezoneOffset() * 60 * 1000);
+  
+  // WIB timestamp
+  const wibTimestamp = utcTimestamp + WIB_OFFSET;
+  
+  return new Date(wibTimestamp);
 }
 
 /**
- * Format tanggal menjadi string dalam format YYYY-MM-DD
- * @param dateStr Tanggal dalam berbagai format
- * @returns String tanggal terformat
+ * Format tanggal menjadi string dengan format YYYY-MM-DD
+ * @param dateStr Tanggal dalam bentuk string atau objek Date
+ * @returns String tanggal dalam format YYYY-MM-DD
  */
 export function formatDateString(dateStr: string | Date): string {
   let dateObj: Date;
   
-  if (dateStr instanceof Date) {
-    dateObj = dateStr;
-  } else {
-    // Coba parse string tanggal
+  if (typeof dateStr === 'string') {
+    // Jika input adalah string, parse menjadi Date
     dateObj = new Date(dateStr);
+  } else {
+    // Jika input adalah Date, gunakan langsung
+    dateObj = dateStr;
   }
   
+  // Pastikan tanggal valid
   if (isNaN(dateObj.getTime())) {
-    throw new Error(`Format tanggal tidak valid: ${dateStr}`);
+    throw new Error("Invalid date");
   }
   
-  // Format menjadi YYYY-MM-DD
+  // Format tanggal menjadi YYYY-MM-DD
   const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0'); 
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
   const day = String(dateObj.getDate()).padStart(2, '0');
   
   return `${year}-${month}-${day}`;
 }
 
 /**
- * Format tanggal menjadi string dalam format WIB (Indonesia)
- * @param date Objek tanggal
- * @returns String tanggal terformat dalam bahasa Indonesia
+ * Mengkonversi string tanggal ke objek Date dan menambahkan waktu default (12:00)
+ * @param dateStr String tanggal dalam format YYYY-MM-DD
+ * @returns Objek Date dengan waktu default
  */
-export function formatWIBDateString(date: Date): string {
-  const wibDate = getWIBDate(date);
+export function stringToDate(dateStr: string): Date {
+  if (!dateStr) {
+    throw new Error("Date string is required");
+  }
   
-  return wibDate.toLocaleString('id-ID', {
-    timeZone: 'Asia/Jakarta',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  });
+  // Format default untuk waktu adalah tengah hari (12:00)
+  return new Date(`${dateStr}T12:00:00`);
+}
+
+/**
+ * Memeriksa apakah tanggal 1 sama dengan tanggal 2 (hanya tanggal, mengabaikan waktu)
+ * @param date1 Tanggal pertama
+ * @param date2 Tanggal kedua
+ * @returns True jika tanggal sama, false jika berbeda
+ */
+export function isSameDate(date1: Date, date2: Date): boolean {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
 }
 
 /**
@@ -70,65 +87,15 @@ export function getTodayDateString(): string {
 }
 
 /**
- * Membandingkan apakah dua tanggal adalah hari yang sama (tanpa memperhatikan waktu)
- * @param date1 Tanggal pertama
- * @param date2 Tanggal kedua
- * @returns true jika sama, false jika berbeda
+ * Format rupiah untuk angka
+ * @param amount Jumlah dalam angka
+ * @returns String dalam format Rupiah
  */
-export function isSameDay(date1: Date, date2: Date): boolean {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  );
-}
-
-/**
- * Menambahkan sejumlah hari ke tanggal
- * @param date Tanggal awal
- * @param days Jumlah hari yang ditambahkan
- * @returns Tanggal baru
- */
-export function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-/**
- * Mengkonversi string waktu (HH:MM) menjadi objek Date
- * @param dateStr Tanggal dalam format YYYY-MM-DD
- * @param timeStr Waktu dalam format HH:MM
- * @returns Objek Date
- */
-export function timeStringToDate(dateStr: string, timeStr: string): Date {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  const date = new Date(dateStr);
-  
-  date.setHours(hours, minutes, 0, 0);
-  return date;
-}
-
-/**
- * Mengekstrak jam awal dari string slot waktu (contoh: "10:00-12:00" menjadi "10:00")
- * @param timeSlot String slot waktu (format: "HH:MM-HH:MM")
- * @returns String jam awal
- */
-export function extractStartTime(timeSlot: string): string {
-  if (!timeSlot || !timeSlot.includes('-')) {
-    return '';
-  }
-  return timeSlot.split('-')[0].trim();
-}
-
-/**
- * Mengekstrak jam akhir dari string slot waktu (contoh: "10:00-12:00" menjadi "12:00")
- * @param timeSlot String slot waktu (format: "HH:MM-HH:MM")
- * @returns String jam akhir
- */
-export function extractEndTime(timeSlot: string): string {
-  if (!timeSlot || !timeSlot.includes('-')) {
-    return '';
-  }
-  return timeSlot.split('-')[1].trim();
+export function formatRupiah(amount: number): string {
+  return new Intl.NumberFormat('id-ID', { 
+    style: 'currency', 
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
 }

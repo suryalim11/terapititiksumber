@@ -7,6 +7,7 @@ import { setupTherapySlotsRoutes } from "./api/therapy-slots";
 import { setupPatientRoutes } from "./api/patients";
 import { setupAuthRoutes } from "./api/auth";
 import { setupUserRoutes } from "./api/users";
+import { setupRegistrationLinkRoutes } from "./api/registration-links";
 
 /**
  * Setup semua rute API dan middleware
@@ -19,4 +20,14 @@ export function setupRoutes(app: Express) {
   setupPatientRoutes(app);
   setupTherapySlotsRoutes(app);
   setupAppointmentRoutes(app);
+  setupRegistrationLinkRoutes(app);
+  
+  // Add API ping/health check endpoint
+  app.get('/api/ping', (req, res) => {
+    res.status(200).json({ 
+      status: 'ok', 
+      time: new Date().toISOString(),
+      message: 'Server berjalan dengan baik'
+    });
+  });
 }

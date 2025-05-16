@@ -6,7 +6,7 @@ import { requireAuth, requireAdmin } from "../../middleware/auth";
 import { storage } from "../../storage";
 import { z } from "zod";
 import { insertTherapySlotSchema } from "@shared/schema";
-import { getWIBDate, formatDateString } from "../../utils/date-utils";
+import { getWIBDate } from "../../utils/date-utils";
 
 /**
  * Mendaftarkan rute-rute untuk slot terapi
@@ -47,7 +47,7 @@ export function setupTherapySlotsRoutes(app: Express) {
       res.json(therapySlot);
     } catch (error) {
       console.error("Error getting therapy slot:", error);
-      res.status(500).json({ error: "Gagal mendapatkan detail slot terapi" });
+      res.status(500).json({ error: "Gagal mendapatkan data slot terapi" });
     }
   });
 
@@ -55,203 +55,456 @@ export function setupTherapySlotsRoutes(app: Express) {
   app.get("/api/therapy-slots/date/:date", requireAuth, async (req: Request, res: Response) => {
     try {
       const date = req.params.date;
+      
+      if (!date) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Parameter tanggal diperlukan" 
+        });
+      }
+      
       const therapySlots = await storage.getTherapySlotsByDate(date);
-      res.json(therapySlots);
+      
+      return res.status(200).json({
+        success: true,
+        therapySlots
+      });
     } catch (error) {
       console.error("Error getting therapy slots by date:", error);
-      res.status(500).json({ error: "Gagal mendapatkan slot terapi berdasarkan tanggal" });
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mengambil data slot terapi" 
+      });
     }
   });
 
-  // Membuat slot terapi baru (hanya admin)
+  // Membuat slot terapi baru
   app.post("/api/therapy-slots", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const slotData = insertTherapySlotSchema.parse(req.body);
+      const therapySlotData = insertTherapySlotSchema.parse(req.body);
       
-      // Generate timeSlotKey jika belum ada
-      if (!slotData.timeSlotKey && slotData.date && slotData.timeSlot) {
-        slotData.timeSlotKey = `${slotData.date}_${slotData.timeSlot.replace(/\s+/g, '')}`;
+      // Pastikan format date adalah string (YYYY-MM-DD)
+      if (therapySlotData.date instanceof Date) {
+        therapySlotData.date = therapySlotData.date.toISOString().split('T')[0];
       }
       
-      // Pastikan nilai default
-      if (slotData.currentCount === undefined) slotData.currentCount = 0;
-      if (slotData.isActive === undefined) slotData.isActive = true;
-      if (slotData.globalQuota === undefined) slotData.globalQuota = slotData.maxQuota || 10;
+      // Buat timeSlotKey (kombinasi date dan timeSlot)
+      therapySlotData.timeSlotKey = `${therapySlotData.date}_${therapySlotData.timeSlot}`;
       
-      const newSlot = await storage.createTherapySlot(slotData);
+      // Periksa apakah slot terapi dengan date dan timeSlot yang sama sudah ada
+      const existingSlots = await storage.getTherapySlotsByDate(therapySlotData.date);
+      const existingSlot = existingSlots.find(slot => slot.timeSlot === therapySlotData.timeSlot);
       
-      res.status(201).json(newSlot);
+      if (existingSlot) {
+        return res.status(409).json({ 
+          success: false, 
+          message: "Slot terapi dengan tanggal dan waktu yang sama sudah ada" 
+        });
+      }
+      
+      // Buat slot terapi baru
+      const newTherapySlot = await storage.createTherapySlot(therapySlotData);
+      
+      return res.status(201).json({
+        success: true,
+        therapySlot: newTherapySlot,
+        message: "Slot terapi berhasil dibuat"
+      });
     } catch (error) {
       console.error("Error creating therapy slot:", error);
       
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Data slot terapi tidak valid", details: error.errors });
+        return res.status(400).json({ 
+          success: false, 
+          message: "Data slot terapi tidak valid", 
+          details: error.errors 
+        });
       }
       
-      res.status(500).json({ error: "Gagal membuat slot terapi baru" });
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat membuat slot terapi baru" 
+      });
     }
   });
 
-  // Memperbarui slot terapi (hanya admin)
+  // Memperbarui slot terapi
   app.put("/api/therapy-slots/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const slotData = req.body;
+      const therapySlotData = req.body;
       
-      const existingSlot = await storage.getTherapySlot(id);
+      // Dapatkan slot terapi yang ada
+      const existingTherapySlot = await storage.getTherapySlot(id);
       
-      if (!existingSlot) {
-        return res.status(404).json({ error: "Slot terapi tidak ditemukan" });
+      if (!existingTherapySlot) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Slot terapi tidak ditemukan" 
+        });
       }
       
-      // Regenerate timeSlotKey jika tanggal atau waktu diubah
-      if ((slotData.date && slotData.date !== existingSlot.date) || 
-          (slotData.timeSlot && slotData.timeSlot !== existingSlot.timeSlot)) {
-        const date = slotData.date || existingSlot.date;
-        const timeSlot = slotData.timeSlot || existingSlot.timeSlot;
-        slotData.timeSlotKey = `${date}_${timeSlot.replace(/\s+/g, '')}`;
+      // Periksa apakah tanggal atau waktu diubah
+      if ((therapySlotData.date && therapySlotData.date !== existingTherapySlot.date) || 
+          (therapySlotData.timeSlot && therapySlotData.timeSlot !== existingTherapySlot.timeSlot)) {
+        
+        // Perbarui timeSlotKey
+        const date = therapySlotData.date || existingTherapySlot.date;
+        const timeSlot = therapySlotData.timeSlot || existingTherapySlot.timeSlot;
+        therapySlotData.timeSlotKey = `${date}_${timeSlot}`;
+        
+        // Periksa apakah slot terapi dengan date dan timeSlot yang sama sudah ada
+        const existingSlots = await storage.getTherapySlotsByDate(date);
+        const existingSlot = existingSlots.find(slot => 
+          slot.timeSlot === timeSlot && slot.id !== id
+        );
+        
+        if (existingSlot) {
+          return res.status(409).json({ 
+            success: false, 
+            message: "Slot terapi dengan tanggal dan waktu yang sama sudah ada" 
+          });
+        }
       }
       
-      const updatedSlot = await storage.updateTherapySlot(id, slotData);
+      // Perbarui slot terapi
+      const updatedTherapySlot = await storage.updateTherapySlot(id, therapySlotData);
       
-      res.json(updatedSlot);
+      if (!updatedTherapySlot) {
+        return res.status(500).json({ 
+          success: false, 
+          message: "Gagal memperbarui data slot terapi" 
+        });
+      }
+      
+      return res.status(200).json({
+        success: true,
+        therapySlot: updatedTherapySlot,
+        message: "Data slot terapi berhasil diperbarui"
+      });
     } catch (error) {
       console.error("Error updating therapy slot:", error);
-      res.status(500).json({ error: "Gagal memperbarui slot terapi" });
-    }
-  });
-
-  // Menambah penggunaan slot terapi
-  app.post("/api/therapy-slots/:id/increment", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const existingSlot = await storage.getTherapySlot(id);
       
-      if (!existingSlot) {
-        return res.status(404).json({ error: "Slot terapi tidak ditemukan" });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Data slot terapi tidak valid", 
+          details: error.errors 
+        });
       }
       
-      const updatedSlot = await storage.incrementTherapySlotUsage(id);
-      
-      res.json(updatedSlot);
-    } catch (error) {
-      console.error("Error incrementing therapy slot usage:", error);
-      res.status(500).json({ error: "Gagal menambah penggunaan slot terapi" });
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat memperbarui data slot terapi" 
+      });
     }
   });
 
-  // Mengurangi penggunaan slot terapi
-  app.post("/api/therapy-slots/:id/decrement", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const existingSlot = await storage.getTherapySlot(id);
-      
-      if (!existingSlot) {
-        return res.status(404).json({ error: "Slot terapi tidak ditemukan" });
-      }
-      
-      const updatedSlot = await storage.decrementTherapySlotUsage(id);
-      
-      res.json(updatedSlot);
-    } catch (error) {
-      console.error("Error decrementing therapy slot usage:", error);
-      res.status(500).json({ error: "Gagal mengurangi penggunaan slot terapi" });
-    }
-  });
-
-  // Menonaktifkan slot terapi (hanya admin)
+  // Menonaktifkan slot terapi
   app.patch("/api/therapy-slots/:id/deactivate", requireAdmin, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Dapatkan slot terapi yang ada
+      const existingTherapySlot = await storage.getTherapySlot(id);
+      
+      if (!existingTherapySlot) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Slot terapi tidak ditemukan" 
+        });
+      }
+      
+      // Nonaktifkan slot terapi
       const success = await storage.deactivateTherapySlot(id);
       
       if (!success) {
-        return res.status(404).json({ error: "Slot terapi tidak ditemukan atau gagal dinonaktifkan" });
+        return res.status(500).json({ 
+          success: false, 
+          message: "Gagal menonaktifkan slot terapi" 
+        });
       }
       
-      res.json({ success: true, message: "Slot terapi berhasil dinonaktifkan" });
+      return res.status(200).json({
+        success: true,
+        message: "Slot terapi berhasil dinonaktifkan"
+      });
     } catch (error) {
       console.error("Error deactivating therapy slot:", error);
-      res.status(500).json({ error: "Gagal menonaktifkan slot terapi" });
+      
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat menonaktifkan slot terapi" 
+      });
     }
   });
 
-  // Menghapus slot terapi (hanya admin)
+  // Menghapus slot terapi
   app.delete("/api/therapy-slots/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       
-      // Periksa apakah slot digunakan oleh appointment
+      // Dapatkan slot terapi yang akan dihapus
+      const therapySlot = await storage.getTherapySlot(id);
+      
+      if (!therapySlot) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Slot terapi tidak ditemukan" 
+        });
+      }
+      
+      // Periksa apakah slot terapi memiliki appointment
       const appointments = await storage.getAppointmentsByTherapySlot(id);
       
       if (appointments.length > 0) {
         return res.status(400).json({ 
-          error: "Slot terapi tidak dapat dihapus karena sedang digunakan oleh appointment",
-          appointmentCount: appointments.length
+          success: false, 
+          message: "Slot terapi tidak dapat dihapus karena memiliki appointment" 
         });
       }
       
+      // Hapus slot terapi
       const success = await storage.deleteTherapySlot(id);
       
       if (!success) {
-        return res.status(404).json({ error: "Slot terapi tidak ditemukan atau gagal dihapus" });
+        return res.status(500).json({ 
+          success: false, 
+          message: "Gagal menghapus slot terapi" 
+        });
       }
       
-      res.json({ success: true, message: "Slot terapi berhasil dihapus" });
-    } catch (error) {
-      console.error("Error deleting therapy slot:", error);
-      res.status(500).json({ error: "Gagal menghapus slot terapi" });
-    }
-  });
-
-  // Sinkronisasi kuota slot terapi
-  app.post("/api/therapy-slots/sync-quota", requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const result = await storage.syncTherapySlotQuota();
-      res.json({
+      return res.status(200).json({
         success: true,
-        message: `Berhasil menyinkronkan ${result.updatedSlots} slot terapi`,
-        details: result.results
+        message: "Slot terapi berhasil dihapus"
       });
     } catch (error) {
-      console.error("Error syncing therapy slot quota:", error);
-      res.status(500).json({ error: "Gagal menyinkronkan kuota slot terapi" });
+      console.error("Error deleting therapy slot:", error);
+      
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat menghapus slot terapi" 
+      });
     }
   });
 
-  // Mendapatkan status slot terapi (untuk verifikasi)
-  app.get("/api/therapy-slots/:id/status", async (req: Request, res: Response) => {
+  // Mendapatkan jumlah pasien aktual dalam slot terapi
+  app.get("/api/therapy-slots/:id/count", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Dapatkan slot terapi
       const therapySlot = await storage.getTherapySlot(id);
       
       if (!therapySlot) {
-        return res.status(404).json({ error: "Slot terapi tidak ditemukan" });
+        return res.status(404).json({ 
+          success: false, 
+          message: "Slot terapi tidak ditemukan" 
+        });
       }
       
-      // Mendapatkan jumlah appointment untuk slot ini
+      // Dapatkan appointment untuk slot terapi
       const appointments = await storage.getAppointmentsByTherapySlot(id);
       
-      // Menghitung status kuota
-      const maxQuota = therapySlot.maxQuota || 0;
-      const currentUsage = appointments.length;
-      const isAvailable = therapySlot.isActive && currentUsage < maxQuota;
-      const remainingQuota = Math.max(0, maxQuota - currentUsage);
+      // Filter berdasarkan status tertentu
+      const activeAppointments = appointments.filter(app => 
+        app.status === 'Active' || app.status === 'Confirmed'
+      );
       
-      res.json({
-        id: therapySlot.id,
+      return res.status(200).json({
+        success: true,
+        therapySlotId: id,
         date: therapySlot.date,
         timeSlot: therapySlot.timeSlot,
-        maxQuota,
-        currentUsage,
-        remainingQuota,
-        isActive: therapySlot.isActive,
-        isAvailable,
-        appointments: appointments.length
+        maxQuota: therapySlot.maxQuota,
+        currentCount: therapySlot.currentCount,
+        actualCount: activeAppointments.length,
+        appointments: activeAppointments
       });
     } catch (error) {
-      console.error("Error getting therapy slot status:", error);
-      res.status(500).json({ error: "Gagal mendapatkan status slot terapi" });
+      console.error("Error getting therapy slot count:", error);
+      
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mengambil jumlah pasien dalam slot terapi" 
+      });
     }
   });
+
+  // Mendapatkan semua pasien dalam slot terapi
+  app.get("/api/therapy-slots/:id/patients", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Dapatkan slot terapi
+      const therapySlot = await storage.getTherapySlot(id);
+      
+      if (!therapySlot) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Slot terapi tidak ditemukan" 
+        });
+      }
+      
+      // Dapatkan appointment untuk slot terapi
+      const appointments = await storage.getAppointmentsByTherapySlot(id);
+      
+      // Dapatkan data pasien untuk setiap appointment
+      const patients = [];
+      for (const appointment of appointments) {
+        const patient = await storage.getPatient(appointment.patientId);
+        if (patient) {
+          patients.push({
+            ...patient,
+            appointmentId: appointment.id,
+            appointmentStatus: appointment.status,
+            appointmentNotes: appointment.notes
+          });
+        }
+      }
+      
+      return res.status(200).json({
+        success: true,
+        therapySlotId: id,
+        date: therapySlot.date,
+        timeSlot: therapySlot.timeSlot,
+        patientCount: patients.length,
+        patients
+      });
+    } catch (error) {
+      console.error("Error getting therapy slot patients:", error);
+      
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mengambil daftar pasien dalam slot terapi" 
+      });
+    }
+  });
+
+  // Mendaftarkan pasien ke slot terapi (walk-in registration)
+  app.post("/api/therapy-slots/:id/patients", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const slotId = parseInt(req.params.id);
+      const { patientId, notes } = req.body;
+      
+      if (!patientId) {
+        return res.status(400).json({
+          success: false,
+          message: "ID pasien diperlukan"
+        });
+      }
+      
+      // Dapatkan slot terapi
+      const therapySlot = await storage.getTherapySlot(slotId);
+      
+      if (!therapySlot) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Slot terapi tidak ditemukan" 
+        });
+      }
+      
+      // Dapatkan pasien
+      const patient = await storage.getPatient(patientId);
+      
+      if (!patient) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Pasien tidak ditemukan" 
+        });
+      }
+      
+      // Periksa apakah pasien sudah terdaftar di slot ini
+      const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+      const existingAppointment = appointments.find(app => app.patientId === patientId);
+      
+      if (existingAppointment) {
+        return res.status(409).json({ 
+          success: false, 
+          message: "Pasien sudah terdaftar di slot terapi ini",
+          appointmentId: existingAppointment.id
+        });
+      }
+      
+      // Untuk registrasi walk-in, kita tidak perlu memeriksa kuota
+      // Langsung buat appointment dengan status 'Active'
+      const appointment = await storage.createAppointment({
+        patientId,
+        therapySlotId: slotId,
+        date: therapySlot.date,
+        timeSlot: therapySlot.timeSlot,
+        status: 'Active', // Walk-in langsung active
+        registrationNumber: generateRegistrationNumber(),
+        notes: notes || `Walk-in registration pada ${new Date().toISOString()}`,
+        walkin: true // Tandai sebagai walk-in
+      });
+      
+      // Tambahkan sessions jika pasien memiliki sesi aktif
+      const sessions = await storage.getActiveSessionsByPatient(patientId);
+      
+      if (sessions.length > 0) {
+        // Gunakan sesi pertama yang aktif
+        const session = sessions[0];
+        
+        // Update appointment dengan sessionId
+        await storage.updateAppointment(appointment.id, {
+          ...appointment,
+          sessionId: session.id
+        });
+        
+        // Update penggunaan sesi
+        await storage.updateSessionUsage(session.id, session.sessionsUsed + 1);
+      }
+      
+      return res.status(201).json({
+        success: true,
+        message: "Pasien berhasil didaftarkan ke slot terapi (walk-in)",
+        patientId,
+        appointmentId: appointment.id,
+        therapySlot: {
+          id: therapySlot.id,
+          date: therapySlot.date,
+          timeSlot: therapySlot.timeSlot
+        }
+      });
+    } catch (error) {
+      console.error("Error registering patient to therapy slot:", error);
+      
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mendaftarkan pasien ke slot terapi" 
+      });
+    }
+  });
+
+  // Menyinkronkan jumlah pasien dalam slot terapi
+  app.post("/api/therapy-slots/sync", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const result = await storage.syncTherapySlotQuota();
+      
+      return res.status(200).json({
+        success: true,
+        message: `Berhasil menyinkronkan ${result.updatedSlots} slot terapi`,
+        updatedSlots: result.updatedSlots,
+        details: result.results
+      });
+    } catch (error) {
+      console.error("Error syncing therapy slot quotas:", error);
+      
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat menyinkronkan jumlah pasien dalam slot terapi" 
+      });
+    }
+  });
+}
+
+/**
+ * Menghasilkan nomor registrasi unik
+ * @returns Nomor registrasi dengan format TTS-XXXXXX
+ */
+function generateRegistrationNumber(): string {
+  const prefix = "TTS";
+  const randomDigits = Math.floor(100000 + Math.random() * 900000).toString();
+  return `${prefix}-${randomDigits}`;
 }

@@ -1,139 +1,206 @@
 /**
- * API endpoint untuk autentikasi
+ * API endpoint untuk manajemen autentikasi
  */
-import { Express, Request, Response } from "express";
-import { requireAuth, logLoginActivity, logLogoutActivity } from "../../middleware/auth";
+import { Express, Request, Response, NextFunction } from "express";
 import { storage } from "../../storage";
+import { requireAuth } from "../../middleware/auth";
 import passport from "passport";
 
 /**
  * Mendaftarkan rute-rute untuk autentikasi
  */
 export function setupAuthRoutes(app: Express) {
-  // Memeriksa status autentikasi
-  app.get("/api/auth/status", (req: Request, res: Response) => {
-    if (req.isAuthenticated()) {
-      res.json({ 
-        authenticated: true, 
-        user: req.user 
-      });
-    } else {
-      res.json({ 
-        authenticated: false 
+  // Login pengguna
+  app.post("/api/login", (req: Request, res: Response, next: NextFunction) => {
+    const { username, password, rememberMe } = req.body;
+    
+    console.log(`Mencoba login untuk username: ${username}, rememberMe: ${rememberMe}`);
+    
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Username dan password diperlukan"
       });
     }
-  });
-
-  // Login 
-  app.post("/api/auth/login", logLoginActivity, (req: Request, res: Response, next) => {
-    passport.authenticate('local', (err, user, info) => {
+    
+    // Gunakan passport untuk autentikasi
+    passport.authenticate("local", (err, user, info) => {
       if (err) {
-        console.error('Kesalahan autentikasi:', err);
-        return res.status(500).json({ 
-          success: false, 
-          message: 'Terjadi kesalahan saat mencoba login' 
+        console.error("Error authenticating user:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Terjadi kesalahan saat autentikasi"
         });
       }
       
       if (!user) {
-        return res.status(401).json({ 
-          success: false, 
-          message: info?.message || 'Username atau password salah' 
+        console.log(`Login gagal untuk username: ${username}`);
+        return res.status(401).json({
+          success: false,
+          message: info.message || "Username atau password salah"
         });
       }
       
-      req.login(user, (err) => {
-        if (err) {
-          console.error('Kesalahan saat membuat sesi login:', err);
-          return res.status(500).json({ 
-            success: false, 
-            message: 'Terjadi kesalahan saat membuat sesi login' 
+      // Set session cookie
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Error logging in user:", loginErr);
+          return res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan saat melakukan login"
           });
         }
         
-        console.log(`Login berhasil untuk user: ${user.username}`);
+        // Set cookie max-age berdasarkan rememberMe
+        if (rememberMe) {
+          req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 hari
+        } else {
+          req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 1 hari
+        }
         
-        return res.json({ 
-          success: true, 
-          message: 'Login berhasil', 
-          user 
+        // Kembalikan informasi user (tanpa password)
+        const { password, ...userInfo } = user;
+        
+        console.log(`Login berhasil untuk username: ${username}`);
+        
+        return res.status(200).json({
+          success: true,
+          message: "Login berhasil",
+          user: userInfo
         });
       });
     })(req, res, next);
   });
 
-  // Logout
-  app.post("/api/auth/logout", logLogoutActivity, (req: Request, res: Response) => {
-    const username = req.user ? (req.user as any).username : 'unknown';
+  // Logout pengguna
+  app.post("/api/logout", (req: Request, res: Response) => {
+    if (req.isAuthenticated()) {
+      console.log(`Logout untuk user: ${(req.user as any).username}`);
+      req.logout((err) => {
+        if (err) {
+          console.error("Error during logout:", err);
+          return res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan saat logout"
+          });
+        }
+        
+        res.status(200).json({
+          success: true,
+          message: "Logout berhasil"
+        });
+      });
+    } else {
+      res.status(200).json({
+        success: true,
+        message: "Logout berhasil (tidak ada sesi aktif)"
+      });
+    }
+  });
+
+  // Status autentikasi
+  app.get("/api/auth/status", (req: Request, res: Response) => {
+    console.log("Memeriksa status autentikasi");
     
-    req.logout((err) => {
-      if (err) {
-        console.error(`Gagal logout user ${username}:`, err);
-        return res.status(500).json({ 
-          success: false, 
-          message: 'Terjadi kesalahan saat logout' 
+    if (req.isAuthenticated()) {
+      console.log(`User terautentikasi: ${(req.user as any).username}`);
+      
+      // Kembalikan informasi user (tanpa password)
+      const user = req.user as any;
+      const { password, ...userInfo } = user;
+      
+      return res.status(200).json({
+        authenticated: true,
+        user: userInfo
+      });
+    } else {
+      console.log("Tidak ada user yang terautentikasi");
+      
+      return res.status(200).json({
+        authenticated: false
+      });
+    }
+  });
+
+  // Mendapatkan profile pengguna
+  app.get("/api/auth/profile", requireAuth, (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Tidak terautentikasi"
         });
       }
       
-      console.log(`User ${username} telah logout`);
-      res.json({ 
-        success: true, 
-        message: 'Logout berhasil' 
+      // Kembalikan informasi user (tanpa password)
+      const user = req.user as any;
+      const { password, ...userInfo } = user;
+      
+      return res.status(200).json({
+        success: true,
+        user: userInfo
       });
-    });
+    } catch (error) {
+      console.error("Error getting user profile:", error);
+      
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil profil pengguna"
+      });
+    }
   });
 
-  // Memeriksa apakah user memiliki peran admin
-  app.get('/api/auth/is-admin', requireAuth, (req: Request, res: Response) => {
-    const isAdmin = req.user && (req.user as any).role === 'admin';
-    
-    res.json({
-      isAdmin
-    });
-  });
-
-  // Pemulihan password (versi sederhana tanpa email)
-  app.post('/api/auth/reset-password', requireAuth, async (req: Request, res: Response) => {
+  // Mengubah password
+  app.post("/api/auth/change-password", requireAuth, async (req: Request, res: Response) => {
     try {
       const { currentPassword, newPassword } = req.body;
-      const userId = (req.user as any).id;
       
       if (!currentPassword || !newPassword) {
         return res.status(400).json({
           success: false,
-          message: 'Password saat ini dan password baru diperlukan'
+          message: "Password saat ini dan password baru diperlukan"
         });
       }
       
+      // Dapatkan user dari session
+      const userId = (req.user as any).id;
       const user = await storage.getUser(userId);
       
       if (!user) {
         return res.status(404).json({
           success: false,
-          message: 'User tidak ditemukan'
+          message: "Pengguna tidak ditemukan"
         });
       }
       
-      // Verifikasi password lama
+      // Verifikasi password saat ini
       if (user.password !== currentPassword) {
         return res.status(400).json({
           success: false,
-          message: 'Password saat ini tidak sesuai'
+          message: "Password saat ini tidak sesuai"
         });
       }
       
-      // Update password - dalam implementasi produksi, gunakan fungsi hash
-      await storage.updateUserPassword(userId, newPassword);
+      // Update password
+      const updatedUser = await storage.updateUserPassword(userId, newPassword);
       
-      res.json({
+      if (!updatedUser) {
+        return res.status(500).json({
+          success: false,
+          message: "Gagal memperbarui password"
+        });
+      }
+      
+      return res.status(200).json({
         success: true,
-        message: 'Password berhasil diubah'
+        message: "Password berhasil diperbarui"
       });
     } catch (error) {
-      console.error('Kesalahan saat mengubah password:', error);
-      res.status(500).json({
+      console.error("Error changing password:", error);
+      
+      return res.status(500).json({
         success: false,
-        message: 'Terjadi kesalahan saat mengubah password'
+        message: "Terjadi kesalahan saat mengubah password"
       });
     }
   });
