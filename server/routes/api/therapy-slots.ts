@@ -63,7 +63,13 @@ export function setupTherapySlotsRoutes(app: Express) {
         });
       }
       
-      const therapySlots = await storage.getTherapySlotsByDate(date);
+      // Konversi string ke tanggal jika diperlukan
+      let dateInput: Date | string = date;
+      if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+        dateInput = new Date(date);
+      }
+      
+      const therapySlots = await storage.getTherapySlotsByDate(dateInput);
       
       return res.status(200).json({
         success: true,
@@ -332,53 +338,11 @@ export function setupTherapySlotsRoutes(app: Express) {
   });
 
   // Mendapatkan semua pasien dalam slot terapi
+  // Catatan: Endpoint ini hanya stub yang mengarahkan ke implementasi optimized di server/routes.ts
+  // Ini mencegah masalah race condition dimana ada dua endpoint yang menangani hal yang sama
   app.get("/api/therapy-slots/:id/patients", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      
-      // Dapatkan slot terapi
-      const therapySlot = await storage.getTherapySlot(id);
-      
-      if (!therapySlot) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Slot terapi tidak ditemukan" 
-        });
-      }
-      
-      // Dapatkan appointment untuk slot terapi
-      const appointments = await storage.getAppointmentsByTherapySlot(id);
-      
-      // Dapatkan data pasien untuk setiap appointment
-      const patients = [];
-      for (const appointment of appointments) {
-        const patient = await storage.getPatient(appointment.patientId);
-        if (patient) {
-          patients.push({
-            ...patient,
-            appointmentId: appointment.id,
-            appointmentStatus: appointment.status,
-            appointmentNotes: appointment.notes
-          });
-        }
-      }
-      
-      return res.status(200).json({
-        success: true,
-        therapySlotId: id,
-        date: therapySlot.date,
-        timeSlot: therapySlot.timeSlot,
-        patientCount: patients.length,
-        patients
-      });
-    } catch (error) {
-      console.error("Error getting therapy slot patients:", error);
-      
-      return res.status(500).json({ 
-        success: false, 
-        message: "Terjadi kesalahan saat mengambil daftar pasien dalam slot terapi" 
-      });
-    }
+    // Redirect ke endpoint optimized di server/routes.ts
+    res.redirect(307, `/api/therapy-slots/${req.params.id}/patients`);
   });
 
   // Mendaftarkan pasien ke slot terapi (walk-in registration)
@@ -428,16 +392,22 @@ export function setupTherapySlotsRoutes(app: Express) {
       
       // Untuk registrasi walk-in, kita tidak perlu memeriksa kuota
       // Langsung buat appointment dengan status 'Active'
-      const appointment = await storage.createAppointment({
+      // Gunakan format registrasi sesuai database
+      const registrationNumber = `WLK-${Math.floor(1000 + Math.random() * 9000)}-${new Date().getTime().toString().slice(-4)}`;
+      const appointmentData = {
         patientId,
         therapySlotId: slotId,
-        date: therapySlot.date,
+        date: typeof therapySlot.date === 'string' ? therapySlot.date : new Date(therapySlot.date).toISOString(),
         timeSlot: therapySlot.timeSlot,
         status: 'Active', // Walk-in langsung active
-        registrationNumber: generateRegistrationNumber(),
-        notes: notes || `Walk-in registration pada ${new Date().toISOString()}`,
-        walkin: true // Tandai sebagai walk-in
-      });
+        registrationNumber,
+        notes: notes || `Walk-in registration pada ${new Date().toISOString()}`
+      };
+      
+      // Tambahkan informasi walk-in dalam notes untuk tracking
+      appointmentData.notes += " [WALKIN]";
+      
+      const appointment = await storage.createAppointment(appointmentData);
       
       // Tambahkan sessions jika pasien memiliki sesi aktif
       const sessions = await storage.getActiveSessionsByPatient(patientId);
@@ -446,11 +416,13 @@ export function setupTherapySlotsRoutes(app: Express) {
         // Gunakan sesi pertama yang aktif
         const session = sessions[0];
         
-        // Update appointment dengan sessionId
-        await storage.updateAppointment(appointment.id, {
-          ...appointment,
-          sessionId: session.id
-        });
+        // Update appointment dengan sessionId menggunakan manual query karena storage
+        // tidak memiliki metode updateAppointment
+        const { pool } = require('../../db');
+        await pool.query(
+          `UPDATE appointments SET session_id = $1 WHERE id = $2`, 
+          [session.id, appointment.id]
+        );
         
         // Update penggunaan sesi
         await storage.updateSessionUsage(session.id, session.sessionsUsed + 1);
