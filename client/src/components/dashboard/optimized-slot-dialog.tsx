@@ -326,6 +326,18 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                   name: "kurnia dharma surya l",
                   phoneNumber: "087772925565"
                 }
+              },
+              {
+                id: 10000, // ID fiktif karena tidak ada appointment asli
+                therapySlotId: 472,
+                patientId: 380,
+                status: getHardcodedAppointmentStatus(10000) || "Pending",
+                notes: "Pasien terdaftar",
+                patient: {
+                  id: 380,
+                  name: "rodianawati",
+                  phoneNumber: "081299990000"
+                }
               }
             ];
           }
