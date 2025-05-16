@@ -172,11 +172,38 @@ export default function PatientDetail() {
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const patientId = params?.id ? parseInt(params.id) : null;
 
+  // Fungsi untuk verifikasi koneksi pasien-appointment secara otomatis
+  const verifyPatientConnection = async (id: number) => {
+    try {
+      const response = await apiRequest(`/api/verify-connection/patient/${id.toString()}`, {
+        method: 'POST'
+      });
+      
+      if (response.result?.fixed > 0) {
+        toast({
+          title: "Koneksi terapi diperbarui",
+          description: `${response.result.fixed} koneksi diperbaiki secara otomatis`
+        });
+        // Muat ulang data untuk menampilkan perubahan
+        queryClient.invalidateQueries({ queryKey: [`/api/appointments`] });
+      }
+    } catch (error) {
+      console.error('Error saat verifikasi koneksi:', error);
+    }
+  };
+
   // Fetch patient data
   const { data: patient, isLoading: isLoadingPatient, refetch: refetchPatient } = useQuery({
     queryKey: [`/api/patients/${patientId}`],
     queryFn: async () => {
-      return await apiRequest(`/api/patients/${patientId}`) as Patient;
+      const patientData = await apiRequest(`/api/patients/${patientId}`) as Patient;
+      
+      // Jika pasien memiliki therapySlotId, lakukan verifikasi otomatis
+      if (patientData && patientData.therapySlotId && patientId) {
+        await verifyPatientConnection(patientId);
+      }
+      
+      return patientData;
     },
     enabled: !!patientId,
   });

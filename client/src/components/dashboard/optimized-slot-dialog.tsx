@@ -537,10 +537,35 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     }
   };
   
+  // Fungsi untuk sinkronisasi jumlah pasien
+  const syncSlotCount = async (id: number) => {
+    try {
+      const response = await fetch(`/api/sync-therapy-slot/${id}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        console.log(`✅ Berhasil menyinkronkan jumlah pasien untuk slot ID: ${id}`);
+      } else {
+        console.error(`❌ Gagal menyinkronkan jumlah pasien untuk slot ID: ${id}`);
+      }
+    } catch (error) {
+      console.error('Error saat sinkronisasi slot:', error);
+    }
+  };
+
   // Effect to fetch data when dialog opens
   useEffect(() => {
     if (isOpen && slotId) {
+      // Fetch slot data and patients
       fetchSlotAndPatients();
+      
+      // Sinkronkan jumlah pasien secara otomatis
+      syncSlotCount(slotId);
     }
     
     // Cleanup function
