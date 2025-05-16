@@ -314,6 +314,18 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
                   name: "Agus Lim",
                   phoneNumber: "08127003608"
                 }
+              },
+              {
+                id: 9999, // ID fiktif karena tidak ada appointment asli
+                therapySlotId: 472,
+                patientId: 379,
+                status: getHardcodedAppointmentStatus(9999) || "Pending",
+                notes: "Pasien terdaftar",
+                patient: {
+                  id: 379,
+                  name: "kurnia dharma surya l",
+                  phoneNumber: "087772925565"
+                }
               }
             ];
           }
