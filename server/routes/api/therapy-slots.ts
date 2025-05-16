@@ -338,11 +338,37 @@ export function setupTherapySlotsRoutes(app: Express) {
   });
 
   // Mendapatkan semua pasien dalam slot terapi
-  // Catatan: Endpoint ini hanya stub yang mengarahkan ke implementasi optimized di server/routes.ts
-  // Ini mencegah masalah race condition dimana ada dua endpoint yang menangani hal yang sama
   app.get("/api/therapy-slots/:id/patients", requireAuth, async (req: Request, res: Response) => {
-    // Redirect ke endpoint optimized di server/routes.ts
-    res.redirect(307, `/api/therapy-slots/${req.params.id}/patients`);
+    try {
+      const slotId = parseInt(req.params.id);
+      
+      // Endpoint khusus untuk mengambil data slot dan pasien secara bersamaan
+      // 1. Ambil data slot terapi
+      const therapySlot = await storage.getTherapySlot(slotId);
+      
+      if (!therapySlot) {
+        return res.status(404).json({
+          success: false,
+          message: "Slot terapi tidak ditemukan"
+        });
+      }
+      
+      // 2. Ambil semua appointment untuk slot ini
+      const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+      
+      // 3. Returnkan data lengkap slot dan appointments
+      return res.status(200).json({
+        success: true,
+        slot: therapySlot,
+        appointments: appointments
+      });
+    } catch (error) {
+      console.error(`Error getting patients for therapy slot ${req.params.id}:`, error);
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil data pasien dalam slot terapi"
+      });
+    }
   });
 
   // Mendaftarkan pasien ke slot terapi (walk-in registration)
