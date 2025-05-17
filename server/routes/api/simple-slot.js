@@ -59,6 +59,9 @@ async function getSlotAppointments(req, res) {
     
     console.log(`📅 Mengambil appointments untuk slot ${slotId}`);
     
+    // Pastikan Content-Type diatur dengan benar untuk response JSON
+    res.setHeader('Content-Type', 'application/json');
+    
     // Ambil appointment untuk slot terapi ini
     const appointments = await storage.getAppointmentsByTherapySlot(slotId);
     
@@ -90,6 +93,9 @@ async function getSlotPatients(req, res) {
     }
     
     console.log(`👥 Mengambil data pasien untuk slot ${slotId}`);
+    
+    // Pastikan Content-Type diatur dengan benar untuk response JSON
+    res.setHeader('Content-Type', 'application/json');
     
     // Ambil appointment untuk slot terapi ini
     const appointments = await storage.getAppointmentsByTherapySlot(slotId);
