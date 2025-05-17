@@ -48,6 +48,7 @@ import { id } from "date-fns/locale";
 import { verifyAllPatientConnections, verifyPatientConnection } from "./api-verify-connections";
 import { consolidateDuplicateSlots } from "./routes/slot-consolidator";
 import { syncAllSlots, syncSlot } from "./routes/sync-therapy-slots";
+import { setupSimpleSlotRoutes } from "./routes/api/simple-slot";
 import {
   exportData,
   getBackupFiles,
@@ -81,6 +82,9 @@ interface CreateRegistrationLinkBody {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication middleware
   setupAuth(app);
+  
+  // Setup simplified slot routes for better performance
+  setupSimpleSlotRoutes(app);
   
   // Fix database schema for missing columns
   try {
