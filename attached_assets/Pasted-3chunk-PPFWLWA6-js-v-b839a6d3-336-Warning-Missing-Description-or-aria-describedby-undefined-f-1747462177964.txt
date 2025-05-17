@@ -1,0 +1,61 @@
+3chunk-PPFWLWA6.js?v=b839a6d3:336 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ chunk-PPFWLWA6.js?v=b839a6d3:336
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b839a6d3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b839a6d3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b839a6d3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b839a6d3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=b839a6d3:18627Understand this warning
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:100 Fetching data with getQueryFn: /api/appointments/date/2025-05-17
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:110 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:110 Response for /api/dashboard/stats: status=200
+queryClient.ts:124 Successfully parsed data from /api/dashboard/stats: object
+queryClient.ts:124 Successfully parsed data from /api/dashboard/active-packages: Array with 168 items
+queryClient.ts:110 Response for /api/appointments/date/2025-05-17: status=200
+queryClient.ts:124 Successfully parsed data from /api/appointments/date/2025-05-17: object
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:100 Fetching data with getQueryFn: /api/appointments/date/2025-05-17
+chunk-PPFWLWA6.js?v=b839a6d3:336 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ chunk-PPFWLWA6.js?v=b839a6d3:336
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b839a6d3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b839a6d3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b839a6d3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b839a6d3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=b839a6d3:18627Understand this warning
+queryClient.ts:110 Response for /api/dashboard/stats: status=200
+queryClient.ts:124 Successfully parsed data from /api/dashboard/stats: object
+queryClient.ts:110 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:110 Response for /api/appointments/date/2025-05-17: status=200
+queryClient.ts:124 Successfully parsed data from /api/appointments/date/2025-05-17: object
+queryClient.ts:124 Successfully parsed data from /api/dashboard/active-packages: Array with 168 items
+chunk-PPFWLWA6.js?v=b839a6d3:336 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ chunk-PPFWLWA6.js?v=b839a6d3:336
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b839a6d3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b839a6d3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b839a6d3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b839a6d3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=b839a6d3:18627Understand this warning
+queryClient.ts:10

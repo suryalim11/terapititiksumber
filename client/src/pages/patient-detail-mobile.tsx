@@ -212,7 +212,14 @@ export default function PatientDetail() {
   const { data: transactions, isLoading: isLoadingTransactions, refetch: refetchTransactions } = useQuery({
     queryKey: [`/api/transactions?patientId=${patientId}&includeRelated=true`],
     queryFn: async () => {
-      return await apiRequest(`/api/transactions?patientId=${patientId}&includeRelated=true`) as Transaction[];
+      try {
+        const response = await apiRequest(`/api/transactions?patientId=${patientId}&includeRelated=true`);
+        // Pastikan data yang dikembalikan adalah array
+        return Array.isArray(response) ? response : [];
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
+        return [];
+      }
     },
     enabled: !!patientId,
   });
@@ -221,7 +228,14 @@ export default function PatientDetail() {
   const { data: activeSessions, isLoading: isLoadingSessions, refetch: refetchSessions } = useQuery({
     queryKey: [`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`],
     queryFn: async () => {
-      return await apiRequest(`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`) as Session[];
+      try {
+        const response = await apiRequest(`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`);
+        // Pastikan data yang dikembalikan adalah array
+        return Array.isArray(response) ? response : [];
+      } catch (error) {
+        console.error("Error fetching sessions:", error);
+        return [];
+      }
     },
     enabled: !!patientId,
   });
