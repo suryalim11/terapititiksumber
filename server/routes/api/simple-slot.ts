@@ -2,131 +2,125 @@
  * API endpoint sederhana dan cepat untuk mendapatkan data slot terapi
  * Dirancang untuk performa maksimal dan ukuran payload minimal
  */
-import { Express, Request, Response } from "express";
-import { storage } from "../../storage";
-import { requireAuth } from "../../middleware/auth";
 
-// Memory cache untuk menyimpan data sementara
-const SIMPLE_CACHE: Record<string, any> = {};
+import type { Express, Request, Response } from "express";
+import { db } from "../../db";
+import { therapySlots, appointments, patients } from "@shared/schema";
+import { eq, and, desc, ne, isNull } from "drizzle-orm";
+import { requireAuth } from "../../middleware/auth";
 
 /**
  * Setup rute-rute untuk akses cepat slot terapi
  */
 export function setupSimpleSlotRoutes(app: Express) {
-  // Endpoint untuk mendapatkan data dasar slot terapi (Sangat Cepat)
+  // Endpoint sederhana untuk mendapatkan data dasar slot
   app.get("/api/simple-slot/:id", requireAuth, async (req: Request, res: Response) => {
     try {
-      const startTime = Date.now();
       const slotId = parseInt(req.params.id);
-      const cacheBuster = req.query._t || Date.now();
       
-      // Nama kunci cache
-      const cacheKey = `simple_slot_${slotId}_${cacheBuster}`;
-      
-      // Periksa coba ada di cache (30 detik)
-      if (SIMPLE_CACHE[cacheKey] && (Date.now() - SIMPLE_CACHE[cacheKey].timestamp) < 30000) {
-        console.log(`🔥 Cache hit untuk simple-slot/${slotId}`);
-        
-        // Set header cache
-        res.set('Cache-Control', 'private, max-age=30');
-        
-        return res.status(200).json({
-          success: true,
-          data: SIMPLE_CACHE[cacheKey].data,
-          fromCache: true,
-          responseTime: Date.now() - startTime
+      if (isNaN(slotId)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "ID slot tidak valid" 
         });
       }
       
-      // Ambil data slot terapi
-      const therapySlot = await storage.getTherapySlot(slotId);
+      console.log(`📋 API Sederhana: Mengambil data untuk slot ID ${slotId}`);
       
-      if (!therapySlot) {
-        return res.status(404).json({
-          success: false,
-          message: "Slot terapi tidak ditemukan"
+      // Ambil data slot dasar dengan performa maksimal
+      const slotData = await db.select({
+        id: therapySlots.id,
+        date: therapySlots.date,
+        timeSlot: therapySlots.timeSlot,
+        timeSlotKey: therapySlots.timeSlotKey,
+        maxQuota: therapySlots.maxQuota,
+        currentCount: therapySlots.currentCount,
+        isActive: therapySlots.isActive,
+        globalQuota: therapySlots.globalQuota
+      })
+      .from(therapySlots)
+      .where(eq(therapySlots.id, slotId))
+      .limit(1);
+      
+      if (!slotData || slotData.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Slot terapi tidak ditemukan" 
         });
       }
       
-      // Hitung jumlah pasien terdaftar
-      const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+      // Hitung jumlah pasien secara terpisah
+      const countResult = await db.select({
+        count: db.$count(appointments.id)
+      })
+      .from(appointments)
+      .where(eq(appointments.therapySlotId, slotId));
       
-      // Data minimal yang dibutuhkan
-      const simpleData = {
-        id: therapySlot.id,
-        date: therapySlot.date,
-        timeSlot: therapySlot.timeSlot,
-        maxQuota: therapySlot.maxQuota,
-        currentCount: therapySlot.currentCount,
-        isActive: therapySlot.isActive,
-        patientCount: appointments.length,
-        statusCounts: appointments.reduce((acc, a) => {
-          acc[a.status] = (acc[a.status] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>)
-      };
+      const patientCount = countResult[0]?.count || 0;
       
-      // Simpan di cache
-      SIMPLE_CACHE[cacheKey] = {
-        timestamp: Date.now(),
-        data: simpleData
-      };
-      
-      // Set header cache
-      res.set('Cache-Control', 'private, max-age=30');
-      
-      const responseTime = Date.now() - startTime;
-      console.log(`✅ Simple-slot/${slotId} loaded in ${responseTime}ms`);
-      
-      return res.status(200).json({
+      // Kembalikan data minimal dan cepat
+      return res.json({
         success: true,
-        data: simpleData,
-        fromCache: false,
-        responseTime
+        data: {
+          ...slotData[0],
+          patientCount
+        }
       });
+      
     } catch (error) {
-      console.error(`❌ Error getting simple slot ${req.params.id}:`, error);
-      return res.status(500).json({
-        success: false,
-        message: error instanceof Error 
-          ? error.message 
-          : "Terjadi kesalahan saat mengambil data slot terapi"
+      console.error("Error dalam simple-slot API:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mengambil data slot" 
       });
     }
   });
-
-  // Endpoint untuk mendapatkan hanya daftar pasien dari slot terapi (tanpa data slot)
+  
+  // Endpoint untuk mendapatkan daftar pasien dalam slot
   app.get("/api/simple-slot/:id/patients", requireAuth, async (req: Request, res: Response) => {
     try {
-      const startTime = Date.now();
       const slotId = parseInt(req.params.id);
       
-      // Ambil data appointment saja
-      const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+      if (isNaN(slotId)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "ID slot tidak valid" 
+        });
+      }
       
-      // Data minimal yang dibutuhkan
-      const simpleAppointments = appointments.map(a => ({
-        id: a.id,
-        patientId: a.patientId,
-        status: a.status
-      }));
+      console.log(`👥 API Sederhana: Mengambil data pasien untuk slot ID ${slotId}`);
       
-      const responseTime = Date.now() - startTime;
-      console.log(`✅ Simple-slot/${slotId}/patients loaded in ${responseTime}ms`);
+      // Ambil data appointment dengan join minimal ke tabel pasien
+      const appointmentData = await db.select({
+        id: appointments.id,
+        patientId: appointments.patientId,
+        status: appointments.status,
+        notes: appointments.notes,
+        date: appointments.date,
+        // Data pasien minimal
+        patientName: patients.name,
+        patientPhone: patients.phoneNumber,
+      })
+      .from(appointments)
+      .leftJoin(patients, eq(appointments.patientId, patients.id))
+      .where(eq(appointments.therapySlotId, slotId))
+      .orderBy(desc(appointments.id));
       
-      return res.status(200).json({
+      // Hitung jumlah pasien
+      const count = appointmentData.length;
+      
+      // Kembalikan data dengan format yang konsisten
+      return res.json({
         success: true,
-        data: simpleAppointments,
-        count: simpleAppointments.length,
-        responseTime
+        count,
+        data: appointmentData
       });
+      
     } catch (error) {
-      console.error(`❌ Error getting patients for simple slot ${req.params.id}:`, error);
-      return res.status(500).json({
-        success: false,
-        message: error instanceof Error 
-          ? error.message 
-          : "Terjadi kesalahan saat mengambil data pasien slot terapi"
+      console.error("Error dalam simple-slot/patients API:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mengambil data pasien" 
       });
     }
   });
