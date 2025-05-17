@@ -15,7 +15,7 @@ import { CalendarIcon, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export function TherapySlotDashboard() {
+export default function TherapySlotDashboard() {
   const today = new Date();
   const [activeTab, setActiveTab] = useState('today');
   

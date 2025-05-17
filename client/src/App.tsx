@@ -23,6 +23,7 @@ import Login from "@/pages/login";
 import BackupRestore from "@/pages/backup-restore";
 import DateTest from "@/pages/date-test";
 import TherapySlots from "@/pages/therapy-slots";
+import TherapySlotDashboard from "@/pages/TherapySlotDashboard";
 import AdminPage from "@/pages/admin";
 import TestDevPage from "@/pages/test-dev";
 import AppointmentFix from "@/pages/appointment-fix";
@@ -43,6 +44,7 @@ function AdminApp() {
         <ProtectedRoute path="/transactions" component={Transactions} />
         <ProtectedRoute path="/transactions/new" component={Transactions} />
         <ProtectedRoute path="/therapy-slots" component={TherapySlots} />
+        <ProtectedRoute path="/therapy-dashboard" component={TherapySlotDashboard} />
         <ProtectedRoute path="/products" component={Products} />
         <ProtectedRoute path="/reports" component={Reports} />
         <ProtectedRoute path="/reports/index" component={ReportsIndex} />

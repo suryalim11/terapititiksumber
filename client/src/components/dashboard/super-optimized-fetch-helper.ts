@@ -1,122 +1,160 @@
 /**
- * Helper teroptimasi tingkat lanjut untuk pengambilan data slot terapi
- * Dirancang khusus untuk mengatasi masalah timeout dengan pendekatan progresif
+ * Helper untuk mengambil data slot terapi secara bertahap
+ * dengan pendekatan loading progresif
  */
 
+// Struktur data slot terapi progresif
 export interface ProgressiveSlotData {
-  stage: 'basic' | 'stats' | 'full';
-  slot?: any;                // Data dasar slot
-  statusCounts?: any;        // Hitungan status
-  appointmentCount?: number; // Jumlah appointment
-  appointments?: any[];      // Data pasien (hanya pada full)
-  timestamp: string;
+  // Informasi dasar
+  id: number;
+  date: string;
+  timeSlot: string;
+  maxQuota: number;
+  currentCount: number;
+  isActive: boolean;
+  
+  // Data pasien dan appointment (diisi kemudian)
+  patients: any[];
+  appointments: any[];
+  
+  // Status loading
+  stage: 'basic' | 'full';
+  patientsLoaded: boolean;
+  appointmentsLoaded: boolean;
+  
+  // Detail progress
+  timeElapsed?: number;
+  requestStartTime?: number;
 }
 
+// Tipe fungsi fetch
+type FetchFunction = (url: string, options?: any) => Promise<Response>;
+
 /**
- * Mengambil data slot terapi dengan pendekatan bertahap (progressive)
- * @param slotId ID dari slot terapi
- * @param fetchFn Fungsi fetch dengan timeout
- * @param onProgressCallback Callback untuk setiap tahap yang selesai
- * @returns Promise yang mengembalikan data lengkap
+ * Mengambil data slot terapi secara bertahap
+ * @param slotId ID slot terapi
+ * @param fetchFn Fungsi fetch
+ * @param onProgress Callback untuk update progress
+ * @returns Promise dengan data slot terapi
  */
 export async function fetchSlotProgressively(
   slotId: number,
-  fetchFn: (url: string, options?: RequestInit, timeout?: number, retries?: number) => Promise<Response>,
-  onProgressCallback?: (data: ProgressiveSlotData) => void
+  fetchFn: FetchFunction,
+  onProgress: (data: ProgressiveSlotData) => void
 ): Promise<ProgressiveSlotData> {
-  // Struktur data progresif yang akan diperbarui di setiap tahap
-  const progressiveData: ProgressiveSlotData = {
+  const startTime = Date.now();
+  
+  // Struktur awal data progresif
+  let progressiveData: ProgressiveSlotData = {
+    id: slotId,
+    date: '',
+    timeSlot: '',
+    maxQuota: 0,
+    currentCount: 0,
+    isActive: true,
+    patients: [],
+    appointments: [],
     stage: 'basic',
-    timestamp: new Date().toISOString()
+    patientsLoaded: false,
+    appointmentsLoaded: false,
+    requestStartTime: startTime,
   };
   
   try {
-    // 1. TAHAP PERTAMA: Ambil data dasar slot terapi (paling cepat)
-    const cacheBuster = Date.now();
-    console.log(`🚀 Memulai loading progresif untuk slot ${slotId} - Tahap dasar`);
+    // Step 1: Fetch data dasar slot terapi (cepat)
+    console.log(`🚀 Request untuk basic slot ${slotId} info`);
     
-    const simpleSlotResponse = await fetchFn(
-      `/api/simple-slot/${slotId}?_t=${cacheBuster}`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      },
-      5000, // 5 detik timeout
-      1     // 1 retry
-    );
+    // Caching untuk mengoptimalkan performa
+    const cacheKey = `therapy_slot_basic_${slotId}_${Date.now()}`;
+    let cachedData = sessionStorage.getItem(cacheKey);
     
-    if (!simpleSlotResponse.ok) {
-      throw new Error(`Gagal mengambil data dasar: ${simpleSlotResponse.status}`);
+    let basicSlotData;
+    if (cachedData) {
+      console.log(`✅ Cache hit untuk ${cacheKey}, menggunakan data cache`);
+      basicSlotData = JSON.parse(cachedData);
+    } else {
+      console.log(`❌ Cache miss untuk ${cacheKey}, mengambil data baru...`);
+      console.log(`🔍 Mengambil data dasar therapy slot ID: ${slotId}`);
+      
+      const basicResponse = await fetchFn(`/api/simple-slot/${slotId}/basic`, {
+        timeout: 5000, // Timeout pendek karena harusnya cepat
+      });
+      
+      if (!basicResponse.ok) {
+        throw new Error(`Error mengambil data dasar slot: ${basicResponse.status}`);
+      }
+      
+      basicSlotData = await basicResponse.json();
+      
+      // Simpan ke cache untuk penggunaan selanjutnya
+      sessionStorage.setItem(cacheKey, JSON.stringify(basicSlotData));
     }
     
-    const simpleSlotData = await simpleSlotResponse.json();
+    // Update data progresif dengan info dasar
+    progressiveData = {
+      ...progressiveData,
+      ...basicSlotData,
+      stage: 'basic',
+      timeElapsed: Date.now() - startTime,
+    };
     
-    if (!simpleSlotData.success) {
-      throw new Error(simpleSlotData.message || "Error mengambil data dasar slot");
-    }
+    // Panggil callback progress dengan data dasar
+    onProgress(progressiveData);
     
-    // Perbarui data progresif dengan data dasar
-    progressiveData.slot = simpleSlotData.data;
-    progressiveData.appointmentCount = simpleSlotData.data.patientCount || 0;
-    progressiveData.stage = 'basic';
-    progressiveData.timestamp = new Date().toISOString();
-    
-    // Panggil callback dengan data dasar
-    onProgressCallback?.(progressiveData);
-    
-    // 2. TAHAP KEDUA: Ambil data pasien (bisa memakan waktu lebih lama)
-    console.log(`👨‍👩‍👧‍👦 Loading progresif untuk slot ${slotId} - Tahap pasien`);
-    
+    // Step 2: Fetch data appointment (opsional, bisa saja gagal)
     try {
-      const patientsResponse = await fetchFn(
-        `/api/simple-slot/${slotId}/patients?_t=${cacheBuster}`,
-        {
-          headers: {
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache'
-          }
-        },
-        10000, // 10 detik timeout
-        2      // 2 retry
-      );
+      console.log(`📅 Mengambil appointments untuk slot ${slotId}`);
+      const appointmentsResponse = await fetchFn(`/api/simple-slot/${slotId}/appointments`, {
+        timeout: 8000,
+      });
+      
+      if (appointmentsResponse.ok) {
+        const appointmentsData = await appointmentsResponse.json();
+        progressiveData = {
+          ...progressiveData,
+          appointments: appointmentsData,
+          appointmentsLoaded: true,
+          timeElapsed: Date.now() - startTime,
+        };
+        
+        // Update progress
+        onProgress(progressiveData);
+      }
+    } catch (error) {
+      console.warn("Gagal mengambil data appointments:", error);
+      // Tidak menggagalkan seluruh proses
+    }
+    
+    // Step 3: Fetch data pasien (bisa menjadi lambat)
+    try {
+      console.log(`👥 Mengambil data pasien untuk slot ${slotId}`);
+      const patientsResponse = await fetchFn(`/api/simple-slot/${slotId}/patients`, {
+        timeout: 15000, // Timeout lebih lama
+      });
       
       if (patientsResponse.ok) {
         const patientsData = await patientsResponse.json();
+        progressiveData = {
+          ...progressiveData,
+          patients: patientsData,
+          patientsLoaded: true,
+          stage: 'full',
+          timeElapsed: Date.now() - startTime,
+        };
         
-        if (patientsData.success) {
-          // Hitung status pasien
-          const statusCounts: Record<string, number> = {};
-          
-          (patientsData.data || []).forEach((appointment: any) => {
-            const status = appointment.status || "Unknown";
-            statusCounts[status] = (statusCounts[status] || 0) + 1;
-          });
-          
-          // Perbarui data progresif dengan data lengkap
-          progressiveData.appointments = patientsData.data || [];
-          progressiveData.appointmentCount = patientsData.count || patientsData.data?.length || 0;
-          progressiveData.statusCounts = statusCounts;
-          progressiveData.stage = 'full';
-          progressiveData.timestamp = new Date().toISOString();
-          
-          // Panggil callback dengan data lengkap
-          onProgressCallback?.(progressiveData);
-          
-          return progressiveData;
-        }
+        // Final update
+        onProgress(progressiveData);
       }
     } catch (error) {
-      console.error(`❌ Error pada tahap pasien: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      // Lanjutkan dengan data yang sudah ada meskipun ada error
+      console.warn("Gagal mengambil data pasien:", error);
+      // Tidak menggagalkan seluruh proses
     }
     
-    // Kembalikan data terakhir yang berhasil didapat
+    // Mengembalikan data apapun yang kita dapatkan
     return progressiveData;
     
   } catch (error) {
-    console.error(`❌ Error dalam fetchSlotProgressively: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error("Error dalam fetchSlotProgressively:", error);
     throw error;
   }
 }
