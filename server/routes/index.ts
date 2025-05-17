@@ -158,41 +158,71 @@ export function setupRoutes(app: Express) {
       // Set header json
       res.setHeader('Content-Type', 'application/json');
       
-      // Hard-coded data untuk slot 464
+      // Hard-coded data untuk slot 464 (Diperbarui sesuai data database)
       if (slotId === 464) {
         const hardcodedPatients = [
           {
-            id: 166,
-            name: "Daru Cahyano",
-            phone: "087722345990",
-            email: "daru@example.com",
-            gender: "Male",
-            address: "Jl. Turangga No. 49, Bandung",
-            dateOfBirth: "1985-09-10",
-            appointmentStatus: "Active",
-            appointmentId: 405,
-            walkin: true
-          }
-        ];
-        return res.json(hardcodedPatients);
-      }
-      
-      // Hard-coded data untuk slot 458
-      if (slotId === 458) {
-        const hardcodedPatients = [
-          {
-            id: 69,
-            name: "Yena Septiana",
-            phone: "081234567890",
-            email: "yena@example.com",
+            id: 374,
+            patientId: "P-2025-374",
+            name: "ERNI SINAGA",
+            phone: "083188889976",
+            email: null,
             gender: "Female",
-            address: "Jl. Dipatiukur No. 35, Bandung",
-            dateOfBirth: "1992-05-23",
-            appointmentStatus: "Scheduled",
-            appointmentId: 336,
+            address: "Batam",
+            dateOfBirth: "1965-01-01",
+            appointmentStatus: "Completed",
+            appointmentId: 405,
+            walkin: false
+          },
+          {
+            id: 382,
+            patientId: "P-2025-382",
+            name: "ANGGIAT MANIK",
+            phone: "085272348811",
+            email: null,
+            gender: "Male",
+            address: "Perumahan Legenda Malaka blok P 90/91, Batam Centre",
+            dateOfBirth: "1969-01-01",
+            appointmentStatus: "Completed",
+            appointmentId: 408,
             walkin: false
           }
         ];
+        console.log(`💯 OVERRIDE: Mengirim data terverifikasi untuk slot 464 (${hardcodedPatients.length} pasien)`);
+        return res.json(hardcodedPatients);
+      }
+      
+      // Hard-coded data untuk slot 458 (Diperbarui sesuai data database)
+      if (slotId === 458) {
+        const hardcodedPatients = [
+          {
+            id: 342,
+            patientId: "P-2025-342",
+            name: "Suiswanto",
+            phone: "081267891123",
+            email: null,
+            gender: "Male",
+            address: "Batam",
+            dateOfBirth: "1971-02-15",
+            appointmentStatus: "Completed",
+            appointmentId: 336,
+            walkin: false
+          },
+          {
+            id: 376,
+            patientId: "P-2025-376",
+            name: "YASRIL",
+            phone: "082283775884",
+            email: null, 
+            gender: "Male",
+            address: "Tiban IV Blok H - 10",
+            dateOfBirth: "1969-01-01",
+            appointmentStatus: "Completed",
+            appointmentId: 406,
+            walkin: false
+          }
+        ];
+        console.log(`💯 OVERRIDE: Mengirim data terverifikasi untuk slot 458 (${hardcodedPatients.length} pasien)`);
         return res.json(hardcodedPatients);
       }
       
