@@ -198,11 +198,11 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-muted-foreground">Status</h3>
-                <p className="text-base">
+                <div className="text-base">
                   {slotData.isActive 
                     ? <Badge variant="success">Aktif</Badge> 
                     : <Badge variant="destructive">Tidak Aktif</Badge>}
-                </p>
+                </div>
               </div>
             </div>
             
