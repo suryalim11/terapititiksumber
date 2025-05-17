@@ -153,13 +153,27 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
   // Fungsi untuk mengubah status appointment
   async function updateAppointmentStatus(appointmentId: number, status: string) {
     try {
-      const response = await apiRequest({
-        url: `/api/appointments/${appointmentId}/status`,
-        method: 'PUT',
-        data: { status }
+      const url = `/api/appointments/${appointmentId}/status`;
+      const options = {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status })
+      };
+      
+      const response = await fetch(url, {
+        ...options,
+        credentials: 'include',
       });
       
-      if (response.success) {
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
         toast({
           title: "Status berhasil diperbarui",
           description: `Status appointment berhasil diubah menjadi ${status}`,
@@ -177,7 +191,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       } else {
         toast({
           title: "Gagal memperbarui status",
-          description: response.message || "Terjadi kesalahan saat memperbarui status",
+          description: data.message || "Terjadi kesalahan saat memperbarui status",
           variant: "destructive",
         });
       }
