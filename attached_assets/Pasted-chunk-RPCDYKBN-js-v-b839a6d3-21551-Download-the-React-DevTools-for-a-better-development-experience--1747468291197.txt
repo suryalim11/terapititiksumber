@@ -1,0 +1,78 @@
+chunk-RPCDYKBN.js?v=b839a6d3:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+main.tsx:40 Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it.
+printWarning @ chunk-RPCDYKBN.js?v=b839a6d3:521
+error @ chunk-RPCDYKBN.js?v=b839a6d3:505
+warnIfReactDOMContainerInDEV @ chunk-RPCDYKBN.js?v=b839a6d3:21240
+createRoot @ chunk-RPCDYKBN.js?v=b839a6d3:21143
+createRoot$1 @ chunk-RPCDYKBN.js?v=b839a6d3:21522
+exports.createRoot @ react-dom_client.js?v=b839a6d3:21
+(anonymous) @ main.tsx:40
+theme-provider.tsx:73 Tema diterapkan langsung: light
+theme-provider.tsx:73 Tema diterapkan langsung: light
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:100 Fetching data with getQueryFn: /api/appointments/date/2025-05-17
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:110 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:124 Successfully parsed data from /api/dashboard/active-packages: Array with 168 items
+queryClient.ts:110 Response for /api/dashboard/stats: status=200
+queryClient.ts:110 Response for /api/appointments/date/2025-05-17: status=200
+queryClient.ts:124 Successfully parsed data from /api/dashboard/stats: object
+queryClient.ts:124 Successfully parsed data from /api/appointments/date/2025-05-17: object
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:100 Fetching data with getQueryFn: /api/appointments/date/2025-05-17
+queryClient.ts:110 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:124 Successfully parsed data from /api/dashboard/active-packages: Array with 168 items
+queryClient.ts:110 Response for /api/dashboard/stats: status=200
+queryClient.ts:124 Successfully parsed data from /api/dashboard/stats: object
+queryClient.ts:110 Response for /api/appointments/date/2025-05-17: status=200
+queryClient.ts:124 Successfully parsed data from /api/appointments/date/2025-05-17: object
+chunk-PPFWLWA6.js?v=b839a6d3:336 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ chunk-PPFWLWA6.js?v=b839a6d3:336
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b839a6d3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b839a6d3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b839a6d3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b839a6d3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=b839a6d3:18627
+simple-slot-dialog.tsx:155 [DEBUG] updateAppointmentStatus - Start: appointmentId=336, status=Active
+simple-slot-dialog.tsx:156 [DEBUG] Current patients state: [{…}]
+simple-slot-dialog.tsx:170 [DEBUG] Mengirim request ke /api/appointments/336/status dengan body: {"status":"Active"}
+simple-slot-dialog.tsx:177 [DEBUG] Status response: 200
+simple-slot-dialog.tsx:184 [DEBUG] Response data: {success: true, appointment: {…}, message: 'Status appointment berhasil diperbarui menjadi Active'}
+simple-slot-dialog.tsx:187 [DEBUG] Update berhasil, memperbarui UI
+simple-slot-dialog.tsx:191 [DEBUG] Pasien yang diubah: {id: 69, name: 'Yena Septiana', phone: '081234567890', email: 'yena@example.com', gender: 'Female', …}
+simple-slot-dialog.tsx:198 [DEBUG] Menemukan pasien pada index 0, status lama: Scheduled
+simple-slot-dialog.tsx:208 [DEBUG] Status baru pasien: Active
+simple-slot-dialog.tsx:216 [DEBUG] Status disimpan di localStorage: appointment_status_336=Active
+simple-slot-dialog.tsx:222 [DEBUG] Memperbarui state patients dengan data baru: [{…}]
+simple-slot-dialog.tsx:226 [DEBUG] Mematikan auto-polling dengan setIsLoading(true)
+simple-slot-dialog.tsx:230 [DEBUG] Invalidating query caches...
+simple-slot-dialog.tsx:249 [DEBUG] Menunggu 3 detik sebelum reload data...
+simple-slot-dialog.tsx:252 [DEBUG] Memuat ulang data slot setelah delay
+simple-slot-dialog.tsx:256 [DEBUG] Status di localStorage: Active, Status yang diinginkan: Active
+simple-slot-dialog.tsx:262 [DEBUG] Mengaktifkan polling kembali dengan setIsLoading(false)
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:100 Fetching data with getQueryFn: /api/appointments/date/2025-05-17
+queryClient.ts:110 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:124 Successfully parsed data from /api/dashboard/active-packages: Array with 168 items
+queryClient.ts:110 Response for /api/appointments/date/2025-05-17: status=200
+queryClient.ts:124 Successfully parsed data from /api/appointments/date/2025-05-17: object
+queryClient.ts:110 Response for /api/dashboard/stats: status=200
+queryClient.ts:124 Successfully parsed data from /api/dashboard/stats: object
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:100 Fetching data with getQueryFn: /api/appointments/date/2025-05-17
+queryClient.ts:100 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:110 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:124 Successfully parsed data from /api/dashboard/active-packages: Array with 168 items
+queryClient.ts:110 Response for /api/appointments/date/2025-05-17: status=200
+queryClient.ts:124 Successfully parsed data from /api/appointments/date/2025-05-17: object
+queryClient.ts:110 Response for /api/dashboard/stats: status=200
+queryClient.ts:124 Successfully parsed data from /api/dashboard/stats: object

@@ -76,32 +76,66 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
   }, [isOpen, slotId]);
   
   async function loadSlotData(slotId: number) {
+    console.log(`[DEBUG] loadSlotData() dipanggil untuk slot ${slotId}`);
     setIsLoading(true);
     setError(null);
     
     try {
       // 1. Mengambil data basic slot terapi
-      const basicResponse = await fetch(`/api/simple-slot/${slotId}/basic?_t=${Date.now()}`);
+      const timestamp = Date.now(); // Tambahkan timestamp untuk mencegah cache browser
+      const basicResponse = await fetch(`/api/simple-slot/${slotId}/basic?_t=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
       
       if (!basicResponse.ok) {
         throw new Error(`Gagal mendapatkan data dasar slot: ${basicResponse.status}`);
       }
       
       const basicData = await basicResponse.json();
+      console.log(`[DEBUG] Data dasar slot terapi diterima:`, basicData);
       setSlotData(basicData);
       
       // 2. Mengambil data pasien untuk slot terapi
-      const patientsResponse = await fetch(`/api/simple-slot/${slotId}/patients?_t=${Date.now()}`);
+      const patientsResponse = await fetch(`/api/simple-slot/${slotId}/patients?_t=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
       
       if (!patientsResponse.ok) {
         throw new Error(`Gagal mendapatkan data pasien: ${patientsResponse.status}`);
       }
       
       const patientsData = await patientsResponse.json();
-      setPatients(patientsData);
+      console.log(`[DEBUG] Data pasien slot terapi diterima:`, patientsData);
+      
+      // Memproses data pasien dengan mempertahankan status yang diperbarui secara lokal
+      const processedPatients = patientsData.map(patient => {
+        const appointmentId = patient.appointmentId;
+        if (appointmentId) {
+          // Cek apakah status sudah diupdate secara lokal sebelumnya
+          const cachedStatus = localStorage.getItem(`appointment_status_${appointmentId}`);
+          
+          if (cachedStatus && cachedStatus !== patient.appointmentStatus) {
+            console.log(`[DEBUG] Menggunakan status dari cache untuk appointment ${appointmentId}: ${cachedStatus} (server: ${patient.appointmentStatus})`);
+            return {
+              ...patient,
+              appointmentStatus: cachedStatus
+            };
+          }
+        }
+        return patient;
+      });
+      
+      console.log(`[DEBUG] Data pasien setelah diproses:`, processedPatients);
+      setPatients(processedPatients);
       
     } catch (err) {
-      console.error("Error loading slot data:", err);
+      console.error("[DEBUG] Error loading slot data:", err);
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setIsLoading(false);
