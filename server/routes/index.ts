@@ -194,9 +194,23 @@ export function setupRoutes(app: Express) {
         return res.json(hardcodedPatients);
       }
       
+      // Menambahkan data default untuk semua slot lainnya
+      // Agar tidak terjadi error loading di frontend
+      if (!await storage.getTherapySlot(slotId)) {
+        // Jika slot tidak ditemukan, kirim array kosong
+        console.log(`⚠️ Slot ${slotId} tidak ditemukan, mengembalikan array kosong`);
+        return res.json([]);
+      }
+      
       // Untuk slot lain, ambil dari database
       // Ambil appointment untuk slot terapi ini
       const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+      
+      // Jika tidak ada appointments, kirim array kosong
+      if (!appointments || appointments.length === 0) {
+        console.log(`ℹ️ Tidak ada appointment untuk slot ${slotId}, mengembalikan array kosong`);
+        return res.json([]);
+      }
       
       // Lakukan fetch untuk semua pasien
       const patients = [];
