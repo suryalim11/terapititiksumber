@@ -12,8 +12,10 @@ import {
   AlertCircle,
   RefreshCw,
   WifiOff,
-  Clock
+  Clock,
+  Zap
 } from "lucide-react";
+import { fetchSlotProgressively, ProgressiveSlotData } from "./super-optimized-fetch-helper";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -272,7 +274,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     fullData?: any;
   }>({});
   
-  // Main fetch function with ultra-optimized approach and progressive loading
+  // Main fetch function with SUPER-OPTIMIZED approach and progressive loading
   const fetchSlotAndPatients = async (forceRefresh = false) => {
     console.log(`📊 Memulai fetch untuk slot ID ${slotId} ${forceRefresh ? "(Force Refresh)" : ""}`);
     
@@ -327,7 +329,7 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
             mode: 'partial'
           };
           
-          setSlotData(combinedData);
+          setSlotData(combinedData.slot);
           setIsLoading(false);
           toast({
             title: "Informasi Pasien Terbatas",
@@ -357,9 +359,85 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
       return;
     }
     
+    // Mulai loading dengan cara standar untuk menghindari masalah parsing
     const fetchStartTime = Date.now();
-    // Tambahkan timestamp untuk mencegah caching
-    const cacheBuster = Date.now(); 
+    const cacheBuster = Date.now();
+    
+    // Coba mendapatkan data dengan endpoint cepat dulu
+    try {
+      console.log(`🚀 Mencoba mendapatkan data dasar slot dengan cepat untuk ID: ${slotId}`);
+      
+      // Gunakan endpoint fast yang lebih cepat
+      const fastEndpoint = `/api/therapy-slots/${slotId}/fast?_t=${cacheBuster}`;
+      
+      const fastResponse = await fetchWithTimeout(
+        fastEndpoint,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
+        },
+        5000, // Timeout lebih pendek: 5 detik
+        1     // Retry lebih sedikit: hanya sekali
+      );
+      
+      if (fastResponse.ok) {
+        const fastData = await fastResponse.json();
+        
+        if (fastData.success) {
+          console.log(`✅ Berhasil mendapatkan data dasar slot dengan cepat dalam ${Date.now() - fetchStartTime}ms`);
+          
+          // Update UI dengan data dasar
+          setSlotData(fastData.slot || fastData);
+          setIsLoading(false); // Temporarily disable loading state
+          
+          // Save data to ref for potential fallback
+          progressiveDataRef.current.basic = fastData.slot || fastData;
+          
+          // Notify user about rapid basic information load
+          toast({
+            title: "Data Dasar Slot Dimuat",
+            description: "Memuat informasi pasien lengkap...",
+            duration: 2000
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Error saat mengambil data dasar: ${error instanceof Error ? error.message : 'Unknown'}`);
+      // Tidak perlu menghentikan loading karena kita akan lanjut ke cara standar
+    }
+    
+      // Execute the progressive loading function
+      await fetchSlotProgressively(slotId, fetchWithTimeout, handleProgressUpdate)
+        .then(fullData => {
+          // Sukses mendapatkan data lengkap
+          console.log(`✅ Progressive loading selesai untuk slot ${slotId}`);
+          
+          // Clear global timeout
+          if (fetchTimeoutRef.current) {
+            clearTimeout(fetchTimeoutRef.current);
+            fetchTimeoutRef.current = undefined;
+          }
+          
+          // Set flag fetch selesai
+          fetchInProgressRef.current = false;
+        })
+        .catch(error => {
+          console.error(`❌ Progressive loading gagal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          
+          // Periksa jika kita sudah memiliki data parsial
+          const hasPartialData = progressiveDataRef.current.basic || progressiveDataRef.current.stats;
+          
+          if (!hasPartialData) {
+            setError(error instanceof Error ? error : new Error(String(error)));
+          }
+          
+          // Set flag fetch selesai
+          fetchInProgressRef.current = false;
+        });
+      
+      return; // Exit early, handling done by progressive fetcher
     
     // HARDCODED FIX: Untuk slot dengan masalah duplikasi
     // Slot ID 473 (13:00-15:00) - sama dengan slot ID 454

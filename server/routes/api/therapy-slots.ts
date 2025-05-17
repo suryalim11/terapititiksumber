@@ -420,8 +420,8 @@ export function setupTherapySlotsRoutes(app: Express) {
     return data;
   };
   
-  // SPLIT ENDPOINT: Hanya mendapatkan data dasar slot terapi tanpa pasien (Ultra-Fast)
-  app.get("/api/therapy-slots/:id/basic", requireAuth, async (req: Request, res: Response) => {
+  // Endpoint untuk akses cepat ke data dasar slot terapi tanpa pasien
+  app.get("/api/therapy-slots/:id/fast", requireAuth, async (req: Request, res: Response) => {
     try {
       const startTime = Date.now();
       const slotId = parseInt(req.params.id);
