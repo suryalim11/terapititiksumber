@@ -1,156 +1,38 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose, DialogDescription } from "@/components/ui/dialog";
+import React, { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, CalendarIcon, ShoppingCart, X, Ban, CheckCircle, ChevronDown, User, MessageSquare } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, CalendarIcon, User, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { formatWhatsAppNumber, generateWhatsAppLink } from "@/lib/utils";
-
-// Tambahan interface untuk data combined slot info
-interface CombinedSlotInfo {
-  ids: number[];
-  timeSlotKey: string;
-  timeSlot: string;
-  date: string;
-  totalPatients: number;
-  totalQuota: number;
-}
+import { generateWhatsAppLink } from "@/lib/utils";
 
 interface SlotPatientsDialogProps {
   slotId: number | null;
-  slotDate?: string; // Tambahkan parameter tanggal slot
-  slotTimeSlot?: string; // Tambahkan parameter waktu slot
+  slotDate?: string;
+  slotTimeSlot?: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-// Helpers functions outside of component to avoid hooks issues
+// Fungsi helper untuk memformat tanggal
 function formatDate(dateInput?: string | Date): string {
   if (!dateInput) return '-';
   try {
     const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
     return format(date, 'dd MMMM yyyy', { locale: localeId });
   } catch (error) {
-    // Silent error handling
     return 'Invalid date';
   }
-}
-
-// Fungsi perbaikan format waktu dihapus untuk menghindari kebingungan
-function formatTimeSlot(timeSlot?: string): string {
-  if (!timeSlot) return '-';
-  return timeSlot;
-}
-
-function getStatusClass(status?: string): string {
-  if (!status) return 'bg-gray-100 text-gray-800';
-  
-  const statusLower = status.toLowerCase();
-  if (statusLower.includes('booked')) {
-    return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
-  } else if (statusLower.includes('confirmed')) {
-    return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-  } else if (statusLower.includes('scheduled')) {
-    return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
-  } else {
-    return 'bg-green-100 text-green-800 hover:bg-green-200';
-  }
-}
-
-function isActiveStatus(status?: string): boolean {
-  if (!status) return false;
-  const statusLower = status.toLowerCase();
-  const activeStatusPatterns = ['active', 'booked', 'confirmed', 'scheduled'];
-  return activeStatusPatterns.some(pattern => statusLower.includes(pattern));
-}
-
-function filterActiveAppointments(appointments?: any[]): any[] {
-  if (!Array.isArray(appointments)) return [];
-  return appointments.filter(appointment => 
-    appointment && appointment.status && isActiveStatus(appointment.status)
-  );
-}
-
-// Komponen StatusChanger untuk mengubah status appointment
-interface AppointmentStatusChangerProps {
-  appointment: any;
-  updateStatus: (status: string) => void;
-  isUpdating: boolean;
-  stopPropagation?: boolean;
-}
-
-function AppointmentStatusChanger({ 
-  appointment, 
-  updateStatus, 
-  isUpdating,
-  stopPropagation = false
-}: AppointmentStatusChangerProps) {
-  const statusOptions = ["Scheduled", "Active", "Completed", "Cancelled"];
-  const currentStatus = appointment?.status || "Unknown";
-  
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="h-6 px-2 text-xs"
-          disabled={isUpdating}
-          onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}
-        >
-          {isUpdating ? (
-            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-          ) : (
-            <>
-              <span>Status</span>
-              <ChevronDown className="h-3 w-3 ml-1" />
-            </>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-32">
-        {statusOptions.map((status) => (
-          <DropdownMenuItem
-            key={status}
-            onClick={(e) => {
-              if (stopPropagation) e.stopPropagation();
-              updateStatus(status);
-            }}
-            disabled={isUpdating || status === currentStatus}
-            className={status === currentStatus ? "bg-muted font-medium" : ""}
-          >
-            {status === currentStatus && (
-              <CheckCircle className="h-3 w-3 mr-1 text-primary" />
-            )}
-            {status}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
 }
 
 export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onClose }: SlotPatientsDialogProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // Dialog states
-  const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   // State untuk dialog pendaftaran pasien
   const [isRegisterPatientOpen, setIsRegisterPatientOpen] = useState(false);
   
