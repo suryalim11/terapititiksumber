@@ -9,6 +9,7 @@ import { setupAuthRoutes } from "./api/auth";
 import { setupUserRoutes } from "./api/users";
 import { setupRegistrationLinkRoutes } from "./api/registration-links";
 import { setupDashboardRoutes } from "./api/dashboard";
+import { setupDataCleanupRoutes } from "./api/data-cleanup";
 import { storage } from "../storage";
 
 /**
@@ -19,6 +20,7 @@ export function setupRoutes(app: Express) {
   // Setup rute untuk setiap domain aplikasi
   setupAuthRoutes(app);
   setupUserRoutes(app);
+  setupDataCleanupRoutes(app);
   
   // Daftarkan endpoint untuk simple-slot API dengan query langsung ke database
   app.get('/api/simple-slot/:id/basic', async (req, res) => {

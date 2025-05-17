@@ -48,6 +48,7 @@ function AdminApp() {
         <ProtectedRoute path="/therapy-dashboard" component={TherapySlotDashboard} />
         <ProtectedRoute path="/websocket-dashboard" component={WebSocketSlotDashboard} />
         <ProtectedRoute path="/products" component={Products} />
+        <ProtectedRoute path="/data-cleanup" component={() => import("@/pages/data-cleanup").then(m => ({ default: m.default })) as any} />
         <ProtectedRoute path="/reports" component={Reports} />
         <ProtectedRoute path="/reports/index" component={ReportsIndex} />
         <ProtectedRoute path="/reports/patients-daily" component={PatientsDailyReport} />
