@@ -60,7 +60,8 @@ export function setupDataCleanupRoutes(app: Express) {
           // 2. Hapus appointments terkait
           const patientAppointments = await storage.getAppointmentsByPatient(patientId);
           for (const appointment of patientAppointments) {
-            await storage.deleteAppointment(appointment.id);
+            // Gunakan db.delete karena belum ada storage.deleteAppointment
+            await db.delete(appointments).where(eq(appointments.id, appointment.id)).execute();
             results.deletedAppointments++;
           }
           

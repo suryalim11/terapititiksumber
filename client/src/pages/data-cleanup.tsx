@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Check, Trash2 } from "lucide-react";
+import { AlertCircle, Check, Trash2, ArrowLeft } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { Spinner } from "@/components/ui/spinner";
 
 export default function DataCleanupPage() {
-  const [navigate] = useNavigate();
+  const [_, navigate] = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -32,18 +32,17 @@ export default function DataCleanupPage() {
       // Panggil API untuk membersihkan data
       const response = await apiRequest("/api/data-cleanup/sample-patients", {
         method: "POST",
-        body: { keepPatientIds }
+        data: { keepPatientIds }
       });
       
-      if (response.success) {
+      if (response && response.success) {
         setResult(response.results);
         toast({
           title: "Pembersihan Data Berhasil",
-          description: `Berhasil menghapus ${response.results.deletedPatients} pasien contoh dan data terkait`,
-          variant: "success"
+          description: `Berhasil menghapus ${response.results?.deletedPatients || 0} pasien contoh dan data terkait`,
         });
       } else {
-        setError(response.message || "Gagal membersihkan data");
+        setError(response?.message || "Gagal membersihkan data");
       }
     } catch (err) {
       console.error("Error:", err);
@@ -54,11 +53,15 @@ export default function DataCleanupPage() {
   }
   
   return (
-    <DashboardShell
-      title="Pembersihan Data"
-      description="Hapus data contoh dari sistem"
-    >
-      <div className="space-y-6 p-6">
+    <div className="container mx-auto py-6">
+      <div className="flex flex-col space-y-1.5 mb-8">
+        <h1 className="text-3xl font-bold">Pembersihan Data</h1>
+        <p className="text-muted-foreground">
+          Hapus data contoh dari sistem
+        </p>
+      </div>
+
+      <div className="space-y-6 py-6">
         <Card>
           <CardHeader>
             <CardTitle>Pembersihan Data Pasien Contoh</CardTitle>
@@ -68,7 +71,7 @@ export default function DataCleanupPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Alert variant="warning" className="mb-4">
+            <Alert className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Peringatan</AlertTitle>
               <AlertDescription>
@@ -86,8 +89,8 @@ export default function DataCleanupPage() {
             )}
             
             {result && (
-              <div className="bg-green-50 p-4 rounded-md mb-4">
-                <h3 className="text-green-800 font-semibold flex items-center">
+              <div className="bg-green-50 p-4 rounded-md mb-4 dark:bg-green-900 dark:text-green-50">
+                <h3 className="text-green-800 dark:text-green-100 font-semibold flex items-center">
                   <Check className="mr-2 h-4 w-4" /> Pembersihan Data Berhasil
                 </h3>
                 <div className="mt-2">
@@ -100,7 +103,7 @@ export default function DataCleanupPage() {
                   
                   {result.errors && result.errors.length > 0 && (
                     <div className="mt-2">
-                      <p className="text-red-600 font-semibold">Error yang terjadi:</p>
+                      <p className="text-red-600 dark:text-red-300 font-semibold">Error yang terjadi:</p>
                       <ul className="list-disc pl-5">
                         {result.errors.map((error: any, idx: number) => (
                           <li key={idx}>{error.patientId} - {error.name}: {error.error}</li>
@@ -114,7 +117,7 @@ export default function DataCleanupPage() {
           </CardContent>
           <CardFooter className="flex justify-between">
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
-              Kembali
+              <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Dashboard
             </Button>
             <Button 
               variant="destructive" 
@@ -134,6 +137,6 @@ export default function DataCleanupPage() {
           </CardFooter>
         </Card>
       </div>
-    </DashboardShell>
+    </div>
   );
 }
