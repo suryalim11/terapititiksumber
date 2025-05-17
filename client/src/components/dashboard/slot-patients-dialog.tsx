@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, CalendarIcon, User, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { generateWhatsAppLink } from "@/lib/utils";
 
@@ -30,1591 +29,171 @@ function formatDate(dateInput?: string | Date): string {
 }
 
 export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onClose }: SlotPatientsDialogProps) {
-  const [, navigate] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  // State untuk dialog pendaftaran pasien
-  const [isRegisterPatientOpen, setIsRegisterPatientOpen] = useState(false);
   
-  // ---- PENDEKATAN LEBIH SEDERHANA DENGAN DIRECT FETCH ----
-  // Gunakan state untuk track data dan loading status, bukan useQuery
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [slotData, setSlotData] = useState<any>(null);
-  const [appointmentData, setAppointmentData] = useState<any[]>([]);
-  const [combinedSlotInfo, setCombinedSlotInfo] = useState<CombinedSlotInfo | null>(null);
-  
-  // Hapus state ini karena fitur selalu aktif, tidak perlu toggle lagi
-  // const [showAllSameTimeSlots, setShowAllSameTimeSlots] = useState(false);
-  
-  // Fungsi untuk melakukan fetch dengan timeout dan retry yang lebih robust
-  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs: number = 8000, retryCount: number = 2): Promise<Response> => {
-    let lastError;
-    
-    // Informasi endpoint yang lebih deskriptif untuk log
-    const endpoint = url.split('?')[0]; // Hanya tampilkan base path tanpa query string untuk log yang lebih bersih
-
-    
-    for (let attempt = 0; attempt <= retryCount; attempt++) {
-      try {
-        // Pendekatan tanpa AbortController untuk menghindari error "signal is aborted without reason"
-        let timeoutId: number | null = null;
-        
-        // Buat promise timeout yang akan reject jika waktu habis
-        const timeoutPromise = new Promise<Response>((_, reject) => {
-          timeoutId = window.setTimeout(() => {
-            // Lapor timeout terjadi
-
-            
-            // Reject dengan timeout error
-            reject(new Error(`Request timeout (${timeoutMs}ms)`));
-          }, timeoutMs);
-        });
-        
-        // Buat fetch promise (tanpa signal/controller)
-        const fetchPromise = fetch(url, {
-          ...options,
-          // Hindari cache
-          headers: {
-            ...options.headers,
-            'Cache-Control': 'no-cache, no-store',
-            'Pragma': 'no-cache',
-          },
-          credentials: 'include'
-        });
-        
-        // Race antara fetch dan timeout
-        const response = await Promise.race([fetchPromise, timeoutPromise]);
-        
-        // Clear timeout jika fetch selesai duluan
-        if (timeoutId) clearTimeout(timeoutId);
-        
-        // Cek network apakah offline
-        if (!window.navigator.onLine) {
-
-          throw new Error("Perangkat offline");
-        }
-        
-        // Success log
-
-        return response;
-      } catch (err: any) {
-        // Timeout sudah dibersihkan di Promise.race
-        lastError = err;
-        const isTimeout = err.message.includes('timeout');
-        const waitTime = Math.min(500 * Math.pow(2, attempt), 4000); // Exponential backoff dengan max 4 detik
-        
-
-        
-        // Jika offline, tunggu sampai online
-        if (!window.navigator.onLine) {
-
-          await new Promise<void>(resolve => {
-            const onlineHandler = () => {
-              window.removeEventListener('online', onlineHandler);
-
-              resolve();
-            };
-            window.addEventListener('online', onlineHandler);
-          });
-        }
-        // Jika ini bukan percobaan terakhir, tunggu sebentar sebelum mencoba lagi
-        else if (attempt < retryCount) {
-          // Waiting with exponential backoff 
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-      }
-    }
-    
-    // Don't log fetch failures - just throw the error
-    throw lastError || new Error(`Fetch gagal setelah ${retryCount + 1} percobaan`);
-  };
-  
-  // Gunakan satu fungsi fetch untuk semua data dengan error handling yang baik
-  // Tambahan untuk mencegah duplicate calls
-  const fetchInProgressRef = useRef(false);
-  
-  const fetchSlotAndAppointments = async () => {
-
-    
-    // Skip jika sudah ada fetch yang sedang berjalan
-    if (fetchInProgressRef.current) {
-
-      return;
-    }
-    
-    // Set flag bahwa fetch sedang berjalan
-    fetchInProgressRef.current = true;
-    
-    // Reset state
-    setIsLoading(true);
-    setError(null);
-    
-    if (!slotId) {
-      // Missing slot ID handling
-      setIsLoading(false);
-      setError(new Error("Slot ID tidak tersedia"));
-      fetchInProgressRef.current = false;
-      return;
-    }
-    
-    // Dapatkan tanggal saat ini untuk fallback
-    const todayString = new Date().toISOString().split('T')[0];
-    const fetchStartTime = Date.now();
-    
-    try {
-    
-      
-      // STRATEGI LEBIH SEDERHANA & EFISIEN: 
-      // Gunakan satu API call langsung ke endpoint slot detail
-      let slotResult = null;
-      let appointmentsData = [];
-      
-      // STEP 1: Dapatkan data slot langsung dari endpoint spesifik
-      try {
-        const slotEndpoint = `/api/therapy-slots/${slotId}`;
-        
-        // Single fetch dengan timeout yg lebih singkat untuk responsiveness
-        const slotResponse = await fetchWithTimeout(
-          slotEndpoint, 
-          {
-            headers: {
-              'Accept': 'application/json',
-              'Cache-Control': 'no-cache, no-store',
-              'Pragma': 'no-cache'
-            }
-          },
-          3000,  // 3 detik timeout
-          1      // 1 retry saja
-        );
-        
-        if (slotResponse.ok) {
-          slotResult = await slotResponse.json();
-        } else {
-          // Silent error handling for failed slot data fetch
-        }
-      } catch (fetchError) {
-        // Lanjut ke fallback data
-      }
-      
-      // Jika langkah 1 gagal, kita sudah tidak perlu coba fetch lagi karena 
-      // kita sudah menggunakan endpoint langsung
-      // Langsung lanjut ke fallback data dari localStorage
-      
-      // STEP 3: Jika masih tidak ada data slot, gunakan parameter yang diteruskan untuk membuat data minimal
-      if (!slotResult) {
-        // Gunakan tanggal dan waktu slot yang diteruskan sebagai props jika tersedia
-        const fallbackDate = slotDate || todayString;
-        const fallbackTimeSlot = slotTimeSlot || "Data tidak tersedia";
-        
-        // Coba cari data slot yang sesuai dari localStorage berdasarkan tanggal dan waktu
-        let actualQuota = 0;
-        let actualCurrentCount = 0;
-        
-        try {
-          // Coba ambil dari localStorage terlebih dahulu jika ada
-          const slotsDataString = localStorage.getItem('slotsData');
-          if (slotsDataString) {
-            const slotsData = JSON.parse(slotsDataString);
-            if (Array.isArray(slotsData) && slotsData.length > 0) {
-              // Cari slot dengan tanggal dan waktu yang sama
-              const matchingSlot = slotsData.find(slot => 
-                slot.date.includes(fallbackDate.split(' ')[0]) && 
-                slot.timeSlot === fallbackTimeSlot
-              );
-              
-              if (matchingSlot) {
-                actualQuota = matchingSlot.maxQuota || 0;
-                actualCurrentCount = matchingSlot.currentCount || 0;
-              }
-            }
-          }
-        } catch (error) {
-          // Silent error handling for cache data lookup
-        }
-        
-        // Cek juga di combined slots info jika tersedia
-        let quotaFromCombined = 0;
-        let patientsFromCombined = 0;
-        
-        try {
-          const combinedStoredInfo = localStorage.getItem('combinedSlotsInfo');
-          if (combinedStoredInfo) {
-            const combinedData = JSON.parse(combinedStoredInfo);
-            if (combinedData && combinedData[slotId]) {
-              quotaFromCombined = combinedData[slotId].totalQuota || 0;
-              patientsFromCombined = combinedData[slotId].totalPatients || 0;
-            }
-          }
-        } catch (error) {
-          // Silent error handling for combinedSlotsInfo
-        }
-        
-        // Prioritaskan kuota dari berbagai sumber berdasarkan ketersediaan
-        const bestQuota = quotaFromCombined > 0 ? quotaFromCombined : 
-                         (actualQuota > 0 ? actualQuota : 6); // Default 6 jika tidak ada data
-        
-        const bestCurrentCount = patientsFromCombined > 0 ? patientsFromCombined : 
-                                actualCurrentCount;
-        
-        // Default slot dengan data dari parameter props
-        slotResult = {
-          id: Number(slotId),
-          date: fallbackDate,
-          timeSlot: fallbackTimeSlot,
-          currentCount: bestCurrentCount,
-          maxQuota: bestQuota,
-          isActive: true
-        };
-        
-
-        
-        // Set warning tapi tetap tampilkan UI
-        setError(new Error("Data slot tidak dapat diambil dari server. Menggunakan informasi dari parameter dan cache."));
-      }
-      
-      // Set slot data ke state
-      setSlotData(slotResult);
-      
-      // STEP 4: Ambil appointment data (hanya jika slot data valid)
-      if (slotResult) {
-        // Format tanggal untuk appointment query
-        let slotDate: string;
-        try {
-          slotDate = typeof slotResult.date === 'string' 
-            ? slotResult.date.split(' ')[0] // Extract YYYY-MM-DD
-            : new Date(slotResult.date).toISOString().split('T')[0];
-        } catch (dateError) {
-          // Silent error handling with fallback
-          slotDate = todayString; // Fallback ke hari ini
-        }
-        
-
-        
-        try {
-          // Kurangi timeout dan retry untuk menghindari UI freezing
-          const appointmentsResponse = await fetchWithTimeout(
-            `/api/appointments/date/${slotDate}`,
-            {
-              headers: {
-                'Accept': 'application/json',
-                'Cache-Control': 'no-cache'
-              },
-            },
-            5000,  // 5 detik timeout
-            1      // 1 retry saja
-          );
-          
-          if (appointmentsResponse.ok) {
-            const allAppointments = await appointmentsResponse.json();
-            
-            if (Array.isArray(allAppointments)) {
-              // Filter dengan pendekatan lebih komprehensif
-              // 1. Pertama filter berdasarkan ID slot yang presisi (primary match)
-              const directMatches = allAppointments.filter((app: any) => {
-                if (!app) return false;
-                return Number(app.therapySlotId) === Number(slotId);
-              });
-              
-              // 2. Juga filter berdasarkan jam yang sama (secondary/additional matches)
-              // Ini akan menemukan appointment di slot lain dengan jam yang sama
-              const timeMatches = allAppointments.filter((app: any) => {
-                if (!app) return false;
-                // Hanya ambil yang waktunya sama tetapi bukan di slot ID ini
-                return app.timeSlot === slotResult.timeSlot && 
-                      Number(app.therapySlotId) !== Number(slotId);
-              });
-              
-              // Gabungkan kedua hasil
-              appointmentsData = [...directMatches, ...timeMatches];
-              
-              // Tambahkan flag untuk membedakan appointment dari slot lain
-              appointmentsData = appointmentsData.map(app => ({
-                ...app,
-                // Tandai appointment yang dari slot lain
-                fromOtherSlot: Number(app.therapySlotId) !== Number(slotId)
-              }));
-            }
-          } else {
-            // Silent handling for failed appointments fetch
-          }
-        } catch (appointmentError) {
-          // Silent handling for appointments fetch error
-          // Tetap lanjutkan dengan array kosong
-        }
-      }
-      
-      // Set appointment data (kosong jika tidak ditemukan)
-      setAppointmentData(appointmentsData);
-      
-      // Clear error jika sudah berhasil
-      setError(null);
-
-    } catch (err) {
-      // Silent logging but still set error for UI
-      setError(err instanceof Error ? err : new Error("Terjadi kesalahan saat mengambil data"));
-    } finally {
-      setIsLoading(false);
-      hasRefreshedRef.current = true;
-      
-      // Reset fetch progress flag setelah jeda untuk mencegah multiple fetch segera
-      window.setTimeout(() => {
-        fetchInProgressRef.current = false;
-
-      }, 500);
-    }
-  };
-  
-  // Refetch function dengan debounce untuk mencegah multiple fetch
-  const refetch = () => {
-    // Skip jika fetch sedang berjalan
-    if (fetchInProgressRef.current) {
-      return;
-    }
-    fetchSlotAndAppointments();
-  };
-  
-  // Gunakan ref untuk menghindari multiple refetch
-  const hasRefreshedRef = useRef(false);
-  const dialogOpenedTimeRef = useRef<number | null>(null);
-  
-  // Ambil informasi slot gabungan dari localStorage atau buat dari props
-  useEffect(() => {
-    if (isOpen && slotId) {
-      try {
-        // Coba ambil dari localStorage dulu
-        const storedCombinedInfo = localStorage.getItem('combinedSlotsInfo');
-        if (storedCombinedInfo) {
-          const combinedSlotsData = JSON.parse(storedCombinedInfo);
-          if (combinedSlotsData && combinedSlotsData[slotId]) {
-            setCombinedSlotInfo(combinedSlotsData[slotId]);
-
-            return;
-          }
-        }
-        
-        // Jika tidak ada data di localStorage, buat dari props
-        if (slotDate && slotTimeSlot) {
-          // Coba ambil dari slotsData terlebih dahulu untuk dapatkan kuota yang benar
-          let actualQuota = 0;
-          let actualPatients = 0;
-          
-          try {
-            // Coba ambil dari localStorage terlebih dahulu jika ada
-            const slotsDataString = localStorage.getItem('slotsData');
-            if (slotsDataString) {
-              const slotsData = JSON.parse(slotsDataString);
-              if (Array.isArray(slotsData) && slotsData.length > 0) {
-                // Cari slot dengan tanggal dan waktu yang sama
-                const matchingSlot = slotsData.find(slot => 
-                  slot.date.includes(slotDate.split(' ')[0]) && 
-                  slot.timeSlot === slotTimeSlot
-                );
-                
-                if (matchingSlot) {
-                  actualQuota = matchingSlot.maxQuota || 0;
-                  actualPatients = matchingSlot.currentCount || 0;
-
-                }
-              }
-            }
-          } catch (error) {
-            // Silent error handling for cache data lookup
-          }
-          
-          // Cek lagi apakah ada data di combinedSlotsInfo
-          let quotaFromCombined = 0;
-          let patientsFromCombined = 0;
-            
-          try {
-            const combinedStoredInfo = localStorage.getItem('combinedSlotsInfo');
-            if (combinedStoredInfo) {
-              const combinedData = JSON.parse(combinedStoredInfo);
-              if (combinedData && combinedData[slotId]) {
-                quotaFromCombined = combinedData[slotId].totalQuota || 0;
-                patientsFromCombined = combinedData[slotId].totalPatients || 0;
-
-              }
-            }
-          } catch (error) {
-            // Silent error handling for combinedSlotsInfo
-          }
-          
-          // Prioritaskan kuota dari berbagai sumber berdasarkan ketersediaan
-          const bestQuota = quotaFromCombined > 0 ? quotaFromCombined : 
-                           (actualQuota > 0 ? actualQuota : 6); // Default 6 jika tidak ada data
-                           
-          const bestPatients = patientsFromCombined > 0 ? patientsFromCombined : 
-                              actualPatients;
-          
-          // Buat kombinasi ID untuk tracking
-          const newCombinedInfo: CombinedSlotInfo = {
-            ids: [Number(slotId)],
-            timeSlotKey: `${slotDate}_${slotTimeSlot.replace(/:/g, '').replace('-', '_')}`,
-            timeSlot: slotTimeSlot,
-            date: slotDate,
-            totalPatients: bestPatients,
-            totalQuota: bestQuota 
-          };
-          
-          setCombinedSlotInfo(newCombinedInfo);
-
-        }
-      } catch (error) {
-        // Silent error handling for combined slots info processing
-      }
-    }
-  }, [isOpen, slotId, slotDate, slotTimeSlot]);
-  
-
-  
-  // Effect untuk menangani loading data pada saat dialog dibuka dengan pendekatan state-based
-  // Tambahkan flag untuk melacak apakah fetch sedang aktif
-  const isFetchingRef = useRef(false);
-  
-  useEffect(() => {
-    // Handler fungsi untuk clean up timeout
-    let timeoutId: number | null = null;
-    let debounceId: number | null = null;
-    
-    if (isOpen && slotId) {
-      // Reset error saat dialog dibuka
-      setError(null);
-      setIsLoading(true);
-      
-      // Catat waktu dialog dibuka untuk analytics
-      dialogOpenedTimeRef.current = Date.now();
-      
-      // Fungsi kecil untuk fetch data dengan proteksi dan debounce
-      const loadData = () => {
-        // Skip jika fetch sedang berlangsung
-        if (isFetchingRef.current) {
-          return;
-        }
-        
-        // Set flag untuk mencegah fetch ganda
-        isFetchingRef.current = true;
-        hasRefreshedRef.current = true;
-        
-        // Clear debounce timeout jika ada
-        if (debounceId) window.clearTimeout(debounceId);
-        
-        // Tambahkan debounce untuk mencegah multiple fetch yang terlalu dekat
-        debounceId = window.setTimeout(() => {
-          // Gunakan timeout untuk memprioritaskan UI responsiveness
-          timeoutId = window.setTimeout(() => {
-            // Double-check karena React bisa re-render beberapa kali
-            if (hasRefreshedRef.current) {
-              fetchSlotAndAppointments()
-                .then(() => {
-                  // Delay sedikit sebelum reset flag untuk mencegah rapid fetch
-                  window.setTimeout(() => {
-                    isFetchingRef.current = false;
-                  }, 500);
-                })
-                .catch(err => {
-                  // Silent error handling with UI feedback
-                  setError(new Error("Gagal mengambil data. Silakan coba lagi."));
-                  setIsLoading(false);
-                  isFetchingRef.current = false;
-                });
-            }
-          }, 150);
-        }, 250); // Tambahkan debounce 250ms untuk mencegah multiple calls
-      };
-      
-      // Mulai proses load data
-      loadData();
-    } else if (!isOpen) {
-      // Reset semua state saat dialog ditutup
-      hasRefreshedRef.current = false;
-      dialogOpenedTimeRef.current = null;
-      isFetchingRef.current = false;
-      
-      // Clear timeout jika ada untuk mencegah memory leak
-      if (timeoutId) window.clearTimeout(timeoutId);
-      if (debounceId) window.clearTimeout(debounceId);
-      
-      // Reset state UI untuk memastikan tidak ada data yang muncul sebentar saat dialog dibuka lagi
-      setAppointmentData([]);
-      setSlotData(null);
-      setError(null);
-      setIsLoading(false);
-    }
-    
-    // Cleanup pada unmount
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [isOpen, slotId]);
-  
-  // Kita tidak perlu variabel activeAppointments lagi karena sudah diganti dengan slotActiveAppointments
-  // Dan kita menggunakan enrichAppointment di bawah untuk fungsi yang sama
-  
-  // Mutations - dengan penyederhanaan kode
-  const cancelAppointmentMutation = useMutation({
-    mutationFn: async (appointmentId: number) => {
-      const response = await fetch(`/api/appointments/${appointmentId}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Gagal membatalkan janji');
-      }
-      
+  // Mengambil data slot
+  const { 
+    data: slot,
+    isLoading: isSlotLoading,
+    error: slotError
+  } = useQuery({
+    queryKey: ['/api/therapy-slots', slotId],
+    queryFn: async () => {
+      if (!slotId) return null;
+      const response = await fetch(`/api/therapy-slots/${slotId}`);
+      if (!response.ok) throw new Error('Gagal mengambil data slot');
       return response.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Berhasil",
-        description: "Janji temu berhasil dibatalkan"
-      });
-      
-      // Refresh data dengan pendekatan baru
-      fetchSlotAndAppointments();
-      
-      // Tetap invalidate queries untuk halaman lain yang terkait
-      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/appointments/date'] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Gagal",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
+    enabled: !!slotId && isOpen
   });
-
-  // Status update mutation
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const response = await fetch(`/api/appointments/${id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Gagal mengubah status ke ${status}`);
-      }
-      
+  
+  // Mengambil daftar pasien yang terkait dengan slot ini
+  const {
+    data: patients,
+    isLoading: isPatientsLoading,
+    error: patientsError
+  } = useQuery({
+    queryKey: ['/api/simple-slot', slotId, 'patients'],
+    queryFn: async () => {
+      if (!slotId) return [];
+      const response = await fetch(`/api/simple-slot/${slotId}/patients`);
+      if (!response.ok) throw new Error('Gagal mengambil data pasien');
       return response.json();
     },
-    onSuccess: (_, variables) => {
-      toast({
-        title: "Status diperbarui",
-        description: `Status janji temu berhasil diubah menjadi "${variables.status}"`
-      });
-      
-      // Refresh data dengan pendekatan baru
-      fetchSlotAndAppointments();
-      
-      // Invalidate queries untuk dashboard dan tampilan lainnya
-      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/appointments/date'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/today-slots'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Gagal mengubah status",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
+    enabled: !!slotId && isOpen
   });
   
-  // Handlers
-  function handleCancelAppointment(appointment: any, event: React.MouseEvent) {
-    try {
-      event.stopPropagation();
-      
-      if (!appointment || !appointment.id) {
-        toast({
-          title: "Terjadi kesalahan",
-          description: "Data janji temu tidak ditemukan atau tidak valid.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      setSelectedAppointment(appointment);
-      setIsConfirmCancelOpen(true);
-    } catch (error) {
-      // Silent error handling with user feedback
-      toast({
-        title: "Terjadi kesalahan", 
-        description: "Gagal memproses pembatalan. Silakan coba lagi.",
-        variant: "destructive",
-      });
-    }
-  }
-  
-  function confirmCancelAppointment() {
-    try {
-      if (selectedAppointment && selectedAppointment.id) {
-        cancelAppointmentMutation.mutate(selectedAppointment.id);
-        setIsConfirmCancelOpen(false);
-      } else {
-        toast({
-          title: "Terjadi kesalahan",
-          description: "Data janji temu tidak ditemukan atau tidak valid.",
-          variant: "destructive",
-        });
-        setIsConfirmCancelOpen(false);
-      }
-    } catch (error) {
-      // Silent error handling dengan feedback UI
-      toast({
-        title: "Terjadi kesalahan",
-        description: "Gagal membatalkan janji temu. Silakan coba lagi.",
-        variant: "destructive",
-      });
-      setIsConfirmCancelOpen(false);
-    }
-  }
-  
-  // Fungsi navigateToTransaction dengan event parameter didefinisikan di bawah
-  // Versi simpel ini akan diganti dengan yang memiliki parameter event
-  function dummyNavigate() {}
-  
-  function navigateToPatientDetail(patient: any) {
-    if (!patient || !patient.id) {
-      toast({
-        title: "Error",
-        description: "Data pasien tidak lengkap atau tidak ditemukan.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      // Tutup dialog terlebih dahulu
-      onClose();
-      
-      // Arahkan ke halaman detail pasien
-      navigate(`/patients/${patient.id}`);
-      
-      // Tambahkan notifikasi untuk feedback
-      toast({
-        title: "Melihat detail pasien",
-        description: `Membuka detail pasien: ${patient.name || 'pasien terpilih'}`,
-      });
-    } catch (error) {
-      // Silent error handling dengan pesan untuk pengguna
-      toast({
-        title: "Terjadi kesalahan",
-        description: "Gagal membuka detail pasien. Silakan coba lagi.",
-        variant: "destructive",
-      });
-    }
-  }
-  
-  // Fungsi untuk mengarahkan ke halaman transaksi dengan pasien yang dipilih
-  function navigateToTransaction(patient: any, event: React.MouseEvent) {
-    if (!patient || !patient.id) {
-      toast({
-        title: "Error",
-        description: "Data pasien tidak lengkap atau tidak ditemukan.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      // Hindari event bubbling
-      event.stopPropagation();
-      
-      // Konversi patient.id ke number untuk memastikan tipe data konsisten
-      const patientIdNumber = typeof patient.id === 'string' ? parseInt(patient.id) : patient.id;
-      
-      // Backup metode: Cek langsung ke API untuk mendapatkan data lengkap pasien
-      fetch(`/api/patients/${patientIdNumber}`)
-        .then(response => response.json())
-        .then(completePatientData => {
-          if (!completePatientData || !completePatientData.id) {
-            throw new Error("Data pasien tidak ditemukan di server");
-          }
-          
+  const isLoading = isSlotLoading || isPatientsLoading;
+  const error = slotError || patientsError;
 
-          
-          // Simpan data pasien yang sangat lengkap ke localStorage
-          // Tapi kita buat objek baru dengan properti yang telah difilter
-          // untuk menghindari error objek yang terlalu kompleks atau circular reference
-          // Pastikan semua data adalah tipe primitif, bukan objek atau array kompleks
-          const patientData = {
-            id: Number(patientIdNumber), // Pastikan ID tetap konsisten, tipe number
-            name: String(completePatientData.name || ''),
-            patientId: String(completePatientData.patientId || ''),
-            phoneNumber: String(completePatientData.phoneNumber || ''),
-            address: String(completePatientData.address || ''),
-            email: completePatientData.email ? String(completePatientData.email) : null,
-            birthDate: completePatientData.birthDate ? String(completePatientData.birthDate) : null,
-            gender: String(completePatientData.gender || ''),
-            therapySlotId: completePatientData.therapySlotId ? Number(completePatientData.therapySlotId) : null
-          };
-          
-          // Simpan ID sebagai string (lebih kompatibel dengan localStorage)
-          localStorage.setItem('pendingTransactionPatientId', patientIdNumber.toString());
-          // Simpan nama pasien
-          localStorage.setItem('pendingTransactionPatientName', completePatientData.name || patient.name);
-          // Simpan data JSON lengkap pasien
-          localStorage.setItem('pendingTransactionPatientData', JSON.stringify(patientData));
-          // Tambahkan satu lagi flag untuk memastikan data bisa diambil dengan ID
-          localStorage.setItem(`patient_${patientIdNumber}`, JSON.stringify(patientData));
-          
-          // Flag ini tidak lagi digunakan (digantikan oleh parameter URL)
-          // Tapi tetap disimpan untuk backward compatibility
-          localStorage.setItem('hidePatientDropdown', 'true');
-          
-          // Tutup dialog terlebih dahulu
-          onClose();
-          
-
-          
-          // Navigasi langsung ke halaman transaksi dengan parameter query yang lebih eksplisit
-          navigate(`/transactions?patientId=${patientIdNumber}&patientName=${encodeURIComponent(completePatientData.name)}&hideDropdown=true&delay=2000&source=slot-dialog&timestamp=${Date.now()}`);
-          
-          // Tambahkan notifikasi untuk feedback
-          toast({
-            title: "Membuat transaksi baru",
-            description: `Mempersiapkan transaksi untuk ${completePatientData.name}`,
-          });
-          
-          // Tunggu sebentar untuk memastikan halaman transaksi sudah dimuat, lalu kirim event
-          setTimeout(() => {
-            // Buat custom event untuk membuka form transaksi dengan data pasien yang sangat lengkap
-            const openFormEvent = new CustomEvent('openTransactionForm', {
-              detail: { 
-                patientId: patientIdNumber,
-                patientName: completePatientData.name,
-                patientData: patientData, // Kirim data lengkap sekaligus
-                timestamp: Date.now() // Tambahkan timestamp untuk memastikan event unik
-              }
-            });
-            
-
-            
-            // Kirim event utama hanya sekali, tanpa retry berkali-kali
-            window.dispatchEvent(openFormEvent);
-
-            
-          }, 2000); // Delay awal
-        })
-        .catch(err => {
-          // Silent error handling dengan fallback
-          
-          // Fallback ke metode lama jika API gagal
-          const patientData = {
-            id: Number(patientIdNumber),
-            name: String(patient.name || ''),
-            phoneNumber: String(patient.phoneNumber || ''),
-            address: String(patient.address || ''),
-            patientId: String(patient.patientId || ''),
-            lastVisit: patient.lastVisit ? String(patient.lastVisit) : null
-          };
-          
-          localStorage.setItem('pendingTransactionPatientId', patientIdNumber.toString());
-          localStorage.setItem('pendingTransactionPatientName', patient.name);
-          localStorage.setItem('pendingTransactionPatientData', JSON.stringify(patientData));
-          
-          // Tutup dialog terlebih dahulu
-          onClose();
-          
-          // Navigasi dengan metode lama
-          navigate(`/transactions?patientId=${patientIdNumber}&patientName=${encodeURIComponent(patient.name)}&delay=2000&source=slot-dialog-fallback`);
-          
-          toast({
-            title: "Membuat transaksi baru",
-            description: `Mempersiapkan transaksi untuk ${patient.name} (metode alternatif)`,
-          });
-          
-          // Dispatch event dengan metode sederhana
-          // Kita percaya bahwa localStorage akan tersedia dan tidak perlu event retry
-
-        });
-      
-    } catch (error) {
-      // Silent error handling
-      toast({
-        title: "Terjadi kesalahan",
-        description: "Gagal membuka form transaksi. Silakan coba lagi.",
-        variant: "destructive",
-      });
-    }
-  }
-  
-  // Handler untuk mengirim pengingat janji temu melalui WhatsApp
-  function sendAppointmentReminder(appointment: any, event: React.MouseEvent) {
-    try {
-      event.stopPropagation(); // Mencegah event bubbling ke parent div
-      
-      // Validasi data pasien yang lebih komprehensif
-      if (!appointment || !appointment.patient) {
-        toast({
-          title: "Terjadi kesalahan",
-          description: "Data pasien tidak tersedia.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (!appointment.patient.phoneNumber) {
-        toast({
-          title: "Terjadi kesalahan",
-          description: "Nomor telepon pasien tidak tersedia.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Format tanggal dan waktu slot terapi
-      const slotDate = slotData?.date ? formatDate(slotData.date) : (appointment.date ? formatDate(appointment.date) : 'yang telah dijadwalkan');
-      const slotTime = slotData?.timeSlot || appointment.timeSlot || '';
-      
-      // Membuat template pesan untuk pengingat
-      const message = 
-        `Halo ${appointment.patient.name || 'Pasien Terhormat'},\n\n` +
-        `*Pengingat Janji Terapi*\n` +
-        `Kami ingin mengingatkan Anda tentang jadwal terapi Anda:\n\n` +
-        `Tanggal: ${slotDate}\n` +
-        `Waktu: ${slotTime}\n\n` +
-        `Mohon konfirmasi kehadiran Anda dengan membalas pesan ini. Terima kasih.\n\n` +
-        `Salam,\nTim Terapi Titik Sumber`;
-      
-      // Buka link WhatsApp dengan pesan yang sudah disiapkan
-      const whatsappLink = generateWhatsAppLink(appointment.patient.phoneNumber, message);
-      window.open(whatsappLink, '_blank');
-      
-      toast({
-        title: "Pengingat dikirim",
-        description: `WhatsApp untuk ${appointment.patient.name || 'pasien'} telah dibuka`,
-      });
-    } catch (error) {
-      // Silent error handling dengan pesan untuk pengguna
-      toast({
-        title: "Terjadi kesalahan",
-        description: "Gagal mengirim pengingat. Silakan coba lagi.",
-        variant: "destructive",
-      });
-    }
-  }
-  
-  // Menerapkan strategi pemrosesan data yang lebih efisien
-  // 1. Gunakan useMemo untuk memproses data hanya saat diperlukan
-  // 2. Stabilkan state dengan defaultValue yang konsisten
-  // 3. Gunakan pengecekan lebih ketat untuk mencegah error null/undefined
-  
-  // Inisialisasi data appointment dari state, pastikan selalu array
-  const allAppointmentsForDate = useMemo(() => {
-    return Array.isArray(appointmentData) ? appointmentData : [];
-  }, [appointmentData]);
-  
-  // useEffect untuk tracking data akan digunakan jika diperlukan di masa mendatang
-  useEffect(() => {
-    // Tracked but no logging necessary
-  }, [allAppointmentsForDate.length, isOpen, slotId]);
-  
-  // Filter appointment untuk slot tertentu dengan useMemo untuk caching
-  const slotAppointments = useMemo(() => {
-    // Early return jika tidak ada data atau slotId
-    if (!slotId) return [];
-    
-    try {
-      return allAppointmentsForDate.filter((app: any) => {
-        // Skip jika appointment tidak valid
-        if (!app) return false;
-        
-        // Prioritaskan match berdasarkan ID slot
-        const matchesSlotId = app.therapySlotId === slotId;
-        
-        // Fallback ke match berdasarkan waktu slot jika tidak ada therapySlotId
-        const matchesTimeSlot = slotData && 
-                              app.timeSlot === slotData.timeSlot && 
-                              !app.therapySlotId;
-        
-        return matchesSlotId || matchesTimeSlot;
-      });
-    } catch (error) {
-      // Silent error, return empty array for safety
-      return [];
-    }
-  }, [allAppointmentsForDate, slotId, slotData]);
-  
-  // Filter untuk appointment dengan status aktif saja
-  const slotActiveAppointments = useMemo(() => {
-    try {
-      return filterActiveAppointments(slotAppointments);
-    } catch (error) {
-      // Silent error handling
-      return [];
-    }
-  }, [slotAppointments]);
-  
-  // Fungsi untuk memperkaya data appointment dengan data pasien
-  const enrichAppointment = (appointment: any) => {
-    try {
-      // Jika appointment sudah memiliki patient object yang valid, gunakan itu
-      if (appointment.patient && (appointment.patient.id || appointment.patient.name)) {
-        return {
-          ...appointment,
-          patient: {
-            ...appointment.patient,
-            // Tambahkan fallback untuk field penting
-            id: appointment.patient.id || appointment.patientId,
-            name: appointment.patient.name || `Pasien #${appointment.patientId || '?'}`,
-            phoneNumber: appointment.patient.phoneNumber || '-'
-          }
-        };
-      }
-      
-      // Jika tidak ada patient object tetapi ada patientId, buat objek patient
-      if (appointment.patientId) {
-        return {
-          ...appointment,
-          patient: {
-            id: appointment.patientId,
-            name: appointment.patientName || `Pasien #${appointment.patientId}`,
-            phoneNumber: appointment.phoneNumber || '-'
-          }
-        };
-      }
-      
-      // Default fallback jika data tidak lengkap
-      return {
-        ...appointment,
-        patient: {
-          id: null,
-          name: 'Pasien tidak diketahui',
-          phoneNumber: '-'
-        }
-      };
-    } catch (error) {
-      // Silent error handling dengan fallback yang aman
-      return {
-        ...appointment,
-        patient: { id: null, name: 'Error Data Pasien', phoneNumber: '-' }
-      };
-    }
-  };
-  
-  // Process appointments data to enrich them with patient data
-  // Gunakan useMemo untuk menghindari pemrosesan ulang yang tidak perlu
-  const processedAppointments = useMemo(() => {
-    // Pastikan slotActiveAppointments adalah array
-    if (!Array.isArray(slotActiveAppointments)) return [];
-    
-    try {
-      // Map data dengan enrichAppointment
-      return slotActiveAppointments.map(enrichAppointment).filter(Boolean);
-    } catch (error) {
-      // Silent error handling
-      return [];
-    }
-  }, [slotActiveAppointments]);
-  
-  // Buat fetch semua data pasien sekaligus untuk mengurangi beban server
-  const patientIds = Array.from(new Set(
-    slotActiveAppointments
-      .filter((app: any) => !!app.patientId)
-      .map((app: any) => app.patientId)
-  ));
-  
-  // State untuk tracking data pasien dari appointments
-  const [hasEnrichedPatientData, setHasEnrichedPatientData] = useState(false);
-  const patientDataCacheRef = useRef<Record<number, any>>({});
-
-  // Effect untuk fetch pasien dari patientIds saat appointmentData diupdate
-  // dengan mekanisme caching dan fallback untuk ketahanan
-  useEffect(() => {
-    // Jika ada patientIds dan dialog terbuka, fetch data pasien
-    if (patientIds.length > 0 && isOpen) {
-      // Reset flag enrichment
-      setHasEnrichedPatientData(false);
-      
-      const fetchPatients = async () => {
-        try {
-          // Menggunakan Promise.allSettled untuk menangani kasus sebagian request gagal
-          const patientPromises = patientIds.map(id => {
-            // Cek cache dulu
-            if (patientDataCacheRef.current[id]) {
-              return Promise.resolve(patientDataCacheRef.current[id]);
-            }
-            
-            // Jika tidak ada di cache, fetch dengan timeout 5 detik
-            return new Promise((resolve) => {
-              const timeoutId = setTimeout(() => {
-                // Timeout handling silent
-              }, 5000);
-              
-              fetch(`/api/patients/${id}`, { 
-                headers: { 'Cache-Control': 'no-cache' },
-                credentials: 'include'
-              })
-                .then(res => res.json())
-                .then(data => {
-                  clearTimeout(timeoutId);
-                  // Simpan ke cache untuk penggunaan berikutnya
-                  if (data && data.id) {
-                    patientDataCacheRef.current[id] = data;
-                  }
-                  resolve(data);
-                })
-                .catch(err => {
-                  clearTimeout(timeoutId);
-                  // Silent error handling, resolve null
-                  resolve(null); // Resolve null alih-alih reject
-                });
-            });
-          });
-          
-          const patientsResults = await Promise.allSettled(patientPromises);
-          const patientsData = patientsResults
-            .map(result => result.status === 'fulfilled' ? result.value : null)
-            .filter(Boolean);
-          
-
-          
-          // Update appointment data dengan informasi pasien
-          if (patientsData.length > 0) {
-            setAppointmentData(prev => 
-              prev.map(app => {
-                // Cari data pasien dari hasil fetch
-                const patientData = patientsData.find(p => p && p.id === app.patientId);
-                
-                // Jika data pasien ditemukan, update appointment
-                // Jika tidak ditemukan, simpan data minimal yang ada di appointment
-                if (patientData) {
-                  return { ...app, patient: patientData };
-                } else if (app.patient && app.patient.id) {
-                  // Jika appointment sudah memiliki data pasien minimal, simpan
-                  return app;
-                } else {
-                  // Fallback dengan data minimal
-                  return { 
-                    ...app, 
-                    patient: { 
-                      id: app.patientId,
-                      name: app.patientName || `Pasien #${app.patientId}`,
-                      phoneNumber: app.phoneNumber || '-'
-                    } 
-                  };
-                }
-              })
-            );
-          }
-          
-          setHasEnrichedPatientData(true);
-        } catch (error) {
-          // Silent error handling
-          // Tetap tandai bahwa proses enrichment sudah selesai meskipun error
-          setHasEnrichedPatientData(true);
-        }
-      };
-      
-      fetchPatients();
-    }
-  }, [patientIds.join(','), isOpen]);
-  
-  // Proses dan enrich data appointment dengan informasi lengkap
-  const processAppointmentData = useMemo(() => {
-    if (!appointmentData || !Array.isArray(appointmentData)) {
-      return [];
-    }
-    
-    // Tampilkan semua appointment dari semua slot dengan jam yang sama (Tampilan Gabungan)
-    let filteredAppointments = appointmentData;
-    
-    // 1. Filter hanya appointment aktif
-    const activeAppointments = filteredAppointments.filter(app => app && isActiveStatus(app.status));
-    
-    // 2. Urutkan berdasarkan status dan nama pasien (jika tersedia)
-    const sortedAppointments = [...activeAppointments].sort((a, b) => {
-      // Status: Active lebih dulu, lalu Scheduled/Confirmed
-      const statusA = (a.status || '').toLowerCase();
-      const statusB = (b.status || '').toLowerCase();
-      
-      if (statusA === 'active' && statusB !== 'active') return -1;
-      if (statusA !== 'active' && statusB === 'active') return 1;
-      
-      // Urutkan berdasarkan nama pasien
-      const nameA = (a.patient?.name || '').toLowerCase();
-      const nameB = (b.patient?.name || '').toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-    
-    return sortedAppointments;
-  }, [appointmentData]);
-  
-  // Simplified state tracking without console logging
-  useEffect(() => {
-    // Track state changes but no logging needed
-  }, [appointmentData, processAppointmentData]);
-  
-  // Tidak perlu lagi debug flag
+  // Render dialog
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-4 md:p-6">
-          <DialogHeader className="px-0">
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <CalendarIcon className="h-5 w-5 text-primary" />
-              Detail Slot Terapi
-            </DialogTitle>
-            <DialogDescription>
-              {slotData 
-                ? `${formatDate(slotData.date)} · ${slotData.timeSlot === "Data tidak tersedia" 
-                   ? "Slot tidak ditemukan" 
-                   : formatTimeSlot(slotData.timeSlot) || '-'}`
-                : "Menampilkan detail slot terapi dan daftar pasien"}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {/* Server error fallback message - tampil saat ada error server/database */}
-          {error && error.message.includes("Internal server error") && (
-            <div className="mb-3 p-3 text-sm border rounded bg-amber-50 text-amber-900">
-              <div className="font-medium mb-1 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="mr-1" viewBox="0 0 16 16">
-                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
-                </svg>
-                Koneksi Database Sementara Terputus
-              </div>
-              <p className="text-sm">
-                Server sedang sibuk atau mengalami masalah koneksi ke database. 
-                Data yang tampil mungkin tidak lengkap atau tidak up-to-date.
-              </p>
-              <div className="mt-2 flex gap-2">
-                <Button 
-                  size="sm"
-                  variant="secondary"
-                  className="text-xs"
-                  onClick={() => {
-                    setError(null);
-                    window.location.reload();
-                  }}
-                >
-                  Reload Halaman
-                </Button>
-                <Button 
-                  size="sm"
-                  variant="outline"
-                  className="text-xs"
-                  onClick={() => {
-                    // State loader untuk tombol
-                    const btn = document.activeElement as HTMLButtonElement;
-                    if (btn) {
-                      const originalText = btn.textContent;
-                      btn.textContent = '⏳ Memeriksa...';
-                      btn.disabled = true;
-                      
-                      // Manual retry dengan timeout manual
-                      const pingTimeoutId = setTimeout(() => {
-                        toast({
-                          title: "Timeout",
-                          description: "Server tidak merespons dalam waktu 2 detik",
-                          variant: "destructive"
-                        });
-                        // Reset button state jika terjadi timeout
-                        if (btn) {
-                          btn.textContent = originalText;
-                          btn.disabled = false;
-                        }
-                      }, 2000);
-                      
-                      fetch(`/api/ping`, { 
-                        headers: {
-                          'Cache-Control': 'no-cache',
-                          'Pragma': 'no-cache'
-                        },
-                        credentials: 'include'
-                      })
-                        .then(res => res.json())
-                        .then(data => {
-                          if (data && data.status === 'ok') {
-                            toast({
-                              title: "Koneksi Pulih",
-                              description: `Server aktif (uptime: ${Math.floor(data.uptime / 60)} menit)`,
-                            });
-                            setTimeout(() => {
-                              setError(null);
-                              refetch();
-                            }, 500);
-                          }
-                        })
-                        .catch(e => {
-                          toast({
-                            title: "Server Masih Down",
-                            description: "Coba beberapa saat lagi atau refresh halaman",
-                            variant: "destructive"
-                          });
-                        })
-                        .finally(() => {
-                          // Reset tombol dan clear timeout jika belum ter-clear
-                          clearTimeout(pingTimeoutId);
-                          if (btn) {
-                            btn.textContent = originalText;
-                            btn.disabled = false;
-                          }
-                        });
-                    }
-                  }}
-                >
-                  Coba Koneksi
-                </Button>
-              </div>
-            </div>
-          )}
-          
-        
-          
-          {/* Loading state */}
-          {isLoading && (
-            <div className="flex flex-col justify-center items-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-              <p className="text-sm text-muted-foreground">Memuat data slot terapi...</p>
-            </div>
-          )}
-          
-          {/* Error state - dengan opsi fallback dan informasi tambahan */}
-          {!isLoading && error && (
-            <div className="p-4 rounded-md border border-destructive/20 bg-destructive/10 text-destructive">
-              <div className="font-medium mb-1">Terjadi kesalahan:</div>
-              <p className="text-sm">{(error as Error).message}</p>
-              
-              <div className="mt-2 text-xs text-muted-foreground">
-                <p>Server mungkin sedang sibuk atau memerlukan waktu untuk merespons.</p>
-                {slotData && (
-                  <p className="mt-1">
-                    Data dasar slot terapi telah dimuat, tetapi data pasien mungkin tidak lengkap.
-                  </p>
-                )}
-              </div>
-              
-              <div className="flex gap-2 mt-3">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => {
-                    setError(null);
-                    fetchSlotAndAppointments();
-                  }}
-                >
-                  <span className="mr-2">↺</span> Coba Lagi
-                </Button>
-                
-                {error.message.includes("timeout") && (
-                  <Button 
-                    variant="secondary" 
-                    size="sm"
-                    onClick={() => {
-                      // Reset error tapi jangan reset slot data jika sudah ada
-                      setError(null);
-                      // Batas waktu lebih pendek untuk retry cepat
-                      setTimeout(() => {
-                        // Pertama coba retry dengan timeout manual
-                        try {
-                          const retryTimeoutId = setTimeout(() => {
-                            toast({
-                              title: "Waktu Habis",
-                              description: "Server tidak merespons dalam waktu 3 detik",
-                              variant: "destructive"
-                            });
-                          }, 3000);
-                          
-                          fetch(`/api/therapy-slots/${slotId}`, {
-                            headers: {
-                              'Accept': 'application/json',
-                              'Cache-Control': 'no-cache'
-                            },
-                            credentials: 'include'
-                          })
-                          .then(res => res.json())
-                          .then(data => {
-                            // Clear timeout setelah data berhasil dimuat
-                            clearTimeout(retryTimeoutId);
-                            
-                            if (data && data.id === slotId) {
-                              setSlotData(data);
-                              toast({
-                                title: "Data Dimuat",
-                                description: "Data slot terapi berhasil dimuat",
-                              });
-                            }
-                          })
-                          .catch(e => {
-                            // Clear timeout pada error
-                            clearTimeout(retryTimeoutId);
-                            // Silent error handling, no logging needed
-                          });
-                        } catch (e) {
-                          // Silently handle, no logging needed
-                        }
-                      }, 500);
-                    }}
-                  >
-                    <span className="mr-2">⚡</span> Retry Cepat
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {/* Empty state */}
-          {!isLoading && !error && !slotData && (
-            <div className="text-center p-6 border rounded-md bg-muted/20">
-              <p className="text-muted-foreground mb-2">Data slot tidak tersedia</p>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  fetchSlotAndAppointments();
-                }}
-              >
-                <span className="mr-2">↺</span> Muat Ulang
-              </Button>
-            </div>
-          )}
-          
-          {/* Slot data loaded successfully */}
-          {!isLoading && !error && slotData && (
-            <div className="space-y-4 mt-2">
-              {/* Slot Information */}
-              <div className="rounded-lg bg-muted/50 p-3 border">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="text-muted-foreground">Tanggal:</div>
-                  <div className="font-medium">{formatDate(slotData.date)}</div>
-                  
-                  <div className="text-muted-foreground">Waktu:</div>
-                  <div className="font-medium">{formatTimeSlot(slotData.timeSlot) || '-'}</div>
-                  
-                  <div className="text-muted-foreground">Kuota:</div>
-                  <div className="font-medium">
-                    {typeof slotData.currentCount === 'number' ? slotData.currentCount : 0}/
-                    {typeof slotData.maxQuota === 'number' && slotData.maxQuota > 0 ? slotData.maxQuota : 
-                      (slotData.timeSlot === "Data tidak tersedia" ? "N/A" : 6)}
-                  </div>
-                  
-                  <div className="text-muted-foreground">Status:</div>
-                  <div>
-                    {slotData.isActive ? (
-                      <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Aktif</Badge>
-                    ) : (
-                      <Badge variant="destructive">Tidak Aktif</Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Appointments List */}
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarIcon className="h-5 w-5" />
+            <span>Detail Slot Terapi</span>
+          </DialogTitle>
+          <DialogDescription>
+            {slotDate && slotTimeSlot ? (
+              <>
+                {formatDate(slotDate)} | {slotTimeSlot}
+              </>
+            ) : (
+              "Memuat data slot terapi..."
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading && (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-lg bg-red-50 p-6 text-center">
+            <p className="text-red-600">
+              {error instanceof Error ? error.message : "Terjadi kesalahan saat memuat data"}
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-2" 
+              onClick={onClose}
+            >
+              Tutup
+            </Button>
+          </div>
+        )}
+
+        {!isLoading && !error && slot && (
+          <div className="space-y-6">
+            {/* Informasi slot */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-b pb-4">
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <div>
-                    <h3 className="text-sm font-medium flex items-center gap-2">
-                      Daftar Pasien
-                    </h3>
-                    {combinedSlotInfo && combinedSlotInfo.ids.length > 1 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        * Menampilkan semua pasien dari {combinedSlotInfo.ids.length} slot pada jam yang sama ({formatTimeSlot(slotData?.timeSlot)})
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {/* Tombol untuk mendaftarkan pasien baru */}
-                    {slotData && slotData.isActive && 
-                    slotData.currentCount < slotData.maxQuota && (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="h-8 px-2 text-xs bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
-                        onClick={() => {
-                          // Simpan ID slot ke sessionStorage
-                          sessionStorage.setItem('selectedSlotId', String(slotId));
-                          
-                          // Siapkan parameter untuk pendaftaran
-                          let queryParams = new URLSearchParams();
-                          
-                          // PERBAIKAN: Ubah dari walkin menjadi online untuk kejelasan jalur pendaftaran
-                          // Tambah parameter online=true dan hapus parameter walkin
-                          queryParams.append('online', 'true'); // Jalur pendaftaran online
-                          queryParams.append('slotId', String(slotId));
-                          
-                          // Jika slotData tersedia dan memiliki timeSlotKey, gunakan itu
-                          if (slotData && slotData.timeSlotKey) {
-                            queryParams.append('timeSlotKey', slotData.timeSlotKey);
-                          } 
-                          // Jika tidak ada timeSlotKey, tapi ada tanggal dan waktu, generate timeSlotKey
-                          else if (slotData && slotData.date && slotData.timeSlot) {
-                            // Format tanggal ke YYYY-MM-DD
-                            let dateStr;
-                            
-                            if (typeof slotData.date === 'string') {
-                              if (slotData.date.includes('T')) {
-                                dateStr = slotData.date.split('T')[0];
-                              } else if (slotData.date.includes(' ')) {
-                                dateStr = slotData.date.split(' ')[0];
-                              } else {
-                                dateStr = slotData.date;
-                              }
-                            } else {
-                              // Jika tanggal bukan string, konversi ke string
-                              const dateObj = new Date(slotData.date);
-                              dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-                            }
-                            
-                            // Buat timeSlotKey dengan format YYYY-MM-DD_HH:MM-HH:MM
-                            const generatedTimeSlotKey = `${dateStr}_${slotData.timeSlot}`;
-                            
-                            // Tambahkan ke parameter URL
-                            queryParams.append('timeSlotKey', generatedTimeSlotKey);
-                          }
-                          
-                          // Redirect ke halaman pendaftaran dengan parameter di tab baru
-                          // Menggunakan window.open untuk membuka halaman di tab baru
-                          // '_blank' menunjukkan bahwa halaman harus dibuka di tab/jendela baru
-                          window.open(`/daftar?${queryParams.toString()}`, '_blank');
-                        }}
-                      >
-                        <User className="h-3 w-3 mr-1" />
-                        Daftarkan Pasien
-                      </Button>
-                    )}
-                  </div>
+                <h3 className="text-sm font-medium text-muted-foreground">Tanggal</h3>
+                <p>{formatDate(slot.date)}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Waktu</h3>
+                <p>{slot.timeSlot}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Kuota</h3>
+                <p>{slot.currentCount} / {slot.maxQuota} Pasien</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+                <div>
+                  {slot.isActive 
+                    ? <Badge className="bg-green-500">Aktif</Badge> 
+                    : <Badge variant="destructive">Tidak Aktif</Badge>}
                 </div>
-                {!processAppointmentData.length ? (
-                  <p className="text-center py-4 text-sm text-muted-foreground border rounded">
-                    {slotData && slotData.timeSlot === "Data tidak tersedia" 
-                      ? "Slot tidak ditemukan atau tidak tersedia" 
-                      : "Belum ada pasien aktif"}
-                  </p>
-                ) : (
-                  <div className="border rounded-md divide-y">
-                    {processAppointmentData.map((appointment: any) => (
-                      <div 
-                        key={appointment.id} 
-                        className={`p-3 text-sm hover:bg-muted/50 transition-colors cursor-pointer ${appointment.fromOtherSlot ? 'border-l-4 border-amber-400' : ''}`}
-                        onClick={() => navigateToPatientDetail(appointment.patient)}
-                      >
-                        <div className="font-medium flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span>{appointment.patient?.name || 'Pasien tidak diketahui'}</span>
-                            {appointment.fromOtherSlot && (
-                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
-                                Slot #{appointment.therapySlotId}
-                              </Badge>
-                            )}
-                            {/* Tampilkan badge WALK-IN jika ditemukan dalam notes */}
-                            {appointment.notes && 
-                             (appointment.notes.toLowerCase().includes('walk-in') || 
-                              appointment.notes.toLowerCase().includes('walkin')) && (
-                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
-                                WALK-IN
-                              </Badge>
-                            )}
-                          </div>
-                          <Badge className={getStatusClass(appointment.status)}>
-                            {appointment.status || 'Unknown'}
-                          </Badge>
+              </div>
+            </div>
+
+            {/* Daftar pasien */}
+            <div>
+              <h3 className="text-lg font-medium mb-3">Daftar Pasien ({patients?.length || 0})</h3>
+              
+              {isPatientsLoading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : patients && patients.length > 0 ? (
+                <div className="space-y-3">
+                  {patients.map((patient: any) => (
+                    <div key={patient.id} className="border rounded-lg p-3 hover:bg-muted transition-colors">
+                      <div className="flex justify-between">
+                        <div>
+                          <p className="font-medium">{patient.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {patient.phone || 'Tidak ada nomor telepon'}
+                          </p>
                         </div>
-                        <div className="text-muted-foreground text-xs mt-1 mb-2">
-                          {appointment.patient?.phoneNumber || '-'}
-                          {appointment.fromOtherSlot && (
-                            <span className="ml-2 text-amber-600">
-                              • Jam yang sama, slot berbeda
-                            </span>
+                        <div className="flex items-center gap-2">
+                          {patient.phone && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => {
+                                const whatsappLink = generateWhatsAppLink(patient.phone);
+                                window.open(whatsappLink, '_blank');
+                              }}
+                              title="Hubungi via WhatsApp"
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
                           )}
-                        </div>
-                        
-                        {/* Action buttons - mobile friendly layout */}
-                        <div className="flex flex-wrap gap-2 mt-2">
                           <Button
-                            variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-xs flex-none"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Mencegah event bubbling ke parent div
-                              navigateToPatientDetail(appointment.patient);
+                            variant="outline"
+                            className="h-8"
+                            onClick={() => {
+                              // Navigasi ke halaman detail pasien
+                              window.location.href = `/patients/${patient.id}`;
                             }}
                           >
-                            <User className="h-3 w-3 mr-1" />
+                            <User className="h-4 w-4 mr-1" />
                             Detail
-                          </Button>
-                          
-                          <AppointmentStatusChanger
-                            appointment={appointment}
-                            updateStatus={(status) => updateStatusMutation.mutate({ id: appointment.id, status })}
-                            isUpdating={updateStatusMutation.isPending}
-                            stopPropagation={true}
-                          />
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 text-xs flex-none text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            onClick={(e) => navigateToTransaction(appointment.patient, e)}
-                          >
-                            <ShoppingCart className="h-3 w-3 mr-1" />
-                            Transaksi
-                          </Button>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50 flex-none"
-                            onClick={(e) => sendAppointmentReminder(appointment, e)}
-                            disabled={!appointment.patient?.phoneNumber}
-                            title={appointment.patient?.phoneNumber ? "Kirim pengingat via WhatsApp" : "Nomor telepon tidak tersedia"}
-                          >
-                            <MessageSquare className="h-3 w-3 mr-1" />
-                            Pengingat
                           </Button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 border border-dashed rounded-lg">
+                  <p className="text-muted-foreground">Belum ada pasien yang terdaftar untuk slot ini</p>
+                </div>
+              )}
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirmation Dialog */}
-      {isConfirmCancelOpen && (
-        <AlertDialog open={isConfirmCancelOpen} onOpenChange={setIsConfirmCancelOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Konfirmasi Pembatalan</AlertDialogTitle>
-              <AlertDialogDescription>
-                Apakah Anda yakin ingin membatalkan janji temu pasien ini?
-                {selectedAppointment && (
-                  <div className="mt-2 p-2 border rounded-md bg-muted">
-                    <p className="font-medium">{selectedAppointment.patient?.name || 'Pasien tidak diketahui'}</p>
-                    <p className="text-sm text-muted-foreground">{selectedAppointment.patient?.phoneNumber || '-'}</p>
-                  </div>
-                )}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Batal</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmCancelAppointment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                {cancelAppointmentMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
-                Ya, Batalkan Janji
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-    </>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
