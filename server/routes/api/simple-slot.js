@@ -54,6 +54,7 @@ async function getSlotAppointments(req, res) {
   try {
     const slotId = parseInt(req.params.id);
     if (isNaN(slotId)) {
+      res.setHeader('Content-Type', 'application/json');
       return res.status(400).json({ error: 'ID slot terapi tidak valid' });
     }
     
@@ -74,9 +75,12 @@ async function getSlotAppointments(req, res) {
       timeSlot: appointment.timeSlot
     }));
     
-    return res.json(simplifiedAppointments);
+    // Gunakan cara lain untuk mengirim respons JSON untuk memastikan header terpasang
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(simplifiedAppointments));
   } catch (error) {
     console.error('Error mendapatkan appointment slot terapi:', error);
+    res.setHeader('Content-Type', 'application/json');
     return res.status(500).json({ error: 'Gagal mengambil data appointment' });
   }
 }
@@ -89,6 +93,7 @@ async function getSlotPatients(req, res) {
   try {
     const slotId = parseInt(req.params.id);
     if (isNaN(slotId)) {
+      res.setHeader('Content-Type', 'application/json');
       return res.status(400).json({ error: 'ID slot terapi tidak valid' });
     }
     
@@ -118,9 +123,12 @@ async function getSlotPatients(req, res) {
       }
     }
     
-    return res.json(patients);
+    // Gunakan cara lain untuk mengirim respons JSON untuk memastikan header terpasang
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(patients));
   } catch (error) {
     console.error('Error mendapatkan data pasien slot terapi:', error);
+    res.setHeader('Content-Type', 'application/json');
     return res.status(500).json({ error: 'Gagal mengambil data pasien' });
   }
 }
