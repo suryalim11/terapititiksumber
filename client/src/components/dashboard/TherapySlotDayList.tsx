@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { SimpleSlotDialog } from './SimpleSlotDialog';
+import { SimpleSlotDialog } from './simple-slot-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Users } from 'lucide-react';
 
