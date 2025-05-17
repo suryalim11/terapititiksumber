@@ -1,3 +1,4 @@
+import React, { Suspense } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -13,6 +14,7 @@ import Reports from "@/pages/reports";
 import ReportsIndex from "@/pages/reports/index";
 import PatientsDailyReport from "@/pages/reports/patients-daily";
 import Settings from "@/pages/settings";
+import DataCleanupPage from "@/pages/data-cleanup";
 // JALUR PENDAFTARAN ONLINE UTAMA
 import Register from "@/pages/register";
 import RegistrationSuccess from "@/pages/registration-success-fixed";
@@ -48,7 +50,7 @@ function AdminApp() {
         <ProtectedRoute path="/therapy-dashboard" component={TherapySlotDashboard} />
         <ProtectedRoute path="/websocket-dashboard" component={WebSocketSlotDashboard} />
         <ProtectedRoute path="/products" component={Products} />
-        <ProtectedRoute path="/data-cleanup" component={() => import("@/pages/data-cleanup").then(m => ({ default: m.default })) as any} />
+        <ProtectedRoute path="/data-cleanup" component={DataCleanupPage} />
         <ProtectedRoute path="/reports" component={Reports} />
         <ProtectedRoute path="/reports/index" component={ReportsIndex} />
         <ProtectedRoute path="/reports/patients-daily" component={PatientsDailyReport} />
