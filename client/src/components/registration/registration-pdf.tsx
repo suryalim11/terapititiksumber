@@ -4,24 +4,26 @@ import jsPDF from "jspdf";
 import { format } from "date-fns";
 
 interface RegistrationPDFProps {
-  patientName: string;
-  registrationNumber?: string;
-  patientId?: string;
-  therapyDate?: string;
-  therapyTime?: string;
-  phoneNumber?: string;
-  registrationDate?: Date;
+  registrationData: {
+    name?: string;
+    phoneNumber?: string;
+    appointment?: {
+      therapySlotDetails?: {
+        formattedDate?: string;
+        timeSlot?: string;
+      }
+    }
+  };
 }
 
 export function RegistrationPDF({
-  patientName,
-  registrationNumber,
-  patientId,
-  therapyDate,
-  therapyTime,
-  phoneNumber,
-  registrationDate = new Date(),
+  registrationData
 }: RegistrationPDFProps) {
+  const patientName = registrationData.name || "Pasien";
+  const phoneNumber = registrationData.phoneNumber || "";
+  const therapyDate = registrationData.appointment?.therapySlotDetails?.formattedDate || "";
+  const therapyTime = registrationData.appointment?.therapySlotDetails?.timeSlot || "";
+  const registrationDate = new Date();
   const generatePDF = () => {
     const doc = new jsPDF();
     

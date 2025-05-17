@@ -1,5 +1,4 @@
-// JALUR PENDAFTARAN ONLINE UTAMA
-// Halaman ini adalah satu-satunya jalur pendaftaran via link untuk pasien
+// JALUR PENDAFTARAN ONLINE UTAMA - Versi Sederhana
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { z } from "zod";
@@ -8,12 +7,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { format, parseISO, isAfter, isSameDay, addHours } from "date-fns";
+import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { formatDateDDMMYYYY, formatBirthDate, cn } from "@/lib/utils";
+import { formatDateDDMMYYYY, formatBirthDate } from "@/lib/utils";
 
-// Fungsi fixTimeSlotFormat sudah tidak diperlukan karena slot terapi sudah menyimpan
-// format time_slot yang benar langsung dari database
+// UI Components
 import { Calendar } from "@/components/ui/calendar";
 import { RegistrationPDF } from "@/components/registration/registration-pdf";
 import {
@@ -28,17 +26,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-
 import {
   Card,
   CardContent,
@@ -47,7 +42,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,14 +51,12 @@ import {
   AlertCircle, 
   AlertTriangle,
   CalendarIcon, 
-  Clock, 
   CheckCircle, 
+  Clock, 
   MapPin,
   RefreshCw,
   Search, 
-  Users,
-  User,
-  WifiOff
+  User
 } from "lucide-react";
 
 // Form validation schema
@@ -90,40 +82,7 @@ const registerFormSchema = z.object({
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
-// Patient response types
-type PatientSearchResponse = {
-  success: boolean;
-  found: boolean;
-  message?: string;
-  patient?: {
-    id: number;
-    name: string;
-    phoneNumber: string;
-    email: string | null;
-    birthDate: string;
-    gender: string;
-    address: string;
-    complaints?: string;
-  }
-}
-
-// Registration response types
-type TherapySlotDetails = {
-  date: string;
-  timeSlot: string;
-  formattedDate: string;
-}
-
-type AppointmentResponse = {
-  id: number;
-  patientId: number;
-  therapySlotId: number;
-  therapySlotDetails: TherapySlotDetails;
-  date: string;
-  timeSlot: string;
-  status: string;
-}
-
+// Type definitions
 type RegistrationResponse = {
   id?: number;
   name?: string;
@@ -132,7 +91,19 @@ type RegistrationResponse = {
   birthDate?: string;
   gender?: string;
   address?: string;
-  appointment?: AppointmentResponse;
+  appointment?: {
+    id: number;
+    patientId: number;
+    therapySlotId: number;
+    therapySlotDetails: {
+      date: string;
+      timeSlot: string;
+      formattedDate: string;
+    };
+    date: string;
+    timeSlot: string;
+    status: string;
+  };
   confirmationLink?: string;
   code?: string;
   message?: string;
@@ -145,23 +116,19 @@ type RegistrationResponse = {
 export default function RegisterPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  
+  // State untuk pendaftaran
   const [registrationCode, setRegistrationCode] = useState<string | null>(null);
   const [registrationStatus, setRegistrationStatus] = useState<"idle" | "submitting" | "success" | "error" | "quota-reached" | "expired">("idle");
-  const [registrationLimit, setRegistrationLimit] = useState<number | null>(null);
-  const [currentRegistrations, setCurrentRegistrations] = useState<number | null>(null);
-  const [expiryTime, setExpiryTime] = useState<Date | null>(null);
-  const [verificationResponse, setVerificationResponse] = useState<any>(null);
-  
-  // State untuk pencarian pasien dan status koneksi
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const [isSearching, setIsSearching] = useState<boolean>(false);
-  const [patientFound, setPatientFound] = useState<boolean>(false);
-  const [foundPatient, setFoundPatient] = useState<any>(null);
-  const [selectedSlot, setSelectedSlot] = useState<{id: number, date: string, timeSlot: string, timeSlotFixed?: string} | null>(null);
-  
-  // State untuk hasil registrasi
   const [registrationResult, setRegistrationResult] = useState<RegistrationResponse | null>(null);
+  
+  // State untuk pencarian pasien
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [foundPatient, setFoundPatient] = useState<any>(null);
+  
+  // State untuk slot terapi
+  const [selectedSlot, setSelectedSlot] = useState<{id: number, date: string, timeSlot: string} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWalkInMode, setIsWalkInMode] = useState(false);
   
@@ -181,88 +148,26 @@ export default function RegisterPage() {
   });
 
   // Mendapatkan data slot terapi yang tersedia
-  const { data: therapySlots, isLoading: isLoadingSlots, refetch: refetchTherapySlots, error: therapySlotsError } = useQuery({
-    queryKey: ['/api/therapy-slots', 'available-active', verificationResponse ? 'from-verification' : 'api-direct'],
+  const { data: therapySlots, isLoading: isLoadingSlots, refetch: refetchTherapySlots } = useQuery({
+    queryKey: ['/api/therapy-slots', 'available-active'],
     queryFn: async () => {
-      console.log("Mengambil slot terapi untuk form pendaftaran");
-      // Pastikan hanya menampilkan slot yang:
-      // 1. Aktif (active=true)
-      // 2. Masih tersedia (available=true)
-      // 3. Slot yang tanggalnya hari ini atau kemudian
-      
-      // Gunakan data slot dari respons verifikasi kode pendaftaran jika tersedia
-      if (verificationResponse && 
-          verificationResponse.availableSlots && 
-          Array.isArray(verificationResponse.availableSlots) && 
-          verificationResponse.availableSlots.length > 0) {
-        console.log("Menggunakan data slot terapi dari respons verifikasi kode");
-        console.log("Jumlah slot dari verifikasi:", verificationResponse.availableSlots.length);
-        
-        // Tampilkan sampel data untuk debugging
-        console.log("Sampel data slot dari verifikasi:", 
-          JSON.stringify(verificationResponse.availableSlots.slice(0, 2)));
-        
-        // Filter slot dengan kuota tersedia
-        const filteredVerificationSlots = verificationResponse.availableSlots.filter(
-          (slot: any) => slot.currentCount < slot.maxQuota
-        );
-        console.log("Slot terapi yang tersedia setelah filter:", filteredVerificationSlots.length);
-        
-        if (filteredVerificationSlots.length === 0) {
-          throw new Error("Tidak ada slot terapi yang tersedia saat ini");
-        }
-        
-        // Urutkan berdasarkan tanggal dan waktu
-        return filteredVerificationSlots.sort((a: any, b: any) => {
-          // Bandingkan tanggal terlebih dahulu
-          const dateA = new Date(a.date).getTime();
-          const dateB = new Date(b.date).getTime();
-          if (dateA !== dateB) return dateA - dateB;
-          
-          // Jika tanggal sama, bandingkan jam mulai
-          return a.timeSlot.localeCompare(b.timeSlot);
-        });
-      }
-      
-      // Fallback ke fetch langsung jika tidak ada data di respons verifikasi
-      console.log("Fallback ke fetch langsung untuk slot terapi");
-      
-      // Penting: Tambahkan parameter waktu untuk menghindari cache browser dan force refresh
-      const timestamp = new Date().getTime();
-      const randomStr = Math.random().toString(36).substring(2, 15);
-      const cacheBuster = `_t=${timestamp}&_r=${randomStr}`;
-      
       try {
-        const response = await fetch(`/api/therapy-slots?available=true&active=true&${cacheBuster}`, {
-          credentials: 'include', // Tambahkan credentials untuk mendukung cookies
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
+        const response = await fetch(`/api/therapy-slots?available=true&active=true`, {
+          credentials: 'include'
         });
         
         if (!response.ok) {
-          console.error(`Error fetching therapy slots: ${response.status} - ${response.statusText}`);
-          throw new Error(`Gagal mengambil data slot terapi: ${response.status} - ${response.statusText}`);
+          throw new Error(`Gagal mengambil data slot terapi: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log("Slot terapi yang diterima di form pendaftaran:", data.length, "slot");
         
-        if (!Array.isArray(data)) {
-          console.error("Respons API bukan array:", typeof data);
-          throw new Error("Format data slot terapi tidak valid");
-        }
-        
-        if (data.length === 0) {
-          console.log("Tidak ada slot terapi yang tersedia dari API");
+        if (!Array.isArray(data) || data.length === 0) {
           throw new Error("Tidak ada slot terapi yang tersedia saat ini");
         }
         
         // Filter lagi di client-side untuk memastikan tidak ada slot dengan kuota penuh
         const filteredSlots = data.filter((slot: any) => slot.currentCount < slot.maxQuota);
-        console.log("Slot terapi setelah filter kuota:", filteredSlots.length, "slot");
         
         if (filteredSlots.length === 0) {
           throw new Error("Semua slot terapi sudah penuh");
@@ -279,19 +184,12 @@ export default function RegisterPage() {
           return a.timeSlot.localeCompare(b.timeSlot);
         });
       } catch (error) {
-        console.error("Error dalam mengambil atau memproses data slot terapi:", error);
+        console.error("Error dalam mengambil data slot terapi:", error);
         throw error;
       }
     },
-    // Aktifkan query ketika status idle (siap untuk pendaftaran) dan kode pendaftaran sudah ada
-    // ATAU ketika ada respons verifikasi yang valid dengan availableSlots
-    enabled: (registrationStatus === "idle" && !!registrationCode) || 
-             (!!verificationResponse && Array.isArray(verificationResponse.availableSlots)),
-    refetchInterval: 30000, // Mempersingkat interval refresh menjadi 30 detik
-    refetchOnWindowFocus: true, // Refresh saat window kembali difokuskan
-    staleTime: 10000, // Data dianggap stale setelah 10 detik
-    retry: 2, // Coba ulang 2 kali jika gagal
-    retryDelay: 1000, // Jeda 1 detik antar percobaan
+    enabled: (registrationStatus === "idle" && !!registrationCode) || isWalkInMode,
+    staleTime: 30000, // 30 detik
   });
 
   // Parse the URL for registration code and patientId - untuk link permanen dan navigasi dari halaman detail pasien
