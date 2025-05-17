@@ -174,31 +174,45 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       const data = await response.json();
       
       if (data.success) {
+        // Perbarui status pasien di UI juga dengan membuat objek pasien baru
+        // untuk memaksa React merender ulang komponen
+        const updatedPatients = patients.map(patient => 
+          patient.appointmentId === appointmentId 
+            ? { ...patient, appointmentStatus: status } 
+            : patient
+        );
+        
+        // Set state dengan data yang sudah diperbarui
+        setPatients(updatedPatients);
+        
+        // Tampilkan notifikasi sukses
         toast({
           title: "Status berhasil diperbarui",
           description: `Status appointment berhasil diubah menjadi ${status}`,
           variant: "default",
         });
         
-        // Perbarui status pasien di UI juga
-        setPatients(prevPatients => 
-          prevPatients.map(patient => 
-            patient.appointmentId === appointmentId 
-              ? { ...patient, appointmentStatus: status }
-              : patient
-          )
-        );
+        // Invalidate queries dengan specific query key
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/appointments/date'] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/therapy-slots'] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/simple-slot/${slotId}/patients`] 
+        });
         
-        // Tetap reload data untuk memastikan konsistensi
-        if (slotId) {
-          setTimeout(() => {
+        // Hentikan otomatis loading untuk sementara
+        setIsLoading(true);
+        
+        // Beri delay yang lebih lama sebelum refresh data dari server
+        setTimeout(() => {
+          if (slotId) {
             loadSlotData(slotId);
-          }, 500); // Delay sedikit untuk memastikan server sudah memproses perubahan
-        }
-        
-        // Invalidate queries
-        queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+          }
+          setIsLoading(false);
+        }, 1500); // Delay 1.5 detik
       } else {
         toast({
           title: "Gagal memperbarui status",
