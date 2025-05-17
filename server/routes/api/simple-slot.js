@@ -19,6 +19,9 @@ async function getBasicSlotInfo(req, res) {
 
     console.log(`🔍 Mengambil data dasar therapy slot ID: ${slotId}`);
     
+    // Pastikan Content-Type diatur dengan benar untuk response JSON
+    res.setHeader('Content-Type', 'application/json');
+    
     // Ambil data dasar slot terapi dari database
     const therapySlot = await storage.getTherapySlot(slotId);
     
