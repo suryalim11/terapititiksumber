@@ -152,47 +152,82 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
   
   // Fungsi untuk mengubah status appointment
   async function updateAppointmentStatus(appointmentId: number, status: string) {
+    console.log(`[DEBUG] updateAppointmentStatus - Start: appointmentId=${appointmentId}, status=${status}`);
+    console.log(`[DEBUG] Current patients state:`, patients);
+    
     try {
       const url = `/api/appointments/${appointmentId}/status`;
       const options = {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({ status })
       };
       
+      console.log(`[DEBUG] Mengirim request ke ${url} dengan body:`, JSON.stringify({ status }));
       const response = await fetch(url, {
         ...options,
         credentials: 'include',
       });
+      
+      const responseStatus = response.status;
+      console.log(`[DEBUG] Status response: ${responseStatus}`);
       
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
+      console.log(`[DEBUG] Response data:`, data);
       
       if (data.success) {
-        // Perbarui status pasien di UI juga dengan membuat objek pasien baru
-        // untuk memaksa React merender ulang komponen
-        const updatedPatients = patients.map(patient => 
-          patient.appointmentId === appointmentId 
-            ? { ...patient, appointmentStatus: status } 
-            : patient
-        );
+        console.log(`[DEBUG] Update berhasil, memperbarui UI`);
+        
+        // Catat pasien target yang akan diubah
+        const targetPatient = patients.find(p => p.appointmentId === appointmentId);
+        console.log(`[DEBUG] Pasien yang diubah:`, targetPatient);
+        
+        // Perbarui status pasien di UI dengan cara yang lebih kuat
+        const updatedPatients = [...patients];
+        const patientIndex = updatedPatients.findIndex(p => p.appointmentId === appointmentId);
+        
+        if (patientIndex !== -1) {
+          console.log(`[DEBUG] Menemukan pasien pada index ${patientIndex}, status lama: ${updatedPatients[patientIndex].appointmentStatus}`);
+          
+          // Buat objek pasien baru dengan status yang diperbarui
+          const updatedPatient = {
+            ...updatedPatients[patientIndex],
+            appointmentStatus: status
+          };
+          
+          // Ganti objek pasien di array
+          updatedPatients[patientIndex] = updatedPatient;
+          console.log(`[DEBUG] Status baru pasien:`, updatedPatient.appointmentStatus);
+        } else {
+          console.log(`[DEBUG] PERINGATAN: Tidak dapat menemukan pasien dengan appointmentId ${appointmentId} dalam daftar`);
+        }
+        
+        // Simpan cache status dalam localStorage untuk safety
+        try {
+          localStorage.setItem(`appointment_status_${appointmentId}`, status);
+          console.log(`[DEBUG] Status disimpan di localStorage: appointment_status_${appointmentId}=${status}`);
+        } catch (e) {
+          console.error(`[DEBUG] Gagal menyimpan di localStorage:`, e);
+        }
         
         // Set state dengan data yang sudah diperbarui
+        console.log(`[DEBUG] Memperbarui state patients dengan data baru:`, updatedPatients);
         setPatients(updatedPatients);
         
-        // Tampilkan notifikasi sukses
-        toast({
-          title: "Status berhasil diperbarui",
-          description: `Status appointment berhasil diubah menjadi ${status}`,
-          variant: "default",
-        });
+        // Nonaktifkan auto-polling sementara
+        console.log(`[DEBUG] Mematikan auto-polling dengan setIsLoading(true)`);
+        setIsLoading(true);
         
         // Invalidate queries dengan specific query key
+        console.log(`[DEBUG] Invalidating query caches...`);
         queryClient.invalidateQueries({ 
           queryKey: ['/api/appointments/date'] 
         });
@@ -203,17 +238,32 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
           queryKey: [`/api/simple-slot/${slotId}/patients`] 
         });
         
-        // Hentikan otomatis loading untuk sementara
-        setIsLoading(true);
+        // Tampilkan notifikasi sukses
+        toast({
+          title: "Status berhasil diperbarui",
+          description: `Status appointment berhasil diubah menjadi ${status}`,
+          variant: "default",
+        });
         
         // Beri delay yang lebih lama sebelum refresh data dari server
+        console.log(`[DEBUG] Menunggu 3 detik sebelum reload data...`);
         setTimeout(() => {
           if (slotId) {
+            console.log(`[DEBUG] Memuat ulang data slot setelah delay`);
+            
+            // Cek dulu apakah status di localStorage masih konsisten
+            const cachedStatus = localStorage.getItem(`appointment_status_${appointmentId}`);
+            console.log(`[DEBUG] Status di localStorage: ${cachedStatus}, Status yang diinginkan: ${status}`);
+            
+            // Force update dari server dengan parameter timestamp
             loadSlotData(slotId);
           }
+          
+          console.log(`[DEBUG] Mengaktifkan polling kembali dengan setIsLoading(false)`);
           setIsLoading(false);
-        }, 1500); // Delay 1.5 detik
+        }, 3000); // Delay 3 detik
       } else {
+        console.error(`[DEBUG] Server mengembalikan error:`, data.message);
         toast({
           title: "Gagal memperbarui status",
           description: data.message || "Terjadi kesalahan saat memperbarui status",
@@ -221,7 +271,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         });
       }
     } catch (error) {
-      console.error('Error updating appointment status:', error);
+      console.error('[DEBUG] Error updating appointment status:', error);
       toast({
         title: "Gagal memperbarui status",
         description: "Terjadi kesalahan saat menghubungi server",
