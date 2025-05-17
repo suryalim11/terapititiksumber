@@ -24,6 +24,7 @@ import BackupRestore from "@/pages/backup-restore";
 import DateTest from "@/pages/date-test";
 import TherapySlots from "@/pages/therapy-slots";
 import TherapySlotDashboard from "@/pages/TherapySlotDashboard";
+import WebSocketSlotDashboard from "@/pages/WebSocketSlotDashboard";
 import AdminPage from "@/pages/admin";
 import TestDevPage from "@/pages/test-dev";
 import AppointmentFix from "@/pages/appointment-fix";
@@ -45,6 +46,7 @@ function AdminApp() {
         <ProtectedRoute path="/transactions/new" component={Transactions} />
         <ProtectedRoute path="/therapy-slots" component={TherapySlots} />
         <ProtectedRoute path="/therapy-dashboard" component={TherapySlotDashboard} />
+        <ProtectedRoute path="/websocket-dashboard" component={WebSocketSlotDashboard} />
         <ProtectedRoute path="/products" component={Products} />
         <ProtectedRoute path="/reports" component={Reports} />
         <ProtectedRoute path="/reports/index" component={ReportsIndex} />
