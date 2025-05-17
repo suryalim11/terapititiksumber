@@ -4644,9 +4644,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Terapkan middleware secara global untuk semua endpoint API
   app.use('/api/*', ensureJsonResponse);
   
-  // Gunakan router terpisah untuk simple-slot APIs untuk memastikan Content-Type benar
-  const simpleSlotRouter = require('./routes/api/simple-slot-router');
-  app.use('/api/simple-slot', requireAuth, simpleSlotRouter);
+  // Gunakan pure handler untuk endpoint simple-slot 
+  // dengan fungsi terpisah yang menjamin pengembalian JSON
+  const pureJsonHandlers = require('./pure-json-endpoints');
+  
+  // Definisikan route untuk slot basic info
+  app.get('/api/simple-slot/:id/basic', (req, res) => {
+    pureJsonHandlers.handleSimpleSlotBasic(req, res);
+  });
+  
+  // Definisikan route untuk appointments
+  app.get('/api/simple-slot/:id/appointments', (req, res) => {
+    pureJsonHandlers.handleSimpleSlotAppointments(req, res);
+  });
+  
+  // Definisikan route untuk patients
+  app.get('/api/simple-slot/:id/patients', (req, res) => {
+    pureJsonHandlers.handleSimpleSlotPatients(req, res);
+  });
   
   // Setup WebSocket server untuk real-time updates
   const WebSocket = require('ws');
