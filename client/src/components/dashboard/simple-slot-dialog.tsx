@@ -182,7 +182,8 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
   function handleRegisterNewPatient() {
     if (!slotId) return;
     // Menggunakan route /register yang sudah ada dengan parameter slotId
-    navigate(`/register?slotId=${slotId}&walkin=true`);
+    // Gunakan rute /daftar untuk menghindari masalah routing
+    navigate(`/daftar?slotId=${slotId}&walkin=true`);
   }
   
   // Fungsi untuk mengubah status appointment
