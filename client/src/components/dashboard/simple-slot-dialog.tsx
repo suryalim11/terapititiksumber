@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { 
-  Loader2, CalendarIcon, User, ShoppingCart, MessageSquare, Check, AlertCircle
+  Loader2, CalendarIcon, User, ShoppingCart, MessageSquare, Check, AlertCircle,
+  ClipboardCheck, CheckCircle, CalendarRange, Activity, CheckSquare, XCircle, UserX
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -10,11 +11,16 @@ import { id as localeId } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { generateWhatsAppLink } from "@/lib/utils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 
 interface SimpleSlotDialogProps {
@@ -142,6 +148,47 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
   function handleRegisterNewPatient() {
     if (!slotId) return;
     navigate(`/register-patient/${slotId}`);
+  }
+  
+  // Fungsi untuk mengubah status appointment
+  async function updateAppointmentStatus(appointmentId: number, status: string) {
+    try {
+      const response = await apiRequest({
+        url: `/api/appointments/${appointmentId}/status`,
+        method: 'PUT',
+        data: { status }
+      });
+      
+      if (response.success) {
+        toast({
+          title: "Status berhasil diperbarui",
+          description: `Status appointment berhasil diubah menjadi ${status}`,
+          variant: "default",
+        });
+        
+        // Reload data setelah update status
+        if (slotId) {
+          loadSlotData(slotId);
+        }
+        
+        // Invalidate queries
+        queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      } else {
+        toast({
+          title: "Gagal memperbarui status",
+          description: response.message || "Terjadi kesalahan saat memperbarui status",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating appointment status:', error);
+      toast({
+        title: "Gagal memperbarui status",
+        description: "Terjadi kesalahan saat menghubungi server",
+        variant: "destructive",
+      });
+    }
   }
   
   return (
@@ -278,6 +325,56 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                               <ShoppingCart className="mr-2 h-4 w-4" />
                               <span>Lihat Transaksi</span>
                             </DropdownMenuItem>
+                            
+                            {patient.appointmentId && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>
+                                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                                    <span>Ubah Status</span>
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    <DropdownMenuItem
+                                      onClick={() => updateAppointmentStatus(patient.appointmentId!, 'Scheduled')}
+                                    >
+                                      <CalendarRange className="mr-2 h-4 w-4" />
+                                      <span>Scheduled</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => updateAppointmentStatus(patient.appointmentId!, 'Confirmed')}
+                                    >
+                                      <CheckCircle className="mr-2 h-4 w-4" />
+                                      <span>Confirmed</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => updateAppointmentStatus(patient.appointmentId!, 'Active')}
+                                    >
+                                      <Activity className="mr-2 h-4 w-4" />
+                                      <span>Active</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => updateAppointmentStatus(patient.appointmentId!, 'Completed')}
+                                    >
+                                      <CheckSquare className="mr-2 h-4 w-4" />
+                                      <span>Completed</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => updateAppointmentStatus(patient.appointmentId!, 'Cancelled')}
+                                    >
+                                      <XCircle className="mr-2 h-4 w-4" />
+                                      <span>Cancelled</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => updateAppointmentStatus(patient.appointmentId!, 'NoShow')}
+                                    >
+                                      <UserX className="mr-2 h-4 w-4" />
+                                      <span>No Show</span>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
