@@ -420,7 +420,132 @@ export function setupTherapySlotsRoutes(app: Express) {
     return data;
   };
   
-  // Mendapatkan semua pasien dalam slot terapi (Ultra-Optimized dengan cache super agresif)
+  // SPLIT ENDPOINT: Hanya mendapatkan data dasar slot terapi tanpa pasien (Ultra-Fast)
+  app.get("/api/therapy-slots/:id/basic", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const startTime = Date.now();
+      const slotId = parseInt(req.params.id);
+      const cacheBuster = req.query._cb || req.query._t;
+      
+      // Cache key
+      const cacheKey = `therapy_slot_basic_${slotId}_${cacheBuster || Date.now()}`;
+      
+      console.log(`🚀 Request untuk basic slot ${slotId} info`);
+      
+      // Eksekusi query dengan cache yang super agresif (5 menit)
+      const result = await getFromCacheOrFetch(
+        cacheKey,
+        async () => {
+          console.log(`🔍 Mengambil data dasar therapy slot ID: ${slotId}`);
+          
+          // Hanya fetch data slot dasar
+          const therapySlot = await storage.getTherapySlot(slotId);
+          
+          if (!therapySlot) {
+            throw new Error("Slot terapi tidak ditemukan");
+          }
+          
+          // Mapping ke data yang lebih ringan
+          return {
+            id: therapySlot.id,
+            date: therapySlot.date,
+            timeSlot: therapySlot.timeSlot,
+            maxQuota: therapySlot.maxQuota,
+            currentCount: therapySlot.currentCount,
+            isActive: therapySlot.isActive,
+            status: therapySlot.status,
+            cached: true,
+            timestamp: new Date().toISOString()
+          };
+        },
+        300000 // Cache selama 5 menit
+      );
+      
+      // Log waktu respons
+      const totalTime = Date.now() - startTime;
+      console.log(`✅ Basic slot data response time: ${totalTime}ms`);
+      
+      // HTTP caching headers yang agresif
+      res.set('Cache-Control', 'private, max-age=300');
+      
+      return res.status(200).json({
+        success: true,
+        responseTime: totalTime,
+        ...result
+      });
+    } catch (error) {
+      console.error(`❌ Error getting basic data for therapy slot ${req.params.id}:`, error);
+      return res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Terjadi kesalahan saat mengambil data dasar slot terapi",
+        errorType: error instanceof Error ? error.name : "Unknown",
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // SPLIT ENDPOINT: Mendapatkan statistik pasien (counts only, Ultra-Fast)
+  app.get("/api/therapy-slots/:id/stats", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const startTime = Date.now();
+      const slotId = parseInt(req.params.id);
+      const cacheBuster = req.query._cb || req.query._t;
+      
+      // Cache key
+      const cacheKey = `therapy_slot_stats_${slotId}_${cacheBuster || Date.now()}`;
+      
+      console.log(`📊 Request untuk slot ${slotId} patient stats`);
+      
+      // Eksekusi query dengan cache yang super agresif
+      const result = await getFromCacheOrFetch(
+        cacheKey,
+        async () => {
+          console.log(`🔢 Menghitung pasien untuk slot ID: ${slotId}`);
+          
+          // 1. Hanya dapatkan ID dan status untuk kalkulasi cepat
+          const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+          
+          // 2. Hitung status count tanpa data lain
+          const statusCounts = appointments.reduce((acc, a) => {
+            acc[a.status] = (acc[a.status] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+          
+          console.log(`⏱️ Penghitungan selesai dalam ${Date.now() - startTime}ms, ${appointments.length} appointments`);
+          
+          return {
+            appointmentCount: appointments.length,
+            statusCounts,
+            cached: true,
+            timestamp: new Date().toISOString()
+          };
+        },
+        300000 // Cache selama 5 menit
+      );
+      
+      // Log waktu respons total
+      const totalTime = Date.now() - startTime;
+      console.log(`✅ Slot stats response time: ${totalTime}ms`);
+      
+      // HTTP caching headers yang agresif
+      res.set('Cache-Control', 'private, max-age=300');
+      
+      return res.status(200).json({
+        success: true,
+        responseTime: totalTime,
+        ...result
+      });
+    } catch (error) {
+      console.error(`❌ Error getting stats for therapy slot ${req.params.id}:`, error);
+      return res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Terjadi kesalahan saat mengambil statistik pasien",
+        errorType: error instanceof Error ? error.name : "Unknown"
+      });
+    }
+  });
+
+  // ORIGINAL ENDPOINT: Mendapatkan semua pasien dalam slot terapi (dengan fallback prioritas)
   app.get("/api/therapy-slots/:id/patients", requireAuth, async (req: Request, res: Response) => {
     try {
       const startTime = Date.now();
@@ -439,6 +564,65 @@ export function setupTherapySlotsRoutes(app: Express) {
         console.log(`⚠️ TIMEOUT WARNING: Request /api/therapy-slots/${slotId}/patients berjalan > 5 detik`);
       }, 5000);
       
+      // FALLBACK PRIORITAS: Jika mode minimal, pertama coba dapatkan data dasar dan stats secara paralel
+      if (minimal) {
+        try {
+          const [basicData, statsData] = await Promise.all([
+            getFromCacheOrFetch(`therapy_slot_basic_${slotId}`, 
+              async () => {
+                const therapySlot = await storage.getTherapySlot(slotId);
+                if (!therapySlot) throw new Error("Slot terapi tidak ditemukan");
+                return {
+                  id: therapySlot.id,
+                  date: therapySlot.date,
+                  timeSlot: therapySlot.timeSlot,
+                  maxQuota: therapySlot.maxQuota,
+                  currentCount: therapySlot.currentCount,
+                  isActive: therapySlot.isActive
+                };
+              }, 
+              300000
+            ),
+            getFromCacheOrFetch(`therapy_slot_stats_${slotId}`,
+              async () => {
+                const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+                const statusCounts = appointments.reduce((acc, a) => {
+                  acc[a.status] = (acc[a.status] || 0) + 1;
+                  return acc;
+                }, {} as Record<string, number>);
+                return {
+                  appointmentCount: appointments.length,
+                  statusCounts
+                };
+              },
+              300000
+            )
+          ]);
+          
+          // Jika kedua data berhasil didapatkan, langsung kembalikan hasil gabungan
+          clearTimeout(timeout);
+          const totalTime = Date.now() - startTime;
+          console.log(`🔥 FAST PATH: Slot data dari cache terpisah dalam ${totalTime}ms`);
+          
+          // Return gabungan data dengan HTTP caching headers yang agresif
+          res.set('Cache-Control', 'private, max-age=60');
+          
+          return res.status(200).json({
+            success: true,
+            responseTime: totalTime,
+            mode: 'minimal',
+            slot: basicData,
+            ...statsData,
+            cached: true,
+            timestamp: new Date().toISOString()
+          });
+        } catch (error) {
+          // Jika gagal mendapatkan data dari cache terpisah, lanjut ke cara normal
+          console.log(`⚠️ Fallback gagal, melanjutkan ke query normal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+      
+      // Jika fallback gagal atau mode full, gunakan query normal
       // Eksekusi query dengan cache yang lebih agresif
       const result = await getFromCacheOrFetch(
         cacheKey,

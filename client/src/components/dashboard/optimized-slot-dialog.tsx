@@ -265,9 +265,21 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
   // Ref untuk menyimpan timeout ID (lebih aman daripada window global)
   const fetchTimeoutRef = useRef<number | undefined>();
   
-  // Main fetch function with super-optimized approach and progressive loading
+  // Ref untuk menyimpan data yang di-fetch secara bertahap
+  const progressiveDataRef = useRef<{
+    basic?: any;
+    stats?: any;
+    fullData?: any;
+  }>({});
+  
+  // Main fetch function with ultra-optimized approach and progressive loading
   const fetchSlotAndPatients = async (forceRefresh = false) => {
     console.log(`📊 Memulai fetch untuk slot ID ${slotId} ${forceRefresh ? "(Force Refresh)" : ""}`);
+    
+    // Reset data progresif jika force refresh
+    if (forceRefresh) {
+      progressiveDataRef.current = {};
+    }
     
     // Tambahkan deteksi kesehatan jaringan
     if (!navigator.onLine) {
@@ -304,7 +316,28 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
       if (fetchInProgressRef.current) {
         fetchInProgressRef.current = false;
         setIsLoading(false);
-        setError(new Error("Server membutuhkan waktu terlalu lama untuk merespon. Silakan coba lagi."));
+        
+        // Jika kita sudah memiliki data dasar dari API, tampilkan itu daripada error
+        if (progressiveDataRef.current.basic && progressiveDataRef.current.stats) {
+          // Setidaknya kita memiliki informasi dasar
+          const combinedData = {
+            slot: progressiveDataRef.current.basic,
+            ...progressiveDataRef.current.stats,
+            cached: true,
+            mode: 'partial'
+          };
+          
+          setSlotData(combinedData);
+          setIsLoading(false);
+          toast({
+            title: "Informasi Pasien Terbatas",
+            description: "Hanya data terbatas yang berhasil dimuat. Beberapa pasien mungkin tidak tampil.",
+            duration: 5000
+          });
+        } else {
+          // Benar-benar tidak ada data
+          setError(new Error("Server membutuhkan waktu terlalu lama untuk merespon. Silakan coba lagi."));
+        }
       }
     }, 30000);
     
