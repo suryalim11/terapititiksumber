@@ -4,27 +4,14 @@
  */
 import express, { Router, Request, Response } from 'express';
 import { storage } from './storage';
+// Import middleware raw JSON untuk memastikan header Content-Type benar
+import { useRawJson } from './use-raw-json';
 
 // Buat router Express khusus
 const jsonRouter = Router();
 
-// Middleware yang memastikan Content-Type selalu application/json
-jsonRouter.use((req, res, next) => {
-  const originalJson = res.json;
-  res.json = function(body) {
-    // Set headers yang kuat untuk memastikan browser memperlakukan respons sebagai JSON
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    return originalJson.call(this, body);
-  };
-  
-  // Pastikan header dipertahankan
-  res.once('finish', () => {
-    // Tidak perlu tambahan di sini karena headers sudah diatur
-  });
-  
-  next();
-});
+// Terapkan middleware raw JSON untuk memastikan Content-Type benar
+jsonRouter.use(useRawJson);
 
 // Endpoint untuk info dasar slot terapi
 jsonRouter.get('/slot/:id/basic', async (req: Request, res: Response) => {
