@@ -455,9 +455,9 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
       
       // Log debugging dinonaktifkan
       try {
-        // 1. Tetap ambil data slot untuk informasi slot
+        // 1. Gunakan endpoint baru yang lebih sederhana
         const slotResponse = await fetchWithTimeout(
-          `/api/therapy-slots/${slotId}/patients?_t=${cacheBuster}`, 
+          `/api/simple-slot/${slotId}/patients?_t=${cacheBuster}`, 
           {
             headers: {
               'Accept': 'application/json',
