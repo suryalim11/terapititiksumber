@@ -5,8 +5,8 @@ import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { storage } from "./storage";
-// Import JSON middleware kustom
-const { ensureJsonResponse } = require('./json-middleware');
+// Import router JSON khusus
+import jsonRouter from "./json-router";
 // Import modul routes yang dibutuhkan
 import { setupRoutes } from "./routes/index";
 
@@ -152,127 +152,9 @@ const setupSession = () => {
     }, () => {
       log(`Server berjalan di port ${port}`);
       
-      // Buat middleware khusus untuk memastikan header Content-Type diatur dengan benar
-      app.use('/api/direct', (req, res, next) => {
-        // Override metode JSON untuk memastikan header yang benar
-        const originalJSON = res.json;
-        res.json = function(body) {
-          res.setHeader('Content-Type', 'application/json');
-          return originalJSON.call(this, body);
-        };
-        
-        // Perkuat header lagi sebelum respons dikirim
-        res.once('finish', () => {
-          if (!res.headersSent) {
-            res.setHeader('Content-Type', 'application/json');
-          }
-        });
-        
-        next();
-      });
-      
-      // Definisikan handler khusus untuk slot
-      app.get('/api/direct/simple-slot/:id/basic', async (req, res) => {
-        try {
-          const slotId = parseInt(req.params.id);
-          if (isNaN(slotId)) {
-            return res.status(400).json({ error: 'ID slot terapi tidak valid' });
-          }
-          
-          console.log(`🔍 Direct endpoint mengambil data dasar slot ${slotId}`);
-          const therapySlot = await storage.getTherapySlot(slotId);
-          
-          if (!therapySlot) {
-            return res.status(404).json({ error: 'Slot terapi tidak ditemukan' });
-          }
-          
-          // Pastikan header Content-Type diatur dengan benar
-          res.setHeader('Content-Type', 'application/json');
-          
-          // Kembalikan hanya properti dasar
-          return res.json({
-            id: therapySlot.id,
-            date: therapySlot.date,
-            timeSlot: therapySlot.timeSlot,
-            maxQuota: therapySlot.maxQuota,
-            currentCount: therapySlot.currentCount,
-            isActive: therapySlot.isActive
-          });
-        } catch (error) {
-          console.error('Error mendapatkan info dasar slot terapi:', error);
-          return res.status(500).json({ error: 'Gagal mengambil informasi slot terapi' });
-        }
-      });
-      
-      // Definisikan endpoint untuk appointments
-      app.get('/api/direct/simple-slot/:id/appointments', async (req, res) => {
-        try {
-          const slotId = parseInt(req.params.id);
-          if (isNaN(slotId)) {
-            return res.status(400).json({ error: 'ID slot terapi tidak valid' });
-          }
-          
-          console.log(`📅 Direct endpoint mengambil appointments untuk slot ${slotId}`);
-          const appointments = await storage.getAppointmentsByTherapySlot(slotId);
-          
-          // Pastikan header Content-Type diatur dengan benar
-          res.setHeader('Content-Type', 'application/json');
-          
-          // Hanya kembalikan info penting saja
-          const simplifiedAppointments = appointments.map(appointment => ({
-            id: appointment.id,
-            patientId: appointment.patientId,
-            status: appointment.status,
-            date: appointment.date,
-            timeSlot: appointment.timeSlot
-          }));
-          
-          return res.json(simplifiedAppointments);
-        } catch (error) {
-          console.error('Error mendapatkan appointment slot terapi:', error);
-          return res.status(500).json({ error: 'Gagal mengambil data appointment' });
-        }
-      });
-      
-      // Definisikan endpoint untuk patients
-      app.get('/api/direct/simple-slot/:id/patients', async (req, res) => {
-        try {
-          const slotId = parseInt(req.params.id);
-          if (isNaN(slotId)) {
-            return res.status(400).json({ error: 'ID slot terapi tidak valid' });
-          }
-          
-          console.log(`👥 Direct endpoint mengambil data pasien untuk slot ${slotId}`);
-          const appointments = await storage.getAppointmentsByTherapySlot(slotId);
-          
-          // Lakukan fetch untuk semua pasien
-          const patients = [];
-          for (const appointment of appointments) {
-            if (appointment.patientId) {
-              const patient = await storage.getPatient(appointment.patientId);
-              if (patient) {
-                // Tambahkan status appointment ke data pasien
-                const patientWithStatus = {
-                  ...patient,
-                  appointmentStatus: appointment.status,
-                  appointmentId: appointment.id,
-                  walkin: appointment.status === 'Active',
-                };
-                patients.push(patientWithStatus);
-              }
-            }
-          }
-          
-          // Pastikan header Content-Type diatur dengan benar
-          res.setHeader('Content-Type', 'application/json');
-          return res.json(patients);
-        } catch (error) {
-          console.error('Error mendapatkan data pasien slot terapi:', error);
-          return res.status(500).json({ error: 'Gagal mengambil data pasien' });
-        }
-      });
-      
-      log('Direct JSON handler terdaftar di /api/direct/*');
+      // Daftarkan router JSON khusus ke path /api/json
+      app.use('/api/json', jsonRouter);
+      log('JSON Router terdaftar di /api/json/*');
     });
   } catch (error) {
     console.error("ERROR saat menginisialisasi server:", error);
