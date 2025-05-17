@@ -181,8 +181,8 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
   // Handler untuk daftarkan pasien baru ke slot
   function handleRegisterNewPatient() {
     if (!slotId) return;
-    // Menggunakan route /register yang sudah ada dengan parameter therapySlotId
-    navigate(`/register?therapySlotId=${slotId}&walkin=true`);
+    // Menggunakan route /register yang sudah ada dengan parameter slotId
+    navigate(`/register?slotId=${slotId}&walkin=true`);
   }
   
   // Fungsi untuk mengubah status appointment
