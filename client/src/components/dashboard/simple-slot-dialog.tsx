@@ -113,26 +113,11 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       const patientsData = await patientsResponse.json();
       console.log(`[DEBUG] Data pasien slot terapi diterima:`, patientsData);
       
-      // Memproses data pasien dengan mempertahankan status yang diperbarui secara lokal
-      const processedPatients = patientsData.map(patient => {
-        const appointmentId = patient.appointmentId;
-        if (appointmentId) {
-          // Cek apakah status sudah diupdate secara lokal sebelumnya
-          const cachedStatus = localStorage.getItem(`appointment_status_${appointmentId}`);
-          
-          if (cachedStatus && cachedStatus !== patient.appointmentStatus) {
-            console.log(`[DEBUG] Menggunakan status dari cache untuk appointment ${appointmentId}: ${cachedStatus} (server: ${patient.appointmentStatus})`);
-            return {
-              ...patient,
-              appointmentStatus: cachedStatus
-            };
-          }
-        }
-        return patient;
-      });
+      // Gunakan data langsung dari database untuk menghindari masalah cache
+      console.log(`[DEBUG] Menggunakan data pasien langsung dari database (${patientsData.length} pasien)`);
       
-      console.log(`[DEBUG] Data pasien setelah diproses:`, processedPatients);
-      setPatients(processedPatients);
+      // Hapus referensi ke localStorage untuk menghindari data yang tidak konsisten
+      setPatients(patientsData);
       
     } catch (err) {
       console.error("[DEBUG] Error loading slot data:", err);
