@@ -91,12 +91,17 @@ export async function getSlotPatients(req: Request, res: Response) {
     
     // Ambil appointment untuk slot terapi ini
     const appointments = await storage.getAppointmentsByTherapySlot(slotId);
+    console.log(`Ditemukan ${appointments.length} appointment untuk slot ${slotId}`);
     
     // Lakukan fetch parallel untuk semua pasien
     const patients = [];
     for (const appointment of appointments) {
       if (appointment.patientId) {
         const patient = await storage.getPatient(appointment.patientId);
+        
+        // Logging untuk debug
+        console.log(`Appointment ID: ${appointment.id}, Patient ID: ${appointment.patientId}, Ditemukan: ${patient ? 'Ya' : 'Tidak'}`);
+        
         if (patient) {
           // Tambahkan status appointment ke data pasien
           const patientWithStatus = {
@@ -105,7 +110,11 @@ export async function getSlotPatients(req: Request, res: Response) {
             appointmentId: appointment.id,
             walkin: appointment.walkin || false, // Gunakan flag walkin dari data appointment
           };
+          
+          console.log(`Data pasien yang dikirim: ${patient.name} (ID: ${patient.id}), Status: ${appointment.status}`);
           patients.push(patientWithStatus);
+        } else {
+          console.log(`⚠️ PERINGATAN: Pasien dengan ID ${appointment.patientId} tidak ditemukan di database!`);
         }
       }
     }
