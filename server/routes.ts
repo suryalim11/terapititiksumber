@@ -4643,6 +4643,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/simple-slot/:id/basic", requireAuth, getBasicSlotInfo);
   app.get("/api/simple-slot/:id/appointments", requireAuth, getSlotAppointments);
   app.get("/api/simple-slot/:id/patients", requireAuth, getSlotPatients);
+  
+  // Setup WebSocket server untuk real-time updates
+  const WebSocket = require('ws');
+  const { WebSocketServer } = WebSocket;
+  
+  // Menambahkan WebSocket server ke server HTTP yang sudah ada
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws'  // Path berbeda dengan HMR Vite
+  });
+  
+  // Menyimpan koneksi aktif berdasarkan ID slot
+  const slotSubscriptions = new Map();
+  
+  wss.on('connection', (ws) => {
+    console.log('WebSocket client connected');
+    let connectedSlotId = null;
+    
+    ws.on('message', async (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        
+        // Handle subscribe ke slot tertentu
+        if (data.type === 'subscribe' && data.slotId) {
+          connectedSlotId = data.slotId;
+          console.log(`WebSocket client subscribed to slot: ${connectedSlotId}`);
+          
+          // Track subscribers untuk slot ini
+          if (!slotSubscriptions.has(connectedSlotId)) {
+            slotSubscriptions.set(connectedSlotId, new Set());
+          }
+          slotSubscriptions.get(connectedSlotId).add(ws);
+          
+          // Kirim data dasar slot terlebih dahulu
+          try {
+            const basicData = await storage.getTherapySlot(parseInt(connectedSlotId));
+            if (basicData && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'basic_data',
+                data: {
+                  id: basicData.id,
+                  date: basicData.date,
+                  timeSlot: basicData.timeSlot,
+                  maxQuota: basicData.maxQuota,
+                  currentCount: basicData.currentCount,
+                  isActive: basicData.isActive
+                }
+              }));
+            }
+            
+            // Lalu kirim data appointment
+            const appointments = await storage.getAppointmentsByTherapySlot(parseInt(connectedSlotId));
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'appointments',
+                data: appointments.map(app => ({
+                  id: app.id,
+                  patientId: app.patientId,
+                  status: app.status,
+                  date: app.date,
+                  timeSlot: app.timeSlot
+                }))
+              }));
+            }
+            
+            // Terakhir ambil dan kirim data pasien (paling berat)
+            if (ws.readyState === WebSocket.OPEN) {
+              const patients = [];
+              for (const appointment of appointments) {
+                if (appointment.patientId) {
+                  const patient = await storage.getPatient(appointment.patientId);
+                  if (patient) {
+                    patients.push({
+                      ...patient,
+                      appointmentStatus: appointment.status,
+                      appointmentId: appointment.id
+                    });
+                  }
+                }
+              }
+              
+              ws.send(JSON.stringify({
+                type: 'patients',
+                data: patients
+              }));
+            }
+          } catch (error) {
+            console.error(`Error sending slot data via WebSocket: ${error.message}`);
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Error loading slot data'
+              }));
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing WebSocket message: ${error.message}`);
+      }
+    });
+    
+    // Hapus dari subscription saat koneksi ditutup
+    ws.on('close', () => {
+      console.log('WebSocket client disconnected');
+      if (connectedSlotId && slotSubscriptions.has(connectedSlotId)) {
+        slotSubscriptions.get(connectedSlotId).delete(ws);
+        if (slotSubscriptions.get(connectedSlotId).size === 0) {
+          slotSubscriptions.delete(connectedSlotId);
+        }
+      }
+    });
+  });
+  
+  // Fungsi untuk broadcast update ke subscribers slot
+  global.broadcastSlotUpdate = (slotId, data) => {
+    if (slotSubscriptions.has(slotId)) {
+      const subscribers = slotSubscriptions.get(slotId);
+      subscribers.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'update',
+            data
+          }));
+        }
+      });
+    }
+  };
 
   app.get("/api/therapy-slots/:id", async (req: Request, res: Response) => {
     try {
