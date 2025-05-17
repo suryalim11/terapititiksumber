@@ -87,40 +87,64 @@ export async function getSlotPatients(req: Request, res: Response) {
       return res.status(400).json({ error: 'ID slot terapi tidak valid' });
     }
     
-    console.log(`👥 Mengambil data pasien untuk slot ${slotId} (VERSI DIRECT QUERY)`);
+    // Tambahkan nocache parameter untuk memastikan browser tidak cache
+    const nocache = req.query.nocache;
+    console.log(`👥 Mengambil data pasien untuk slot ${slotId} (DIRECT SQL QUERY) - nocache: ${nocache}`);
     
     // Gunakan query langsung ke database untuk memastikan data yang akurat
     const { pool } = require('../../db');
     
-    const result = await pool.query(`
-      SELECT 
-        p.id, 
-        p.patient_id as "patientId", 
-        p.name, 
-        p.phone_number as "phone", 
-        p.email, 
-        p.gender, 
-        p.address, 
-        p.birth_date as "dateOfBirth",
-        a.status as "appointmentStatus",
-        a.id as "appointmentId",
-        a.walkin
-      FROM 
-        appointments a
-      JOIN 
-        patients p ON a.patient_id = p.id
-      WHERE 
-        a.therapy_slot_id = $1
-    `, [slotId]);
+    // Periksa appointment yang benar menggunakan query SQL
+    const appointmentSql = `
+      SELECT a.id, a.patient_id, a.therapy_slot_id, a.status, a.walkin
+      FROM appointments a
+      WHERE a.therapy_slot_id = $1
+    `;
+    const appointmentResult = await pool.query(appointmentSql, [slotId]);
+    const appointments = appointmentResult.rows;
     
-    const patients = result.rows;
-    console.log(`Ditemukan ${patients.length} pasien dari direct query untuk slot ${slotId}`);
-    
-    // Log data pasien untuk debugging
-    patients.forEach(patient => {
-      console.log(`📊 Data pasien: ${patient.name} (ID: ${patient.id}), AppointmentID: ${patient.appointmentId}, Status: ${patient.appointmentStatus}`);
+    console.log(`Ditemukan ${appointments.length} appointment untuk slot ${slotId}:`);
+    appointments.forEach(app => {
+      console.log(`- Appointment ID: ${app.id}, Patient ID: ${app.patient_id}, Status: ${app.status}, Walkin: ${app.walkin}`);
     });
     
+    // Ambil data pasien berdasarkan appointment yang ditemukan
+    const patients = [];
+    for (const app of appointments) {
+      // Ambil detail pasien
+      const patientSql = `
+        SELECT 
+          p.id, 
+          p.patient_id as "patientId", 
+          p.name, 
+          p.phone_number as "phone", 
+          p.email, 
+          p.gender, 
+          p.address, 
+          p.birth_date as "dateOfBirth"
+        FROM 
+          patients p 
+        WHERE 
+          p.id = $1
+      `;
+      const patientResult = await pool.query(patientSql, [app.patient_id]);
+      
+      if (patientResult.rows.length > 0) {
+        const patient = patientResult.rows[0];
+        // Tambahkan status appointment ke data pasien
+        const patientWithStatus = {
+          ...patient,
+          appointmentStatus: app.status,
+          appointmentId: app.id,
+          walkin: app.walkin || false
+        };
+        
+        console.log(`📊 Data pasien terverifikasi: ${patientWithStatus.name} (ID: ${patientWithStatus.id}), AppointmentID: ${patientWithStatus.appointmentId}, Status: ${patientWithStatus.appointmentStatus}`);
+        patients.push(patientWithStatus);
+      }
+    }
+    
+    console.log(`Mengirim data ${patients.length} pasien ke client, data telah diverifikasi dari database`);
     return res.json(patients);
   } catch (error) {
     console.error('Error mendapatkan data pasien slot terapi:', error);

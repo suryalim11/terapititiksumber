@@ -87,7 +87,8 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
-        }
+        },
+        credentials: 'include' // Pastikan cookies dikirim
       });
       
       if (!basicResponse.ok) {
@@ -98,12 +99,16 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       console.log(`[DEBUG] Data dasar slot terapi diterima:`, basicData);
       setSlotData(basicData);
       
-      // 2. Mengambil data pasien untuk slot terapi
-      const patientsResponse = await fetch(`/api/simple-slot/${slotId}/patients?_t=${timestamp}`, {
+      // 2. Mengambil data pasien untuk slot terapi dengan menghapus semua cache
+      // Tambahkan parameter acak untuk memastikan browser tidak menggunakan cache
+      const randomParam = Math.random().toString(36).substring(2, 15);
+      const patientsResponse = await fetch(`/api/simple-slot/${slotId}/patients?_t=${timestamp}&nocache=${randomParam}`, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        credentials: 'include' // Pastikan cookies dikirim
       });
       
       if (!patientsResponse.ok) {
@@ -111,12 +116,22 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       }
       
       const patientsData = await patientsResponse.json();
-      console.log(`[DEBUG] Data pasien slot terapi diterima:`, patientsData);
+      console.log(`[DEBUG] Data pasien slot terapi diterima dari direct SQL query:`, patientsData);
       
-      // Gunakan data langsung dari database untuk menghindari masalah cache
-      console.log(`[DEBUG] Menggunakan data pasien langsung dari database (${patientsData.length} pasien)`);
+      // Hapus semua cache pasien dari localStorage
+      try {
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('patient_') || key.includes('appointment_')) {
+            localStorage.removeItem(key);
+            console.log(`[DEBUG] Menghapus cache: ${key}`);
+          }
+        });
+      } catch (e) {
+        console.error(`[DEBUG] Error saat menghapus cache localStorage:`, e);
+      }
       
-      // Hapus referensi ke localStorage untuk menghindari data yang tidak konsisten
+      // Pastikan kita hanya menggunakan data dari database
+      console.log(`[DEBUG] Menggunakan data pasien langsung dari SQL query database (${patientsData.length} pasien)`);
       setPatients(patientsData);
       
     } catch (err) {
