@@ -4640,9 +4640,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // API endpoint teroptimasi untuk SimpleSlotDialog (loading progresif)
   const { getBasicSlotInfo, getSlotAppointments, getSlotPatients } = require('./routes/api/simple-slot');
-  app.get("/api/simple-slot/:id/basic", requireAuth, getBasicSlotInfo);
-  app.get("/api/simple-slot/:id/appointments", requireAuth, getSlotAppointments);
-  app.get("/api/simple-slot/:id/patients", requireAuth, getSlotPatients);
+  
+  // Pastikan middleware untuk menangani Content-Type
+  const ensureJsonResponse = (req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('Content-Type', 'application/json');
+    next();
+  };
+  
+  app.get("/api/simple-slot/:id/basic", requireAuth, ensureJsonResponse, getBasicSlotInfo);
+  app.get("/api/simple-slot/:id/appointments", requireAuth, ensureJsonResponse, getSlotAppointments);
+  app.get("/api/simple-slot/:id/patients", requireAuth, ensureJsonResponse, getSlotPatients);
   
   // Setup WebSocket server untuk real-time updates
   const WebSocket = require('ws');
@@ -4695,7 +4702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Lalu kirim data appointment
             const appointments = await storage.getAppointmentsByTherapySlot(parseInt(connectedSlotId));
-            if (ws.readyState === WebSocket.OPEN) {
+            if (appointments && ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({
                 type: 'appointments',
                 data: appointments.map(app => ({
