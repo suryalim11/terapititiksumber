@@ -4638,6 +4638,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // API endpoint teroptimasi untuk SimpleSlotDialog (loading progresif)
+  const { getBasicSlotInfo, getSlotAppointments, getSlotPatients } = require('./routes/api/simple-slot');
+  app.get("/api/simple-slot/:id/basic", requireAuth, getBasicSlotInfo);
+  app.get("/api/simple-slot/:id/appointments", requireAuth, getSlotAppointments);
+  app.get("/api/simple-slot/:id/patients", requireAuth, getSlotPatients);
+
   app.get("/api/therapy-slots/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
