@@ -380,7 +380,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                                       <span>Cancelled</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                      onClick={() => updateAppointmentStatus(patient.appointmentId!, 'NoShow')}
+                                      onClick={() => updateAppointmentStatus(patient.appointmentId!, 'No Show')}
                                     >
                                       <UserX className="mr-2 h-4 w-4" />
                                       <span>No Show</span>
