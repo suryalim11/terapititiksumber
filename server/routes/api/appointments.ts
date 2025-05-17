@@ -12,11 +12,25 @@ import crypto from "crypto";
  * Mendaftarkan rute-rute untuk appointment
  */
 export function setupAppointmentRoutes(app: Express) {
-  // Mendapatkan semua appointment
+  // Mendapatkan semua appointment dengan filter patientId jika disediakan
   app.get("/api/appointments", requireAuth, async (req: Request, res: Response) => {
     try {
-      const appointments = await storage.getAllAppointments();
-      res.json(appointments);
+      // Periksa apakah parameter patientId disediakan
+      if (req.query.patientId) {
+        const patientId = parseInt(req.query.patientId as string);
+        
+        if (isNaN(patientId)) {
+          return res.status(400).json({ error: "Format patientId tidak valid" });
+        }
+        
+        // Gunakan fungsi getAppointmentsByPatient jika patientId tersedia
+        const appointments = await storage.getAppointmentsByPatient(patientId);
+        return res.json(appointments);
+      } else {
+        // Jika tidak ada patientId, kembalikan semua appointment seperti sebelumnya
+        const appointments = await storage.getAllAppointments();
+        return res.json(appointments);
+      }
     } catch (error) {
       console.error("Error getting appointments:", error);
       res.status(500).json({ error: "Gagal mendapatkan daftar appointment" });
