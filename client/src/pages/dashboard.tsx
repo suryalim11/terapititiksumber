@@ -32,6 +32,7 @@ import {
   isSameDayInWIB,
   getStartOfDayWIB
 } from "@/lib/utils";
+import { clearPatientDataCache } from "@/lib/clear-cache";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
@@ -928,6 +929,16 @@ export default function Dashboard() {
               >
                 <RefreshCw className="h-4 w-4" />
                 <span className="sr-only">Refresh Packages</span>
+              </Button>
+
+              <Button 
+                variant="outline"
+                size="sm" 
+                className="text-xs whitespace-nowrap flex items-center gap-1"
+                onClick={() => clearPatientDataCache()}
+              >
+                <Database className="h-3.5 w-3.5" />
+                <span>Bersihkan Cache</span>
               </Button>
 
               <Button 
