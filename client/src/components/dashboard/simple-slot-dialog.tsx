@@ -422,7 +422,18 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleGoToPatient(patient.id)}>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                // Sebelum navigasi, tampilkan toast untuk memberi tahu user
+                                toast({
+                                  title: "Mengarahkan ke profil pasien",
+                                  description: `Melihat detail profil ${patient.name}`,
+                                  duration: 2000
+                                });
+                                // Gunakan window.location.href untuk navigasi yang lebih konsisten
+                                window.location.href = `/patients/${patient.id}`;
+                              }}
+                            >
                               <User className="mr-2 h-4 w-4" />
                               <span>Lihat Profil</span>
                             </DropdownMenuItem>
