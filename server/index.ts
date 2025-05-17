@@ -5,8 +5,8 @@ import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { storage } from "./storage";
-// Import router JSON sederhana
-import jsonRouter from "./simple-json-router";
+// Import endpoint JSON mentah
+import { setupRawJsonEndpoints } from "./raw-json-endpoint";
 // Import modul routes yang dibutuhkan
 import { setupRoutes } from "./routes/index";
 
@@ -152,9 +152,9 @@ const setupSession = () => {
     }, () => {
       log(`Server berjalan di port ${port}`);
       
-      // Daftarkan router JSON khusus ke path /api/json
-      app.use('/api/json', jsonRouter);
-      log('JSON Router terdaftar di /api/json/*');
+      // Daftarkan endpoint JSON mentah
+      setupRawJsonEndpoints(app);
+      log('Raw JSON endpoints terdaftar di /api/raw/*');
     });
   } catch (error) {
     console.error("ERROR saat menginisialisasi server:", error);
