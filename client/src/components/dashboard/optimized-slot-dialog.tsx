@@ -409,7 +409,10 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     }
     
       // Execute the progressive loading function
-      await fetchSlotProgressively(slotId, fetchWithTimeout, setProgressValue)
+      await fetchSlotProgressively(slotId, fetchWithTimeout, (progressData) => {
+        // Callback untuk update progress - tidak digunakan di sini
+        console.log(`Progress update: ${progressData.stage}`);
+      })
         .then(fullData => {
           // Sukses mendapatkan data lengkap
           console.log(`✅ Progressive loading selesai untuk slot ${slotId}`);
