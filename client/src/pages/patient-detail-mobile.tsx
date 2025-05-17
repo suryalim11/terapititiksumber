@@ -703,14 +703,14 @@ export default function PatientDetail() {
                 <div className="flex justify-center p-6">
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
-              ) : !activeSessions || activeSessions.length === 0 ? (
+              ) : !activeSessions || !Array.isArray(activeSessions) || activeSessions.length === 0 ? (
                 <div className="text-center py-8 bg-muted/30 rounded-lg">
                   <AlertTriangle className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                   <p>Belum ada paket aktif</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {activeSessions.map((session: Session) => {
+                  {Array.isArray(activeSessions) && activeSessions.map((session: Session) => {
                     const remaining = session.totalSessions - session.sessionsUsed;
                     const remainingPercentage = Math.round((remaining / session.totalSessions) * 100);
                     
@@ -793,14 +793,14 @@ export default function PatientDetail() {
                 <div className="flex justify-center p-6">
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
-              ) : !transactions || transactions.length === 0 ? (
+              ) : !transactions || !Array.isArray(transactions) || transactions.length === 0 ? (
                 <div className="text-center py-8 bg-muted/30 rounded-lg">
                   <AlertTriangle className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                   <p>Belum ada transaksi</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {transactions.map((transaction: Transaction) => (
+                  {Array.isArray(transactions) && transactions.map((transaction: Transaction) => (
                     <div 
                       key={transaction.id} 
                       className="border rounded-lg p-3 shadow-sm"
