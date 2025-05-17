@@ -13,8 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { CreateBatchDialog } from "@/components/therapy-slots/create-batch-dialog";
-import { SimplifiedSlotDialog } from "@/components/dashboard/simplified-slot-dialog";
-import { OptimizedSlotDialog } from "@/components/dashboard/optimized-slot-dialog";
+// Hapus import yang tidak digunakan
+import { SimpleSlotDialog } from "@/components/dashboard/simple-slot-dialog";
 import {
   Card,
   CardContent,
@@ -2429,8 +2429,8 @@ export default function TherapySlots() {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Dialog optimized untuk melihat detail slot dan pasien */}
-      <OptimizedSlotDialog 
+      {/* Dialog sederhana untuk melihat detail slot dan pasien */}
+      <SimpleSlotDialog 
         slotId={selectedSlot?.id || null}
         isOpen={optimizedDialogOpen}
         onClose={() => {

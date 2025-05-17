@@ -35,7 +35,8 @@ import {
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { SlotPatientsDialog } from "@/components/dashboard/slot-patients-dialog";
-import { OptimizedSlotDialog } from "@/components/dashboard/optimized-slot-dialog";
+// Import komponen dialog yang lebih sederhana
+import { SimpleSlotDialog } from "@/components/dashboard/simple-slot-dialog";
 import { SessionEditorDialog } from "@/components/dashboard/session-editor-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -1056,8 +1057,8 @@ export default function Dashboard() {
         onClose={handleCloseDialog} 
       />
       
-      {/* Dialog teroptimasi untuk kinerja yang lebih baik */}
-      <OptimizedSlotDialog
+      {/* Dialog yang lebih sederhana dan efisien */}
+      <SimpleSlotDialog
         slotId={selectedSlotId}
         isOpen={isOptimizedDialogOpen}
         onClose={handleCloseOptimizedDialog}
