@@ -240,11 +240,12 @@ export default function PatientDetail() {
     enabled: !!patientId,
   });
 
-  // Fetch appointments
+  // Fetch appointments - hanya untuk pasien ini, tanpa includeRelated
   const { data: appointments, isLoading: isLoadingAppointments, refetch: refetchAppointments } = useQuery({
-    queryKey: [`/api/appointments?patientId=${patientId}&includeRelated=true`],
+    queryKey: [`/api/appointments?patientId=${patientId}`],
     queryFn: async () => {
-      return await apiRequest(`/api/appointments?patientId=${patientId}&includeRelated=true`) as Appointment[];
+      // Hapus includeRelated untuk memastikan hanya mendapatkan janji temu pasien ini
+      return await apiRequest(`/api/appointments?patientId=${patientId}`) as Appointment[];
     },
     enabled: !!patientId,
   });
