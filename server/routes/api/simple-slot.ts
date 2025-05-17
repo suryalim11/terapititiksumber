@@ -87,37 +87,39 @@ export async function getSlotPatients(req: Request, res: Response) {
       return res.status(400).json({ error: 'ID slot terapi tidak valid' });
     }
     
-    console.log(`👥 Mengambil data pasien untuk slot ${slotId}`);
+    console.log(`👥 Mengambil data pasien untuk slot ${slotId} (VERSI DIRECT QUERY)`);
     
-    // Ambil appointment untuk slot terapi ini
-    const appointments = await storage.getAppointmentsByTherapySlot(slotId);
-    console.log(`Ditemukan ${appointments.length} appointment untuk slot ${slotId}`);
+    // Gunakan query langsung ke database untuk memastikan data yang akurat
+    const { pool } = require('../../db');
     
-    // Lakukan fetch parallel untuk semua pasien
-    const patients = [];
-    for (const appointment of appointments) {
-      if (appointment.patientId) {
-        const patient = await storage.getPatient(appointment.patientId);
-        
-        // Logging untuk debug
-        console.log(`Appointment ID: ${appointment.id}, Patient ID: ${appointment.patientId}, Ditemukan: ${patient ? 'Ya' : 'Tidak'}`);
-        
-        if (patient) {
-          // Tambahkan status appointment ke data pasien
-          const patientWithStatus = {
-            ...patient,
-            appointmentStatus: appointment.status,
-            appointmentId: appointment.id,
-            walkin: appointment.walkin || false, // Gunakan flag walkin dari data appointment
-          };
-          
-          console.log(`Data pasien yang dikirim: ${patient.name} (ID: ${patient.id}), Status: ${appointment.status}`);
-          patients.push(patientWithStatus);
-        } else {
-          console.log(`⚠️ PERINGATAN: Pasien dengan ID ${appointment.patientId} tidak ditemukan di database!`);
-        }
-      }
-    }
+    const result = await pool.query(`
+      SELECT 
+        p.id, 
+        p.patient_id as "patientId", 
+        p.name, 
+        p.phone_number as "phone", 
+        p.email, 
+        p.gender, 
+        p.address, 
+        p.birth_date as "dateOfBirth",
+        a.status as "appointmentStatus",
+        a.id as "appointmentId",
+        a.walkin
+      FROM 
+        appointments a
+      JOIN 
+        patients p ON a.patient_id = p.id
+      WHERE 
+        a.therapy_slot_id = $1
+    `, [slotId]);
+    
+    const patients = result.rows;
+    console.log(`Ditemukan ${patients.length} pasien dari direct query untuk slot ${slotId}`);
+    
+    // Log data pasien untuk debugging
+    patients.forEach(patient => {
+      console.log(`📊 Data pasien: ${patient.name} (ID: ${patient.id}), AppointmentID: ${patient.appointmentId}, Status: ${patient.appointmentStatus}`);
+    });
     
     return res.json(patients);
   } catch (error) {
