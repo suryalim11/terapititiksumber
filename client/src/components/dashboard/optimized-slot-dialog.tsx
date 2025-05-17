@@ -365,13 +365,13 @@ export function OptimizedSlotDialog({ slotId, isOpen, onClose }: OptimizedSlotDi
     
     // Coba mendapatkan data dengan endpoint cepat dulu
     try {
-      console.log(`🚀 Mencoba mendapatkan data dasar slot dengan cepat untuk ID: ${slotId}`);
+      console.log(`🚀 Menggunakan endpoint sederhana untuk slot ID: ${slotId}`);
       
-      // Gunakan endpoint fast yang lebih cepat
-      const fastEndpoint = `/api/therapy-slots/${slotId}/fast?_t=${cacheBuster}`;
+      // Gunakan endpoint simple-slot yang lebih cepat dan sederhana
+      const simpleEndpoint = `/api/simple-slot/${slotId}/basic?_t=${cacheBuster}`;
       
       const fastResponse = await fetchWithTimeout(
-        fastEndpoint,
+        simpleEndpoint,
         {
           headers: {
             'Accept': 'application/json',
