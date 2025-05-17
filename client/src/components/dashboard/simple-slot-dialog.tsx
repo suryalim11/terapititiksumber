@@ -379,12 +379,6 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                                       <XCircle className="mr-2 h-4 w-4" />
                                       <span>Cancelled</span>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => updateAppointmentStatus(patient.appointmentId!, 'No Show')}
-                                    >
-                                      <UserX className="mr-2 h-4 w-4" />
-                                      <span>No Show</span>
-                                    </DropdownMenuItem>
                                   </DropdownMenuSubContent>
                                 </DropdownMenuSub>
                               </>
