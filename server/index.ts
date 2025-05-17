@@ -5,8 +5,8 @@ import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { storage } from "./storage";
-// Import router JSON khusus
-import jsonRouter from "./json-router";
+// Import router JSON sederhana
+import jsonRouter from "./simple-json-router";
 // Import modul routes yang dibutuhkan
 import { setupRoutes } from "./routes/index";
 

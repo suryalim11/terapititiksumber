@@ -1,17 +1,24 @@
 /**
- * Router khusus untuk endpoint JSON
- * Menggunakan TypeScript dan pendekatan ESModule
+ * Router sederhana untuk endpoint JSON
+ * Dengan fokus pada header Content-Type yang benar
  */
 import express, { Router, Request, Response } from 'express';
 import { storage } from './storage';
-// Import middleware raw JSON untuk memastikan header Content-Type benar
-import { useRawJson } from './use-raw-json';
 
 // Buat router Express khusus
 const jsonRouter = Router();
 
-// Terapkan middleware raw JSON untuk memastikan Content-Type benar
-jsonRouter.use(useRawJson);
+// Middleware sederhana untuk memastikan Content-Type
+jsonRouter.use((req, res, next) => {
+  // Override metode json
+  const originalJson = res.json;
+  res.json = function(body) {
+    res.setHeader('Content-Type', 'application/json');
+    return originalJson.call(this, body);
+  };
+  
+  next();
+});
 
 // Endpoint untuk info dasar slot terapi
 jsonRouter.get('/slot/:id/basic', async (req: Request, res: Response) => {
@@ -38,7 +45,7 @@ jsonRouter.get('/slot/:id/basic', async (req: Request, res: Response) => {
       isActive: therapySlot.isActive
     };
     
-    // Override headers dan kirim respons
+    // Eksplisit set header dan kirim
     res.setHeader('Content-Type', 'application/json');
     return res.json(basicInfo);
   } catch (error) {
@@ -67,7 +74,7 @@ jsonRouter.get('/slot/:id/appointments', async (req: Request, res: Response) => 
       timeSlot: appointment.timeSlot
     }));
     
-    // Override headers dan kirim respons
+    // Eksplisit set header dan kirim
     res.setHeader('Content-Type', 'application/json');
     return res.json(simplifiedAppointments);
   } catch (error) {
@@ -105,7 +112,7 @@ jsonRouter.get('/slot/:id/patients', async (req: Request, res: Response) => {
       }
     }
     
-    // Override headers dan kirim respons
+    // Eksplisit set header dan kirim
     res.setHeader('Content-Type', 'application/json');
     return res.json(patients);
   } catch (error) {
