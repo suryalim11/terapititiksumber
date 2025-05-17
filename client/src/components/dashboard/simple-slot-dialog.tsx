@@ -180,9 +180,20 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
           variant: "default",
         });
         
-        // Reload data setelah update status
+        // Perbarui status pasien di UI juga
+        setPatients(prevPatients => 
+          prevPatients.map(patient => 
+            patient.appointmentId === appointmentId 
+              ? { ...patient, appointmentStatus: status }
+              : patient
+          )
+        );
+        
+        // Tetap reload data untuk memastikan konsistensi
         if (slotId) {
-          loadSlotData(slotId);
+          setTimeout(() => {
+            loadSlotData(slotId);
+          }, 500); // Delay sedikit untuk memastikan server sudah memproses perubahan
         }
         
         // Invalidate queries
