@@ -1,83 +1,73 @@
 /**
- * Komponen indikator loading progresif
- * Menampilkan status tahap loading dan persentase keseluruhan
+ * Komponen untuk menunjukkan status loading progresif
+ * Memberikan visual feedback yang lebih jelas tentang proses loading
  */
 
 import React from 'react';
+import { Loader2, CheckCircle, Clock } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { Loader2 } from 'lucide-react';
 
 interface ProgressiveLoadingIndicatorProps {
-  stage: 'idle' | 'loading' | 'basic' | 'full' | 'error';
+  stage: 'loading' | 'basic' | 'partial' | 'full';
   patientCount?: number;
   patientsLoaded?: number;
 }
 
-export function ProgressiveLoadingIndicator({
-  stage,
-  patientCount = 0,
-  patientsLoaded = 0
+export function ProgressiveLoadingIndicator({ 
+  stage, 
+  patientCount = 0, 
+  patientsLoaded = 0 
 }: ProgressiveLoadingIndicatorProps) {
-  // Hitung persentase kemajuan berdasarkan tahap
-  let progress = 0;
-  let statusText = '';
-  
+  // Hitung persentase selesai berdasarkan tahap loading
+  let progressPercentage = 0;
+  let loadingMessage = '';
+
   switch (stage) {
-    case 'idle':
-      progress = 0;
-      statusText = 'Siap memuat data';
-      break;
     case 'loading':
-      progress = 10;
-      statusText = 'Memulai pengambilan data...';
+      progressPercentage = 10;
+      loadingMessage = 'Memuat info dasar...';
       break;
     case 'basic':
-      progress = 50;
-      statusText = 'Memuat data pasien...';
+      progressPercentage = 40;
+      loadingMessage = 'Memuat data appointment...';
+      break;
+    case 'partial':
+      progressPercentage = 70;
+      loadingMessage = 'Memuat data pasien...';
       break;
     case 'full':
-      progress = 100;
-      statusText = 'Data lengkap dimuat';
-      break;
-    case 'error':
-      progress = 100;
-      statusText = 'Terjadi kesalahan';
+      progressPercentage = 100;
+      loadingMessage = 'Selesai memuat data';
       break;
   }
-  
-  // Kalkulasi persentase pasien yang dimuat (jika tersedia)
-  if (stage === 'basic' && patientCount > 0) {
-    statusText = `Memuat ${patientsLoaded} dari ${patientCount} pasien...`;
-  }
-  
-  // Tampilkan indikator berbeda untuk error
-  if (stage === 'error') {
-    return (
-      <div className="flex flex-col items-center space-y-2 py-2 text-destructive">
-        <span>❗ {statusText}</span>
-        <Progress value={100} className="w-full h-2 bg-red-100" />
-      </div>
-    );
-  }
-  
-  // Loading selesai
+
+  // Jika sudah full, tampilkan sukses
   if (stage === 'full') {
     return (
-      <div className="flex flex-col items-center space-y-2 py-2 text-emerald-600">
-        <span>✓ {statusText}</span>
-        <Progress value={100} className="w-full h-2 bg-emerald-100" />
+      <div className="flex items-center gap-2 text-green-600 text-xs">
+        <CheckCircle className="h-3 w-3" />
+        <span>Data lengkap dimuat</span>
       </div>
     );
   }
-  
-  // Loading normal
+
+  // Jika ada info pasien, tunjukkan juga info tersebut
+  let patientInfo = '';
+  if (stage === 'partial' && patientCount > 0) {
+    patientInfo = ` (${patientsLoaded}/${patientCount} pasien)`;
+  }
+
   return (
-    <div className="flex flex-col items-center space-y-2 py-2">
-      <div className="flex items-center space-x-2">
-        {stage !== 'idle' && <Loader2 className="h-4 w-4 animate-spin" />}
-        <span>{statusText}</span>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        {stage === 'loading' ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Clock className="h-3 w-3" />
+        )}
+        <span>{loadingMessage}{patientInfo}</span>
       </div>
-      <Progress value={progress} className="w-full h-2" />
+      <Progress value={progressPercentage} className="h-1" />
     </div>
   );
 }

@@ -77,7 +77,7 @@ function SimpleSlotDialogContent({ onClose }: { onClose: () => void }) {
   const [activeTab, setActiveTab] = useState('patients');
   
   // Data slot tidak ada
-  if (!slotData?.slot && !isLoading && dataStage !== 'loading') {
+  if (!slotData && !isLoading && dataStage !== 'loading') {
     return (
       <>
         <DialogHeader>
@@ -121,10 +121,10 @@ function SimpleSlotDialogContent({ onClose }: { onClose: () => void }) {
   }
   
   // Data slot dari provider
-  const slot = slotData?.slot;
+  const slot = slotData;
   
   // Tampilkan loading awal
-  if (isLoading && dataStage === 'loading' && !slot) {
+  if ((isLoading || dataStage === 'loading') && !slot) {
     return (
       <>
         <DialogHeader>
@@ -169,7 +169,7 @@ function SimpleSlotDialogContent({ onClose }: { onClose: () => void }) {
             <div className="mt-2">
               <ProgressiveLoadingIndicator 
                 stage={dataStage}
-                patientCount={slot?.patientCount || 0}
+                patientCount={appointments.length}
                 patientsLoaded={appointments.length}
               />
             </div>
@@ -276,12 +276,12 @@ function SimpleSlotDialogContent({ onClose }: { onClose: () => void }) {
                   <div className="text-sm">{slot?.currentCount || 0}</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-sm font-medium">Kode Slot</div>
-                  <div className="text-sm">{slot?.timeSlotKey || '-'}</div>
+                  <div className="text-sm font-medium">Status</div>
+                  <div className="text-sm">{slot?.isActive ? 'Aktif' : 'Tidak Aktif'}</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-sm font-medium">Kuota Global</div>
-                  <div className="text-sm">{slot?.globalQuota || '-'}</div>
+                  <div className="text-sm font-medium">Persentase Isi</div>
+                  <div className="text-sm">{slot?.maxQuota > 0 ? Math.round((slot.currentCount / slot.maxQuota) * 100) : 0}%</div>
                 </div>
               </div>
             </div>

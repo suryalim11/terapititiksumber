@@ -1,122 +1,219 @@
 /**
- * Fungsi fetch dengan timeout dan retry logic terintegrasi
- * Dirancang khusus untuk menangani permintaan yang lambat dengan lebih baik
+ * Fungsi fetch dengan batas waktu dan mekanisme coba lagi
  */
 
-// Opsi default untuk fetch
-const DEFAULT_TIMEOUT = 15000; // 15 detik
-const DEFAULT_RETRY_COUNT = 2;
-const DEFAULT_RETRY_DELAY = 500; // 500ms
-
-// Opsi yang tersedia untuk fetchWithTimeout
-interface FetchWithTimeoutOptions {
+// Opsi untuk fetch timeout
+interface FetchWithTimeoutOptions extends RequestInit {
   timeout?: number;
   retries?: number;
   retryDelay?: number;
-  credentials?: RequestCredentials;
-  headers?: HeadersInit;
-  method?: string;
-  body?: any;
+  onRetry?: (attempt: number, error: Error) => void;
 }
 
 /**
- * Fungsi fetch dengan timeout dan retry logic
- * @param url URL untuk melakukan fetch
- * @param options Opsi untuk fetch (timeout, retries, headers, dll)
- * @returns Promise dengan response
+ * Fungsi fetch dengan batas waktu
+ * @param url URL untuk di-fetch
+ * @param options Opsi fetch, termasuk timeout dalam milidetik
+ * @returns Promise Response
  */
 export async function fetchWithTimeout(
   url: string,
   options: FetchWithTimeoutOptions = {}
 ): Promise<Response> {
-  const {
-    timeout = DEFAULT_TIMEOUT,
-    retries = DEFAULT_RETRY_COUNT,
-    retryDelay = DEFAULT_RETRY_DELAY,
-    ...fetchOptions
+  const { 
+    timeout = 15000, // Default timeout 15 detik
+    retries = 3,     // Default coba lagi 3 kali
+    retryDelay = 1000, // Default jeda 1 detik
+    onRetry,
+    ...fetchOptions 
   } = options;
 
-  // Jika body adalah object, otomatis stringify dan set header
-  let updatedOptions = { ...fetchOptions };
-  if (fetchOptions.body && typeof fetchOptions.body === 'object') {
-    updatedOptions = {
-      ...fetchOptions,
-      body: JSON.stringify(fetchOptions.body),
-      headers: {
-        ...fetchOptions.headers,
-        'Content-Type': 'application/json',
-      },
-    };
-  }
+  // Implementasi timeout dengan AbortController
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  // Tambahkan signal ke fetch options
+  const fetchOptionsWithSignal = {
+    ...fetchOptions,
+    signal: controller.signal
+  };
 
-  // Menambahkan credentials ke fetch options jika tidak diberikan
-  if (!updatedOptions.credentials) {
-    updatedOptions.credentials = 'include';
-  }
-
-  // Fungsi untuk menjalankan fetch dengan abort controller
-  async function executeFetch(): Promise<Response> {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
-
+  // Fungsi untuk melakukan fetch dengan retry
+  async function performFetchWithRetry(attempt: number = 0): Promise<Response> {
     try {
-      const response = await fetch(url, {
-        ...updatedOptions,
-        signal: controller.signal,
-      });
-      clearTimeout(id);
-      return response;
-    } catch (error) {
-      clearTimeout(id);
-      throw error;
-    }
-  }
-
-  // Implementasi retry logic
-  let lastError: any;
-  for (let i = 0; i <= retries; i++) {
-    try {
-      // Pada percobaan ulang, kita log pesan untuk debugging
-      if (i > 0) {
-        console.log(`Mencoba ulang request ke ${url} (percobaan ke-${i})`);
+      const response = await fetch(url, fetchOptionsWithSignal);
+      
+      // Bersihkan timeout bila berhasil
+      clearTimeout(timeoutId);
+      
+      // Jika respons bukan 2xx, anggap sebagai error untuk retry
+      if (!response.ok && attempt < retries) {
+        const error = new Error(`HTTP error! Status: ${response.status}`);
+        return handleRetry(attempt, error);
       }
-
-      // Eksekusi fetch
-      const response = await executeFetch();
-
-      // Jika tidak ok, throw sebuah error
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // Jika berhasil, return response
+      
       return response;
     } catch (error: any) {
-      lastError = error;
-
-      // Jika ini bukan kasus timeout atau abort, jangan coba ulang
-      if (error.name !== 'AbortError' && error.name !== 'TypeError') {
-        break;
+      // Bersihkan timeout untuk menghindari memory leak
+      clearTimeout(timeoutId);
+      
+      // Jika sudah mencapai batas retry atau bukan error timeout, lempar error
+      if (attempt >= retries || (error.name !== 'AbortError' && error.name !== 'TimeoutError')) {
+        throw error;
       }
-
-      // Jika masih ada retry yang tersisa, tunggu sebelum mencoba lagi
-      if (i < retries) {
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-      }
+      
+      // Untuk error timeout atau koneksi, coba lagi
+      return handleRetry(attempt, error);
     }
   }
 
-  // Jika semua percobaan gagal, throw error terakhir
-  throw lastError || new Error('Request gagal tanpa alasan yang diketahui');
+  // Handler untuk retry
+  async function handleRetry(attempt: number, error: Error): Promise<Response> {
+    const nextAttempt = attempt + 1;
+    
+    // Panggil callback onRetry bila ada
+    if (onRetry) {
+      onRetry(nextAttempt, error);
+    }
+    
+    // Tunggu sebelum coba lagi, dengan exponential backoff
+    const delay = retryDelay * Math.pow(1.5, attempt);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    // Coba lagi dengan controller baru
+    const newController = new AbortController();
+    const newTimeoutId = setTimeout(() => newController.abort(), timeout);
+    
+    try {
+      return await performFetchWithRetry(nextAttempt);
+    } finally {
+      clearTimeout(newTimeoutId);
+    }
+  }
+
+  // Mulai fetch dengan retry
+  return performFetchWithRetry();
 }
 
 /**
- * Fungsi helper untuk melakukan fetch dan langsung mengkonversi hasil ke JSON
+ * Fungsi fetch yang mendukung cache
+ * @param url URL untuk di-fetch
+ * @param options Opsi fetch, termasuk timeout
+ * @param cacheKey Kunci cache
+ * @param cacheDuration Durasi cache dalam milidetik
+ * @returns 
  */
-export async function fetchWithTimeoutJSON<T = any>(
+export async function fetchWithCache(
   url: string,
-  options: FetchWithTimeoutOptions = {}
-): Promise<T> {
+  options: FetchWithTimeoutOptions = {},
+  cacheKey?: string,
+  cacheDuration: number = 60000 // Default 1 menit
+): Promise<Response> {
+  // Gunakan URL sebagai cache key bila tidak diberikan
+  const key = cacheKey || `cache_${url}_${Date.now()}`;
+  
+  // Cek apakah ada data di cache dan masih fresh
+  const cachedData = localStorage.getItem(key);
+  if (cachedData) {
+    try {
+      const { data, timestamp, headers } = JSON.parse(cachedData);
+      const age = Date.now() - timestamp;
+      
+      // Jika cache masih fresh, gunakan
+      if (age < cacheDuration) {
+        console.log(`✅ Cache hit untuk ${key}, umur ${age}ms`);
+        
+        // Buat response dari cache
+        const cachedResponse = new Response(JSON.stringify(data), {
+          status: 200,
+          headers: new Headers(headers)
+        });
+        
+        // Set properti khusus untuk menandai dari cache
+        Object.defineProperty(cachedResponse, 'fromCache', {
+          value: true,
+          writable: false
+        });
+        
+        return cachedResponse;
+      }
+      
+      console.log(`❌ Cache miss untuk ${key}, cache terlalu tua (${age}ms > ${cacheDuration}ms)`);
+    } catch (error) {
+      console.error('Error parsing cache:', error);
+      localStorage.removeItem(key);
+    }
+  } else {
+    console.log(`❌ Cache miss untuk ${key}, mengambil data baru...`);
+  }
+  
+  // Jika tidak ada cache atau cache terlalu tua, fetch data baru
   const response = await fetchWithTimeout(url, options);
-  return response.json();
+  
+  // Simpan ke cache jika sukses
+  if (response.ok) {
+    try {
+      // Clone response karena response.json() akan mengkonsumsi body stream
+      const clone = response.clone();
+      const data = await clone.json();
+      
+      // Ekstrak header untuk disimpan
+      const headers: Record<string, string> = {};
+      clone.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+      
+      // Simpan di cache
+      localStorage.setItem(key, JSON.stringify({
+        data,
+        timestamp: Date.now(),
+        headers
+      }));
+    } catch (error) {
+      console.error('Error caching response:', error);
+    }
+  }
+  
+  return response;
+}
+
+/**
+ * Membersihkan semua cache
+ */
+export function clearAllCache(): void {
+  const keysToRemove: string[] = [];
+  
+  // Identifikasi semua kunci cache
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('cache_')) {
+      keysToRemove.push(key);
+    }
+  }
+  
+  // Hapus kunci-kunci cache
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+  
+  console.log(`Berhasil menghapus ${keysToRemove.length} item cache`);
+}
+
+/**
+ * Membersihkan cache untuk URL tertentu
+ * @param urlPattern Pola URL untuk dihapus cachenya
+ */
+export function clearCacheForUrl(urlPattern: string): void {
+  const keysToRemove: string[] = [];
+  
+  // Identifikasi kunci cache yang cocok dengan pola
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('cache_') && key.includes(urlPattern)) {
+      keysToRemove.push(key);
+    }
+  }
+  
+  // Hapus kunci-kunci cache
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+  
+  console.log(`Berhasil menghapus ${keysToRemove.length} item cache untuk ${urlPattern}`);
 }
