@@ -4638,19 +4638,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // API endpoint teroptimasi untuk SimpleSlotDialog (loading progresif)
-  const { getBasicSlotInfo, getSlotAppointments, getSlotPatients } = require('./routes/api/simple-slot');
-  
   // Gunakan middleware JSON khusus untuk semua endpoint API
   const { ensureJsonResponse } = require('./middleware/json-middleware');
   
   // Terapkan middleware secara global untuk semua endpoint API
   app.use('/api/*', ensureJsonResponse);
   
-  // Definisikan routes dengan middleware auth
-  app.get("/api/simple-slot/:id/basic", requireAuth, getBasicSlotInfo);
-  app.get("/api/simple-slot/:id/appointments", requireAuth, getSlotAppointments);
-  app.get("/api/simple-slot/:id/patients", requireAuth, getSlotPatients);
+  // Gunakan router terpisah untuk simple-slot APIs untuk memastikan Content-Type benar
+  const simpleSlotRouter = require('./routes/api/simple-slot-router');
+  app.use('/api/simple-slot', requireAuth, simpleSlotRouter);
   
   // Setup WebSocket server untuk real-time updates
   const WebSocket = require('ws');
