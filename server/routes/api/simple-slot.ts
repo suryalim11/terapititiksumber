@@ -103,7 +103,7 @@ export async function getSlotPatients(req: Request, res: Response) {
             ...patient,
             appointmentStatus: appointment.status,
             appointmentId: appointment.id,
-            walkin: appointment.status === 'Active',
+            walkin: appointment.walkin || false, // Gunakan flag walkin dari data appointment
           };
           patients.push(patientWithStatus);
         }
