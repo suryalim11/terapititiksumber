@@ -698,8 +698,43 @@ export default function RegisterPage() {
                   </span>
                 </div>
                 <p className="text-xs text-green-700 mt-2">
-                  Pasien walk-in akan ditangani sesuai dengan slot terapi yang tersedia hari ini.
+                  Pasien walk-in akan masuk ke dalam slot terapi yang tersedia hari ini. Pendaftaran ini akan tercatat dalam data slot yang sama.
                 </p>
+                <div className="flex items-center mt-2 text-amber-700">
+                  <AlertTriangle className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <p className="text-xs">
+                    Pastikan untuk memilih slot terapi di bawah setelah mengisi data pasien.
+                  </p>
+                </div>
+                
+                {/* Tampilkan info slot terpilih untuk walk-in */}
+                {selectedSlot && (
+                  <div className="mt-3 border border-green-300 bg-green-50 rounded-md p-2">
+                    <h4 className="font-medium text-sm text-green-800 flex items-center mb-1">
+                      <Clock className="mr-2 h-4 w-4" />
+                      Slot Terapi Terpilih:
+                    </h4>
+                    <div className="text-xs font-medium text-green-700">
+                      {(() => {
+                        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                        const slotDate = new Date(selectedSlot.date);
+                        const dayName = days[slotDate.getDay()];
+                        const date = slotDate.getDate();
+                        const month = slotDate.getMonth() + 1;
+                        const year = slotDate.getFullYear();
+                        
+                        return `${dayName}, ${date.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+                      })()} | {selectedSlot.timeSlot}
+                    </div>
+                    <div className={`text-xs mt-1 ${
+                      (selectedSlot.maxQuota - selectedSlot.currentCount) > 2 
+                        ? "text-green-700" 
+                        : "text-amber-700"
+                    }`}>
+                      {selectedSlot.maxQuota - selectedSlot.currentCount} slot tersedia dari maksimal {selectedSlot.maxQuota}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           
