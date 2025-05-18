@@ -153,6 +153,7 @@ export default function RegisterPage() {
       address: "",
       complaints: "",
       timeSlotKey: undefined,
+      therapySlotId: undefined,
     },
   });
 
@@ -249,12 +250,30 @@ export default function RegisterPage() {
       });
     }
     
-    // Mendapatkan slotId dari URL jika ada
+    // Mendapatkan slotId dan informasi slot dari URL jika ada
     const slotIdParam = params.get("slotId");
-    if (slotIdParam) {
+    const dateParam = params.get("date");
+    const timeSlotParam = params.get("timeSlot");
+    
+    if (slotIdParam && dateParam && timeSlotParam) {
+      console.log("Data slot terapi dari URL:", { slotId: slotIdParam, date: dateParam, timeSlot: timeSlotParam });
+      
       const slotId = parseInt(slotIdParam);
       if (!isNaN(slotId)) {
+        // Simpan ke session storage
         sessionStorage.setItem("selectedSlotId", slotId.toString());
+        
+        // Set state selectedSlot dengan informasi lengkap
+        setSelectedSlot({
+          id: slotId,
+          date: decodeURIComponent(dateParam),
+          timeSlot: decodeURIComponent(timeSlotParam)
+        });
+        
+        // Set nilai form untuk therapySlotId
+        form.setValue("therapySlotId", slotId);
+        
+        console.log("Slot terapi diset dari parameter URL:", slotId);
       }
     }
     
@@ -494,11 +513,30 @@ export default function RegisterPage() {
     }
     
     try {
+      // Ambil slot ID dari state atau sessionStorage untuk memastikan konsistensi
+      const savedSlotId = sessionStorage.getItem("selectedSlotId");
+      const effectiveSlotId = selectedSlot?.id || 
+                             (savedSlotId ? parseInt(savedSlotId) : null) || 
+                             values.therapySlotId || null;
+      
+      console.log("Slot ID yang akan dikirim:", effectiveSlotId);
+      console.log("Selected slot:", selectedSlot);
+      
+      if (!effectiveSlotId && isWalkInMode) {
+        toast({
+          variant: "destructive",
+          title: "Slot Terapi Tidak Dipilih",
+          description: "Silahkan pilih slot terapi untuk pasien walk-in terlebih dahulu.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Buat payload untuk API
       const formData = {
         ...values,
         registrationCode: registrationCode,
-        therapySlotId: selectedSlot ? selectedSlot.id : (values.therapySlotId || null),
+        therapySlotId: effectiveSlotId,
         walkin: isWalkInMode, // Flag untuk walk-in
       };
       
