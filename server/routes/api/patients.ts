@@ -22,23 +22,6 @@ export function setupPatientRoutes(app: Express) {
     }
   });
 
-  // Mendapatkan pasien berdasarkan ID
-  app.get("/api/patients/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const patient = await storage.getPatient(id);
-      
-      if (!patient) {
-        return res.status(404).json({ error: "Pasien tidak ditemukan" });
-      }
-      
-      res.json(patient);
-    } catch (error) {
-      console.error("Error getting patient:", error);
-      res.status(500).json({ error: "Gagal mendapatkan data pasien" });
-    }
-  });
-
   // Mencari pasien berdasarkan nama atau nomor telepon
   app.get("/api/patients/search", requireAuth, async (req: Request, res: Response) => {
     try {
