@@ -11,6 +11,97 @@ import { insertPatientSchema } from "@shared/schema";
  * Mendaftarkan rute-rute untuk pasien
  */
 export function setupPatientRoutes(app: Express) {
+  // Endpoint khusus untuk pendaftaran walk-in langsung dari dashboard
+  app.post("/api/patients/register-walkin", requireAuth, async (req: Request, res: Response) => {
+    try {
+      console.log("➡️ API Register Walk-in: Menerima permintaan pendaftaran walk-in");
+      console.log("📝 API Register Walk-in: Data yang diterima:", req.body);
+      
+      // Validasi data dasar
+      if (!req.body.name || !req.body.phoneNumber || !req.body.slotId) {
+        console.log("❌ API Register Walk-in: Data tidak lengkap");
+        return res.status(400).json({
+          success: false,
+          message: "Data pendaftaran tidak lengkap"
+        });
+      }
+      
+      // Cek slot terapi
+      const slotId = parseInt(req.body.slotId);
+      const therapySlot = await storage.getTherapySlot(slotId);
+      
+      console.log("🔍 API Register Walk-in: Slot terapi:", therapySlot);
+      
+      if (!therapySlot) {
+        console.log("❌ API Register Walk-in: Slot terapi tidak ditemukan");
+        return res.status(404).json({
+          success: false,
+          message: "Slot terapi tidak ditemukan"
+        });
+      }
+      
+      // Cek kuota
+      if (therapySlot.currentCount >= therapySlot.maxQuota) {
+        console.log("❌ API Register Walk-in: Kuota slot penuh");
+        return res.status(400).json({
+          success: false,
+          message: `Kuota slot terapi sudah penuh (${therapySlot.currentCount}/${therapySlot.maxQuota})`
+        });
+      }
+      
+      // Buat pasien baru
+      const patientData = {
+        name: req.body.name,
+        phoneNumber: req.body.phoneNumber,
+        gender: req.body.gender || "Laki-laki",
+        birthDate: req.body.birthDate || new Date(),
+        address: req.body.address || "Alamat default",
+        complaints: req.body.complaints || "Walk-in pasien",
+        email: req.body.email || "",
+        therapySlotId: slotId
+      };
+      
+      // Buat pasien
+      console.log("📋 API Register Walk-in: Membuat pasien baru...");
+      const patient = await storage.createPatient(patientData);
+      console.log("✅ API Register Walk-in: Pasien berhasil dibuat:", patient);
+      
+      // Buat appointment
+      console.log("📋 API Register Walk-in: Membuat appointment baru...");
+      const appointmentData = {
+        patientId: patient.id,
+        date: therapySlot.date,
+        timeSlot: therapySlot.timeSlot,
+        therapySlotId: therapySlot.id,
+        sessionId: null,
+        status: "Active", // Walk-in selalu active
+        registrationNumber: `WI-${Date.now()}`,
+        notes: patientData.complaints
+      };
+      
+      console.log("📋 API Register Walk-in: Data appointment:", appointmentData);
+      const appointment = await storage.createAppointment(appointmentData);
+      console.log("✅ API Register Walk-in: Appointment berhasil dibuat:", appointment);
+      
+      // Update kuota slot
+      await storage.incrementTherapySlotUsage(slotId);
+      console.log("✅ API Register Walk-in: Kuota slot terapi diupdate");
+      
+      return res.status(200).json({
+        success: true,
+        message: "Pendaftaran walk-in berhasil",
+        patient: patient,
+        appointment: appointment
+      });
+    } catch (error: any) {
+      console.error("❌ API Register Walk-in: Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mendaftarkan pasien walk-in",
+        error: error.message || "Unknown error"
+      });
+    }
+  });
   // Mendapatkan semua pasien
   app.get("/api/patients", requireAuth, async (req: Request, res: Response) => {
     try {
