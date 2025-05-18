@@ -468,34 +468,81 @@ export function setupRoutes(app: Express) {
         });
       }
       
-      // Buat pasien baru
-      console.log("👤 Membuat pasien baru...");
-      const patient = await storage.createPatient(patientData);
-      console.log("✅ Pasien berhasil dibuat:", patient);
+      // Buat pasien baru menggunakan SQL langsung
+      console.log("👤 Membuat pasien baru dengan SQL langsung...");
+      const patientId = `P-${new Date().getFullYear()}-${Date.now()}`;
       
-      // Buat appointment
-      console.log("📅 Membuat appointment baru...");
-      const appointment = await storage.createAppointment({
-        patientId: patient.id,
-        date: therapySlot.date.split(" ")[0],
-        timeSlot: therapySlot.timeSlot,
-        therapySlotId: therapySlot.id,
-        sessionId: null,
-        status: "Active", // Walk-in selalu active
-        registrationNumber: `WI-${Date.now()}`,
-        notes: patientData.complaints
-      });
-      console.log("✅ Appointment berhasil dibuat:", appointment);
+      // Gunakan SQL langsung untuk membuat pasien
+      const patientQuery = `
+        INSERT INTO patients (patient_id, name, phone_number, gender, birth_date, address, complaints, email)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id
+      `;
       
-      // Update kuota
+      const patientResult = await pool.query(patientQuery, [
+        patientId,
+        patientData.name,
+        patientData.phoneNumber,
+        patientData.gender || "Laki-laki",
+        patientData.birthDate || "1980-01-01",
+        patientData.address || "Alamat default walk-in",
+        patientData.complaints || "Pasien walk-in",
+        patientData.email || ""
+      ]);
+      
+      if (!patientResult.rows || patientResult.rows.length === 0) {
+        console.log("❌ Gagal menyimpan data pasien");
+        return res.status(500).json({
+          success: false,
+          message: "Gagal menyimpan data pasien"
+        });
+      }
+      
+      const newPatientId = patientResult.rows[0].id;
+      console.log("✅ Pasien berhasil dibuat dengan ID:", newPatientId);
+      
+      // Buat appointment dengan SQL langsung
+      console.log("📅 Membuat appointment dengan SQL langsung...");
+      const appointmentQuery = `
+        INSERT INTO appointments (patient_id, therapy_slot_id, date, time_slot, status, registration_number, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
+      `;
+      
+      const registrationNumber = `WI-${Date.now()}`;
+      const appointmentResult = await pool.query(appointmentQuery, [
+        newPatientId,
+        therapySlot.id,
+        therapySlot.date,
+        therapySlot.timeSlot,
+        "Active", // Walk-in selalu active
+        registrationNumber,
+        patientData.complaints || ""
+      ]);
+      if (!appointmentResult.rows || appointmentResult.rows.length === 0) {
+        console.log("❌ Gagal membuat appointment");
+        return res.status(500).json({
+          success: false,
+          message: "Gagal membuat appointment untuk pasien"
+        });
+      }
+      
+      const newAppointmentId = appointmentResult.rows[0].id;
+      console.log("✅ Appointment berhasil dibuat dengan ID:", newAppointmentId);
+      
+      // Update kuota slot dengan SQL langsung
       console.log("🔄 Mengupdate kuota slot terapi...");
-      await storage.incrementTherapySlotUsage(therapySlot.id);
+      await pool.query(`
+        UPDATE therapy_slots
+        SET current_count = current_count + 1
+        WHERE id = $1
+      `, [therapySlot.id]);
       
       // Respons sukses sederhana
       console.log("🎉 Pendaftaran walk-in berhasil!");
       
       // Verifikasi bahwa appointment benar-benar dibuat
-      const verifyAppointment = await storage.getAppointment(appointment.id);
+      const verifyAppointment = await storage.getAppointment(newAppointmentId);
       if (!verifyAppointment) {
         console.log("⚠️ Appointment tidak ditemukan setelah dibuat! ID:", appointment.id);
       } else {
