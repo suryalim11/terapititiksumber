@@ -436,15 +436,15 @@ export default function TransactionForm({
     queryKey: ["/api/patients"],
   });
 
-  // Fetch packages, menggunakan fixed endpoint jika useFixedEndpoints=true
+  // Fetch packages dari endpoint fixed yang sudah terbukti bekerja
   const { data: packages = [] } = useQuery<Package[]>({
-    queryKey: [useFixedEndpoints ? "/api/fixed/packages" : "/api/packages"],
+    queryKey: ["/api/fixed/packages"],
     staleTime: 30 * 1000, // 30 detik
   });
 
-  // Fetch products, menggunakan fixed endpoint jika useFixedEndpoints=true
+  // Fetch products dari endpoint fixed yang sudah terbukti bekerja
   const { data: products = [] } = useQuery<Product[]>({
-    queryKey: [useFixedEndpoints ? "/api/fixed/products" : "/api/products"],
+    queryKey: ["/api/fixed/products"],
     staleTime: 30 * 1000, // 30 detik
   });
 
