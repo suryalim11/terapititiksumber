@@ -3,29 +3,9 @@ import { db } from "../../db";
 import * as schema from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { storage } from "../../storage";
-import { 
-  SLOT_CORRECTIONS, 
-  getSlotWithCorrections, 
-  ensureRegistryInitialized, 
-  isSlotRegistryInitialized
-} from "../../slot-registry";
-
-// Memastikan registry diinisialisasi saat server dimulai
-(async () => {
-  try {
-    if (!isSlotRegistryInitialized()) {
-      console.log("🔄 Inisialisasi slot registry dari simple-slot.ts");
-      await ensureRegistryInitialized();
-      console.log("✅ Slot registry berhasil diinisialisasi");
-    }
-  } catch (error) {
-    console.error("❌ Gagal inisialisasi slot registry:", error);
-  }
-})();
 
 /**
  * Mengambil data dasar slot terapi (detail utama)
- * Menggunakan registry slot untuk koreksi data
  */
 export async function getSimpleSlotBasic(req: Request, res: Response) {
   try {
@@ -37,40 +17,7 @@ export async function getSimpleSlotBasic(req: Request, res: Response) {
     
     const slotId = parseInt(id);
     
-    // Slot 461 sudah diatur melalui SLOT_CORRECTIONS di slot-registry.ts
-    
-    // Slot 471 - Senin, 19 Mei, 13:00-15:00
-    if (slotId === 471) {
-      console.log("🔴 Request untuk data dasar slot ID 471 (19 Mei) terdeteksi");
-      console.log("💯 OVERRIDE: Mengirim data terverifikasi untuk slot 471");
-      
-      return res.json({
-        id: 471,
-        date: "2025-05-19 00:00:00",
-        timeSlot: "13:00-15:00",
-        maxQuota: 4,
-        currentCount: 1,
-        isActive: true,
-        timeSlotKey: "2025-05-19_13:00-15:00"
-      });
-    }
-    
-    // Dapatkan data slot dengan koreksi dari SLOT_CORRECTIONS jika ada
-    if (SLOT_CORRECTIONS[slotId]) {
-      const correction = SLOT_CORRECTIONS[slotId];
-      
-      return res.json({
-        id: slotId,
-        date: `${correction.date} 00:00:00`,
-        timeSlot: correction.timeSlot,
-        maxQuota: correction.maxQuota || 6,
-        currentCount: correction.currentCount || 0,
-        isActive: true,
-        timeSlotKey: `${correction.date}_${correction.timeSlot}`
-      });
-    }
-    
-    // Jika tidak ada koreksi, coba ambil dari database
+    // Ambil data langsung dari database
     const result = await db.select().from(schema.therapySlots).where(eq(schema.therapySlots.id, slotId)).limit(1);
     
     if (result.length === 0) {
@@ -97,77 +44,6 @@ export async function getSimpleSlotPatients(req: Request, res: Response) {
     }
     
     const slotId = parseInt(id);
-    
-    // Slot 471 - Senin, 19 Mei, 13:00-15:00 dengan 1 pasien
-    if (slotId === 471) {
-      console.log("🔴 Request untuk slot terapi ID 471 (19 Mei) terdeteksi");
-      console.log("💯 OVERRIDE: Mengirim data pasien terverifikasi untuk slot 471 (1 pasien)");
-      
-      // Data pasien yang telah diverifikasi untuk slot 471
-      return res.json([{
-        id: 1001,
-        patientId: "P-2025-1001",
-        name: "Sunaryo",
-        phone: "08112233445",
-        email: null,
-        gender: "Male",
-        address: "Batam",
-        dateOfBirth: "1970-01-01",
-        appointmentStatus: "Confirmed",
-        appointmentId: 1006,
-        walkin: false
-      }]);
-    }
-    
-    // Slot 354 (historis 6 April 13:00-14:00) 
-    if (slotId === 354) {
-      console.log("🔴 Request untuk slot terapi ID 354 (6 April) terdeteksi");
-      console.log("💯 OVERRIDE: Mengirim data pasien terverifikasi untuk slot 354 (2 pasien)");
-      return res.json([
-        {
-          id: 152,
-          patientId: "P-2025-152",
-          name: "Ahmad Saputra",
-          phone: "081266778899",
-          email: null,
-          gender: "Male",
-          address: "Batam Kota",
-          dateOfBirth: "1968-09-15",
-          appointmentStatus: "Completed",
-          appointmentId: 228,
-          walkin: false
-        },
-        {
-          id: 153,
-          patientId: "P-2025-153",
-          name: "Sulistyo",
-          phone: "085266774433",
-          email: null,
-          gender: "Male",
-          address: "Batam",
-          dateOfBirth: "1972-05-22",
-          appointmentStatus: "Completed",
-          appointmentId: 229,
-          walkin: false
-        }
-      ]);
-    }
-    
-    // Slot 461 sudah diatur melalui SLOT_CORRECTIONS di slot-registry.ts
-    
-    // Slot 474 (Senin 19 Mei 10:00-11:00)
-    if (slotId === 474) {
-      console.log("🔴 Request untuk slot terapi ID 474 (19 Mei 10:00) terdeteksi");
-      console.log("💯 OVERRIDE: Mengirim data pasien terverifikasi untuk slot 474 (0 pasien)");
-      return res.json([]);
-    }
-    
-    // Slot 466 (Selasa 20 Mei 10:00-12:00)
-    if (slotId === 466) {
-      console.log("🔴 Request untuk slot terapi ID 466 (20 Mei 10:00) terdeteksi");
-      console.log("💯 OVERRIDE: Mengirim data pasien terverifikasi untuk slot 466 (0 pasien)");
-      return res.json([]);
-    }
     
     // Query untuk mendapatkan pasien dengan appointment untuk slot ini
     const patientQuery = sql`
