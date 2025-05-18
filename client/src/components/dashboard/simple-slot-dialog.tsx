@@ -50,6 +50,7 @@ interface PatientData {
   appointmentStatus?: string;
   appointmentId?: number;
   walkin?: boolean;
+  patientId?: string;  // ID pasien dalam format P-YYYY-XXX
 }
 
 /**
@@ -308,8 +309,8 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              // Navigasi ke halaman transaksi pasien
-                              window.location.href = `/transactions?patient=${patient.id}`;
+                              // Navigasi ke halaman transaksi pasien dengan parameter untuk membuka form baru
+                              window.location.href = `/transactions?patient=${patient.id}&newTransaction=true&patientName=${encodeURIComponent(patient.name)}&patientId=${encodeURIComponent(patient.patientId || '')}`;
                             }}
                           >
                             <CreditCard className="mr-1 h-3 w-3" />
@@ -339,7 +340,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                                       toast({
                                         title: "Status diperbarui",
                                         description: `Appointment untuk ${patient.name} telah diselesaikan.`,
-                                        variant: "success"
+                                        variant: "default"
                                       });
                                       
                                       loadSlotData(slotId!);
@@ -379,7 +380,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                                       toast({
                                         title: "Status diperbarui",
                                         description: `Appointment untuk ${patient.name} telah dibatalkan.`,
-                                        variant: "success"
+                                        variant: "default"
                                       });
                                       
                                       loadSlotData(slotId!);
