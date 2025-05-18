@@ -168,6 +168,7 @@ type TransactionFormProps = {
   onClose: () => void;
   selectedPatientId?: number | null;
   hidePatientSearch?: boolean;
+  useFixedEndpoints?: boolean;
 };
 
 type Patient = {
@@ -258,12 +259,12 @@ const transactionFormSchema = z.object({
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
-export default function TransactionForm({ 
-  isOpen, 
-  onClose, 
-  selectedPatientId, 
+export default function TransactionForm({
+  isOpen,
+  onClose,
+  selectedPatientId,
   hidePatientSearch = false,
-  useFixedEndpoints = false 
+  useFixedEndpoints = false
 }: TransactionFormProps) {
   console.log("TransactionForm dirender dengan useFixedEndpoints:", useFixedEndpoints);
   console.log("TransactionForm initialized with:", { selectedPatientId, hidePatientSearch });
@@ -435,15 +436,15 @@ export default function TransactionForm({
     queryKey: ["/api/patients"],
   });
 
-  // Fetch packages from fixed endpoint
+  // Fetch packages, menggunakan fixed endpoint jika useFixedEndpoints=true
   const { data: packages = [] } = useQuery<Package[]>({
-    queryKey: ["/api/fixed/packages"],
+    queryKey: [useFixedEndpoints ? "/api/fixed/packages" : "/api/packages"],
     staleTime: 30 * 1000, // 30 detik
   });
 
-  // Fetch products from fixed endpoint
+  // Fetch products, menggunakan fixed endpoint jika useFixedEndpoints=true
   const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ["/api/fixed/products"],
+    queryKey: [useFixedEndpoints ? "/api/fixed/products" : "/api/products"],
     staleTime: 30 * 1000, // 30 detik
   });
 
