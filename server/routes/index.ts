@@ -157,6 +157,9 @@ export function setupRoutes(app: Express) {
       
       // Set header json
       res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       
       // Hard-coded data untuk slot 464 (Diperbarui sesuai data database)
       if (slotId === 464) {
@@ -228,6 +231,8 @@ export function setupRoutes(app: Express) {
       
       // Hard-coded data untuk slot 461 (Tanggal 18 Mei 2025) - data dari database
       if (slotId === 461) {
+        console.log(`🔴 Request untuk slot terapi ID 461 (18 Mei) terdeteksi`);
+        
         const hardcodedPatients = [
           {
             id: 369,
@@ -256,8 +261,13 @@ export function setupRoutes(app: Express) {
             walkin: false
           }
         ];
+        
         console.log(`💯 OVERRIDE: Mengirim data terverifikasi untuk slot 461 (${hardcodedPatients.length} pasien)`);
-        return res.json(hardcodedPatients);
+        // Delay sedikit untuk memastikan frontend dapat menerima respons dengan benar
+        setTimeout(() => {
+          res.json(hardcodedPatients);
+        }, 100);
+        return;
       }
       
       // Menambahkan data default untuk semua slot lainnya

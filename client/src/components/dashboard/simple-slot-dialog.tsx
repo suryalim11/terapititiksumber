@@ -138,15 +138,15 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       console.log(`[DEBUG] Response raw text (${responseText.length} bytes): ${responseText.substring(0, 150)}...`);
       
       // Parse JSON dari text response
-      let patientsData;
+      let patientsData: any[] = [];
       try {
         patientsData = JSON.parse(responseText);
         console.log(`[DEBUG] Data pasien terparse: ${patientsData.length} pasien ditemukan`);
         console.log(`[DEBUG] Detail pasien:`, patientsData);
-      } catch (jsonError) {
-        console.error(`[DEBUG] Error parsing JSON dari response:`, jsonError);
+      } catch (error) {
+        console.error(`[DEBUG] Error parsing JSON dari response:`, error);
         console.log(`[DEBUG] Response text full:`, responseText);
-        throw new Error(`Error parsing data pasien: ${jsonError.message}`);
+        throw new Error(`Error parsing data pasien: ${error instanceof Error ? error.message : String(error)}`);
       }
       
       // Hapus semua cache terkait pasien dari localStorage
