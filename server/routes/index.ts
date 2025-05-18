@@ -48,20 +48,7 @@ export function setupRoutes(app: Express) {
       // Gunakan response langsung tanpa proses tambahan untuk performa maksimal
       res.setHeader('Content-Type', 'application/json');
       
-      // Hard-coded data untuk slot 461 (tanggal 18 Mei 2025)
-      if (slotId === 461) {
-        console.log(`🔴 Request untuk data dasar slot ID 461 (18 Mei) terdeteksi`);
-        const basicData = {
-          id: 461,
-          date: "2025-05-18 00:00:00",
-          timeSlot: "15:30-19:00",
-          maxQuota: 2,
-          currentCount: 2,
-          isActive: true
-        };
-        console.log(`💯 OVERRIDE: Mengirim data basic terverifikasi untuk slot 461`);
-        return res.status(200).json(basicData);
-      }
+      // Slot 461 (tanggal 18 Mei 2025) menggunakan data dari database langsung
       
       // Hard-coded data untuk slot 464 jika diperlukan
       if (slotId === 464) {
@@ -271,49 +258,7 @@ export function setupRoutes(app: Express) {
         return res.json(hardcodedPatients);
       }
       
-      // Hard-coded data untuk slot 461 (Tanggal 18 Mei 2025) - data dari database
-      if (slotId === 461) {
-        console.log(`🔴 Request untuk slot terapi ID 461 (18 Mei) terdeteksi`);
-        
-        const hardcodedPatients = [
-          {
-            id: 369,
-            patientId: "P-2025-369",
-            name: "Anita",
-            phone: "081288779933",
-            email: null,
-            gender: "Female",
-            address: "Batam",
-            dateOfBirth: "1975-03-20",
-            appointmentStatus: "Scheduled",
-            appointmentId: 357,
-            walkin: false
-          },
-          {
-            id: 381,
-            patientId: "P-2025-381",
-            name: "Nurlela",
-            phone: "085233664488",
-            email: null,
-            gender: "Female",
-            address: "Batam Centre",
-            dateOfBirth: "1982-01-15",
-            appointmentStatus: "Scheduled",
-            appointmentId: 404,
-            walkin: false
-          }
-        ];
-        
-        console.log(`💯 OVERRIDE: Mengirim data terverifikasi untuk slot 461 (${hardcodedPatients.length} pasien)`);
-        
-        // Set header agar tidak ada cache
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-        
-        // Kirim respons JSON langsung
-        return res.status(200).json(hardcodedPatients);
-      }
+      // Slot 461 (Tanggal 18 Mei 2025) menggunakan data dari database
       
       // Menambahkan data default untuk semua slot lainnya
       // Agar tidak terjadi error loading di frontend
