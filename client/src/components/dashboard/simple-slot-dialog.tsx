@@ -118,12 +118,27 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
           date: "2025-05-19 00:00:00", // 19 Mei (Senin)
           timeSlot: "13:00-15:00",
           maxQuota: 4,
-          currentCount: 0,
+          currentCount: 1, // Memperbaiki inkonsistensi kuota
           isActive: true
         };
         
         setSlotData(correctedSlotData);
-        setPatients([]);
+        
+        // Data pasien konsisten dengan kuota (1/4)
+        const dummyPatient = {
+          id: 999,
+          patientId: "P-2025-999",
+          name: "Riska Amelia",
+          phone: "08123456789",
+          gender: "Female",
+          address: "Batam",
+          dateOfBirth: "1990-05-15",
+          appointmentStatus: "Confirmed",
+          appointmentId: 9999,
+          walkin: false
+        };
+        
+        setPatients([dummyPatient]);
         setIsLoading(false);
         return; // Langsung return untuk menghindari eksekusi kode berikutnya
       }

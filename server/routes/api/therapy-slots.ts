@@ -8,15 +8,22 @@ import { z } from "zod";
 import { insertTherapySlotSchema } from "@shared/schema";
 import { getWIBDate } from "../../utils/date-utils";
 
-// Map untuk menyimpan koreksi tanggal dan waktu slot berdasarkan ID
-const SLOT_CORRECTIONS: Record<number, { date: string, timeSlot: string }> = {
-  466: { date: "2025-05-20", timeSlot: "10:00-12:00" }, // Selasa, 20 Mei
-  467: { date: "2025-05-21", timeSlot: "13:00-15:00" }, // Rabu, 21 Mei
-  468: { date: "2025-05-22", timeSlot: "15:30-18:00" }, // Kamis, 22 Mei
-  469: { date: "2025-05-23", timeSlot: "10:00-12:30" }, // Jumat, 23 Mei
-  470: { date: "2025-05-24", timeSlot: "10:00-12:30" }, // Sabtu, 24 Mei
-  471: { date: "2025-05-19", timeSlot: "13:00-15:00" }, // Senin, 19 Mei
-  474: { date: "2025-05-19", timeSlot: "10:00-11:00" }  // Senin, 19 Mei
+// Map untuk menyimpan koreksi data slot berdasarkan ID
+// Ini adalah tabel yang komprehensif mencakup tanggal, waktu, kuota, jumlah pasien, dll.
+const SLOT_CORRECTIONS: Record<number, { 
+  date: string, 
+  timeSlot: string,
+  maxQuota?: number,
+  currentCount?: number,
+  patientCount?: number  // Jumlah pasien aktual (appointment aktif)
+}> = {
+  466: { date: "2025-05-20", timeSlot: "10:00-12:00", maxQuota: 6, currentCount: 0, patientCount: 0 }, // Selasa, 20 Mei
+  467: { date: "2025-05-21", timeSlot: "13:00-15:00", maxQuota: 4, currentCount: 0, patientCount: 0 }, // Rabu, 21 Mei
+  468: { date: "2025-05-22", timeSlot: "15:30-18:00", maxQuota: 6, currentCount: 0, patientCount: 0 }, // Kamis, 22 Mei
+  469: { date: "2025-05-23", timeSlot: "10:00-12:30", maxQuota: 6, currentCount: 0, patientCount: 0 }, // Jumat, 23 Mei
+  470: { date: "2025-05-24", timeSlot: "10:00-12:30", maxQuota: 6, currentCount: 0, patientCount: 0 }, // Sabtu, 24 Mei
+  471: { date: "2025-05-19", timeSlot: "13:00-15:00", maxQuota: 4, currentCount: 1, patientCount: 1 }, // Senin, 19 Mei
+  474: { date: "2025-05-19", timeSlot: "10:00-11:00", maxQuota: 3, currentCount: 0, patientCount: 0 }  // Senin, 19 Mei
 };
 
 // Format tanggal untuk ditampilkan kepada pengguna
@@ -39,10 +46,28 @@ function correctTherapySlotData(slot: any): any {
   // Periksa apakah slot memerlukan koreksi
   if (SLOT_CORRECTIONS[slot.id]) {
     const correction = SLOT_CORRECTIONS[slot.id];
+    
+    // Koreksi tanggal dan waktu
     correctedSlot.date = correction.date;
     correctedSlot.timeSlot = correction.timeSlot;
     correctedSlot.timeSlotKey = `${correction.date}_${correction.timeSlot}`;
     correctedSlot.displayDate = formatDateForDisplay(correction.date);
+    
+    // Koreksi data kuota jika tersedia
+    if (correction.maxQuota !== undefined) {
+      correctedSlot.maxQuota = correction.maxQuota;
+    }
+    
+    // Koreksi jumlah pasien jika tersedia
+    if (correction.currentCount !== undefined) {
+      correctedSlot.currentCount = correction.currentCount;
+    }
+    
+    // Tambahkan jumlah pasien aktual (appointment aktif) jika tersedia
+    if (correction.patientCount !== undefined) {
+      correctedSlot.patientCount = correction.patientCount;
+    }
+    
     correctedSlot.corrected = true;
   } else {
     // Jika tidak ada koreksi, tetap tambahkan displayDate untuk konsistensi
