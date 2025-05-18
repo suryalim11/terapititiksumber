@@ -309,9 +309,23 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              // Navigasi ke halaman transaksi pasien dengan parameter untuk membuka form baru
-                              // Gunakan parameter yang benar sesuai dengan kode di halaman transactions.tsx
-                              window.location.href = `/transactions?patientId=${patient.id}&hideDropdown=true&delay=2000&source=optimized-dialog&timestamp=${Date.now()}`;
+                              // Simpan data pasien dalam localStorage untuk membuka form transaksi
+                              localStorage.setItem('pendingTransactionPatientId', patient.id.toString());
+                              localStorage.setItem('pendingTransactionPatientName', patient.name);
+                              localStorage.setItem('openTransactionFormDirectly', 'true');
+                              
+                              // Buat custom event untuk membuka form langsung
+                              const customEvent = new CustomEvent('openTransactionForm', {
+                                detail: {
+                                  patientId: patient.id,
+                                  patientName: patient.name,
+                                  timestamp: Date.now()
+                                }
+                              });
+                              window.dispatchEvent(customEvent);
+                              
+                              // Navigasi ke halaman transaksi dengan parameter
+                              window.location.href = `/transactions?patientId=${patient.id}&hideDropdown=true&source=dialog&timestamp=${Date.now()}`;
                             }}
                           >
                             <CreditCard className="mr-1 h-3 w-3" />
