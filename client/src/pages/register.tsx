@@ -136,8 +136,14 @@ export default function RegisterPage() {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [foundPatient, setFoundPatient] = useState<any>(null);
   
-  // State untuk slot terapi
-  const [selectedSlot, setSelectedSlot] = useState<{id: number, date: string, timeSlot: string} | null>(null);
+  // State untuk slot terapi (dengan properti lengkap)
+  const [selectedSlot, setSelectedSlot] = useState<{
+    id: number, 
+    date: string, 
+    timeSlot: string,
+    maxQuota?: number,
+    currentCount?: number
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWalkInMode, setIsWalkInMode] = useState(false);
   
