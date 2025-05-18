@@ -547,39 +547,21 @@ export default function RegisterPage() {
           walkin: Boolean(payload.walkin) // Konversi ke boolean sejati
         };
         
-        // Gunakan fetch API standar
-        const response = await fetch('/api/register', {
+        // Gunakan apiRequest dari queryClient untuk standarisasi
+        console.log("💬 Mengirim request dengan apiRequest...");
+        const result = await apiRequest('/api/register', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(cleanPayload),
-          credentials: 'include'
+          body: cleanPayload
         });
         
-        // Periksa status respons
-        if (!response.ok) {
-          let errorMessage = `Server error (${response.status})`;
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.message || errorMessage;
-          } catch (e) {
-            // Jika tidak bisa parse JSON, coba text
-            errorMessage = await response.text();
-          }
-          throw new Error(errorMessage);
-        }
+        console.log("💬 API Response:", result);
         
-        // Parse respons JSON
-        const data = await response.json();
-        console.log("Pendaftaran berhasil:", data);
-        
-        // Update state sukses
-        setRegistrationResult(data);
+        // Tindakan selanjutnya jika berhasil
+        setRegistrationResult(result);
         setRegistrationStatus("success");
         
         // Simpan ke localStorage untuk backup
-        localStorage.setItem('registrationData', JSON.stringify(data));
+        localStorage.setItem('registrationData', JSON.stringify(result));
         
         // Notifikasi sukses
         toast({

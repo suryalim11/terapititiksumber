@@ -631,9 +631,19 @@ export function setupRoutes(app: Express) {
       // 7. Buat appointment
       let appointment;
       try {
+        // Siapkan data appointment dengan penanganan tanggal yang lebih sederhana
+        let dateStr = String(therapySlot.date);
+        
+        // Jika string dengan format 'YYYY-MM-DD HH:MM:SS' atau mirip, ambil bagian tanggal saja
+        if (dateStr.includes(' ')) {
+          dateStr = dateStr.split(' ')[0];
+        }
+        
+        console.log("🗓️ Date yang akan digunakan:", dateStr);
+        
         const appointmentData = {
           patientId: patient.id,
-          date: therapySlot.date.split(" ")[0],
+          date: dateStr,
           timeSlot: therapySlot.timeSlot,
           therapySlotId: therapySlot.id,
           sessionId: null,

@@ -189,11 +189,26 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       
       console.log("📝 Data pendaftaran:", patientData);
       
-      // Gunakan apiRequest dari queryClient untuk menggunakan standar yang sama dengan halaman lain
-      const result = await apiRequest('/api/walkin-register', {
+      // Ganti format pengiriman data untuk mengatasi Type error
+      const response = await fetch('/api/walkin-register', {
         method: 'POST',
-        body: patientData
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patientData)
       });
+      
+      const responseText = await response.text();
+      
+      if (!response.ok) {
+        throw new Error(`Gagal mendaftarkan pasien: ${responseText}`);
+      }
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.log("Tidak dapat parse response sebagai JSON, menggunakan text response");
+        result = { message: responseText };
+      }
       
       console.log("✅ Hasil pendaftaran:", result);
       
