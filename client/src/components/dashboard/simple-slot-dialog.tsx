@@ -275,8 +275,8 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                         </div>
                         
                         {/* Tindakan cepat untuk pasien */}
-                        {patient.phone && (
-                          <div className="mt-2 flex items-center justify-end space-x-2">
+                        <div className="mt-2 flex items-center justify-end space-x-2">
+                          {patient.phone && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -291,8 +291,19 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                                 WhatsApp
                               </a>
                             </Button>
-                          </div>
-                        )}
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              // Navigasi ke halaman detail pasien
+                              window.location.href = `/patients/${patient.id}`;
+                            }}
+                          >
+                            <User className="mr-1 h-3 w-3" />
+                            Detail
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
