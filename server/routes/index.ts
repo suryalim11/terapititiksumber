@@ -312,8 +312,8 @@ export function setupRoutes(app: Express) {
   // Endpoint pendaftaran pasien
   app.post("/api/register", async (req, res) => {
     try {
-      // Implementasi sederhana untuk pendaftaran pasien
-      console.log("📝 Menerima permintaan pendaftaran pasien", req.body);
+      console.log("🔄 Mulai proses pendaftaran pasien...");
+      console.log("📝 Data pendaftaran:", JSON.stringify(req.body, null, 2));
       
       const patientData = {
         name: req.body.name || "",
@@ -328,6 +328,7 @@ export function setupRoutes(app: Express) {
       
       // Validasi data pasien
       if (!patientData.name || !patientData.phoneNumber || !patientData.therapySlotId) {
+        console.log("❌ Validasi gagal: Data pasien tidak lengkap");
         return res.status(400).json({
           success: false,
           message: "Data pasien tidak lengkap. Pastikan nama, nomor telepon, dan slot terapi diisi."
@@ -336,32 +337,57 @@ export function setupRoutes(app: Express) {
       
       // Cek apakah pendaftaran walk-in
       const isWalkIn = req.body.walkin === true || req.body.walkin === "true";
-      console.log("🚶 Pendaftaran walk-in:", isWalkIn);
+      console.log("🚶 Mode pendaftaran walk-in:", isWalkIn);
       
       // Cari slot terapi
+      console.log("🔍 Mencari slot terapi dengan ID:", patientData.therapySlotId);
       const therapySlot = await storage.getTherapySlot(patientData.therapySlotId);
+      
       if (!therapySlot) {
+        console.log("❌ Slot terapi tidak ditemukan:", patientData.therapySlotId);
         return res.status(404).json({
           success: false,
           message: "Slot terapi tidak ditemukan"
         });
       }
       
+      console.log("✅ Slot terapi ditemukan:", {
+        id: therapySlot.id,
+        date: therapySlot.date,
+        timeSlot: therapySlot.timeSlot,
+        currentCount: therapySlot.currentCount,
+        maxQuota: therapySlot.maxQuota
+      });
+      
+      // Cari pasien berdasarkan nomor telepon terlebih dahulu
+      console.log("🔍 Mencari pasien dengan nomor telepon:", patientData.phoneNumber);
+      const existingPatients = await storage.searchPatientByNameOrPhone(patientData.phoneNumber);
+      
       // Buat atau dapatkan pasien
       let patient;
-      try {
-        patient = await storage.createPatient(patientData);
-        console.log("✅ Pasien berhasil dibuat:", patient);
-      } catch (error) {
-        console.error("❌ Gagal membuat pasien:", error);
-        return res.status(500).json({
-          success: false,
-          message: "Gagal membuat data pasien"
-        });
+      
+      if (existingPatients && existingPatients.length > 0) {
+        // Gunakan pasien yang sudah ada
+        patient = existingPatients[0];
+        console.log("✅ Menggunakan data pasien yang sudah ada:", patient);
+      } else {
+        // Buat pasien baru
+        try {
+          console.log("🆕 Membuat data pasien baru...");
+          patient = await storage.createPatient(patientData);
+          console.log("✅ Pasien baru berhasil dibuat:", patient);
+        } catch (error) {
+          console.error("❌ Gagal membuat pasien:", error);
+          return res.status(500).json({
+            success: false,
+            message: "Gagal membuat data pasien"
+          });
+        }
       }
       
       // Buat appointment
       try {
+        console.log("🆕 Membuat appointment baru...");
         const appointmentData = {
           patientId: patient.id,
           date: therapySlot.date.split(" ")[0], // Ambil YYYY-MM-DD saja
@@ -373,13 +399,17 @@ export function setupRoutes(app: Express) {
           notes: patientData.complaints
         };
         
+        console.log("📋 Data appointment:", appointmentData);
         const appointment = await storage.createAppointment(appointmentData);
         console.log("✅ Appointment berhasil dibuat:", appointment);
         
         // Update jumlah kuota terpakai
+        console.log("🔄 Memperbarui kuota slot terapi...");
         await storage.incrementTherapySlotUsage(therapySlot.id);
+        console.log("✅ Kuota slot terapi berhasil diperbarui");
         
         // Respon sukses
+        console.log("✅ Proses pendaftaran selesai dengan sukses");
         return res.status(200).json({
           success: true,
           message: "Pendaftaran berhasil",
