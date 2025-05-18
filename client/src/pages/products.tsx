@@ -78,22 +78,24 @@ export default function Products() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Query products
+  // Query products using raw API endpoint
   const { 
     data: products = [], 
     isLoading: isLoadingProducts, 
     error: productsError 
   } = useQuery<Product[]>({
-    queryKey: ["/api/products"],
+    queryKey: ["/api/raw/products"],
+    staleTime: 10 * 1000, // 10 seconds
   });
   
-  // Query packages
+  // Query packages using raw API endpoint
   const { 
     data: packages = [], 
     isLoading: isLoadingPackages, 
     error: packagesError 
   } = useQuery<Package[]>({
-    queryKey: ["/api/packages"],
+    queryKey: ["/api/raw/packages"],
+    staleTime: 10 * 1000, // 10 seconds
   });
 
   // Reset form when dialog is closed
@@ -130,7 +132,7 @@ export default function Products() {
       });
       
       // Invalidate products cache to refetch the data
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/raw/products"] });
       
       toast({
         title: "Produk dihapus",
@@ -193,7 +195,7 @@ export default function Products() {
         // Periksa status response
         if (response.ok) {
           // Invalidate packages cache untuk memperbarui data
-          queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/raw/packages"] });
           
           toast({
             title: "Paket terapi dihapus",
