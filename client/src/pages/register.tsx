@@ -494,109 +494,117 @@ export default function RegisterPage() {
 
   // Daftar pasien
   const onSubmit = async (values: RegisterFormValues) => {
+    // Set status sedang submit
     setIsSubmitting(true);
     
-    // Validasi kode pendaftaran untuk registrasi online
-    if (!isWalkInMode && !registrationCode) {
-      toast({
-        variant: "destructive",
-        title: "Kode Pendaftaran Tidak Valid",
-        description: "Kode pendaftaran tidak tersedia. Silakan reload halaman atau gunakan link yang valid.",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-    
-    // Validasi slot terapi
-    if (!selectedSlot && !isWalkInMode) {
-      toast({
-        variant: "destructive",
-        title: "Pilih Jadwal Terapi",
-        description: "Silakan pilih slot jadwal terapi yang tersedia.",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-    
     try {
-      // Ambil slot ID dari state atau sessionStorage untuk memastikan konsistensi
-      const savedSlotId = sessionStorage.getItem("selectedSlotId");
-      const effectiveSlotId = selectedSlot?.id || 
-                             (savedSlotId ? parseInt(savedSlotId) : null) || 
-                             values.therapySlotId || null;
-      
-      console.log("Slot ID yang akan dikirim:", effectiveSlotId);
-      console.log("Selected slot:", selectedSlot);
-      
-      if (!effectiveSlotId && isWalkInMode) {
+      // Validasi kode pendaftaran untuk registrasi online
+      if (!isWalkInMode && !registrationCode) {
         toast({
           variant: "destructive",
-          title: "Slot Terapi Tidak Dipilih",
-          description: "Silahkan pilih slot terapi untuk pasien walk-in terlebih dahulu.",
+          title: "Kode Pendaftaran Tidak Valid",
+          description: "Kode pendaftaran tidak tersedia. Silakan reload halaman atau gunakan link yang valid.",
         });
-        setIsSubmitting(false);
         return;
       }
       
-      // Buat payload untuk API
-      const formData = {
-        ...values,
-        registrationCode: registrationCode,
-        therapySlotId: effectiveSlotId,
-        walkin: isWalkInMode, // Flag untuk walk-in
+      // Ambil slot ID dari parameter URL atau form
+      const slotId = selectedSlot?.id || parseInt(sessionStorage.getItem("selectedSlotId") || "0") || null;
+      
+      console.log("Slot terapi yang dipilih:", slotId);
+      
+      if (!slotId) {
+        toast({
+          variant: "destructive",
+          title: "Slot Terapi Tidak Dipilih",
+          description: "Silahkan pilih slot terapi terlebih dahulu.",
+        });
+        return;
+      }
+      
+      // Data lengkap untuk pendaftaran
+      const payload = {
+        name: values.name,
+        phoneNumber: values.phoneNumber,
+        email: values.email || null,
+        birthDate: values.birthDate,
+        gender: values.gender,
+        address: values.address,
+        complaints: values.complaints,
+        therapySlotId: slotId,
+        walkin: isWalkInMode,
+        registrationCode: isWalkInMode ? "WALKIN" : registrationCode,
       };
       
-      // Buat permintaan ke API dengan timeout
-      const registerPromise = apiRequest('/api/register', {
-        method: 'POST',
-        data: formData
-      });
-      
-      // Tambahkan timeout 10 detik untuk mencegah loading tak berakhir
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(new Error("Pendaftaran timeout setelah 10 detik"));
-        }, 10000);
-      });
-      
-          // Gunakan fetch langsung untuk pendaftaran walk-in
-      let response;
       try {
-        // Gunakan fetch langsung untuk menghindari masalah dengan react-query
-        const fetchResponse = await fetch('/api/register', {
+        console.log("Mengirim data untuk pendaftaran:", payload);
+        
+        // Gunakan fetch API standar
+        const response = await fetch('/api/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
           credentials: 'include'
         });
         
-        if (!fetchResponse.ok) {
-          throw new Error(`Server returned ${fetchResponse.status}`);
+        // Periksa status respons
+        if (!response.ok) {
+          let errorMessage = `Server error (${response.status})`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            // Jika tidak bisa parse JSON, coba text
+            errorMessage = await response.text();
+          }
+          throw new Error(errorMessage);
         }
         
-        response = await fetchResponse.json();
-        // API berhasil, tampilkan hasil pendaftaran
-        setRegistrationResult(response);
-      } catch (error) {
-        console.error("Error during fetch:", error);
-        throw error;
+        // Parse respons JSON
+        const data = await response.json();
+        console.log("Pendaftaran berhasil:", data);
+        
+        // Update state sukses
+        setRegistrationResult(data);
+        setRegistrationStatus("success");
+        
+        // Simpan ke localStorage untuk backup
+        localStorage.setItem('registrationData', JSON.stringify(data));
+        
+        // Notifikasi sukses
+        toast({
+          title: "Pendaftaran Berhasil",
+          description: isWalkInMode 
+            ? "Pasien walk-in berhasil didaftarkan" 
+            : "Pendaftaran berhasil, silakan cek email untuk konfirmasi.",
+          className: "bg-green-50 border-green-200 text-green-800",
+        });
+        
+        // Untuk walk-in, beri opsi kembali ke dashboard
+        if (isWalkInMode) {
+          setTimeout(() => {
+            const confirmed = window.confirm("Pendaftaran walk-in berhasil. Kembali ke dashboard?");
+            if (confirmed) {
+              window.location.href = "/admin/dashboard";
+            }
+          }, 1500);
+        }
+      } catch (error: any) {
+        console.error("Error pendaftaran:", error);
+        
+        // Set status error dan tampilkan pesan
+        setRegistrationStatus("error");
+        toast({
+          variant: "destructive",
+          title: "Gagal Mendaftar",
+          description: error.message || "Terjadi kesalahan saat proses pendaftaran.",
+        });
+      } finally {
+        // Selalu reset status loading
+        setIsSubmitting(false);
       }
-      setRegistrationStatus("success");
-      
-      // Simpan data pendaftaran ke localStorage untuk fallback
-      localStorage.setItem('registrationData', JSON.stringify(response));
-      localStorage.setItem('registrationStatus', 'success');
-      
-      // Tambahkan toast
-      toast({
-        title: "Pendaftaran Berhasil",
-        description: isWalkInMode 
-          ? "Pasien walk-in berhasil didaftarkan" 
-          : "Pendaftaran berhasil, silakan cek email untuk konfirmasi.",
-        className: "bg-green-50 border-green-200 text-green-800",
-      });
       
     } catch (error: any) {
       console.error("Error submitting registration:", error);
