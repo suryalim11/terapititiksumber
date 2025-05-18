@@ -388,30 +388,19 @@ export function setupRoutes(app: Express) {
         }
       }
       
-      // Cari pasien berdasarkan nomor telepon terlebih dahulu
-      console.log("🔍 Mencari pasien dengan nomor telepon:", patientData.phoneNumber);
-      const existingPatients = await storage.searchPatientByNameOrPhone(patientData.phoneNumber);
-      
-      // Buat atau dapatkan pasien
+      // Proses lebih sederhana: buat pasien baru langsung
       let patient;
       
-      if (existingPatients && existingPatients.length > 0) {
-        // Gunakan pasien yang sudah ada
-        patient = existingPatients[0];
-        console.log("✅ Menggunakan data pasien yang sudah ada:", patient);
-      } else {
-        // Buat pasien baru
-        try {
-          console.log("🆕 Membuat data pasien baru...");
-          patient = await storage.createPatient(patientData);
-          console.log("✅ Pasien baru berhasil dibuat:", patient);
-        } catch (error) {
-          console.error("❌ Gagal membuat pasien:", error);
-          return res.status(500).json({
-            success: false,
-            message: "Gagal membuat data pasien"
-          });
-        }
+      try {
+        console.log("🆕 Membuat data pasien baru...");
+        patient = await storage.createPatient(patientData);
+        console.log("✅ Pasien baru berhasil dibuat:", { id: patient.id, name: patient.name });
+      } catch (error) {
+        console.error("❌ Gagal membuat pasien:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Gagal membuat data pasien"
+        });
       }
       
       // Buat appointment

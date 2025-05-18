@@ -546,14 +546,43 @@ export default function RegisterPage() {
         walkin: isWalkInMode, // Flag untuk walk-in
       };
       
-      // Buat permintaan ke API
-      const response = await apiRequest('/api/register', {
+      // Buat permintaan ke API dengan timeout
+      const registerPromise = apiRequest('/api/register', {
         method: 'POST',
         data: formData
       });
       
-      // API berhasil, tampilkan hasil pendaftaran
-      setRegistrationResult(response);
+      // Tambahkan timeout 10 detik untuk mencegah loading tak berakhir
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error("Pendaftaran timeout setelah 10 detik"));
+        }, 10000);
+      });
+      
+          // Gunakan fetch langsung untuk pendaftaran walk-in
+      let response;
+      try {
+        // Gunakan fetch langsung untuk menghindari masalah dengan react-query
+        const fetchResponse = await fetch('/api/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+          credentials: 'include'
+        });
+        
+        if (!fetchResponse.ok) {
+          throw new Error(`Server returned ${fetchResponse.status}`);
+        }
+        
+        response = await fetchResponse.json();
+        // API berhasil, tampilkan hasil pendaftaran
+        setRegistrationResult(response);
+      } catch (error) {
+        console.error("Error during fetch:", error);
+        throw error;
+      }
       setRegistrationStatus("success");
       
       // Simpan data pendaftaran ke localStorage untuk fallback
