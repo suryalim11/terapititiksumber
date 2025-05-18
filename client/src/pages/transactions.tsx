@@ -116,10 +116,23 @@ export default function Transactions() {
   // Dapatkan parameter delay dari URL jika ada
   const delayParamFromUrl = urlParams.get("delay");
   
+  // State untuk menandai penggunaan fixed endpoints
+  const [useFixedEndpoints, setUseFixedEndpoints] = useState(false);
+
   // Effect untuk langsung membuka form transaksi saat patientId ada di URL
   useEffect(() => {
     // Selalu cek localStorage dulu setiap kali komponen dimounting
     if (!localStorageCheckedRef.current) {
+      // Cek localStorage untuk flag endpoint fixed
+      const useFixed = localStorage.getItem('use_fixed_endpoints') === 'true';
+      setUseFixedEndpoints(useFixed);
+      
+      // Cek URL parameter untuk useFixed
+      const useFixedParam = urlParams.get("useFixed") === 'true';
+      if (useFixedParam) {
+        setUseFixedEndpoints(true);
+      }
+      
       const storedPatientId = localStorage.getItem('pendingTransactionPatientId');
       const storedPatientName = localStorage.getItem('pendingTransactionPatientName');
       const shouldOpenForm = localStorage.getItem('openTransactionFormDirectly');
@@ -1502,6 +1515,8 @@ export default function Transactions() {
             (selectedPatientId !== null && selectedPatientId !== undefined) || 
             urlParams.get("hideDropdown") === "true"
           }
+          // Tambahkan properti useFixedEndpoints
+          useFixedEndpoints={useFixedEndpoints}
         />
       )}
       
