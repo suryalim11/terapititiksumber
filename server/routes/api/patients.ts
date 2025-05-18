@@ -11,95 +11,89 @@ import { insertPatientSchema } from "@shared/schema";
  * Mendaftarkan rute-rute untuk pasien
  */
 export function setupPatientRoutes(app: Express) {
-  // Endpoint khusus untuk pendaftaran walk-in langsung dari dashboard
+  // Endpoint untuk pendaftaran pasien walk-in langsung
   app.post("/api/patients/register-walkin", requireAuth, async (req: Request, res: Response) => {
     try {
-      console.log("➡️ API Register Walk-in: Menerima permintaan pendaftaran walk-in");
-      console.log("📝 API Register Walk-in: Data yang diterima:", req.body);
+      console.log("API Walkin: Menerima pendaftaran walk-in baru");
+      console.log("API Walkin: Data:", req.body);
       
-      // Validasi data dasar
+      // Validasi data minimum
       if (!req.body.name || !req.body.phoneNumber || !req.body.slotId) {
-        console.log("❌ API Register Walk-in: Data tidak lengkap");
+        console.log("API Walkin: Data tidak lengkap");
         return res.status(400).json({
           success: false,
-          message: "Data pendaftaran tidak lengkap"
+          message: "Nama, telepon, dan slot ID wajib diisi"
         });
       }
       
       // Cek slot terapi
       const slotId = parseInt(req.body.slotId);
-      console.log("🔍 API Register Walk-in: Slot ID yang diterima:", slotId);
-      const therapySlot = await storage.getTherapySlot(slotId);
+      console.log("API Walkin: Slot ID:", slotId);
       
-      console.log("🔍 API Register Walk-in: Slot terapi:", therapySlot);
-      
-      if (!therapySlot) {
-        console.log("❌ API Register Walk-in: Slot terapi tidak ditemukan");
+      // Ambil data slot terapi
+      const slot = await storage.getTherapySlot(slotId);
+      if (!slot) {
         return res.status(404).json({
           success: false,
           message: "Slot terapi tidak ditemukan"
         });
       }
       
-      // Cek kuota
-      if (therapySlot.currentCount >= therapySlot.maxQuota) {
-        console.log("❌ API Register Walk-in: Kuota slot penuh");
+      console.log("API Walkin: Slot ditemukan:", slot);
+      
+      // Cek kuota slot
+      if (slot.currentCount >= slot.maxQuota) {
         return res.status(400).json({
           success: false,
-          message: `Kuota slot terapi sudah penuh (${therapySlot.currentCount}/${therapySlot.maxQuota})`
+          message: `Slot terapi sudah penuh (${slot.currentCount}/${slot.maxQuota})`
         });
       }
       
-      // Buat pasien baru
-      const patientData = {
+      // Buat data pasien
+      const patient = await storage.createPatient({
         name: req.body.name,
         phoneNumber: req.body.phoneNumber,
         gender: req.body.gender || "Laki-laki",
         birthDate: req.body.birthDate || new Date(),
         address: req.body.address || "Alamat default",
         complaints: req.body.complaints || "Walk-in pasien",
-        email: req.body.email || "",
+        email: "",
         therapySlotId: slotId
-      };
+      });
       
-      // Buat pasien
-      console.log("📋 API Register Walk-in: Membuat pasien baru...");
-      const patient = await storage.createPatient(patientData);
-      console.log("✅ API Register Walk-in: Pasien berhasil dibuat:", patient);
+      console.log("API Walkin: Pasien dibuat:", patient);
       
-      // Buat appointment
-      console.log("📋 API Register Walk-in: Membuat appointment baru...");
-      const appointmentData = {
+      // Buat appointment untuk pasien
+      const appointment = await storage.createAppointment({
         patientId: patient.id,
-        date: therapySlot.date,
-        timeSlot: therapySlot.timeSlot,
-        therapySlotId: therapySlot.id,
+        date: slot.date,
+        timeSlot: slot.timeSlot,
+        therapySlotId: slotId,
         sessionId: null,
-        status: "Active", // Walk-in selalu active
+        status: "Active", // Walk-in selalu aktif
         registrationNumber: `WI-${Date.now()}`,
-        notes: patientData.complaints
-      };
+        notes: req.body.complaints || "Walk-in pasien"
+      });
       
-      console.log("📋 API Register Walk-in: Data appointment:", appointmentData);
-      const appointment = await storage.createAppointment(appointmentData);
-      console.log("✅ API Register Walk-in: Appointment berhasil dibuat:", appointment);
+      console.log("API Walkin: Appointment dibuat:", appointment);
       
       // Update kuota slot
       await storage.incrementTherapySlotUsage(slotId);
-      console.log("✅ API Register Walk-in: Kuota slot terapi diupdate");
       
+      // Kirim respons
       return res.status(200).json({
         success: true,
         message: "Pendaftaran walk-in berhasil",
-        patient: patient,
-        appointment: appointment
+        patientId: patient.id,
+        appointmentId: appointment.id
       });
+      
     } catch (error: any) {
-      console.error("❌ API Register Walk-in: Error:", error);
+      console.error("API Walkin Error:", error);
       return res.status(500).json({
-        success: false,
-        message: "Terjadi kesalahan saat mendaftarkan pasien walk-in",
-        error: error.message || "Unknown error"
+        success: false, 
+        message: "Gagal mendaftarkan pasien walk-in",
+        error: error.message
       });
     }
   });
