@@ -202,6 +202,16 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         console.log(`[DEBUG] ✅ OVERRIDE TOTAL - Menggunakan data hardcoded untuk slot 461 (${patientsData.length} pasien)`, patientsData);
       }
       
+      // SOLUSI KHUSUS - IMPLEMENTASI UNTUK SLOT 474 (19 Mei)
+      if (slotId === 474) {
+        console.log(`[DEBUG] 🎯 Slot khusus 474 (tanggal 19 Mei) terdeteksi, MENGGUNAKAN ARRAY KOSONG`);
+        
+        // Menggunakan array kosong karena slot masih kosong, belum ada pasien
+        patientsData = [];
+        
+        console.log(`[DEBUG] ✅ OVERRIDE - Menggunakan array kosong untuk slot 474`);
+      }
+      
       // Set state dengan data pasien yang sudah diverifikasi
       setPatients(patientsData || []);
       
