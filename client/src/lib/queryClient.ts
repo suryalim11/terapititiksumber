@@ -173,9 +173,41 @@ export const getQueryFn = <T,>({ on401: unauthorizedBehavior }: {
         console.error('Failed to read response text:', e);
       }
       
-      // Return empty array for routes that should return arrays
-      if (url.includes('/api/products') || 
-          url.includes('/api/packages') ||
+      // For products and packages, try fixed endpoint instead of returning empty array
+      if (url === '/api/products') {
+        console.log('Retrying with fixed products endpoint');
+        return fetch('/api/fixed/products', {
+          credentials: "include",
+          headers: { "Accept": "application/json" }
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log(`Successfully got ${data.length} products from fixed endpoint`);
+          return data as unknown as T;
+        })
+        .catch(err => {
+          console.error('Failed to get products from fixed endpoint:', err);
+          return [] as unknown as T;
+        });
+      } 
+      else if (url === '/api/packages') {
+        console.log('Retrying with fixed packages endpoint');
+        return fetch('/api/fixed/packages', {
+          credentials: "include",
+          headers: { "Accept": "application/json" }
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log(`Successfully got ${data.length} packages from fixed endpoint`);
+          return data as unknown as T;
+        })
+        .catch(err => {
+          console.error('Failed to get packages from fixed endpoint:', err);
+          return [] as unknown as T;
+        });
+      }
+      // Return empty array for other routes that should return arrays
+      else if (
           url.includes('/api/medical-histories') || 
           url.includes('/api/sessions') || 
           url.includes('/api/transactions') ||
