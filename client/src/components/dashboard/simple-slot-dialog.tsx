@@ -146,32 +146,68 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
     }
   }
   
-  // Versi direct API - Register pasien tanpa redirect
+  // Versi Ultra-Sederhana untuk pendaftaran walk-in menggunakan endpoint baru
   async function handleRegisterPatient() {
     if (!slotData) return;
     
-    // Tampilkan toast untuk memberi feedback
-    toast({
-      title: "Buka Form Pendaftaran",
-      description: "Membuka form pendaftaran pasien walk-in",
-      className: "bg-blue-50 border-blue-200 text-blue-800",
-    });
-    
-    // Simpan data slot untuk diambil oleh form pendaftaran
-    sessionStorage.setItem("selectedSlotId", String(slotData.id));
-    sessionStorage.setItem("selectedSlotDate", String(slotData.date));
-    sessionStorage.setItem("selectedSlotTime", slotData.timeSlot || "");
-    
-    // Redirect ke halaman pendaftaran pasien dengan parameter yang lengkap
-    const slotId = slotData.id;
-    
-    // Gunakan URL yang sederhana dan langsung
-    const registerUrl = `/register?slotId=${slotId}&walkin=true&date=${encodeURIComponent(String(slotData.date))}&timeSlot=${encodeURIComponent(slotData.timeSlot || '')}&t=${Date.now()}`;
-    
-    console.log("📝 URL pendaftaran sederhana:", registerUrl);
-    
-    // Navigasi langsung ke halaman pendaftaran
-    window.location.href = registerUrl;
+    try {
+      // Tampilkan dialog konfirmasi terlebih dahulu
+      const patientName = prompt("Nama Pasien:");
+      if (!patientName) return; // Batal jika tidak ada nama
+      
+      const patientPhone = prompt("Nomor Telepon Pasien:");
+      if (!patientPhone) return; // Batal jika tidak ada telepon
+      
+      // Tampilkan loading message
+      toast({
+        title: "Mendaftarkan Pasien...",
+        description: "Mohon tunggu sebentar",
+        className: "bg-blue-50 border-blue-200 text-blue-800",
+      });
+      
+      // Data pasien sederhana
+      const patientData = {
+        name: patientName,
+        phoneNumber: patientPhone,
+        gender: "Laki-laki", // Default
+        birthDate: "1980-01-01", // Default, bisa diubah nanti
+        complaints: "Walk-in", // Default
+        address: "-", // Default
+        slotId: slotData.id,
+      };
+      
+      // Panggil endpoint khusus walk-in
+      const response = await fetch('/api/walkin-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patientData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Gagal mendaftar: ${errorData}`);
+      }
+      
+      const result = await response.json();
+      
+      // Tampilkan sukses dan reload daftar pasien
+      toast({
+        title: "Pendaftaran Berhasil",
+        description: `Pasien ${patientName} berhasil didaftarkan`,
+        className: "bg-green-50 border-green-200 text-green-800",
+      });
+      
+      // Reload data setelah sukses
+      loadSlotData(slotData.id);
+      
+    } catch (error) {
+      console.error("Error pendaftaran cepat:", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal Mendaftar",
+        description: error.message || "Terjadi kesalahan",
+      });
+    }
   }
   
   function formatAppointmentDate(dateString: string | Date): string {
@@ -251,10 +287,13 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                 <h2 className="text-lg font-semibold">Daftar Pasien</h2>
                 <Button 
                   onClick={handleRegisterPatient}
-                  disabled={!slotData.isActive || slotData.currentCount >= slotData.maxQuota}
+                  disabled={!slotData.isActive}
+                  className={slotData.currentCount >= slotData.maxQuota ? "bg-yellow-500 hover:bg-yellow-600" : ""}
                 >
                   <User className="mr-2 h-4 w-4" />
-                  Daftarkan Pasien
+                  {slotData.currentCount >= slotData.maxQuota 
+                    ? `Daftarkan Pasien (${slotData.currentCount}/${slotData.maxQuota})` 
+                    : "Daftarkan Pasien"}
                 </Button>
               </div>
               

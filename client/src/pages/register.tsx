@@ -537,15 +537,23 @@ export default function RegisterPage() {
       };
       
       try {
-        console.log("Mengirim data untuk pendaftaran:", payload);
+        console.log("Mengirim data untuk pendaftaran (versi browser fetch):", payload);
         
-        // Kirim permintaan tanpa AbortController (lebih sederhana)
+        // Buat kopi baru dari payload dengan tipe data yang benar
+        const cleanPayload = {
+          ...payload,
+          // Pastikan jenis data sesuai
+          therapySlotId: Number(payload.therapySlotId),
+          walkin: Boolean(payload.walkin) // Konversi ke boolean sejati
+        };
+        
+        // Gunakan fetch API standar
         const response = await fetch('/api/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(cleanPayload),
           credentials: 'include'
         });
         

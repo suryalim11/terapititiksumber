@@ -309,6 +309,81 @@ export function setupRoutes(app: Express) {
   setupRegistrationLinkRoutes(app);
   setupDashboardRoutes(app);
   
+  // Endpoint pendaftaran sederhana khusus walk-in
+  app.post("/api/walkin-register", async (req, res) => {
+    console.log("🚶 Mencoba pendaftaran khusus walk-in...");
+    
+    try {
+      // Ambil data pasien
+      const patientData = {
+        name: req.body.name,
+        phoneNumber: req.body.phoneNumber,
+        email: req.body.email || null,
+        birthDate: req.body.birthDate,
+        gender: req.body.gender || "Laki-laki",
+        address: req.body.address || "",
+        complaints: req.body.complaints || "",
+        therapySlotId: req.body.slotId || req.body.therapySlotId
+      };
+      
+      // Validasi data
+      if (!patientData.name || !patientData.phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "Nama dan telepon wajib diisi"
+        });
+      }
+      
+      if (!patientData.therapySlotId) {
+        return res.status(400).json({
+          success: false,
+          message: "Slot terapi wajib diisi"
+        });
+      }
+      
+      // Cari slot terapi
+      const therapySlot = await storage.getTherapySlot(patientData.therapySlotId);
+      if (!therapySlot) {
+        return res.status(404).json({
+          success: false,
+          message: "Slot terapi tidak ditemukan"
+        });
+      }
+      
+      // Buat pasien baru
+      const patient = await storage.createPatient(patientData);
+      
+      // Buat appointment
+      const appointment = await storage.createAppointment({
+        patientId: patient.id,
+        date: therapySlot.date.split(" ")[0],
+        timeSlot: therapySlot.timeSlot,
+        therapySlotId: therapySlot.id,
+        sessionId: null,
+        status: "Active", // Walk-in selalu active
+        registrationNumber: `WI-${Date.now()}`,
+        notes: patientData.complaints
+      });
+      
+      // Update kuota
+      await storage.incrementTherapySlotUsage(therapySlot.id);
+      
+      // Respons sukses sederhana
+      return res.status(200).json({
+        success: true,
+        message: "Pendaftaran walk-in berhasil",
+        patientId: patient.id,
+        appointmentId: appointment.id
+      });
+    } catch (error) {
+      console.error("Error pendaftaran walk-in:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Gagal mendaftarkan pasien walk-in"
+      });
+    }
+  });
+  
   // Endpoint pendaftaran pasien (versi teliti & detektif)
   app.post("/api/register", async (req, res) => {
     console.log("===============================================");
