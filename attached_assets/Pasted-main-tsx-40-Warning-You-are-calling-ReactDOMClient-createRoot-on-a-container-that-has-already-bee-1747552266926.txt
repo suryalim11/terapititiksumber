@@ -1,0 +1,107 @@
+main.tsx:40 Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it.
+overrideMethod @ hook.js:608
+printWarning @ chunk-RPCDYKBN.js?v=b839a6d3:521
+error @ chunk-RPCDYKBN.js?v=b839a6d3:505
+warnIfReactDOMContainerInDEV @ chunk-RPCDYKBN.js?v=b839a6d3:21240
+createRoot @ chunk-RPCDYKBN.js?v=b839a6d3:21143
+createRoot$1 @ chunk-RPCDYKBN.js?v=b839a6d3:21522
+exports.createRoot @ react-dom_client.js?v=b839a6d3:21
+(anonymous) @ main.tsx:40
+theme-provider.tsx:73 Tema diterapkan langsung: light
+theme-provider.tsx:73 Tema diterapkan langsung: light
+queryClient.ts:28 API Request to /api/patients/369 with credentials included
+queryClient.ts:28 API Request to /api/transactions?patientId=369&includeRelated=true with credentials included
+queryClient.ts:28 API Request to /api/sessions?patientId=369&active=true&includeRelated=true with credentials included
+queryClient.ts:28 API Request to /api/appointments?patientId=369 with credentials included
+queryClient.ts:28 API Request to /api/medical-histories/patient/369 with credentials included
+queryClient.ts:81 API data from /api/sessions?patientId=369&active=true&includeRelated=true: Array with 0 items
+queryClient.ts:81 API data from /api/medical-histories/patient/369: Array with 0 items
+queryClient.ts:81 API data from /api/patients/369: object
+queryClient.ts:28 API Request to /api/verify-connection/patient/369 with credentials included
+queryClient.ts:81 API data from /api/appointments?patientId=369: Array with 1 items
+queryClient.ts:81 API data from /api/transactions?patientId=369&includeRelated=true: Array with 0 items
+queryClient.ts:81 API data from /api/verify-connection/patient/369: object
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:122 Fetching data with getQueryFn: /api/appointments/date/2025-05-18
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:132 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:132 Response for /api/appointments/date/2025-05-18: status=200
+queryClient.ts:146 Successfully parsed data from /api/appointments/date/2025-05-18: object
+queryClient.ts:146 Successfully parsed data from /api/dashboard/active-packages: Array with 161 items
+queryClient.ts:132 Response for /api/dashboard/stats: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/stats: object
+simple-slot-dialog.tsx:79 [DEBUG] loadSlotData() dipanggil untuk slot 474
+simple-slot-dialog.tsx:86 [DEBUG] Memulai request data dasar untuk slot 474 dengan timestamp 1747552199248
+hook.js:608 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. Error Component Stack
+    at DescriptionWarning (chunk-PPFWLWA6.js?v=b839a6d3:328:29)
+    at chunk-PPFWLWA6.js?v=b839a6d3:232:13
+    at chunk-PPFWLWA6.js?v=b839a6d3:155:58
+    at Presence (chunk-LRCMV7QY.js?v=b839a6d3:24:11)
+    at chunk-PPFWLWA6.js?v=b839a6d3:146:64
+    at chunk-DKHUMOWT.js?v=b839a6d3:52:11
+    at chunk-DKHUMOWT.js?v=b839a6d3:33:11
+    at chunk-CPFL7ZFD.js?v=b839a6d3:41:13
+    at chunk-VY4PXIEJ.js?v=b839a6d3:258:22
+    at Presence (chunk-LRCMV7QY.js?v=b839a6d3:24:11)
+    at Provider (chunk-R2T6YHTW.js?v=b839a6d3:43:15)
+    at DialogPortal (chunk-PPFWLWA6.js?v=b839a6d3:109:11)
+    at _c3 (dialog.tsx:29:6)
+    at Provider (chunk-R2T6YHTW.js?v=b839a6d3:43:15)
+    at Dialog (chunk-PPFWLWA6.js?v=b839a6d3:50:5)
+    at SimpleSlotDialog (simple-slot-dialog.tsx:58:36)
+    at div (<anonymous>)
+    at Dashboard (dashboard.tsx:97:47)
+    at Route (wouter.js?v=b839a6d3:323:16)
+    at ProtectedRoute (protected-route.tsx:7:3)
+    at Switch (wouter.js?v=b839a6d3:379:17)
+    at main (<anonymous>)
+    at div (<anonymous>)
+    at div (<anonymous>)
+    at Layout (layout.tsx:256:34)
+    at AdminApp (<anonymous>)
+    at AuthProvider (auth.tsx:38:32)
+    at _a (react-helmet-async.js?v=b839a6d3:624:5)
+    at QueryClientProvider (@tanstack_react-query.js?v=b839a6d3:2805:3)
+    at App (<anonymous>)
+    at ThemeProvider (theme-provider.tsx:24:3)
+overrideMethod @ hook.js:608
+(anonymous) @ chunk-PPFWLWA6.js?v=b839a6d3:336
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b839a6d3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b839a6d3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b839a6d3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b839a6d3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=b839a6d3:18627
+queryClient.ts:122 Fetching data with getQueryFn: /api/appointments/date/2025-05-18
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:132 Response for /api/appointments/date/2025-05-18: status=200
+queryClient.ts:146 Successfully parsed data from /api/appointments/date/2025-05-18: object
+queryClient.ts:132 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/active-packages: Array with 161 items
+queryClient.ts:132 Response for /api/dashboard/stats: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/stats: object
+queryClient.ts:122 Fetching data with getQueryFn: /api/appointments/date/2025-05-18
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:132 Response for /api/appointments/date/2025-05-18: status=200
+queryClient.ts:146 Successfully parsed data from /api/appointments/date/2025-05-18: object
+queryClient.ts:132 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/active-packages: Array with 161 items
+queryClient.ts:132 Response for /api/dashboard/stats: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/stats: object
+queryClient.ts:122 Fetching data with getQueryFn: /api/appointments/date/2025-05-18
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:132 Response for /api/appointments/date/2025-05-18: status=200
+queryClient.ts:146 Successfully parsed data from /api/appointments/date/2025-05-18: object
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:132 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:132 Response for /api/dashboard/stats: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/stats: object
+queryClient.ts:146 Successfully parsed data from /api/dashboard/active-packages: Array with 161 items

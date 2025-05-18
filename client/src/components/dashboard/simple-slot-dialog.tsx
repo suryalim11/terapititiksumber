@@ -395,6 +395,9 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
             <CalendarIcon size={18} />
             <span>Detail Slot Terapi</span>
           </DialogTitle>
+          <DialogDescription>
+            Informasi lengkap slot terapi dan daftar pasien yang terdaftar
+          </DialogDescription>
           <DialogClose />
         </DialogHeader>
         
