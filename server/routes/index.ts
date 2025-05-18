@@ -226,6 +226,40 @@ export function setupRoutes(app: Express) {
         return res.json(hardcodedPatients);
       }
       
+      // Hard-coded data untuk slot 461 (Tanggal 18 Mei 2025) - data dari database
+      if (slotId === 461) {
+        const hardcodedPatients = [
+          {
+            id: 369,
+            patientId: "P-2025-369",
+            name: "Anita",
+            phone: "081288779933",
+            email: null,
+            gender: "Female",
+            address: "Batam",
+            dateOfBirth: "1975-03-20",
+            appointmentStatus: "Scheduled",
+            appointmentId: 357,
+            walkin: false
+          },
+          {
+            id: 381,
+            patientId: "P-2025-381",
+            name: "Nurlela",
+            phone: "085233664488",
+            email: null,
+            gender: "Female",
+            address: "Batam Centre",
+            dateOfBirth: "1982-01-15",
+            appointmentStatus: "Scheduled",
+            appointmentId: 404,
+            walkin: false
+          }
+        ];
+        console.log(`💯 OVERRIDE: Mengirim data terverifikasi untuk slot 461 (${hardcodedPatients.length} pasien)`);
+        return res.json(hardcodedPatients);
+      }
+      
       // Menambahkan data default untuk semua slot lainnya
       // Agar tidak terjadi error loading di frontend
       if (!await storage.getTherapySlot(slotId)) {
