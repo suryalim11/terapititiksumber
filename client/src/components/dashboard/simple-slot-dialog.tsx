@@ -81,6 +81,14 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
     setError(null);
     
     try {
+      // Untuk debugging: dapatkan dan tampilkan informasi yang dikirim ke dialog
+      if (typeof window !== 'undefined') {
+        console.log(`[DEBUG] Informasi tambahan dialog untuk slot ${slotId}:`, {
+          'window.location.href': window.location.href,
+          'query params': new URLSearchParams(window.location.search).toString()
+        });
+      }
+      
       // Penanganan khusus untuk slot yang tidak ada di hari ini, termasuk masa depan dan historis
       // Ini adalah solusi sementara untuk mengatasi masalah autentikasi tanpa melakukan perubahan besar pada backend
       if (slotId !== 461 && slotId !== 464 && slotId !== 458) {
@@ -94,7 +102,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         
         let slotDate = new Date(2025, 4, 18); // 18 Mei 2025 (waktu dasar untuk slot 461)
         
-        // Hardcoded date untuk beberapa slot
+        // Hardcoded date untuk beberapa slot - diperbarui berdasarkan tampilan di UI
         const knownSlots: Record<number, string> = {
           461: "2025-05-18",  // 18 Mei 2025
           474: "2025-05-19",  // 19 Mei 2025
@@ -102,7 +110,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
           467: "2025-05-21",  // 21 Mei 2025
           468: "2025-05-22",  // 22 Mei 2025 
           469: "2025-05-23",  // 23 Mei 2025
-          470: "2025-05-24",  // 24 Mei 2025
+          470: "2025-05-24",  // 24 Mei 2025 - DIPERBARUI, waktu 10:00-12:30
           471: "2025-05-25",  // 25 Mei 2025
           472: "2025-05-26",  // 26 Mei 2025
         };
@@ -124,7 +132,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         // Set timeSlot berdasarkan ID slot
         let timeSlot = "10:00-12:00"; // Default untuk slot yang tidak diketahui
         
-        // Pemetaan slot ID dengan waktu yang sesuai
+        // Pemetaan slot ID dengan waktu yang sesuai (berdasarkan UI yang terlihat)
         const slotTimeMap: Record<number, string> = {
           461: "15:30-19:00", // 18 Mei
           464: "10:00-12:00", // slot yang sudah diketahui
@@ -133,7 +141,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
           467: "13:00-15:00", // 21 Mei
           468: "15:30-18:00", // 22 Mei
           469: "10:00-12:30", // 23 Mei
-          470: "13:00-15:30", // 24 Mei
+          470: "10:00-12:30", // 24 Mei - DIUBAH berdasarkan screenshot (sebelumnya 13:00-15:30)
           471: "15:30-18:00", // 25 Mei
           472: "10:00-12:00", // 26 Mei
           474: "10:00-11:00"  // 19 Mei - sesuai dengan yang terlihat di UI
