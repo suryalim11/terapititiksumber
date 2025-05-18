@@ -136,7 +136,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
           470: "13:00-15:30", // 24 Mei
           471: "15:30-18:00", // 25 Mei
           472: "10:00-12:00", // 26 Mei
-          474: "10:00-12:00"  // 19 Mei
+          474: "10:00-11:00"  // 19 Mei - sesuai dengan yang terlihat di UI
         };
         
         // Gunakan waktu yang sudah diketahui jika ada
