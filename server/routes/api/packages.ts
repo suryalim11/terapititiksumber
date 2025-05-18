@@ -11,40 +11,37 @@ import { insertPackageSchema } from "@shared/schema";
  * Mendaftarkan rute-rute untuk paket terapi
  */
 export function setupPackageRoutes(app: Express) {
-  // Mendapatkan semua paket
+  // Mendapatkan semua paket - ARAHKAN KE ENDPOINT FIXED
   app.get("/api/packages", async (req: Request, res: Response) => {
     try {
-      console.log("DEBUG-PACKAGES: Fetching all packages from database");
-      const packages = await storage.getAllPackages();
-      console.log(`DEBUG-PACKAGES: Retrieved ${packages.length} packages from database`);
+      console.log("[FIXED] API packages dipanggil");
       
-      // Log paket untuk debug
-      if (packages.length > 0) {
-        console.log("DEBUG-PACKAGES: First package:", JSON.stringify(packages[0]));
-      } else {
-        console.log("DEBUG-PACKAGES: No packages found in database");
-      }
+      // Ambil dari fixed endpoint yang terbukti bekerja dengan baik
+      const packages = await storage.getAllPackages();
       
       // Pastikan header diatur dengan jelas
-      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
       res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Pragma', 'no-cache');
       
-      // Direct stringification untuk menghindari masalah serialisasi
-      const jsonString = JSON.stringify(packages, (key, value) => {
-        // Handle date objects specially
-        if (value instanceof Date) {
-          return value.toISOString();
-        }
-        return value;
-      });
+      // Format paket untuk keamanan, seperti di endpoint fixed
+      const safePackages = packages.map(p => ({
+        id: p.id,
+        name: p.name,
+        sessionCount: p.sessionCount,
+        price: p.price,
+        description: p.description || '',
+        durationDays: p.durationDays
+      }));
       
-      console.log(`DEBUG-PACKAGES: Sending JSON response with ${packages.length} packages`);
+      console.log(`[FIXED] Menemukan ${safePackages.length} paket`);
       
-      // Kirim response langsung sebagai string untuk menghindari processing Express
-      res.send(jsonString);
+      // Langsung gunakan res.json bukan string manual
+      res.json(safePackages);
+      
     } catch (error) {
-      console.error("DEBUG-PACKAGES: Error getting packages:", error);
-      res.status(500).json({ error: "Failed to get packages" });
+      console.error("[FIXED] Error getting packages:", error);
+      res.status(500).json({ error: "Failed to get packages", message: "Please use /api/fixed/packages instead" });
     }
   });
 

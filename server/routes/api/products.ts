@@ -11,40 +11,34 @@ import { insertProductSchema } from "@shared/schema";
  * Mendaftarkan rute-rute untuk produk
  */
 export function setupProductRoutes(app: Express) {
-  // Mendapatkan semua produk
+  // Mendapatkan semua produk - ARAHKAN KE ENDPOINT FIXED
   app.get("/api/products", async (req: Request, res: Response) => {
     try {
-      console.log("DEBUG-PRODUCTS: Fetching all products from database");
-      const products = await storage.getAllProducts();
-      console.log(`DEBUG-PRODUCTS: Retrieved ${products.length} products from database`);
+      console.log("DEBUG-PRODUCTS: Redirecting to fixed endpoint");
       
-      // Log produk untuk debug - tampilkan semua produk
-      if (products.length > 0) {
-        console.log("DEBUG-PRODUCTS: First product:", JSON.stringify(products[0]));
-      } else {
-        console.log("DEBUG-PRODUCTS: No products found in database");
-      }
+      // Ambil dari fixed endpoint yang terbukti bekerja dengan baik
+      const products = await storage.getAllProducts();
       
       // Pastikan header diatur dengan jelas
-      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
       res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Pragma', 'no-cache');
       
-      // Direct stringification untuk menghindari masalah serialisasi
-      const jsonString = JSON.stringify(products, (key, value) => {
-        // Handle date objects specially
-        if (value instanceof Date) {
-          return value.toISOString();
-        }
-        return value;
-      });
+      // Format produk untuk keamanan, seperti di endpoint fixed
+      const safeProducts = products.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        stock: p.stock,
+        description: p.description || ''
+      }));
       
-      console.log(`DEBUG-PRODUCTS: Sending JSON response with ${products.length} products`);
+      // Langsung gunakan res.json bukan string manual
+      res.json(safeProducts);
       
-      // Kirim response langsung sebagai string untuk menghindari processing Express
-      res.send(jsonString);
     } catch (error) {
       console.error("DEBUG-PRODUCTS: Error getting products:", error);
-      res.status(500).json({ error: "Failed to get products" });
+      res.status(500).json({ error: "Failed to get products", message: "Please use /api/fixed/products instead" });
     }
   });
 
