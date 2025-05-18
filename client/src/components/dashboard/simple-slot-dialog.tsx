@@ -309,23 +309,18 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              // Simpan data pasien dalam localStorage untuk membuka form transaksi
+                              // Gunakan parameter URL yang sama persis dengan versi yang di-deploy
+                              // Dari screenshot: patientId, patientName, hideDropdown, delay, source, timestamp
+                              const newUrl = `/transactions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}&hideDropdown=true&delay=2000&source=optimized-dialog&timestamp=${Date.now()}`;
+                              
+                              // Sebelum navigasi, atur flag di localStorage
                               localStorage.setItem('pendingTransactionPatientId', patient.id.toString());
                               localStorage.setItem('pendingTransactionPatientName', patient.name);
                               localStorage.setItem('openTransactionFormDirectly', 'true');
                               
-                              // Buat custom event untuk membuka form langsung
-                              const customEvent = new CustomEvent('openTransactionForm', {
-                                detail: {
-                                  patientId: patient.id,
-                                  patientName: patient.name,
-                                  timestamp: Date.now()
-                                }
-                              });
-                              window.dispatchEvent(customEvent);
+                              console.log("Navigasi ke:", newUrl);
                               
-                              // Navigasi ke halaman transaksi dengan parameter
-                              window.location.href = `/transactions?patientId=${patient.id}&hideDropdown=true&source=dialog&timestamp=${Date.now()}`;
+                              window.location.href = newUrl;
                             }}
                           >
                             <CreditCard className="mr-1 h-3 w-3" />
