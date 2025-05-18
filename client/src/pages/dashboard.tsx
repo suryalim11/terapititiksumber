@@ -767,8 +767,127 @@ export default function Dashboard() {
                 )}
               </TabsContent>
               
-              {/* Tab content for other views */}
-              <TabsContent value={["future", "all"].includes(selectedPeriod) ? selectedPeriod : ""} className="mt-0">
+              {/* Tab content for future view */}
+              <TabsContent value="future" className="mt-0">
+                
+                {isSlotsLoading ? (
+                  <div className="flex justify-center items-center py-6">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : slotsByPeriod.length > 0 ? (
+                  <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+                    {/* Table view for desktop */}
+                    <div className="hidden md:block">
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-background">
+                          <tr className="border-b text-muted-foreground">
+                            <th className="pb-2 font-medium text-left">Tanggal / Waktu</th>
+                            <th className="pb-2 font-medium text-center">Kuota</th>
+                            <th className="pb-2 font-medium text-center">Terisi</th>
+                            <th className="pb-2 font-medium text-right">Persentase</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {slotsByPeriod.map((slot: any) => (
+                            <tr 
+                              key={slot.id} 
+                              className="py-2 hover:bg-muted/50 cursor-pointer transition-colors"
+                              onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot)}
+                            >
+                              <td className="py-3 text-left">
+                                <div className="flex flex-col">
+                                  <span>{slot.timeSlot}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {slot.date ? formatDateDDMMYYYY(slot.date) : '-'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-3 text-center">{slot.maxQuota}</td>
+                              <td className="py-3 text-center">{slot.currentCount}</td>
+                              <td className="py-3 text-right">
+                                <span className={cn(
+                                  "font-medium",
+                                  slot.percentage >= 100 ? "text-red-600" : (slot.percentage > 75 ? "text-amber-600" : "")
+                                )}>
+                                  {Math.round(slot.percentage)}%
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* Card view for mobile */}
+                    <div className="grid grid-cols-1 gap-3 md:hidden">
+                      {slotsByPeriod.map((slot: any) => (
+                        <div 
+                          key={slot.id}
+                          className="border rounded-lg p-3 hover:bg-muted/50 cursor-pointer transition-colors mobile-card"
+                          onClick={() => handleSlotClick(slot.id, slot.date, slot.timeSlot)}
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <div>
+                              <div className="font-medium">{slot.timeSlot}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {slot.date ? formatDateDDMMYYYY(slot.date) : '-'}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "w-2 h-2 rounded-full",
+                                slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 0 ? "bg-primary" : "bg-slate-300")
+                              )}></div>
+                              <div className="text-sm">
+                                <span className="font-medium">{slot.currentCount}</span>
+                                <span className="text-muted-foreground"> / {slot.maxQuota}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-1 mt-2">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">Kapasitas Terisi</span>
+                              <span className={cn(
+                                "font-medium",
+                                slot.percentage >= 100 ? "text-red-600" : (slot.percentage > 75 ? "text-amber-600" : "")
+                              )}>
+                                {Math.round(slot.percentage)}%
+                              </span>
+                            </div>
+                            <Progress 
+                              value={slot.percentage} 
+                              max={100} 
+                              className={cn(
+                                "h-2 w-full",
+                                slot.percentage >= 100 ? "bg-red-200" : (slot.percentage > 0 ? "bg-primary/20" : "bg-slate-200")
+                              )}
+                              indicatorClassName={
+                                slot.percentage >= 100 ? "bg-red-500" : (slot.percentage > 0 ? "bg-primary" : "bg-primary/0")
+                              }
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed p-8 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                      <Calendar className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="mt-4 text-lg font-semibold">
+                      Belum Ada Slot Terapi Mendatang
+                    </h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Tidak ada slot terapi mendatang yang ditemukan. Kunjungi halaman Therapy Slots untuk mengatur slot terapi baru.
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+              
+              {/* Tab content for all views */}
+              <TabsContent value="all" className="mt-0">
                 
                 {isSlotsLoading ? (
                   <div className="flex justify-center items-center py-6">
