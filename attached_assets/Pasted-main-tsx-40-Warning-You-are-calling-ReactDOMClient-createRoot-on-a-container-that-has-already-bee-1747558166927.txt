@@ -1,0 +1,93 @@
+main.tsx:40 Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it.
+overrideMethod @ hook.js:608
+printWarning @ chunk-RPCDYKBN.js?v=b839a6d3:521
+error @ chunk-RPCDYKBN.js?v=b839a6d3:505
+warnIfReactDOMContainerInDEV @ chunk-RPCDYKBN.js?v=b839a6d3:21240
+createRoot @ chunk-RPCDYKBN.js?v=b839a6d3:21143
+createRoot$1 @ chunk-RPCDYKBN.js?v=b839a6d3:21522
+exports.createRoot @ react-dom_client.js?v=b839a6d3:21
+(anonymous) @ main.tsx:40
+theme-provider.tsx:73 Tema diterapkan langsung: light
+theme-provider.tsx:73 Tema diterapkan langsung: light
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:122 Fetching data with getQueryFn: /api/appointments/date/2025-05-18
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:132 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:132 Response for /api/appointments/date/2025-05-18: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/active-packages: Array with 161 items
+queryClient.ts:146 Successfully parsed data from /api/appointments/date/2025-05-18: object
+queryClient.ts:132 Response for /api/dashboard/stats: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/stats: object
+simple-slot-dialog.tsx:79 [DEBUG] loadSlotData() dipanggil untuk slot 474
+simple-slot-dialog.tsx:94 [DEBUG] Informasi tambahan dialog untuk slot 474: {window.location.href: 'https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/dashboard', query params: ''}
+simple-slot-dialog.tsx:133 [DEBUG] Mendeteksi klik pada slot 474, MENGGANTI dengan data slot Senin, 19 Mei, 10:00-11:00
+simple-slot-dialog.tsx:79 [DEBUG] loadSlotData() dipanggil untuk slot 466
+simple-slot-dialog.tsx:94 [DEBUG] Informasi tambahan dialog untuk slot 466: {window.location.href: 'https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/dashboard', query params: ''}
+simple-slot-dialog.tsx:154 [DEBUG] Mendeteksi klik pada slot 466, MENGGANTI dengan data slot Selasa, 20 Mei, 10:00-12:00
+simple-slot-dialog.tsx:79 [DEBUG] loadSlotData() dipanggil untuk slot 466
+simple-slot-dialog.tsx:94 [DEBUG] Informasi tambahan dialog untuk slot 466: {window.location.href: 'https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/dashboard', query params: ''}
+simple-slot-dialog.tsx:154 [DEBUG] Mendeteksi klik pada slot 466, MENGGANTI dengan data slot Selasa, 20 Mei, 10:00-12:00
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:132 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:122 Fetching data with getQueryFn: /api/appointments/date/2025-05-18
+simple-slot-dialog.tsx:79 [DEBUG] loadSlotData() dipanggil untuk slot 467
+simple-slot-dialog.tsx:94 [DEBUG] Informasi tambahan dialog untuk slot 467: {window.location.href: 'https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/dashboard', query params: ''}
+simple-slot-dialog.tsx:196 [DEBUG] Mendeteksi klik pada slot 467, MENGGANTI dengan data slot Rabu, 21 Mei, 13:00-15:00
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:146 Successfully parsed data from /api/dashboard/active-packages: Array with 161 items
+queryClient.ts:132 Response for /api/appointments/date/2025-05-18: status=200
+queryClient.ts:146 Successfully parsed data from /api/appointments/date/2025-05-18: object
+queryClient.ts:132 Response for /api/dashboard/stats: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/stats: object
+simple-slot-dialog.tsx:79 [DEBUG] loadSlotData() dipanggil untuk slot 468
+simple-slot-dialog.tsx:94 [DEBUG] Informasi tambahan dialog untuk slot 468: {window.location.href: 'https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/dashboard', query params: ''}
+simple-slot-dialog.tsx:237 [DEBUG] Mendeteksi klik pada slot 468, MENGGANTI dengan data slot Kamis, 22 Mei, 15:30-18:00
+simple-slot-dialog.tsx:79 [DEBUG] loadSlotData() dipanggil untuk slot 469
+simple-slot-dialog.tsx:94 [DEBUG] Informasi tambahan dialog untuk slot 469: {window.location.href: 'https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/dashboard', query params: ''}
+simple-slot-dialog.tsx:276 [DEBUG SLOT 469] Menerima request untuk slot ID 469
+simple-slot-dialog.tsx:281 [DEBUG] Mendeteksi slot masa depan (469), menggunakan data hardcoded
+simple-slot-dialog.tsx:351 [DEBUG] Menggunakan data dasar hardcoded untuk slot 469: {id: 469, date: '2025-05-23 00:00:00', timeSlot: '10:00-12:30', maxQuota: 6, currentCount: 0, …}
+simple-slot-dialog.tsx:79 [DEBUG] loadSlotData() dipanggil untuk slot 469
+simple-slot-dialog.tsx:94 [DEBUG] Informasi tambahan dialog untuk slot 469: {window.location.href: 'https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/dashboard', query params: ''}
+simple-slot-dialog.tsx:276 [DEBUG SLOT 469] Menerima request untuk slot ID 469
+simple-slot-dialog.tsx:281 [DEBUG] Mendeteksi slot masa depan (469), menggunakan data hardcoded
+simple-slot-dialog.tsx:351 [DEBUG] Menggunakan data dasar hardcoded untuk slot 469: {id: 469, date: '2025-05-23 00:00:00', timeSlot: '10:00-12:30', maxQuota: 6, currentCount: 0, …}
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:122 Fetching data with getQueryFn: /api/appointments/date/2025-05-18
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:132 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/active-packages: Array with 161 items
+queryClient.ts:132 Response for /api/appointments/date/2025-05-18: status=200
+queryClient.ts:146 Successfully parsed data from /api/appointments/date/2025-05-18: object
+queryClient.ts:132 Response for /api/dashboard/stats: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/stats: object
+simple-slot-dialog.tsx:79 [DEBUG] loadSlotData() dipanggil untuk slot 470
+simple-slot-dialog.tsx:94 [DEBUG] Informasi tambahan dialog untuk slot 470: {window.location.href: 'https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/dashboard', query params: ''}
+simple-slot-dialog.tsx:258 [DEBUG] Mendeteksi klik pada slot 470, MENGGANTI dengan data slot Sabtu, 24 Mei, 10:00-12:30
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:122 Fetching data with getQueryFn: /api/appointments/date/2025-05-18
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:132 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/active-packages: Array with 161 items
+queryClient.ts:132 Response for /api/appointments/date/2025-05-18: status=200
+queryClient.ts:146 Successfully parsed data from /api/appointments/date/2025-05-18: object
+queryClient.ts:132 Response for /api/dashboard/stats: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/stats: object
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:122 Fetching data with getQueryFn: /api/appointments/date/2025-05-18
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:132 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/active-packages: Array with 161 items
+queryClient.ts:132 Response for /api/appointments/date/2025-05-18: status=200
+queryClient.ts:146 Successfully parsed data from /api/appointments/date/2025-05-18: object
+queryClient.ts:132 Response for /api/dashboard/stats: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/stats: object
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:122 Fetching data with getQueryFn: /api/appointments/date/2025-05-18
+queryClient.ts:122 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:132 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:132 Response for /api/appointments/date/2025-05-18: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/active-packages: Array with 161 items
+queryClient.ts:146 Successfully parsed data from /api/appointments/date/2025-05-18: object
+queryClient.ts:132 Response for /api/dashboard/stats: status=200
+queryClient.ts:146 Successfully parsed data from /api/dashboard/stats: object

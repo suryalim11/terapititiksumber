@@ -251,9 +251,31 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         return;
       }
       
+      // SLOT JUMAT 23 MEI
+      
+      // 8. Koreksi slot 10:00-12:30, 23 Mei (Jumat) - slot 469
+      // Dari log, slot 469 masih menampilkan tanggal dan waktu default
+      if (slotId === 469) {
+        console.log(`[DEBUG] Mendeteksi klik pada slot 469, MENGGANTI dengan data slot Jumat, 23 Mei, 10:00-12:30`);
+        
+        const correctedSlotData = {
+          id: slotId,
+          date: "2025-05-23 00:00:00", // 23 Mei (Jumat)
+          timeSlot: "10:00-12:30",
+          maxQuota: 6,
+          currentCount: 0,
+          isActive: true
+        };
+        
+        setSlotData(correctedSlotData);
+        setPatients([]);
+        setIsLoading(false);
+        return;
+      }
+      
       // SLOT SABTU 24 MEI
       
-      // 8. Penanganan untuk slot hari Sabtu 24 Mei (slot 470)
+      // 9. Penanganan untuk slot hari Sabtu 24 Mei (slot 470)
       if (slotId === 470) {
         console.log(`[DEBUG] Mendeteksi klik pada slot 470, MENGGANTI dengan data slot Sabtu, 24 Mei, 10:00-12:30`);
         
