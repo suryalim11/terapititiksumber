@@ -16,6 +16,7 @@ import { setupSessionsRoutes } from "./api/sessions";
 import { setupVerifyConnectionRoutes } from "./api/verify-connection";
 import { storage } from "../storage";
 import { getSimpleSlotBasic, getSimpleSlotPatients } from "./api/simple-slot";
+import { pool } from "../db";
 
 
 /**
@@ -348,7 +349,7 @@ export function setupRoutes(app: Express) {
         RETURNING id
       `;
       
-      const patientResult = await storage.db.query(patientQuery, [
+      const patientResult = await pool.query(patientQuery, [
         patientId,
         req.body.name,
         req.body.phoneNumber,
@@ -374,7 +375,7 @@ export function setupRoutes(app: Express) {
         RETURNING id
       `;
       
-      const appointmentResult = await storage.db.query(appointmentQuery, [
+      const appointmentResult = await pool.query(appointmentQuery, [
         newPatientId,
         slotId,
         slot.date,
@@ -392,7 +393,7 @@ export function setupRoutes(app: Express) {
       console.log("💎 SIMPLE REGISTER: Appointment berhasil dibuat dengan ID", newAppointmentId);
       
       // Update kuota slot
-      await storage.db.query(`
+      await pool.query(`
         UPDATE therapy_slots
         SET current_count = current_count + 1
         WHERE id = $1
