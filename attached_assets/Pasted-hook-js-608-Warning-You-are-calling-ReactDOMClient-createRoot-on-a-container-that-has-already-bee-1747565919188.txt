@@ -1,0 +1,31 @@
+hook.js:608 Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it.
+overrideMethod @ hook.js:608Understand this error
+theme-provider.tsx:73 Tema diterapkan langsung: light
+theme-provider.tsx:73 Tema diterapkan langsung: light
+queryClient.ts:122 Fetching data with getQueryFn: /api/patients
+queryClient.ts:28 API Request to /api/transactions with credentials included
+queryClient.ts:122 Fetching data with getQueryFn: /api/packages
+queryClient.ts:122 Fetching data with getQueryFn: /api/products
+queryClient.ts:132 Response for /api/packages: status=200
+hook.js:608 Failed to parse query response from /api/packages as JSON: SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
+overrideMethod @ hook.js:608Understand this error
+hook.js:608 Response status: 200, statusText: OK
+overrideMethod @ hook.js:608Understand this error
+hook.js:608 Failed to read response text: TypeError: Failed to execute 'text' on 'Response': body stream already read
+    at queryClient.ts:165:32
+overrideMethod @ hook.js:608Understand this error
+queryClient.ts:194 Retrying with fixed packages endpoint
+queryClient.ts:132 Response for /api/products: status=200
+hook.js:608 Failed to parse query response from /api/products as JSON: SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
+overrideMethod @ hook.js:608Understand this error
+hook.js:608 Response status: 200, statusText: OK
+overrideMethod @ hook.js:608Understand this error
+hook.js:608 Failed to read response text: TypeError: Failed to execute 'text' on 'Response': body stream already read
+    at queryClient.ts:165:32
+overrideMethod @ hook.js:608Understand this error
+queryClient.ts:178 Retrying with fixed products endpoint
+queryClient.ts:132 Response for /api/patients: status=200
+queryClient.ts:146 Successfully parsed data from /api/patients: Array with 312 items
+queryClient.ts:81 API data from /api/transactions: Array with 239 items
+queryClient.ts:201 Successfully got 9 packages from fixed endpoint
+queryClient.ts:185 Successfully got 16 products from fixed endpoint

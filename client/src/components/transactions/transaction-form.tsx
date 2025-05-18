@@ -437,16 +437,24 @@ export default function TransactionForm({
   });
 
   // Fetch packages dari endpoint fixed yang sudah terbukti bekerja
-  const { data: packages = [] } = useQuery<Package[]>({
+  const { data: packages = [], isLoading: isLoadingPackages, error: packagesError } = useQuery<Package[]>({
     queryKey: ["/api/fixed/packages"],
     staleTime: 30 * 1000, // 30 detik
   });
 
   // Fetch products dari endpoint fixed yang sudah terbukti bekerja
-  const { data: products = [] } = useQuery<Product[]>({
+  const { data: products = [], isLoading: isLoadingProducts, error: productsError } = useQuery<Product[]>({
     queryKey: ["/api/fixed/products"],
     staleTime: 30 * 1000, // 30 detik
   });
+
+  // Add debugging logs
+  console.log("DEBUG TransactionForm - packages data:", packages);
+  console.log("DEBUG TransactionForm - products data:", products);
+  console.log("DEBUG TransactionForm - packages loading:", isLoadingPackages);
+  console.log("DEBUG TransactionForm - products loading:", isLoadingProducts);
+  console.log("DEBUG TransactionForm - packages error:", packagesError);
+  console.log("DEBUG TransactionForm - products error:", productsError);
 
   // Fetch unpaid transactions (with debt) for the selected patient
   const { data: unpaidTransactions = [], refetch: refetchUnpaidTransactions } = useQuery({
