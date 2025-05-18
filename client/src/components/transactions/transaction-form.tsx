@@ -428,14 +428,16 @@ export default function TransactionForm({ isOpen, onClose, selectedPatientId, hi
     queryKey: ["/api/patients"],
   });
 
-  // Fetch packages
+  // Fetch packages from fixed endpoint
   const { data: packages = [] } = useQuery<Package[]>({
-    queryKey: ["/api/packages"],
+    queryKey: ["/api/fixed/packages"],
+    staleTime: 30 * 1000, // 30 detik
   });
 
-  // Fetch products
+  // Fetch products from fixed endpoint
   const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ["/api/products"],
+    queryKey: ["/api/fixed/products"],
+    staleTime: 30 * 1000, // 30 detik
   });
 
   // Fetch unpaid transactions (with debt) for the selected patient
