@@ -171,22 +171,22 @@ export async function getSimpleSlotPatients(req: Request, res: Response) {
     const patientQuery = sql`
       SELECT 
         p.id, 
-        p."patientId", 
+        p."patient_id" as "patientId", 
         p.name, 
         p.phone, 
         p.email, 
         p.gender, 
         p.address, 
-        p."dateOfBirth",
+        p."date_of_birth" as "dateOfBirth",
         a.status as "appointmentStatus",
         a.id as "appointmentId",
         a.walkin
       FROM 
         ${schema.patients} p
       JOIN 
-        ${schema.appointments} a ON p.id = a."patientId"
+        ${schema.appointments} a ON p.id = a."patient_id"
       WHERE 
-        a."therapySlotId" = ${slotId}
+        a."therapy_slot_id" = ${slotId}
       AND
         a.status != 'Cancelled'
       ORDER BY 
