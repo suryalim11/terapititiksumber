@@ -63,6 +63,88 @@ export function setupTherapySlotsRoutes(app: Express) {
     timestamp: number;
   } | null = null;
   
+  // Cache untuk registry mapping
+  let slotRegistryCache: {
+    data: Record<string, number>; // timeSlotKey -> slotId
+    timestamp: number;
+  } | null = null;
+  
+  /**
+   * Mendaftarkan endpoint untuk registry slot
+   * Endpoint ini menyediakan mapping lengkap dari timeSlotKey ke ID slot
+   * Berguna untuk aplikasi frontend yang perlu mengakses slot berdasarkan tanggal+waktu
+   */
+  app.get("/api/therapy-slots/registry", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const refreshCache = req.query.refresh === 'true';
+      const now = Date.now();
+      
+      // Cache valid untuk 30 menit
+      const REGISTRY_CACHE_AGE = 30 * 60 * 1000;
+      
+      // Gunakan cache jika tersedia dan masih valid
+      if (slotRegistryCache && !refreshCache && (now - slotRegistryCache.timestamp) < REGISTRY_CACHE_AGE) {
+        console.log("Mengembalikan registry slot dari cache");
+        return res.json({
+          success: true,
+          registry: slotRegistryCache.data,
+          fromCache: true,
+          lastUpdate: new Date(slotRegistryCache.timestamp).toISOString()
+        });
+      }
+      
+      // Ambil semua slot terapi aktif
+      console.log("Membangun registry slot baru...");
+      const allSlots = await storage.getActiveTherapySlots();
+      
+      // Buat registry mapping dari timeSlotKey ke ID
+      const registry: Record<string, number> = {};
+      
+      // Proses setiap slot
+      for (const slot of allSlots) {
+        // Periksa apakah slot memerlukan koreksi
+        if (SLOT_CORRECTIONS[slot.id]) {
+          const correction = SLOT_CORRECTIONS[slot.id];
+          const key = `${correction.date}_${correction.timeSlot}`;
+          registry[key] = slot.id;
+        } else {
+          // Jika tidak ada koreksi, gunakan data slot asli
+          const dateStr = typeof slot.date === 'string' ? slot.date.split(' ')[0] : new Date(slot.date).toISOString().split('T')[0];
+          const key = slot.timeSlotKey || `${dateStr}_${slot.timeSlot}`;
+          registry[key] = slot.id;
+        }
+      }
+      
+      // Tambahkan semua koreksi manual ke registry (untuk kasus dimana slot mungkin tidak aktif)
+      for (const [idStr, correction] of Object.entries(SLOT_CORRECTIONS)) {
+        const key = `${correction.date}_${correction.timeSlot}`;
+        const id = parseInt(idStr);
+        registry[key] = id;
+      }
+      
+      // Update cache
+      slotRegistryCache = {
+        data: registry,
+        timestamp: now
+      };
+      
+      console.log(`Registry slot terapi dibuat dengan ${Object.keys(registry).length} entri`);
+      
+      return res.json({
+        success: true,
+        registry,
+        totalMappings: Object.keys(registry).length,
+        lastUpdate: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error generating therapy slot registry:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat membuat registry slot terapi"
+      });
+    }
+  });
+  
   // Mendapatkan semua slot terapi (dengan caching)
   app.get("/api/therapy-slots", requireAuth, async (req: Request, res: Response) => {
     try {
