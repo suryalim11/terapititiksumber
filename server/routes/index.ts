@@ -30,7 +30,7 @@ export function setupRoutes(app: Express) {
   setupSessionsRoutes(app);
   setupVerifyConnectionRoutes(app);
   
-  // Daftarkan endpoint untuk simple-slot API dengan query langsung ke database
+  // Daftarkan endpoint untuk simple-slot API tanpa autentikasi untuk akses cepat
   app.get('/api/simple-slot/:id/basic', async (req, res) => {
     try {
       const slotId = parseInt(req.params.id);
@@ -122,7 +122,7 @@ export function setupRoutes(app: Express) {
     }
   });
   
-  // Endpoint untuk mendapatkan daftar appointment untuk slot terapi tertentu
+  // Endpoint untuk mendapatkan daftar appointment untuk slot terapi tertentu (tanpa autentikasi)
   app.get('/api/simple-slot/:id/appointments', async (req, res) => {
     try {
       const slotId = parseInt(req.params.id);
