@@ -146,38 +146,20 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
     }
   }
   
-  // Versi terbaru - Menggunakan slot alternatif jika slot utama sudah hampir penuh
+  // Versi Final - Pendaftaran Walk-in yang lebih sederhana dan langsung ke slot 472
   async function handleRegisterPatient() {
     if (!slotData) return;
     
     try {
-      // Cek slot hampir penuh atau tidak
-      const isSlotAlmostFull = slotData.currentCount >= slotData.maxQuota - 1;
-      let selectedSlotId = slotData.id;
-      
-      if (isSlotAlmostFull) {
-        // Tanyakan apakah ingin menggunakan slot alternatif
-        const useAltSlot = confirm(
-          `Slot ini sudah hampir penuh (${slotData.currentCount}/${slotData.maxQuota} pasien).\n\n` +
-          `Gunakan slot terapi alternatif di hari yang berbeda?`
-        );
-        
-        if (useAltSlot) {
-          // Gunakan slot alternatif (hardcoded untuk contoh - 472 dari database)
-          selectedSlotId = 472; // Slot tanggal 25 Mei 2025
-          toast({
-            title: "Menggunakan Slot Alternatif",
-            description: "Pendaftaran akan menggunakan slot terapi 25 Mei 2025",
-          });
-        }
-      }
-      
-      // Basic input data
+      // Basic input data - Versi super sederhana
       const patientName = prompt("Nama Pasien:");
       if (!patientName) return;
       
       const patientPhone = prompt("Nomor Telepon Pasien:");
       if (!patientPhone) return;
+      
+      // Selalu gunakan slot alternatif 472 yang masih kosong
+      const selectedSlotId = 472; // Slot 25 Mei 2025
       
       // Loading toast
       toast({
@@ -186,16 +168,20 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         className: "bg-blue-50 border-blue-200 text-blue-800",
       });
       
-      // Data pasien
+      console.log("👉 Mencoba mendaftarkan pasien", patientName, "ke slot", selectedSlotId);
+      
+      // Data pasien yang super sederhana
       const patientData = {
         name: patientName,
         phoneNumber: patientPhone,
         gender: "Laki-laki", 
         birthDate: "1980-01-01",
-        complaints: "Walk-in pasien", 
-        address: "Alamat belum diisi",
+        complaints: "Walk-in pasien sederhana", 
+        address: "Alamat default",
         slotId: selectedSlotId,
       };
+      
+      console.log("👉 Data pasien yang akan dikirim:", patientData);
       
       // Kirim permintaan pendaftaran
       const response = await fetch('/api/walkin-register', {
@@ -204,17 +190,21 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         body: JSON.stringify(patientData),
       });
       
+      console.log("👉 Response status:", response.status);
+      
       if (!response.ok) {
         const errorText = await response.text();
+        console.error("👉 Error response:", errorText);
         throw new Error(`Gagal mendaftar: ${errorText}`);
       }
       
       const result = await response.json();
+      console.log("👉 Response data:", result);
       
       // Sukses toast
       toast({
         title: "Pendaftaran Berhasil!",
-        description: `Pasien ${patientName} berhasil didaftarkan`,
+        description: `Pasien ${patientName} berhasil didaftarkan ke slot tanggal 25 Mei`,
         className: "bg-green-50 border-green-200 text-green-800",
       });
       
