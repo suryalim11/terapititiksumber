@@ -78,7 +78,7 @@ export function generateTimeSlotKey(date: string, timeSlot: string): string {
 export async function initializeSlotRegistry(): Promise<void> {
   try {
     // Ambil semua slot terapi dari database
-    const allSlots = await db.select().from(schema.TherapySlot);
+    const allSlots = await db.select().from(schema.therapySlots);
     
     // Bersihkan registry yang ada
     timeSlotKeyToIdMap = {};
@@ -156,7 +156,7 @@ export async function getSlotByTimeSlotKey(timeSlotKey: string): Promise<any | n
 export async function getSlotWithCorrections(slotId: number): Promise<any | null> {
   try {
     // Ambil data asli dari database
-    const [originalSlot] = await db.select().from(TherapySlot).where(eq(TherapySlot.id, slotId));
+    const [originalSlot] = await db.select().from(schema.therapySlots).where(eq(schema.therapySlots.id, slotId));
     
     if (!originalSlot) {
       return null;

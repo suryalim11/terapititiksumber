@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../../db";
-import { TherapySlot, appointments, patients } from "@shared/schema";
+import * as schema from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { storage } from "../../storage";
 import { 
@@ -85,7 +85,7 @@ export async function getSimpleSlotBasic(req: Request, res: Response) {
     }
     
     // Jika tidak ada koreksi, coba ambil dari database
-    const result = await db.select().from(TherapySlot).where(eq(TherapySlot.id, slotId)).limit(1);
+    const result = await db.select().from(schema.therapySlots).where(eq(schema.therapySlots.id, slotId)).limit(1);
     
     if (result.length === 0) {
       return res.status(404).json({ error: "Slot not found" });
@@ -182,9 +182,9 @@ export async function getSimpleSlotPatients(req: Request, res: Response) {
         a.id as "appointmentId",
         a.walkin
       FROM 
-        ${patients} p
+        ${schema.patients} p
       JOIN 
-        ${appointments} a ON p.id = a."patientId"
+        ${schema.appointments} a ON p.id = a."patientId"
       WHERE 
         a."therapySlotId" = ${slotId}
       AND

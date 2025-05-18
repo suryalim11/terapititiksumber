@@ -15,6 +15,7 @@ import { setupTransactionsRoutes } from "./api/transactions";
 import { setupSessionsRoutes } from "./api/sessions";
 import { setupVerifyConnectionRoutes } from "./api/verify-connection";
 import { storage } from "../storage";
+import { getSimpleSlotBasic, getSimpleSlotPatients } from "./api/simple-slot";
 
 /**
  * Setup semua rute API dan middleware
@@ -31,7 +32,11 @@ export function setupRoutes(app: Express) {
   setupVerifyConnectionRoutes(app);
   
   // Daftarkan endpoint untuk simple-slot API tanpa autentikasi untuk akses cepat
-  app.get('/api/simple-slot/:id/basic', async (req, res) => {
+  app.get('/api/simple-slot/:id/basic', getSimpleSlotBasic);
+  app.get('/api/simple-slot/:id/patients', getSimpleSlotPatients);
+  
+  // Kode legacy dibawah ini tidak digunakan lagi
+  app.get('/api/simple-slot-legacy/:id/basic', async (req, res) => {
     try {
       const slotId = parseInt(req.params.id);
       if (isNaN(slotId)) {
