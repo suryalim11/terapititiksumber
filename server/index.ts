@@ -7,6 +7,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { storage } from "./storage";
 // Import endpoint JSON mentah
 import { setupRawJsonEndpoints } from "./raw-json-endpoint";
+import { setupRawProductRoutes } from "./routes/api/raw-products";
 // Import modul routes yang dibutuhkan
 import { setupRoutes } from "./routes/index";
 
