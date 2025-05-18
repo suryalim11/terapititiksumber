@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose, DialogDe
 import { Button } from "@/components/ui/button";
 import { 
   Loader2, CalendarIcon, User, ShoppingCart, MessageSquare, Check, AlertCircle,
-  ClipboardCheck, CheckCircle, CalendarRange, Activity, CheckSquare, XCircle, UserX
+  ClipboardCheck, CheckCircle, CalendarRange, Activity, CheckSquare, XCircle, UserX,
+  FileText, CreditCard
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -283,7 +284,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                               asChild
                             >
                               <a 
-                                href={generateWhatsAppLink(patient.phone || "", "")} 
+                                href={generateWhatsAppLink(patient.phone || "", "Pengingat: Jadwal terapi Anda tanggal " + formatAppointmentDate(slotData ? slotData.date : new Date()) + " pukul " + (slotData?.timeSlot || "-") + ". Harap datang tepat waktu. Terima kasih.")} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                               >
@@ -303,6 +304,107 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                             <User className="mr-1 h-3 w-3" />
                             Detail
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              // Navigasi ke halaman transaksi pasien
+                              window.location.href = `/transactions?patient=${patient.id}`;
+                            }}
+                          >
+                            <CreditCard className="mr-1 h-3 w-3" />
+                            Transaksi
+                          </Button>
+                          
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <Activity className="mr-1 h-3 w-3" />
+                                Status
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem 
+                                onClick={async () => {
+                                  if (!patient.appointmentId) return;
+                                  
+                                  try {
+                                    const response = await apiRequest(`/api/appointments/${patient.appointmentId}/status`, {
+                                      method: 'PATCH',
+                                      body: JSON.stringify({ status: 'Completed' })
+                                    });
+                                    
+                                    if (response.ok) {
+                                      // Refresh data
+                                      toast({
+                                        title: "Status diperbarui",
+                                        description: `Appointment untuk ${patient.name} telah diselesaikan.`,
+                                        variant: "success"
+                                      });
+                                      
+                                      loadSlotData(slotId!);
+                                      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+                                    } else {
+                                      toast({
+                                        title: "Gagal memperbarui status",
+                                        description: "Terjadi kesalahan saat memperbarui status.",
+                                        variant: "destructive"
+                                      });
+                                    }
+                                  } catch (error) {
+                                    toast({
+                                      title: "Gagal memperbarui status",
+                                      description: String(error),
+                                      variant: "destructive"
+                                    });
+                                  }
+                                }}
+                              >
+                                <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                                Tandai Selesai
+                              </DropdownMenuItem>
+                              
+                              <DropdownMenuItem 
+                                onClick={async () => {
+                                  if (!patient.appointmentId) return;
+                                  
+                                  try {
+                                    const response = await apiRequest(`/api/appointments/${patient.appointmentId}/status`, {
+                                      method: 'PATCH',
+                                      body: JSON.stringify({ status: 'Cancelled' })
+                                    });
+                                    
+                                    if (response.ok) {
+                                      // Refresh data
+                                      toast({
+                                        title: "Status diperbarui",
+                                        description: `Appointment untuk ${patient.name} telah dibatalkan.`,
+                                        variant: "success"
+                                      });
+                                      
+                                      loadSlotData(slotId!);
+                                      queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+                                    } else {
+                                      toast({
+                                        title: "Gagal memperbarui status",
+                                        description: "Terjadi kesalahan saat memperbarui status.",
+                                        variant: "destructive"
+                                      });
+                                    }
+                                  } catch (error) {
+                                    toast({
+                                      title: "Gagal memperbarui status",
+                                      description: String(error),
+                                      variant: "destructive"
+                                    });
+                                  }
+                                }}
+                              >
+                                <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                                Batalkan
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     ))}
