@@ -70,9 +70,13 @@ export async function registerWalkinPatient(req: Request, res: Response) {
     
     // Buat appointment
     console.log("📅 API Walkin: Membuat appointment baru...");
+    const dateString = typeof therapySlot.date === 'string' 
+      ? therapySlot.date.split(" ")[0] 
+      : new Date(therapySlot.date).toISOString().split("T")[0];
+      
     const appointmentData = {
       patientId: patient.id,
-      date: therapySlot.date.split(" ")[0],
+      date: dateString,
       timeSlot: therapySlot.timeSlot,
       therapySlotId: therapySlot.id,
       sessionId: null,

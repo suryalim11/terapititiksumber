@@ -44,58 +44,49 @@ export function setupPatientRoutes(app: Express) {
         });
       }
       
-      // Buat query sql langsung untuk insert pasien
-      const { rows: patientRows } = await pool.query(`
-        INSERT INTO patients (patient_id, name, phone_number, gender, birth_date, address, complaints, email, therapy_slot_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING *
-      `, [
-        `P-${new Date().getFullYear()}-${Date.now().toString().slice(-3)}`,
-        req.body.name,
-        req.body.phoneNumber,
-        req.body.gender || "Laki-laki",
-        req.body.birthDate || "1980-01-01",
-        req.body.address || "Alamat default",
-        req.body.complaints || "Walk-in pasien",
-        "",
-        slotId
-      ]);
+      // Buat pasien menggunakan Drizzle ORM
+      const patientData = {
+        patientId: `P-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`,
+        name: req.body.name,
+        phoneNumber: req.body.phoneNumber,
+        gender: req.body.gender || "Laki-laki",
+        birthDate: req.body.birthDate || "1980-01-01",
+        address: req.body.address || "Alamat default",
+        complaints: req.body.complaints || "Walk-in pasien",
+        email: req.body.email || ""
+      };
       
-      if (!patientRows || patientRows.length === 0) {
+      // Simpan menggunakan storage interface
+      const patient = await storage.createPatient(patientData);
+      
+      if (!patient || !patient.id) {
         throw new Error("Gagal menyimpan data pasien");
       }
       
-      const patient = patientRows[0];
       console.log("🚶 WALKIN: Pasien berhasil dibuat:", patient);
       
-      // Buat appointment dengan query sql langsung
-      const { rows: appointmentRows } = await pool.query(`
-        INSERT INTO appointments (patient_id, date, time_slot, therapy_slot_id, status, registration_number, notes)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING *
-      `, [
-        patient.id,
-        slot.date,
-        slot.time_slot,
-        slotId,
-        "Active",
-        `WI-${Date.now()}`,
-        req.body.complaints || "Walk-in pasien"
-      ]);
+      // Buat appointment menggunakan Drizzle ORM
+      const appointmentData = {
+        patientId: patient.id,
+        therapySlotId: slotId,
+        date: String(slot.date), // Konversi ke string untuk konsistensi
+        timeSlot: slot.timeSlot,
+        status: "Active", // Walk-in selalu punya status Active
+        registrationNumber: `WI-${Date.now()}`,
+        notes: req.body.complaints || "Walk-in pasien" 
+      };
       
-      if (!appointmentRows || appointmentRows.length === 0) {
+      // Simpan menggunakan storage interface
+      const appointment = await storage.createAppointment(appointmentData);
+      
+      if (!appointment || !appointment.id) {
         throw new Error("Gagal menyimpan data appointment");
       }
       
-      const appointment = appointmentRows[0];
       console.log("🚶 WALKIN: Appointment berhasil dibuat:", appointment);
       
-      // Update kuota slot
-      await pool.query(`
-        UPDATE therapy_slots
-        SET current_count = current_count + 1
-        WHERE id = $1
-      `, [slotId]);
+      // Update kuota slot menggunakan storage interface
+      await storage.incrementTherapySlotUsage(slotId);
       
       // Kirim respons
       return res.status(200).json({
