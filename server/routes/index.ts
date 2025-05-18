@@ -263,11 +263,8 @@ export function setupRoutes(app: Express) {
         ];
         
         console.log(`💯 OVERRIDE: Mengirim data terverifikasi untuk slot 461 (${hardcodedPatients.length} pasien)`);
-        // Delay sedikit untuk memastikan frontend dapat menerima respons dengan benar
-        setTimeout(() => {
-          res.json(hardcodedPatients);
-        }, 100);
-        return;
+        // Kirim respons langsung tanpa delay
+        return res.status(200).json(hardcodedPatients);
       }
       
       // Menambahkan data default untuk semua slot lainnya
