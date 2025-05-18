@@ -173,11 +173,11 @@ export async function getSimpleSlotPatients(req: Request, res: Response) {
         p.id, 
         p."patient_id" as "patientId", 
         p.name, 
-        p.phone, 
+        p."phone_number" as phone, 
         p.email, 
         p.gender, 
         p.address, 
-        p."date_of_birth" as "dateOfBirth",
+        p."birth_date" as "dateOfBirth",
         a.status as "appointmentStatus",
         a.id as "appointmentId",
         a.walkin
