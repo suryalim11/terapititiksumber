@@ -547,158 +547,120 @@ export function setupRoutes(app: Express) {
     }
   });
   
-  // Endpoint pendaftaran pasien (versi teliti & detektif)
+  // Endpoint pendaftaran pasien - versi sederhana & optimized
   app.post("/api/register", async (req, res) => {
     console.log("===============================================");
     console.log("🔄 MEMULAI PROSES PENDAFTARAN PASIEN");
     console.log("===============================================");
     
     try {
-      // 1. Log informasi lengkap request
-      console.log("📝 BODY REQUEST:", JSON.stringify(req.body, null, 2));
-      
-      // 2. Struktur data pasien
-      const patientData = {
-        name: req.body.name || "",
-        phoneNumber: req.body.phoneNumber || "",
-        email: req.body.email || null,
-        birthDate: req.body.birthDate || "",
-        gender: req.body.gender || "Laki-laki",
-        address: req.body.address || "",
-        complaints: req.body.complaints || "",
-        therapySlotId: req.body.therapySlotId ? parseInt(req.body.therapySlotId) : null
-      };
-      
-      console.log("📋 DATA PASIEN TERSTRUKTUR:", patientData);
-      
-      // 3. Validasi data
-      if (!patientData.name || !patientData.phoneNumber) {
-        console.log("❌ VALIDASI GAGAL: Nama atau telepon kosong");
+      // 1. Validasi data sederhana
+      if (!req.body.name || !req.body.phoneNumber) {
         return res.status(400).json({
           success: false,
           message: "Nama dan nomor telepon wajib diisi"
         });
       }
       
-      if (!patientData.therapySlotId) {
-        console.log("❌ VALIDASI GAGAL: Slot terapi tidak ada");
+      if (!req.body.therapySlotId) {
         return res.status(400).json({
           success: false,
-          message: "Slot terapi harus dipilih"
+          message: "Slot terapi wajib dipilih"
         });
       }
       
-      // 4. Cek status walk-in
+      // 2. Cek status walk-in
       const isWalkIn = req.body.walkin === true || req.body.walkin === "true";
       console.log("🚶 STATUS WALK-IN:", isWalkIn);
       
-      // PROSES PENYIMPANAN DATA
-      console.log("⏳ MULAI PROSES DATABASE");
+      // 3. Ambil data slot terapi
+      const slotId = parseInt(req.body.therapySlotId);
+      const therapySlot = await storage.getTherapySlot(slotId);
       
-      // 5. Cari slot terapi
-      let therapySlot;
-      try {
-        therapySlot = await storage.getTherapySlot(patientData.therapySlotId);
-        if (!therapySlot) {
-          console.log("❌ SLOT TERAPI TIDAK DITEMUKAN:", patientData.therapySlotId);
-          return res.status(404).json({
-            success: false,
-            message: "Slot terapi tidak ditemukan"
-          });
-        }
-        console.log("✅ SLOT TERAPI DITEMUKAN:", therapySlot.id, therapySlot.date, therapySlot.timeSlot);
-      } catch (slotError) {
-        console.error("❌ ERROR MENGAMBIL SLOT TERAPI:", slotError);
-        return res.status(500).json({
+      if (!therapySlot) {
+        return res.status(404).json({
           success: false,
-          message: "Gagal mengambil data slot terapi"
+          message: "Slot terapi tidak ditemukan"
         });
       }
       
-      // 6. Buat pasien baru
-      let patient;
-      try {
-        patient = await storage.createPatient(patientData);
-        console.log("✅ PASIEN BARU DIBUAT:", patient.id, patient.name);
-      } catch (patientError) {
-        console.error("❌ ERROR MEMBUAT PASIEN:", patientError);
+      // 4. Cek kuota slot
+      if (therapySlot.currentCount >= therapySlot.maxQuota) {
+        return res.status(400).json({
+          success: false,
+          message: `Slot terapi sudah penuh (${therapySlot.currentCount}/${therapySlot.maxQuota})`
+        });
+      }
+      
+      // 5. Proses Pendaftaran - Pasien
+      const patientId = `P-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`;
+      const patient = await storage.createPatient({
+        patientId: patientId,
+        name: req.body.name,
+        phoneNumber: req.body.phoneNumber,
+        email: req.body.email || null,
+        birthDate: req.body.birthDate || "",
+        gender: req.body.gender || "Laki-laki",
+        address: req.body.address || "",
+        complaints: req.body.complaints || ""
+      });
+      
+      if (!patient) {
         return res.status(500).json({
           success: false,
           message: "Gagal menyimpan data pasien"
         });
       }
       
-      // 7. Buat appointment
-      let appointment;
-      try {
-        // Siapkan data appointment dengan penanganan tanggal yang lebih sederhana
-        let dateStr = String(therapySlot.date);
-        
-        // Jika string dengan format 'YYYY-MM-DD HH:MM:SS' atau mirip, ambil bagian tanggal saja
-        if (dateStr.includes(' ')) {
-          dateStr = dateStr.split(' ')[0];
-        }
-        
-        console.log("🗓️ Date yang akan digunakan:", dateStr);
-        
-        const appointmentData = {
-          patientId: patient.id,
-          date: dateStr,
-          timeSlot: therapySlot.timeSlot,
-          therapySlotId: therapySlot.id,
-          sessionId: null,
-          status: isWalkIn ? "Active" : "Scheduled",
-          registrationNumber: `REG-${Date.now()}`,
-          notes: patientData.complaints
-        };
-        
-        console.log("📋 DATA APPOINTMENT:", appointmentData);
-        appointment = await storage.createAppointment(appointmentData);
-        console.log("✅ APPOINTMENT DIBUAT:", appointment.id);
-      } catch (appointmentError) {
-        console.error("❌ ERROR MEMBUAT APPOINTMENT:", appointmentError);
+      // 6. Proses Pendaftaran - Appointment
+      let dateStr = String(therapySlot.date);
+      if (dateStr.includes(' ')) {
+        dateStr = dateStr.split(' ')[0];
+      }
+      
+      const appointment = await storage.createAppointment({
+        patientId: patient.id,
+        date: dateStr,
+        timeSlot: therapySlot.timeSlot,
+        therapySlotId: therapySlot.id,
+        sessionId: null,
+        status: isWalkIn ? "Active" : "Scheduled",
+        registrationNumber: `REG-${Date.now().toString().slice(-6)}`,
+        notes: req.body.complaints || ""
+      });
+      
+      if (!appointment) {
         return res.status(500).json({
           success: false,
-          message: "Gagal membuat janji terapi"
+          message: "Gagal membuat appointment"
         });
       }
       
-      // 8. Update kuota slot
-      try {
-        await storage.incrementTherapySlotUsage(therapySlot.id);
-        console.log("✅ KUOTA SLOT DIUPDATE");
-      } catch (quotaError) {
-        console.error("❌ ERROR UPDATE KUOTA:", quotaError);
-        // Lanjutkan meskipun error update kuota
-      }
+      // 7. Update kuota slot (tidak menunggu hasil)
+      storage.incrementTherapySlotUsage(therapySlot.id)
+        .then(() => console.log("✅ Kuota slot berhasil diupdate"))
+        .catch(err => console.error("❌ Gagal update kuota:", err));
       
-      // 9. Sukses! Kirim respons
-      console.log("🎉 PENDAFTARAN SELESAI DENGAN SUKSES");
-      console.log("===============================================");
-      
+      // 8. Kirim respons sukses
       return res.status(200).json({
         success: true,
-        message: "Pendaftaran berhasil",
-        data: {
-          patient: {
-            id: patient.id,
-            name: patient.name,
-            phoneNumber: patient.phoneNumber
-          },
-          appointment: {
-            id: appointment.id,
-            date: appointment.date,
-            timeSlot: appointment.timeSlot,
-            status: appointment.status
-          }
+        message: isWalkIn ? "Pendaftaran walk-in berhasil" : "Pendaftaran berhasil",
+        patient: {
+          id: patient.id,
+          name: patient.name,
+          phoneNumber: patient.phoneNumber
+        },
+        appointment: {
+          id: appointment.id,
+          date: appointment.date,
+          timeSlot: appointment.timeSlot
         }
       });
     } catch (error) {
-      console.error("❌ ERROR FATAL:", error);
-      console.log("===============================================");
+      console.error("❌ ERROR PENDAFTARAN:", error);
       return res.status(500).json({
         success: false,
-        message: "Terjadi kesalahan internal"
+        message: "Terjadi kesalahan saat pendaftaran"
       });
     }
   });
