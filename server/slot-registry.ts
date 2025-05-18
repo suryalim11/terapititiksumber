@@ -171,7 +171,7 @@ export async function getSlotWithCorrections(slotId: number): Promise<any | null
       
       // Koreksi tanggal dan waktu
       if (correction.date) {
-        correctedSlot.date = new Date(`${correction.date}T00:00:00`);
+        correctedSlot.date = correction.date;
       }
       
       if (correction.timeSlot) {

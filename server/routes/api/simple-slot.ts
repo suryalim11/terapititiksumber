@@ -190,7 +190,7 @@ export async function getSimpleSlotPatients(req: Request, res: Response) {
       AND
         a.status != 'Cancelled'
       ORDER BY 
-        a.created_at ASC
+        a.id ASC
     `;
     
     const result = await db.execute(patientQuery);
