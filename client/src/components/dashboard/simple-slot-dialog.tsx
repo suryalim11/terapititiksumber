@@ -165,7 +165,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         className: "bg-blue-50 border-blue-200 text-blue-800",
       });
       
-      // Gunakan langsung endpoint /api/walkin-register yang sudah ada
+      // Gunakan API endpoint dari routes/api/walkin.ts yang lebih lengkap
       // Data pendaftaran sederhana
       const data = {
         name: patientName,
@@ -179,8 +179,8 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       
       console.log("📝 Data pendaftaran:", data);
       
-      // Panggil API walkin-register yang sudah ada
-      const response = await fetch('/api/walkin-register', {
+      // Panggil API yang sudah terbukti berfungsi
+      const response = await fetch('/api/patients/register-walkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
