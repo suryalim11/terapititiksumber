@@ -52,17 +52,16 @@ export function setupMedicalHistoriesRoutes(app: Express) {
   // Membuat riwayat medis baru
   app.post('/api/medical-histories', async (req: Request, res: Response) => {
     try {
-      const { patientId, date, diagnosis, treatment, notes } = req.body;
+      const { patientId, treatmentDate, complaint, notes } = req.body;
       
-      if (!patientId || !date || !diagnosis) {
+      if (!patientId || !treatmentDate || !complaint) {
         return res.status(400).json({ error: 'Data riwayat medis tidak lengkap' });
       }
       
       const newMedicalHistory = await storage.createMedicalHistory({
         patientId,
-        date,
-        diagnosis,
-        treatment,
+        treatmentDate: new Date(treatmentDate),
+        complaint,
         notes
       });
       
@@ -81,17 +80,16 @@ export function setupMedicalHistoriesRoutes(app: Express) {
         return res.status(400).json({ error: 'ID riwayat medis tidak valid' });
       }
       
-      const { patientId, date, diagnosis, treatment, notes } = req.body;
+      const { patientId, treatmentDate, complaint, notes } = req.body;
       
-      if (!patientId || !date || !diagnosis) {
+      if (!patientId || !treatmentDate || !complaint) {
         return res.status(400).json({ error: 'Data riwayat medis tidak lengkap' });
       }
       
       const updatedMedicalHistory = await storage.updateMedicalHistory(id, {
         patientId,
-        date,
-        diagnosis,
-        treatment,
+        treatmentDate: new Date(treatmentDate),
+        complaint,
         notes
       });
       

@@ -22,6 +22,7 @@ export function setupRoutes(app: Express) {
   setupAuthRoutes(app);
   setupUserRoutes(app);
   setupDataCleanupRoutes(app);
+  setupMedicalHistoriesRoutes(app);
   
   // Daftarkan endpoint untuk simple-slot API dengan query langsung ke database
   app.get('/api/simple-slot/:id/basic', async (req, res) => {
