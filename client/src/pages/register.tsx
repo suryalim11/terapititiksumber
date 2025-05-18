@@ -671,6 +671,35 @@ export default function RegisterPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
+            {/* Info Pendaftaran Walk-in */}
+            {isWalkInMode && (
+              <div className="p-4 rounded-lg border border-green-200 bg-green-50">
+                <h3 className="font-medium mb-2 flex items-center text-green-800">
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Pendaftaran Walk-in untuk Hari Ini
+                </h3>
+                <p className="text-sm text-green-700 mb-1">
+                  Pasien ini datang langsung ke klinik pada:
+                </p>
+                <div className="flex items-center gap-2 mt-2 mb-2 font-medium text-green-800">
+                  <CalendarIcon className="h-4 w-4" />
+                  <span>
+                    {(() => {
+                      // Mendapatkan hari dalam bahasa Indonesia dan tanggal hari ini
+                      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                      const today = new Date();
+                      const dayName = days[today.getDay()];
+                      const date = today.getDate();
+                      const month = today.getMonth() + 1; // Januari = 0
+                      const year = today.getFullYear();
+                      
+                      return `${dayName}, ${date.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+                    })()}
+                  </span>
+                </div>
+              </div>
+            )}
+          
             {/* Pencarian Pasien Lama */}
             <div className="p-4 rounded-lg border border-blue-200 bg-blue-50">
               <h3 className="font-medium mb-2 flex items-center text-blue-800">
