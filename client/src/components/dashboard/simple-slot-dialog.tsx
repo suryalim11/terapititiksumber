@@ -189,11 +189,14 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       
       console.log("📝 Data pendaftaran:", patientData);
       
-      // Ganti format pengiriman data untuk mengatasi Type error
+      // Perbaikan format pengiriman data
+      const dataStr = JSON.stringify(patientData);
+      console.log("🚀 Mengirim data JSON:", dataStr);
+      
       const response = await fetch('/api/walkin-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patientData)
+        body: dataStr
       });
       
       const responseText = await response.text();

@@ -547,14 +547,34 @@ export default function RegisterPage() {
           walkin: Boolean(payload.walkin) // Konversi ke boolean sejati
         };
         
-        // Gunakan apiRequest dari queryClient untuk standarisasi
-        console.log("💬 Mengirim request dengan apiRequest...");
-        const result = await apiRequest('/api/register', {
-          method: 'POST',
-          body: cleanPayload
-        });
+        // Perbaikan format pengiriman data - gunakan fetch standar
+        console.log("💬 Mengirim request dengan fetch standar...");
+        const dataStr = JSON.stringify(cleanPayload);
+        console.log("🚀 Data JSON yang dikirim:", dataStr);
         
-        console.log("💬 API Response:", result);
+        const response = await fetch('/api/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: dataStr,
+          credentials: 'include'
+        });
+      
+        // Periksa respons dari server
+        const responseText = await response.text();
+        console.log("💬 API Response text:", responseText);
+        
+        // Parse respons JSON jika berhasil
+        let result;
+        try {
+          result = JSON.parse(responseText);
+        } catch (e) {
+          console.log("Tidak dapat parse response sebagai JSON, menggunakan text response");
+          result = { message: responseText };
+        }
+        
+        console.log("💬 API Response processed:", result);
         
         // Tindakan selanjutnya jika berhasil
         setRegistrationResult(result);
@@ -571,6 +591,8 @@ export default function RegisterPage() {
             : "Pendaftaran berhasil, silakan cek email untuk konfirmasi.",
           className: "bg-green-50 border-green-200 text-green-800",
         });
+        
+        return result;
         
         // Untuk walk-in, beri opsi kembali ke dashboard
         if (isWalkInMode) {
