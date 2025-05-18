@@ -8,6 +8,7 @@ import { storage } from "./storage";
 // Import endpoint JSON mentah
 import { setupRawJsonEndpoints } from "./raw-json-endpoint";
 import { setupRawProductRoutes } from "./routes/api/raw-products";
+import { setupDirectApi } from "./direct-api";
 // Import modul routes yang dibutuhkan
 import { setupRoutes } from "./routes/index";
 
@@ -155,7 +156,9 @@ const setupSession = () => {
       
       // Daftarkan endpoint JSON mentah
       setupRawJsonEndpoints(app);
-      log('Raw JSON endpoints terdaftar di /api/raw/*');
+      setupRawProductRoutes(app);
+      setupDirectApi(app);
+      log('API endpoints khusus terdaftar');
     });
   } catch (error) {
     console.error("ERROR saat menginisialisasi server:", error);
