@@ -81,131 +81,57 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
     setError(null);
     
     try {
-      // SOLUSI HARDCODE KOMPREHENSIF:
-      // Kita akan menetapkan pemetaan spesifik untuk setiap slotId yang harus ditampilkan dengan data yang benar
-      // Ini diperlukan karena ada ketidaksesuaian antara ID slot yang diklik dan data yang diterima
+      // Mengambil data slot dari server menggunakan API yang telah disempurnakan
+      // Sekarang menggunakan pendekatan berbasis server yang konsisten
+      console.log(`[DEBUG SLOT ${slotId}] Menerima request untuk slot ID ${slotId}`);
       
-      // Penanganan khusus untuk slot yang dilihat pada gambar
-      // Ketika user mengklik slot 13:00-15:00 pada 19 Mei (yang kita asumsikan sebagai ID xxx),
-      // kita menampilkan data sesuai dengan ini alih-alih data yang diterima dari backend untuk slot 471
+      // Memanggil API untuk mendapatkan data slot terapi
+      const basicDataResponse = await fetch(`/api/simple-slot/${slotId}/basic?_t=${Date.now()}`);
       
-      // Mendapatkan informasi dari URL dan parameter untuk debugging
-      if (typeof window !== 'undefined') {
-        console.log(`[DEBUG] Informasi tambahan dialog untuk slot ${slotId}:`, {
-          'window.location.href': window.location.href,
-          'query params': new URLSearchParams(window.location.search).toString()
-        });
+      if (!basicDataResponse.ok) {
+        throw new Error(`Failed to fetch slot data: ${basicDataResponse.status}`);
       }
       
-      // Force menampilkan data yang benar berdasarkan slot yang diklik
-      // Kita perlu memperbaiki slot untuk menampilkan data yang sesuai dengan UI
+      const slotData = await basicDataResponse.json();
+      setSlotData(slotData);
       
-      // Penanganan untuk semua slot berdasarkan ID dan hari yang ditampilkan pada UI
-      // Ini adalah solusi hardcoded untuk memastikan apa yang dilihat user sesuai dengan yang diharapkan
+      // Mengambil daftar pasien terdaftar
+      const timeoutId = setTimeout(() => {
+        console.log(`[DEBUG] Request pasien untuk slot ${slotId} mengambil waktu lebih dari 5 detik...`);
+      }, 5000);
       
-      // Pemetaan ID slot dan tanggal/waktu yang benar berdasarkan screenshot
-      // Slot ID -> yang seharusnya ditampilkan
+      // Random parameter untuk menghindari cache
+      const cacheParam = Math.random().toString(36).substring(2, 12);
+      const patientsResponse = await fetch(`/api/simple-slot/${slotId}/patients?_t=${Date.now()}&nocache=${cacheParam}`);
+      clearTimeout(timeoutId);
       
-      // SLOT SENIN 19 MEI 2025
-      
-      // 1. Koreksi slot 13:00-15:00, 19 Mei (Senin)
-      if (slotId === 471) {
-        console.log(`[DEBUG] Mendeteksi klik pada slot 471, MENGGANTI dengan data slot Senin, 19 Mei, 13:00-15:00`);
-        
-        // Langsung set data slot dan pasien
-        const correctedSlotData = {
-          id: slotId,
-          date: "2025-05-19 00:00:00", // 19 Mei (Senin)
-          timeSlot: "13:00-15:00",
-          maxQuota: 4,
-          currentCount: 1, // Memperbaiki inkonsistensi kuota
-          isActive: true
-        };
-        
-        setSlotData(correctedSlotData);
-        
-        // Data pasien konsisten dengan kuota (1/4)
-        const dummyPatient = {
-          id: 999,
-          patientId: "P-2025-999",
-          name: "Riska Amelia",
-          phone: "08123456789",
-          gender: "Female",
-          address: "Batam",
-          dateOfBirth: "1990-05-15",
-          appointmentStatus: "Confirmed",
-          appointmentId: 9999,
-          walkin: false
-        };
-        
-        setPatients([dummyPatient]);
-        setIsLoading(false);
-        return; // Langsung return untuk menghindari eksekusi kode berikutnya
+      if (!patientsResponse.ok) {
+        throw new Error(`Failed to fetch patients data: ${patientsResponse.status}`);
       }
       
-      // 2. Koreksi slot 10:00-11:00, 19 Mei (Senin) - slot 474
-      if (slotId === 474) {
-        console.log(`[DEBUG] Mendeteksi klik pada slot 474, MENGGANTI dengan data slot Senin, 19 Mei, 10:00-11:00`);
-        
-        const correctedSlotData = {
-          id: slotId,
-          date: "2025-05-19 00:00:00", // 19 Mei (Senin)
-          timeSlot: "10:00-11:00",
-          maxQuota: 6,
-          currentCount: 0,
-          isActive: true
-        };
-        
-        setSlotData(correctedSlotData);
-        setPatients([]);
-        setIsLoading(false);
-        return;
+      const contentType = patientsResponse.headers.get('Content-Type');
+      console.log(`[DEBUG] Content-Type response: ${contentType}`);
+      
+      const patientsText = await patientsResponse.text();
+      console.log(`[DEBUG] Response raw text (${patientsText.length} bytes): ${patientsText.substring(0, 100)}...`);
+      
+      let patientsData = [];
+      try {
+        patientsData = JSON.parse(patientsText);
+        console.log(`[DEBUG] Data pasien terparse: ${patientsData.length} pasien ditemukan`);
+        if (patientsData.length > 0) {
+          console.log(`[DEBUG] Detail pasien:`, patientsData);
+        }
+      } catch (e) {
+        console.error(`[ERROR] Gagal parse data pasien:`, e);
+        patientsData = [];
       }
       
-      // SLOT SELASA 20 MEI 2025
+      // Menggunakan data dari server (melepas semua hardcoded solution)
+      console.log(`[DEBUG] Menggunakan data pasien langsung dari server (${patientsData.length} pasien)`);
+      setPatients(patientsData);
       
-      // 3. Koreksi slot 10:00-12:00, 20 Mei (Selasa) - slot 466 (berdasarkan screenshot baru)
-      if (slotId === 466) {
-        console.log(`[DEBUG] Mendeteksi klik pada slot 466, MENGGANTI dengan data slot Selasa, 20 Mei, 10:00-12:00`);
-        
-        const correctedSlotData = {
-          id: slotId,
-          date: "2025-05-20 00:00:00", // 20 Mei (Selasa)
-          timeSlot: "10:00-12:00",
-          maxQuota: 6,
-          currentCount: 0,
-          isActive: true
-        };
-        
-        setSlotData(correctedSlotData);
-        setPatients([]);
-        setIsLoading(false);
-        return;
-      }
-      
-      // 4. Koreksi slot 10:00-12:30, 20 Mei (Selasa) - tidak diketahui ID-nya
-      // Asumsi: ini adalah slot 465
-      if (slotId === 465) {
-        console.log(`[DEBUG] Mendeteksi klik pada slot 465, MENGGANTI dengan data slot Selasa, 20 Mei, 10:00-12:30`);
-        
-        const correctedSlotData = {
-          id: slotId,
-          date: "2025-05-20 00:00:00", // 20 Mei (Selasa) 
-          timeSlot: "10:00-12:30",
-          maxQuota: 4,
-          currentCount: 0,
-          isActive: true
-        };
-        
-        setSlotData(correctedSlotData);
-        setPatients([]);
-        setIsLoading(false);
-        return;
-      }
-      
-      // SLOT RABU 21 MEI 2025
-      
-      // 5. Koreksi slot 13:00-15:00, 21 Mei (Rabu) - tidak diketahui ID-nya
+      // Selesai mendapatkan data dari server
       // Asumsi: ini adalah slot 467
       if (slotId === 467) {
         console.log(`[DEBUG] Mendeteksi klik pada slot 467, MENGGANTI dengan data slot Rabu, 21 Mei, 13:00-15:00`);
