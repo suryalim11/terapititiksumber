@@ -311,7 +311,9 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                             asChild
                           >
                             <a 
-                              href={`/transactions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}&hideDropdown=true&source=optimized-dialog&newTransaction=true`}
+                              href={`/transactions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}&hideDropdown=true&delay=2000&source=optimized-dialog&timestamp=${Date.now()}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
                             >
                               <CreditCard className="mr-1 h-3 w-3" />
                               Transaksi
