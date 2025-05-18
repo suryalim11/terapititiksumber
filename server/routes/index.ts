@@ -11,6 +11,9 @@ import { setupRegistrationLinkRoutes } from "./api/registration-links";
 import { setupDashboardRoutes } from "./api/dashboard";
 import { setupDataCleanupRoutes } from "./api/data-cleanup";
 import { setupMedicalHistoriesRoutes } from "./api/medical-histories";
+import { setupTransactionsRoutes } from "./api/transactions";
+import { setupSessionsRoutes } from "./api/sessions";
+import { setupVerifyConnectionRoutes } from "./api/verify-connection";
 import { storage } from "../storage";
 
 /**
@@ -23,6 +26,9 @@ export function setupRoutes(app: Express) {
   setupUserRoutes(app);
   setupDataCleanupRoutes(app);
   setupMedicalHistoriesRoutes(app);
+  setupTransactionsRoutes(app);
+  setupSessionsRoutes(app);
+  setupVerifyConnectionRoutes(app);
   
   // Daftarkan endpoint untuk simple-slot API dengan query langsung ke database
   app.get('/api/simple-slot/:id/basic', async (req, res) => {
