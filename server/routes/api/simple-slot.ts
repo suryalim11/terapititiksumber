@@ -180,7 +180,7 @@ export async function getSimpleSlotPatients(req: Request, res: Response) {
         p."birth_date" as "dateOfBirth",
         a.status as "appointmentStatus",
         a.id as "appointmentId",
-        a.walkin
+        CASE WHEN a.status = 'Active' THEN TRUE ELSE FALSE END as walkin
       FROM 
         ${schema.patients} p
       JOIN 
