@@ -866,14 +866,33 @@ export default function RegisterPage() {
                     )}
                   />
 
-                  {/* Pilih Slot Terapi */}
+                  {/* Pilih Slot Terapi dengan UI yang Lebih Baik */}
                   {!isWalkInMode && (
                     <FormField
                       control={form.control}
                       name="therapySlotId"
                       render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Jadwal Terapi</FormLabel>
+                        <FormItem className="md:col-span-2 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <FormLabel className="text-base font-medium">Jadwal Terapi</FormLabel>
+                            {isLoadingSlots && (
+                              <div className="flex items-center text-blue-600 text-sm">
+                                <RefreshCw className="h-3 w-3 animate-spin mr-2" />
+                                Memuat jadwal...
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Panel informasi untuk membantu pengguna */}
+                          <div className="bg-blue-50 p-3 rounded-md border border-blue-100">
+                            <div className="flex items-start">
+                              <Clock className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+                              <p className="text-sm text-blue-700">
+                                Pilih jadwal terapi yang tersedia. Pastikan Anda memilih jadwal yang sesuai dengan ketersediaan waktu Anda.
+                              </p>
+                            </div>
+                          </div>
+                          
                           <Select 
                             onValueChange={(value) => {
                               field.onChange(parseInt(value))
@@ -886,31 +905,68 @@ export default function RegisterPage() {
                             defaultValue={field.value?.toString()}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger className="h-12 text-base border-gray-300 bg-white">
                                 <SelectValue placeholder="Pilih jadwal terapi" />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
+                            <SelectContent className="max-h-[300px]">
                               {isLoadingSlots ? (
-                                <div className="p-2 text-center">
-                                  <RefreshCw className="h-4 w-4 animate-spin mx-auto mb-2" />
-                                  <p className="text-sm">Memuat jadwal...</p>
+                                <div className="p-4 text-center">
+                                  <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-3 text-blue-600" />
+                                  <p className="text-sm">Memuat jadwal tersedia...</p>
                                 </div>
                               ) : therapySlots && therapySlots.length > 0 ? (
-                                therapySlots.map((slot: any) => (
-                                  <SelectItem key={slot.id} value={slot.id.toString()}>
-                                    {formatDateDDMMYYYY(slot.date)} ({slot.timeSlot}) - 
-                                    Tersisa {slot.maxQuota - slot.currentCount} slot
-                                  </SelectItem>
-                                ))
+                                <div className="py-1">
+                                  {therapySlots.map((slot: any) => (
+                                    <SelectItem 
+                                      key={slot.id} 
+                                      value={slot.id.toString()}
+                                      className="py-3 px-2 border-b border-gray-100 last:border-0"
+                                    >
+                                      <div className="flex flex-col">
+                                        <span className="font-medium text-gray-900">{formatDateDDMMYYYY(slot.date)}</span>
+                                        <div className="flex items-center mt-1">
+                                          <Clock className="h-3 w-3 text-gray-500 mr-1" />
+                                          <span className="text-sm text-gray-600">{slot.timeSlot}</span>
+                                          <span className="mx-2 text-gray-400">•</span>
+                                          <span className="text-sm text-green-600 font-medium">
+                                            {slot.maxQuota - slot.currentCount} slot tersedia
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </div>
                               ) : (
-                                <div className="p-2 text-center">
-                                  <AlertTriangle className="h-4 w-4 mx-auto mb-2" />
-                                  <p className="text-sm">Tidak ada jadwal tersedia</p>
+                                <div className="p-4 text-center">
+                                  <AlertTriangle className="h-6 w-6 mx-auto mb-3 text-amber-500" />
+                                  <p className="text-sm font-medium">Tidak ada jadwal tersedia</p>
+                                  <p className="text-xs text-gray-500 mt-1">Silakan coba lagi nanti</p>
                                 </div>
                               )}
                             </SelectContent>
                           </Select>
+                          
+                          {/* Tampilkan informasi slot yang dipilih */}
+                          {selectedSlot && (
+                            <div className="mt-2 p-3 bg-green-50 border border-green-100 rounded-md">
+                              <div className="flex items-start">
+                                <CheckCircle className="h-4 w-4 text-green-600 mr-2 mt-0.5" />
+                                <div>
+                                  <p className="text-sm text-green-800 font-medium">
+                                    Jadwal terpilih:
+                                  </p>
+                                  <p className="text-sm text-green-700">
+                                    Tanggal: <span className="font-medium">{formatDateDDMMYYYY(selectedSlot.date)}</span>
+                                  </p>
+                                  <p className="text-sm text-green-700">
+                                    Jam: <span className="font-medium">{selectedSlot.timeSlot}</span>
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
                           <FormMessage />
                         </FormItem>
                       )}
