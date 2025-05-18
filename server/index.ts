@@ -120,9 +120,81 @@ const setupSession = () => {
     // Buat HTTP server
     const httpServer = createServer(app);
     
-    // Setup routes
+    // Daftarkan route yang paling spesifik terlebih dahulu
+    // Route untuk API produk langsung
+    app.get("/api/fixed/products", async (req: Request, res: Response) => {
+      try {
+        console.log("[FIXED] API products dipanggil");
+        const products = await storage.getAllProducts();
+        console.log(`[FIXED] Menemukan ${products.length} produk`);
+        
+        // Kirim array kosong jika tidak ada produk
+        if (products.length === 0) {
+          res.json([]);
+          return;
+        }
+        
+        // Format produk untuk keamanan
+        const safeProducts = products.map(p => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          stock: p.stock,
+          description: p.description || ''
+        }));
+        
+        // Set header yang eksplisit untuk mencegah caching
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        
+        // Serialize dan kirim JSON
+        res.json(safeProducts);
+      } catch (error) {
+        console.error("[FIXED] Error mendapatkan produk:", error);
+        res.status(500).json([]);
+      }
+    });
+    
+    // Route untuk API paket langsung
+    app.get("/api/fixed/packages", async (req: Request, res: Response) => {
+      try {
+        console.log("[FIXED] API packages dipanggil");
+        const packages = await storage.getAllPackages();
+        console.log(`[FIXED] Menemukan ${packages.length} paket`);
+        
+        // Kirim array kosong jika tidak ada paket
+        if (packages.length === 0) {
+          res.json([]);
+          return;
+        }
+        
+        // Format paket untuk keamanan
+        const safePackages = packages.map(p => ({
+          id: p.id,
+          name: p.name,
+          sessions: p.sessions,
+          price: p.price,
+          description: p.description || ''
+        }));
+        
+        // Set header yang eksplisit untuk mencegah caching
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        
+        // Serialize dan kirim JSON
+        res.json(safePackages);
+      } catch (error) {
+        console.error("[FIXED] Error mendapatkan paket:", error);
+        res.status(500).json([]);
+      }
+    });
+    
+    // Setup routes SETELAH route-route khusus di atas
     setupRoutes(app);
-  
+    
+    // Daftarkan JSON endpoints
+    log('Fixed API endpoints terdaftar: /api/fixed/*');
+    
     // Global error handler  
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
@@ -130,8 +202,6 @@ const setupSession = () => {
   
       console.error("Global error handler caught:", err);
       res.status(status).json({ message });
-      // Don't throw the error again - this causes the server to crash
-      // throw err;
     });
   
     // importantly only setup vite in development and after
@@ -153,12 +223,6 @@ const setupSession = () => {
       reusePort: true,
     }, () => {
       log(`Server berjalan di port ${port}`);
-      
-      // Daftarkan endpoint JSON mentah
-      setupRawJsonEndpoints(app);
-      setupRawProductRoutes(app);
-      setupDirectApi(app);
-      log('API endpoints khusus terdaftar');
     });
   } catch (error) {
     console.error("ERROR saat menginisialisasi server:", error);
