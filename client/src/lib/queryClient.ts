@@ -159,7 +159,33 @@ export const getQueryFn = <T,>({ on401: unauthorizedBehavior }: {
     } catch (error) {
       console.error(`Failed to parse query response from ${url} as JSON:`, error);
       console.error(`Response status: ${res.status}, statusText: ${res.statusText}`);
-      return {} as unknown as T;
+      
+      try {
+        // Coba lagi dengan response text
+        const text = await res.text();
+        console.log(`Raw response text from ${url}:`, text.substring(0, 100) + '...');
+        
+        // Jika respons memiliki <!doctype, itu HTML bukan JSON
+        if (text.toLowerCase().includes('<!doctype')) {
+          console.log('Response is HTML, not JSON - returning empty array or object');
+        }
+      } catch (e) {
+        console.error('Failed to read response text:', e);
+      }
+      
+      // Return empty array for routes that should return arrays
+      if (url.includes('/api/products') || 
+          url.includes('/api/packages') ||
+          url.includes('/api/medical-histories') || 
+          url.includes('/api/sessions') || 
+          url.includes('/api/transactions') ||
+          url.includes('/api/appointments')) {
+        console.log(`Returning empty array for ${url}`);
+        return [] as unknown as T;
+      } else {
+        console.log(`Returning empty object for ${url}`);
+        return {} as unknown as T;
+      }
     }
   };
 };
