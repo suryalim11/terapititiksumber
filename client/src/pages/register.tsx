@@ -400,7 +400,7 @@ export default function RegisterPage() {
     setIsSearching(true);
     
     try {
-      const response = await fetch(`/api/patients/search?query=${encodeURIComponent(searchQuery)}`, {
+      const response = await fetch(`/api/public/patients/search?query=${encodeURIComponent(searchQuery)}`, {
         credentials: 'include'
       });
       
