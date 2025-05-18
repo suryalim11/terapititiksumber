@@ -17,6 +17,7 @@ import { setupVerifyConnectionRoutes } from "./api/verify-connection";
 import { storage } from "../storage";
 import { getSimpleSlotBasic, getSimpleSlotPatients } from "./api/simple-slot";
 
+
 /**
  * Setup semua rute API dan middleware
  * @param app Express app instance
@@ -307,6 +308,20 @@ export function setupRoutes(app: Express) {
   setupAppointmentRoutes(app);
   setupRegistrationLinkRoutes(app);
   setupDashboardRoutes(app);
+  
+  // Endpoint pendaftaran pasien
+  app.post("/api/register", async (req, res) => {
+    try {
+      const { handlePatientRegistration } = await import("./register");
+      return handlePatientRegistration(req, res);
+    } catch (error) {
+      console.error("Error pada endpoint register:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat memproses pendaftaran"
+      });
+    }
+  });
   
   // Pencarian pasien publik untuk halaman pendaftaran (tanpa autentikasi)
   app.get('/api/public/patients/search', async (req, res) => {
