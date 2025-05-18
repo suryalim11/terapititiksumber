@@ -400,7 +400,7 @@ export default function RegisterPage() {
     setIsSearching(true);
     
     try {
-      const response = await fetch(`/api/patients/search?q=${encodeURIComponent(searchQuery)}`, {
+      const response = await fetch(`/api/patients/search?query=${encodeURIComponent(searchQuery)}`, {
         credentials: 'include'
       });
       
@@ -410,11 +410,11 @@ export default function RegisterPage() {
       
       const data = await response.json();
       
-      if (data.found && data.patient) {
-        setFoundPatient(data.patient);
+      if (data.found && data.patients && data.patients.length > 0) {
+        setFoundPatient(data.patients[0]);
         toast({
           title: "Pasien Ditemukan",
-          description: `Pasien ${data.patient.name} telah ditemukan dan data diisi otomatis.`,
+          description: `Pasien ${data.patients[0].name} telah ditemukan dan data diisi otomatis.`,
         });
       } else {
         setFoundPatient(null);
