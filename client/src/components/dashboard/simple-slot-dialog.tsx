@@ -308,23 +308,20 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => {
-                              // Gunakan parameter URL yang sama persis dengan versi yang di-deploy
-                              // Dari screenshot: patientId, patientName, hideDropdown, delay, source, timestamp
-                              const newUrl = `/transactions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}&hideDropdown=true&delay=2000&source=optimized-dialog&timestamp=${Date.now()}`;
-                              
-                              // Sebelum navigasi, atur flag di localStorage
-                              localStorage.setItem('pendingTransactionPatientId', patient.id.toString());
-                              localStorage.setItem('pendingTransactionPatientName', patient.name);
-                              localStorage.setItem('openTransactionFormDirectly', 'true');
-                              
-                              console.log("Navigasi ke:", newUrl);
-                              
-                              window.location.href = newUrl;
-                            }}
+                            asChild
                           >
-                            <CreditCard className="mr-1 h-3 w-3" />
-                            Transaksi
+                            <a 
+                              href={`/transactions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}&hideDropdown=true&delay=2000&source=optimized-dialog&timestamp=${Date.now()}`}
+                              onClick={(e) => {
+                                // Simpan data ke localStorage sebelum navigasi
+                                localStorage.setItem('pendingTransactionPatientId', patient.id.toString());
+                                localStorage.setItem('pendingTransactionPatientName', patient.name);
+                                localStorage.setItem('openTransactionFormDirectly', 'true');
+                              }}
+                            >
+                              <CreditCard className="mr-1 h-3 w-3" />
+                              Transaksi
+                            </a>
                           </Button>
                           
                           <DropdownMenu>
