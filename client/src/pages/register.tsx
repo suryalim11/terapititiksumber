@@ -208,8 +208,26 @@ export default function RegisterPage() {
     sessionStorage.removeItem('selectedSlotId');
     
     const params = new URLSearchParams(window.location.search);
-    // Mendukung parameter "code" dan "kode" untuk backward compatibility
-    const code = params.get("code") || params.get("kode");
+    
+    // Mendukung berbagai format kode pendaftaran:
+    // 1. Dari query parameter (?code=TTS-A13EWC atau ?kode=TTS-A13EWC)
+    // 2. Dari URL path (/register/code/TTS-A13EWC atau /register/TTS-A13EWC)
+    let code = params.get("code") || params.get("kode");
+    
+    // Jika tidak ada kode di query parameter, periksa jika ada di URL path
+    if (!code) {
+      const pathname = window.location.pathname;
+      const pathSegments = pathname.split('/').filter(Boolean);
+      
+      // Cek format /register/code/TTS-XXXXX atau /register/TTS-XXXXX
+      if (pathSegments.length > 1) {
+        const lastSegment = pathSegments[pathSegments.length - 1];
+        if (lastSegment.startsWith('TTS-')) {
+          code = lastSegment;
+          console.log("Kode registrasi ditemukan dari URL path:", code);
+        }
+      }
+    }
     
     // Periksa parameter walk-in dari URL atau localStorage
     let isWalkInParam = params.get("walkin") === "true";
