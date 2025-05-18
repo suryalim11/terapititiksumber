@@ -1,0 +1,131 @@
+main.tsx:40 Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it.
+overrideMethod @ hook.js:608
+printWarning @ chunk-RPCDYKBN.js?v=b839a6d3:521
+error @ chunk-RPCDYKBN.js?v=b839a6d3:505
+warnIfReactDOMContainerInDEV @ chunk-RPCDYKBN.js?v=b839a6d3:21240
+createRoot @ chunk-RPCDYKBN.js?v=b839a6d3:21143
+createRoot$1 @ chunk-RPCDYKBN.js?v=b839a6d3:21522
+exports.createRoot @ react-dom_client.js?v=b839a6d3:21
+(anonymous) @ main.tsx:40
+theme-provider.tsx:73 Tema diterapkan langsung: light
+theme-provider.tsx:73 Tema diterapkan langsung: light
+auth.tsx:75 Mencoba login dengan username: aguslim, rememberMe: false
+queryClient.ts:28 API Request to /api/login with credentials included
+queryClient.ts:81 API data from /api/login: object
+auth.tsx:86 Login response: {success: true, message: 'Login berhasil', user: {…}}
+auth.tsx:89 Login berhasil, user: {id: 1, username: 'aguslim', name: 'Agus Lim', role: 'admin', createdAt: '2025-04-02T01:34:24.874Z'}
+auth.tsx:96 Status autentikasi setelah login: {authenticated: true, user: {…}}
+simple-slot-dialog.tsx:398 Uncaught ReferenceError: DialogDescription is not defined
+    at SimpleSlotDialog (simple-slot-dialog.tsx:398:12)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=b839a6d3:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=b839a6d3:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=b839a6d3:15914:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=b839a6d3:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=b839a6d3:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=b839a6d3:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=b839a6d3:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=b839a6d3:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=b839a6d3:19137:13)
+SimpleSlotDialog @ simple-slot-dialog.tsx:398
+renderWithHooks @ chunk-RPCDYKBN.js?v=b839a6d3:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=b839a6d3:14926
+beginWork @ chunk-RPCDYKBN.js?v=b839a6d3:15914
+callCallback2 @ chunk-RPCDYKBN.js?v=b839a6d3:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=b839a6d3:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=b839a6d3:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=b839a6d3:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=b839a6d3:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=b839a6d3:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=b839a6d3:19116
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18678
+workLoop @ chunk-RPCDYKBN.js?v=b839a6d3:197
+flushWork @ chunk-RPCDYKBN.js?v=b839a6d3:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=b839a6d3:384
+simple-slot-dialog.tsx:398 Uncaught ReferenceError: DialogDescription is not defined
+    at SimpleSlotDialog (simple-slot-dialog.tsx:398:12)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=b839a6d3:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=b839a6d3:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=b839a6d3:15914:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=b839a6d3:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=b839a6d3:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=b839a6d3:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=b839a6d3:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=b839a6d3:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=b839a6d3:19137:13)
+SimpleSlotDialog @ simple-slot-dialog.tsx:398
+renderWithHooks @ chunk-RPCDYKBN.js?v=b839a6d3:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=b839a6d3:14926
+beginWork @ chunk-RPCDYKBN.js?v=b839a6d3:15914
+callCallback2 @ chunk-RPCDYKBN.js?v=b839a6d3:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=b839a6d3:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=b839a6d3:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=b839a6d3:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=b839a6d3:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=b839a6d3:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=b839a6d3:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=b839a6d3:18736
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18684
+workLoop @ chunk-RPCDYKBN.js?v=b839a6d3:197
+flushWork @ chunk-RPCDYKBN.js?v=b839a6d3:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=b839a6d3:384
+hook.js:608 The above error occurred in the <SimpleSlotDialog> component:
+
+    at SimpleSlotDialog (https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/src/components/dashboard/simple-slot-dialog.tsx:52:36)
+    at div
+    at Dashboard (https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/src/pages/dashboard.tsx:57:47)
+    at Route (https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=b839a6d3:323:16)
+    at ProtectedRoute (https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/src/lib/protected-route.tsx:23:3)
+    at Switch (https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=b839a6d3:379:17)
+    at main
+    at div
+    at div
+    at Layout (https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/src/components/layout/layout.tsx:321:34)
+    at AdminApp
+    at AuthProvider (https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/src/lib/auth.tsx:29:32)
+    at _a (https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/react-helmet-async.js?v=b839a6d3:624:5)
+    at QueryClientProvider (https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=b839a6d3:2805:3)
+    at App
+    at ThemeProvider (https://f402ec92-5659-4929-8495-7648d6654444-00-215mmaw20xkc.kirk.replit.dev/src/components/ui/theme-provider.tsx?v=q6UfjpX90I2F5cfYewFtR:25:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+overrideMethod @ hook.js:608
+logCapturedError @ chunk-RPCDYKBN.js?v=b839a6d3:14032
+update.callback @ chunk-RPCDYKBN.js?v=b839a6d3:14052
+callCallback @ chunk-RPCDYKBN.js?v=b839a6d3:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=b839a6d3:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:17093
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=b839a6d3:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19353
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=b839a6d3:18760
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18718
+workLoop @ chunk-RPCDYKBN.js?v=b839a6d3:197
+flushWork @ chunk-RPCDYKBN.js?v=b839a6d3:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=b839a6d3:384
+chunk-RPCDYKBN.js?v=b839a6d3:19413 Uncaught ReferenceError: DialogDescription is not defined
+    at SimpleSlotDialog (simple-slot-dialog.tsx:398:12)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=b839a6d3:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=b839a6d3:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=b839a6d3:15914:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=b839a6d3:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=b839a6d3:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=b839a6d3:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=b839a6d3:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=b839a6d3:18736:28)
+    at performConcurrentWorkOnRoot (chunk-RPCDYKBN.js?v=b839a6d3:18684:30)
+SimpleSlotDialog @ simple-slot-dialog.tsx:398
+renderWithHooks @ chunk-RPCDYKBN.js?v=b839a6d3:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=b839a6d3:14926
+beginWork @ chunk-RPCDYKBN.js?v=b839a6d3:15914
+beginWork$1 @ chunk-RPCDYKBN.js?v=b839a6d3:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=b839a6d3:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=b839a6d3:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=b839a6d3:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=b839a6d3:18736
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18684
+workLoop @ chunk-RPCDYKBN.js?v=b839a6d3:197
+flushWork @ chunk-RPCDYKBN.js?v=b839a6d3:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=b839a6d3:384
