@@ -544,7 +544,7 @@ export function setupRoutes(app: Express) {
       // Verifikasi bahwa appointment benar-benar dibuat
       const verifyAppointment = await storage.getAppointment(newAppointmentId);
       if (!verifyAppointment) {
-        console.log("⚠️ Appointment tidak ditemukan setelah dibuat! ID:", appointment.id);
+        console.log(`⚠️ Appointment tidak ditemukan setelah dibuat! ID: ${newAppointmentId}`);
       } else {
         console.log("✅ Appointment terverifikasi:", verifyAppointment);
       }
@@ -552,8 +552,9 @@ export function setupRoutes(app: Express) {
       return res.status(200).json({
         success: true,
         message: "Pendaftaran walk-in berhasil",
-        patientId: patient.id,
-        appointmentId: appointment.id,
+        patientId: newPatientId,
+        patientIdString: patientId,
+        appointmentId: newAppointmentId,
         appointmentDetail: verifyAppointment
       });
     } catch (error) {
