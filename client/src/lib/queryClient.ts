@@ -70,22 +70,44 @@ export async function apiRequest<T = Record<string, unknown>>(
   await throwIfResNotOk(clonedRes);
   
   try {
-    // Gunakan response asli untuk parse JSON
-    const data = await res.json() as T;
-    
-    // Filter auth status response logs untuk mengurangi spam
-    if (!url.includes('/api/auth/status')) {
-      console.log(`API data from ${url}:`, 
-        Array.isArray(data) ? `Array with ${data.length} items` : 
-        (data === null ? 'null' : typeof data));
+    // Periksa content-type terlebih dahulu
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      // Gunakan response asli untuk parse JSON
+      const data = await res.json() as T;
+      
+      // Filter auth status response logs untuk mengurangi spam
+      if (!url.includes('/api/auth/status')) {
+        console.log(`API data from ${url}:`, 
+          Array.isArray(data) ? `Array with ${data.length} items` : 
+          (data === null ? 'null' : typeof data));
+      }
+      
+      return data;
+    } else {
+      // Jika response bukan JSON, log warning dan kembalikan array kosong jika tipe returnnya array
+      console.warn(`Response for ${url} is not JSON (content-type: ${contentType})`);
+      if (url.includes('/api/medical-histories/') || 
+          url.includes('/api/sessions') || 
+          url.includes('/api/transactions') ||
+          url.includes('/api/appointments')) {
+        return [] as unknown as T;
+      } else {
+        return {} as unknown as T;
+      }
     }
-    
-    return data;
   } catch (error) {
-    console.warn("Failed to parse response as JSON:", error);
+    console.warn(`Failed to parse response as JSON for ${url}:`, error);
     // Jika tidak bisa di-parse sebagai JSON (misalnya empty body),
-    // kembalikan objek kosong
-    return {} as unknown as T;
+    // kembalikan array kosong untuk endpoint yang seharusnya mengembalikan array
+    if (url.includes('/api/medical-histories/') || 
+        url.includes('/api/sessions') || 
+        url.includes('/api/transactions') ||
+        url.includes('/api/appointments')) {
+      return [] as unknown as T;
+    } else {
+      return {} as unknown as T;
+    }
   }
 }
 

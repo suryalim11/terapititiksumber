@@ -10,6 +10,7 @@ import { setupUserRoutes } from "./api/users";
 import { setupRegistrationLinkRoutes } from "./api/registration-links";
 import { setupDashboardRoutes } from "./api/dashboard";
 import { setupDataCleanupRoutes } from "./api/data-cleanup";
+import { setupMedicalHistoriesRoutes } from "./api/medical-histories";
 import { storage } from "../storage";
 
 /**
