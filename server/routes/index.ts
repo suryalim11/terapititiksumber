@@ -392,11 +392,21 @@ export function setupRoutes(app: Express) {
       
       // Respons sukses sederhana
       console.log("🎉 Pendaftaran walk-in berhasil!");
+      
+      // Verifikasi bahwa appointment benar-benar dibuat
+      const verifyAppointment = await storage.getAppointment(appointment.id);
+      if (!verifyAppointment) {
+        console.log("⚠️ Appointment tidak ditemukan setelah dibuat! ID:", appointment.id);
+      } else {
+        console.log("✅ Appointment terverifikasi:", verifyAppointment);
+      }
+      
       return res.status(200).json({
         success: true,
         message: "Pendaftaran walk-in berhasil",
         patientId: patient.id,
-        appointmentId: appointment.id
+        appointmentId: appointment.id,
+        appointmentDetail: verifyAppointment
       });
     } catch (error) {
       console.error("❌ Error pendaftaran walk-in:", error);
