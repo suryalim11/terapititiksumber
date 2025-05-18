@@ -18,9 +18,19 @@ export function setupProductRoutes(app: Express) {
       const products = await storage.getAllProducts();
       console.log(`Retrieved ${products.length} products from database`);
       
+      // Log produk untuk debug
+      console.log("Products data:", JSON.stringify(products).substring(0, 100) + "...");
+      
       // Pastikan header diatur dengan jelas
       res.setHeader('Content-Type', 'application/json');
-      res.json(products);
+      
+      // Ubah tanggal ke format string untuk menghindari masalah parsing JSON
+      const safeProducts = products.map(p => ({
+        ...p,
+        createdAt: p.createdAt ? p.createdAt.toISOString() : new Date().toISOString()
+      }));
+      
+      res.json(safeProducts);
     } catch (error) {
       console.error("Error getting products:", error);
       res.status(500).json({ error: "Failed to get products" });

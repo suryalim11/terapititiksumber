@@ -18,9 +18,19 @@ export function setupPackageRoutes(app: Express) {
       const packages = await storage.getAllPackages();
       console.log(`Retrieved ${packages.length} packages from database`);
       
+      // Log paket untuk debug
+      console.log("Packages data:", JSON.stringify(packages).substring(0, 100) + "...");
+      
       // Pastikan header diatur dengan jelas
       res.setHeader('Content-Type', 'application/json');
-      res.json(packages);
+      
+      // Ubah tanggal ke format string untuk menghindari masalah parsing JSON
+      const safePackages = packages.map(p => ({
+        ...p,
+        createdAt: p.createdAt ? p.createdAt.toISOString() : new Date().toISOString()
+      }));
+      
+      res.json(safePackages);
     } catch (error) {
       console.error("Error getting packages:", error);
       res.status(500).json({ error: "Failed to get packages" });
