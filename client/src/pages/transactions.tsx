@@ -121,17 +121,16 @@ export default function Transactions() {
 
   // Effect untuk langsung membuka form transaksi saat patientId ada di URL
   useEffect(() => {
+    // PERBAIKAN: Paksa selalu menggunakan endpoint fixed untuk form transaksi
+    setUseFixedEndpoints(true);
+    localStorage.setItem('use_fixed_endpoints', 'true');
+    
     // Selalu cek localStorage dulu setiap kali komponen dimounting
     if (!localStorageCheckedRef.current) {
-      // Cek localStorage untuk flag endpoint fixed
-      const useFixed = localStorage.getItem('use_fixed_endpoints') === 'true';
-      setUseFixedEndpoints(useFixed);
+      // Paksa selalu true
+      setUseFixedEndpoints(true);
       
-      // Cek URL parameter untuk useFixed
-      const useFixedParam = urlParams.get("useFixed") === 'true';
-      if (useFixedParam) {
-        setUseFixedEndpoints(true);
-      }
+      // Tidak perlu cek URL parameter lagi karena kita selalu gunakan true
       
       const storedPatientId = localStorage.getItem('pendingTransactionPatientId');
       const storedPatientName = localStorage.getItem('pendingTransactionPatientName');
