@@ -543,7 +543,11 @@ export default function RegisterPage() {
   };
 
   // Tampilkan hasil pendaftaran yang berhasil
-  if (registrationStatus === "success" && registrationResult) {
+  if (registrationStatus === "success") {
+    // Debug untuk membantu melihat data yang dikirim dari server
+    console.log("Registration Result:", registrationResult);
+    console.log("Form Values:", form.getValues());
+
     return (
       <div className="container max-w-3xl mx-auto py-6 px-4">
         <Card className="border-green-200 bg-green-50">
@@ -553,7 +557,7 @@ export default function RegisterPage() {
             </div>
             <CardTitle className="text-center text-xl text-green-800">Pendaftaran Berhasil</CardTitle>
             <CardDescription className="text-center text-green-700">
-              Data pendaftaran Anda telah berhasil disimpan
+              Data pendaftaran {isWalkInMode ? "pasien" : "Anda"} telah berhasil disimpan
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -562,28 +566,28 @@ export default function RegisterPage() {
               <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                 <div>
                   <p className="text-sm text-muted-foreground">Nama</p>
-                  <p className="font-medium">{registrationResult.name}</p>
+                  <p className="font-medium">{form.getValues("name")}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">No. Telepon</p>
-                  <p className="font-medium">{registrationResult.phoneNumber}</p>
+                  <p className="font-medium">{form.getValues("phoneNumber")}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Tanggal Lahir</p>
-                  <p className="font-medium">{formatBirthDate(registrationResult.birthDate || "")}</p>
+                  <p className="font-medium">{formatBirthDate(form.getValues("birthDate") || "")}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Jenis Kelamin</p>
-                  <p className="font-medium">{registrationResult.gender}</p>
+                  <p className="font-medium">{form.getValues("gender")}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-sm text-muted-foreground">Alamat</p>
-                  <p className="font-medium">{registrationResult.address}</p>
+                  <p className="font-medium">{form.getValues("address")}</p>
                 </div>
               </div>
             </div>
             
-            {registrationResult.appointment && (
+            {selectedSlot && (
               <div className="rounded-lg border p-4 bg-white">
                 <h3 className="font-semibold text-lg mb-2">Detail Janji Temu</h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -592,7 +596,16 @@ export default function RegisterPage() {
                     <div>
                       <p className="text-sm text-muted-foreground">Tanggal</p>
                       <p className="font-medium">
-                        {registrationResult.appointment.therapySlotDetails.formattedDate}
+                        {(() => {
+                          const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                          const slotDate = new Date(selectedSlot.date);
+                          const dayName = days[slotDate.getDay()];
+                          const date = slotDate.getDate();
+                          const month = slotDate.getMonth() + 1;
+                          const year = slotDate.getFullYear();
+                          
+                          return `${dayName}, ${date.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+                        })()}
                       </p>
                     </div>
                   </div>
@@ -601,7 +614,7 @@ export default function RegisterPage() {
                     <div>
                       <p className="text-sm text-muted-foreground">Waktu</p>
                       <p className="font-medium">
-                        {registrationResult.appointment.therapySlotDetails.timeSlot}
+                        {selectedSlot.timeSlot}
                       </p>
                     </div>
                   </div>
@@ -619,7 +632,47 @@ export default function RegisterPage() {
             )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-3">
-            {registrationResult && <RegistrationPDF registrationData={registrationResult} />}
+            <Button 
+              className="w-full" 
+              onClick={() => {
+                // Download bukti pendaftaran
+                if (registrationResult) {
+                  const registrationData = {
+                    ...registrationResult,
+                    name: registrationResult.name || form.getValues("name"),
+                    phoneNumber: registrationResult.phoneNumber || form.getValues("phoneNumber"),
+                    birthDate: registrationResult.birthDate || form.getValues("birthDate"),
+                    gender: registrationResult.gender || form.getValues("gender"),
+                    address: registrationResult.address || form.getValues("address")
+                  };
+                  const pdfBlob = new Blob([JSON.stringify(registrationData)], { type: 'application/pdf' });
+                  const pdfUrl = URL.createObjectURL(pdfBlob);
+                  
+                  const a = document.createElement('a');
+                  a.href = pdfUrl;
+                  a.download = `bukti-pendaftaran-${registrationData.name.replace(/\s+/g, '-')}.pdf`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(pdfUrl);
+                }
+              }}
+            >
+              Unduh Bukti Pendaftaran Resmi
+            </Button>
+            
+            {/* Tombol untuk kembali ke dashboard untuk admin dalam mode walk-in */}
+            {isWalkInMode && (
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => {
+                  window.location.href = "/dashboard";
+                }}
+              >
+                Kembali ke Dashboard
+              </Button>
+            )}
           </CardFooter>
         </Card>
       </div>
