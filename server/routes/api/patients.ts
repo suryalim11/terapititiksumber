@@ -14,12 +14,10 @@ export function setupPatientRoutes(app: Express) {
   // Endpoint untuk pendaftaran pasien walk-in langsung
   app.post("/api/patients/register-walkin", requireAuth, async (req: Request, res: Response) => {
     try {
-      console.log("API Walkin: Menerima pendaftaran walk-in baru");
-      console.log("API Walkin: Data:", req.body);
+      console.log("🚶 WALKIN: Mulai pendaftaran walk-in untuk", req.body.name);
       
       // Validasi data minimum
       if (!req.body.name || !req.body.phoneNumber || !req.body.slotId) {
-        console.log("API Walkin: Data tidak lengkap");
         return res.status(400).json({
           success: false,
           message: "Nama, telepon, dan slot ID wajib diisi"
@@ -28,7 +26,6 @@ export function setupPatientRoutes(app: Express) {
       
       // Cek slot terapi
       const slotId = parseInt(req.body.slotId);
-      console.log("API Walkin: Slot ID:", slotId);
       
       // Ambil data slot terapi
       const slot = await storage.getTherapySlot(slotId);
@@ -39,8 +36,6 @@ export function setupPatientRoutes(app: Express) {
         });
       }
       
-      console.log("API Walkin: Slot ditemukan:", slot);
-      
       // Cek kuota slot
       if (slot.currentCount >= slot.maxQuota) {
         return res.status(400).json({
@@ -49,50 +44,72 @@ export function setupPatientRoutes(app: Express) {
         });
       }
       
-      // Buat data pasien
-      const patient = await storage.createPatient({
-        name: req.body.name,
-        phoneNumber: req.body.phoneNumber,
-        gender: req.body.gender || "Laki-laki",
-        birthDate: req.body.birthDate || new Date(),
-        address: req.body.address || "Alamat default",
-        complaints: req.body.complaints || "Walk-in pasien",
-        email: "",
-        therapySlotId: slotId
-      });
+      // Buat query sql langsung untuk insert pasien
+      const { rows: patientRows } = await pool.query(`
+        INSERT INTO patients (patient_id, name, phone_number, gender, birth_date, address, complaints, email, therapy_slot_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *
+      `, [
+        `P-${new Date().getFullYear()}-${Date.now().toString().slice(-3)}`,
+        req.body.name,
+        req.body.phoneNumber,
+        req.body.gender || "Laki-laki",
+        req.body.birthDate || "1980-01-01",
+        req.body.address || "Alamat default",
+        req.body.complaints || "Walk-in pasien",
+        "",
+        slotId
+      ]);
       
-      console.log("API Walkin: Pasien dibuat:", patient);
+      if (!patientRows || patientRows.length === 0) {
+        throw new Error("Gagal menyimpan data pasien");
+      }
       
-      // Buat appointment untuk pasien
-      const appointment = await storage.createAppointment({
-        patientId: patient.id,
-        date: slot.date,
-        timeSlot: slot.timeSlot,
-        therapySlotId: slotId,
-        sessionId: null,
-        status: "Active", // Walk-in selalu aktif
-        registrationNumber: `WI-${Date.now()}`,
-        notes: req.body.complaints || "Walk-in pasien"
-      });
+      const patient = patientRows[0];
+      console.log("🚶 WALKIN: Pasien berhasil dibuat:", patient);
       
-      console.log("API Walkin: Appointment dibuat:", appointment);
+      // Buat appointment dengan query sql langsung
+      const { rows: appointmentRows } = await pool.query(`
+        INSERT INTO appointments (patient_id, date, time_slot, therapy_slot_id, status, registration_number, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *
+      `, [
+        patient.id,
+        slot.date,
+        slot.time_slot,
+        slotId,
+        "Active",
+        `WI-${Date.now()}`,
+        req.body.complaints || "Walk-in pasien"
+      ]);
+      
+      if (!appointmentRows || appointmentRows.length === 0) {
+        throw new Error("Gagal menyimpan data appointment");
+      }
+      
+      const appointment = appointmentRows[0];
+      console.log("🚶 WALKIN: Appointment berhasil dibuat:", appointment);
       
       // Update kuota slot
-      await storage.incrementTherapySlotUsage(slotId);
+      await pool.query(`
+        UPDATE therapy_slots
+        SET current_count = current_count + 1
+        WHERE id = $1
+      `, [slotId]);
       
       // Kirim respons
       return res.status(200).json({
         success: true,
         message: "Pendaftaran walk-in berhasil",
-        patientId: patient.id,
-        appointmentId: appointment.id
+        patient: patient,
+        appointment: appointment
       });
       
     } catch (error: any) {
-      console.error("API Walkin Error:", error);
+      console.error("🚶 WALKIN ERROR:", error);
       return res.status(500).json({
         success: false, 
-        message: "Gagal mendaftarkan pasien walk-in",
+        message: "Gagal mendaftarkan pasien walk-in: " + error.message,
         error: error.message
       });
     }
