@@ -309,14 +309,17 @@ export function setupRoutes(app: Express) {
   setupRegistrationLinkRoutes(app);
   setupDashboardRoutes(app);
   
-  // Endpoint pendaftaran pasien (versi cepat dan sederhana)
+  // Endpoint pendaftaran pasien (versi teliti & detektif)
   app.post("/api/register", async (req, res) => {
-    console.log("🔄 Menerima pendaftaran pasien...");
+    console.log("===============================================");
+    console.log("🔄 MEMULAI PROSES PENDAFTARAN PASIEN");
+    console.log("===============================================");
     
     try {
-      // Ambil data dasar pasien
-      console.log("📝 Body permintaan:", JSON.stringify(req.body));
+      // 1. Log informasi lengkap request
+      console.log("📝 BODY REQUEST:", JSON.stringify(req.body, null, 2));
       
+      // 2. Struktur data pasien
       const patientData = {
         name: req.body.name || "",
         phoneNumber: req.body.phoneNumber || "",
@@ -328,36 +331,68 @@ export function setupRoutes(app: Express) {
         therapySlotId: req.body.therapySlotId ? parseInt(req.body.therapySlotId) : null
       };
       
-      // Validasi dasar
-      if (!patientData.name || !patientData.phoneNumber || !patientData.therapySlotId) {
-        console.log("❌ Validasi gagal: data tidak lengkap", patientData);
+      console.log("📋 DATA PASIEN TERSTRUKTUR:", patientData);
+      
+      // 3. Validasi data
+      if (!patientData.name || !patientData.phoneNumber) {
+        console.log("❌ VALIDASI GAGAL: Nama atau telepon kosong");
         return res.status(400).json({
           success: false,
-          message: "Data pasien tidak lengkap"
+          message: "Nama dan nomor telepon wajib diisi"
         });
       }
       
-      // Cek status walk-in
-      const isWalkIn = req.body.walkin === true || req.body.walkin === "true";
-      console.log("🚶 Pendaftaran Walk-in:", isWalkIn);
+      if (!patientData.therapySlotId) {
+        console.log("❌ VALIDASI GAGAL: Slot terapi tidak ada");
+        return res.status(400).json({
+          success: false,
+          message: "Slot terapi harus dipilih"
+        });
+      }
       
+      // 4. Cek status walk-in
+      const isWalkIn = req.body.walkin === true || req.body.walkin === "true";
+      console.log("🚶 STATUS WALK-IN:", isWalkIn);
+      
+      // PROSES PENYIMPANAN DATA
+      console.log("⏳ MULAI PROSES DATABASE");
+      
+      // 5. Cari slot terapi
+      let therapySlot;
       try {
-        // 1. Mencari slot terapi
-        const therapySlot = await storage.getTherapySlot(patientData.therapySlotId);
+        therapySlot = await storage.getTherapySlot(patientData.therapySlotId);
         if (!therapySlot) {
-          console.log("❌ Slot terapi tidak ditemukan:", patientData.therapySlotId);
+          console.log("❌ SLOT TERAPI TIDAK DITEMUKAN:", patientData.therapySlotId);
           return res.status(404).json({
             success: false,
             message: "Slot terapi tidak ditemukan"
           });
         }
-        console.log("✅ Slot terapi ditemukan:", therapySlot.id);
-        
-        // 2. Membuat pasien baru
-        const patient = await storage.createPatient(patientData);
-        console.log("✅ Pasien baru dibuat:", patient.id);
-        
-        // 3. Membuat appointment
+        console.log("✅ SLOT TERAPI DITEMUKAN:", therapySlot.id, therapySlot.date, therapySlot.timeSlot);
+      } catch (slotError) {
+        console.error("❌ ERROR MENGAMBIL SLOT TERAPI:", slotError);
+        return res.status(500).json({
+          success: false,
+          message: "Gagal mengambil data slot terapi"
+        });
+      }
+      
+      // 6. Buat pasien baru
+      let patient;
+      try {
+        patient = await storage.createPatient(patientData);
+        console.log("✅ PASIEN BARU DIBUAT:", patient.id, patient.name);
+      } catch (patientError) {
+        console.error("❌ ERROR MEMBUAT PASIEN:", patientError);
+        return res.status(500).json({
+          success: false,
+          message: "Gagal menyimpan data pasien"
+        });
+      }
+      
+      // 7. Buat appointment
+      let appointment;
+      try {
         const appointmentData = {
           patientId: patient.id,
           date: therapySlot.date.split(" ")[0],
@@ -369,34 +404,53 @@ export function setupRoutes(app: Express) {
           notes: patientData.complaints
         };
         
-        const appointment = await storage.createAppointment(appointmentData);
-        console.log("✅ Appointment dibuat:", appointment.id);
-        
-        // 4. Update kuota
-        await storage.incrementTherapySlotUsage(therapySlot.id);
-        console.log("✅ Kuota terapi diupdate");
-        
-        // Respons sukses
-        console.log("✅ Pendaftaran BERHASIL");
-        return res.status(200).json({
-          success: true,
-          message: "Pendaftaran berhasil",
-          patient: patient,
-          appointment: appointment,
-          therapySlot: therapySlot
-        });
-      } catch (err) {
-        console.error("❌ Error internal:", err);
+        console.log("📋 DATA APPOINTMENT:", appointmentData);
+        appointment = await storage.createAppointment(appointmentData);
+        console.log("✅ APPOINTMENT DIBUAT:", appointment.id);
+      } catch (appointmentError) {
+        console.error("❌ ERROR MEMBUAT APPOINTMENT:", appointmentError);
         return res.status(500).json({
           success: false,
-          message: "Terjadi kesalahan saat menyimpan data"
+          message: "Gagal membuat janji terapi"
         });
       }
-    } catch (e) {
-      console.error("❌ Error global:", e);
+      
+      // 8. Update kuota slot
+      try {
+        await storage.incrementTherapySlotUsage(therapySlot.id);
+        console.log("✅ KUOTA SLOT DIUPDATE");
+      } catch (quotaError) {
+        console.error("❌ ERROR UPDATE KUOTA:", quotaError);
+        // Lanjutkan meskipun error update kuota
+      }
+      
+      // 9. Sukses! Kirim respons
+      console.log("🎉 PENDAFTARAN SELESAI DENGAN SUKSES");
+      console.log("===============================================");
+      
+      return res.status(200).json({
+        success: true,
+        message: "Pendaftaran berhasil",
+        data: {
+          patient: {
+            id: patient.id,
+            name: patient.name,
+            phoneNumber: patient.phoneNumber
+          },
+          appointment: {
+            id: appointment.id,
+            date: appointment.date,
+            timeSlot: appointment.timeSlot,
+            status: appointment.status
+          }
+        }
+      });
+    } catch (error) {
+      console.error("❌ ERROR FATAL:", error);
+      console.log("===============================================");
       return res.status(500).json({
-        success: false, 
-        message: "Terjadi kesalahan pada server"
+        success: false,
+        message: "Terjadi kesalahan internal"
       });
     }
   });
