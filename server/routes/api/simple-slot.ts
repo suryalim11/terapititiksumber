@@ -73,7 +73,8 @@ export async function getSimpleSlotPatients(req: Request, res: Response) {
     
     const result = await db.execute(patientQuery);
     
-    res.json(result);
+    // Ambil hanya array rows dari hasil query
+    res.json(result.rows);
   } catch (error) {
     console.error("Error fetching simple slot patients:", error);
     res.status(500).json({ error: "Server error" });
