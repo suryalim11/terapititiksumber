@@ -147,39 +147,51 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
   }
   
   // Versi Final - Pendaftaran Walk-in Ultra Sederhana
+  // State untuk form pendaftaran
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  const [formPatientName, setFormPatientName] = useState("");
+  const [formPatientPhone, setFormPatientPhone] = useState("");
+  
   async function handleRegisterPatient() {
     if (!slotData) return;
     
+    // Tampilkan form pendaftaran
+    setShowRegisterForm(true);
+  }
+  
+  async function handleSubmitRegistration() {
+    if (!slotData || !formPatientName || !formPatientPhone) {
+      toast({
+        variant: "destructive",
+        title: "Data tidak lengkap",
+        description: "Mohon lengkapi nama dan nomor telepon pasien"
+      });
+      return;
+    }
+    
     try {
-      // Basic input data - Versi super sederhana
-      const patientName = prompt("Nama Pasien Walk-in:");
-      if (!patientName) return;
-      
-      const patientPhone = prompt("Nomor Telepon Pasien:");
-      if (!patientPhone) return;
-      
       // Tampilkan loading toast
       toast({
         title: "Mendaftarkan Pasien...",
         description: "Mohon tunggu sebentar",
       });
       
-      // Data pendaftaran super sederhana
+      // Data pendaftaran 
       const data = {
-        name: patientName,
-        phoneNumber: patientPhone,
+        name: formPatientName,
+        phoneNumber: formPatientPhone,
         slotId: slotData.id
       };
       
       console.log("📝 Data pendaftaran:", data);
       
-      // Panggil endpoint walkin yang sudah ada
+      // Panggil endpoint walkin
       const response = await fetch('/api/walkin-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: patientName,
-          phoneNumber: patientPhone,
+          name: formPatientName,
+          phoneNumber: formPatientPhone,
           gender: "Laki-laki",
           birthDate: "1980-01-01",
           complaints: "Walk-in pasien",
@@ -208,9 +220,14 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       // Tampilkan sukses
       toast({
         title: "Pendaftaran Berhasil!",
-        description: `Pasien ${patientName} telah didaftarkan untuk terapi`,
+        description: `Pasien ${formPatientName} telah didaftarkan untuk terapi`,
         className: "bg-green-50 border-green-200 text-green-800",
       });
+      
+      // Reset form
+      setShowRegisterForm(false);
+      setFormPatientName("");
+      setFormPatientPhone("");
       
       // Reload data
       await loadSlotData(slotData.id);
@@ -246,7 +263,15 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
   }
   
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        // Reset form saat dialog ditutup
+        setShowRegisterForm(false);
+        setFormPatientName("");
+        setFormPatientPhone("");
+        onClose();
+      }
+    }}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -257,6 +282,58 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
             Informasi lengkap slot terapi dan daftar pasien yang terdaftar
           </DialogDescription>
         </DialogHeader>
+        
+        {/* Form pendaftaran pasien walk-in */}
+        {showRegisterForm && (
+          <div className="border rounded-md p-4 mb-4 bg-slate-50">
+            <h3 className="text-lg font-medium mb-3">Daftarkan Pasien Walk-in</h3>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label htmlFor="patientName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Nama Pasien
+                  </label>
+                  <input
+                    type="text"
+                    id="patientName"
+                    value={formPatientName}
+                    onChange={(e) => setFormPatientName(e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                    placeholder="Masukkan nama pasien"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="patientPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                    Nomor Telepon
+                  </label>
+                  <input
+                    type="text"
+                    id="patientPhone"
+                    value={formPatientPhone}
+                    onChange={(e) => setFormPatientPhone(e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                    placeholder="Masukkan nomor telepon"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2 pt-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowRegisterForm(false);
+                    setFormPatientName("");
+                    setFormPatientPhone("");
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button onClick={handleSubmitRegistration}>
+                  Daftarkan
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-8">
