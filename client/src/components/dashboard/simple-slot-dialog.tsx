@@ -151,7 +151,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
     
     // Redirect ke halaman pendaftaran pasien dengan parameter walkin=true dan slot ID
     const slotId = slotData.id;
-    navigate(`/register-patient?slotId=${slotId}&walkin=true`);
+    navigate(`/register?slotId=${slotId}&walkin=true&date=${encodeURIComponent(slotData.date)}&timeSlot=${encodeURIComponent(slotData.timeSlot || '')}`);
   }
   
   function formatAppointmentDate(dateString: string | Date): string {
