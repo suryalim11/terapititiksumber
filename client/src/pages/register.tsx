@@ -539,23 +539,15 @@ export default function RegisterPage() {
       try {
         console.log("Mengirim data untuk pendaftaran:", payload);
         
-        // Gunakan AbortController dengan timeout untuk menghindari proses yang tak berakhir
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 detik timeout
-        
-        // Request dengan signal untuk timeout
+        // Kirim permintaan tanpa AbortController (lebih sederhana)
         const response = await fetch('/api/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(payload),
-          credentials: 'include',
-          signal: controller.signal
+          credentials: 'include'
         });
-        
-        // Clear timeout karena request sudah selesai
-        clearTimeout(timeoutId);
         
         // Periksa status respons
         if (!response.ok) {
@@ -574,23 +566,12 @@ export default function RegisterPage() {
         const data = await response.json();
         console.log("Pendaftaran berhasil:", data);
         
-        // Simpan data dummy jika respons kosong atau tidak lengkap
-        const finalData = data && data.data ? data : {
-          success: true,
-          message: "Pendaftaran berhasil (data tidak lengkap dari server)",
-          data: {
-            patient: { id: 999, name: payload.name, phoneNumber: payload.phoneNumber },
-            appointment: { id: 999, date: new Date().toISOString().split('T')[0], timeSlot: "", status: "Scheduled" },
-            therapySlot: { id: payload.therapySlotId, date: "", timeSlot: "" }
-          }
-        };
-        
         // Update state sukses
-        setRegistrationResult(finalData);
+        setRegistrationResult(data);
         setRegistrationStatus("success");
         
         // Simpan ke localStorage untuk backup
-        localStorage.setItem('registrationData', JSON.stringify(finalData));
+        localStorage.setItem('registrationData', JSON.stringify(data));
         
         // Notifikasi sukses
         toast({
