@@ -14,25 +14,36 @@ export function setupProductRoutes(app: Express) {
   // Mendapatkan semua produk
   app.get("/api/products", async (req: Request, res: Response) => {
     try {
-      console.log("Fetching all products from database");
+      console.log("DEBUG-PRODUCTS: Fetching all products from database");
       const products = await storage.getAllProducts();
-      console.log(`Retrieved ${products.length} products from database`);
+      console.log(`DEBUG-PRODUCTS: Retrieved ${products.length} products from database`);
       
-      // Log produk untuk debug
-      console.log("Products data:", JSON.stringify(products).substring(0, 100) + "...");
+      // Log produk untuk debug - tampilkan semua produk
+      if (products.length > 0) {
+        console.log("DEBUG-PRODUCTS: First product:", JSON.stringify(products[0]));
+      } else {
+        console.log("DEBUG-PRODUCTS: No products found in database");
+      }
       
       // Pastikan header diatur dengan jelas
+      res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Content-Type', 'application/json');
       
-      // Ubah tanggal ke format string untuk menghindari masalah parsing JSON
-      const safeProducts = products.map(p => ({
-        ...p,
-        createdAt: p.createdAt ? p.createdAt.toISOString() : new Date().toISOString()
-      }));
+      // Direct stringification untuk menghindari masalah serialisasi
+      const jsonString = JSON.stringify(products, (key, value) => {
+        // Handle date objects specially
+        if (value instanceof Date) {
+          return value.toISOString();
+        }
+        return value;
+      });
       
-      res.json(safeProducts);
+      console.log(`DEBUG-PRODUCTS: Sending JSON response with ${products.length} products`);
+      
+      // Kirim response langsung sebagai string untuk menghindari processing Express
+      res.send(jsonString);
     } catch (error) {
-      console.error("Error getting products:", error);
+      console.error("DEBUG-PRODUCTS: Error getting products:", error);
       res.status(500).json({ error: "Failed to get products" });
     }
   });

@@ -14,25 +14,36 @@ export function setupPackageRoutes(app: Express) {
   // Mendapatkan semua paket
   app.get("/api/packages", async (req: Request, res: Response) => {
     try {
-      console.log("Fetching all packages from database");
+      console.log("DEBUG-PACKAGES: Fetching all packages from database");
       const packages = await storage.getAllPackages();
-      console.log(`Retrieved ${packages.length} packages from database`);
+      console.log(`DEBUG-PACKAGES: Retrieved ${packages.length} packages from database`);
       
       // Log paket untuk debug
-      console.log("Packages data:", JSON.stringify(packages).substring(0, 100) + "...");
+      if (packages.length > 0) {
+        console.log("DEBUG-PACKAGES: First package:", JSON.stringify(packages[0]));
+      } else {
+        console.log("DEBUG-PACKAGES: No packages found in database");
+      }
       
       // Pastikan header diatur dengan jelas
+      res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Content-Type', 'application/json');
       
-      // Ubah tanggal ke format string untuk menghindari masalah parsing JSON
-      const safePackages = packages.map(p => ({
-        ...p,
-        createdAt: p.createdAt ? p.createdAt.toISOString() : new Date().toISOString()
-      }));
+      // Direct stringification untuk menghindari masalah serialisasi
+      const jsonString = JSON.stringify(packages, (key, value) => {
+        // Handle date objects specially
+        if (value instanceof Date) {
+          return value.toISOString();
+        }
+        return value;
+      });
       
-      res.json(safePackages);
+      console.log(`DEBUG-PACKAGES: Sending JSON response with ${packages.length} packages`);
+      
+      // Kirim response langsung sebagai string untuk menghindari processing Express
+      res.send(jsonString);
     } catch (error) {
-      console.error("Error getting packages:", error);
+      console.error("DEBUG-PACKAGES: Error getting packages:", error);
       res.status(500).json({ error: "Failed to get packages" });
     }
   });
