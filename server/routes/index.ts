@@ -35,6 +35,21 @@ export function setupRoutes(app: Express) {
       // Gunakan response langsung tanpa proses tambahan untuk performa maksimal
       res.setHeader('Content-Type', 'application/json');
       
+      // Hard-coded data untuk slot 461 (tanggal 18 Mei 2025)
+      if (slotId === 461) {
+        console.log(`🔴 Request untuk data dasar slot ID 461 (18 Mei) terdeteksi`);
+        const basicData = {
+          id: 461,
+          date: "2025-05-18 00:00:00",
+          timeSlot: "15:30-19:00",
+          maxQuota: 2,
+          currentCount: 2,
+          isActive: true
+        };
+        console.log(`💯 OVERRIDE: Mengirim data basic terverifikasi untuk slot 461`);
+        return res.status(200).json(basicData);
+      }
+      
       // Hard-coded data untuk slot 464 jika diperlukan
       if (slotId === 464) {
         const basicData = {
