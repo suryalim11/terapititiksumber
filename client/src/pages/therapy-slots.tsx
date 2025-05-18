@@ -179,7 +179,15 @@ export default function TherapySlots() {
     queryFn: async () => {
       const response = await fetch('/api/registration-links');
       if (!response.ok) throw new Error('Gagal mengambil data link pendaftaran');
-      return response.json();
+      const jsonData = await response.json();
+      console.log("Respons API registration-links:", jsonData);
+      
+      if (jsonData.success && jsonData.registrationLinks) {
+        console.log("Jumlah link pendaftaran:", jsonData.registrationLinks.length);
+        return jsonData.registrationLinks;
+      }
+      
+      return [];
     },
   });
 
