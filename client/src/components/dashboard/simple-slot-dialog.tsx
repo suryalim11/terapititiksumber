@@ -308,22 +308,22 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                           <Button
                             size="sm"
                             variant="outline"
-                            asChild
+                            onClick={(e) => {
+                              e.preventDefault();
+                              
+                              // Langsung set data yang diperlukan di localStorage
+                              localStorage.setItem('use_fixed_endpoints', 'true');
+                              localStorage.setItem('pendingTransactionPatientId', String(patient.id));
+                              localStorage.setItem('pendingTransactionPatientName', patient.name);
+                              localStorage.setItem('openTransactionFormDirectly', 'true');
+                              localStorage.setItem('cache_bust_timestamp', Date.now().toString());
+                              
+                              // Buka halaman transaksi di halaman yang sama
+                              window.location.href = `/transactions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}&hideDropdown=true&delay=100&source=optimized-dialog&useFixed=true&timestamp=${Date.now()}`;
+                            }}
                           >
-                            <a 
-                              href={`/transactions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}&hideDropdown=true&delay=2000&source=optimized-dialog&timestamp=${Date.now()}&useFixed=true`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => {
-                                // Set localStorage flag untuk menggunakan endpoint fixed
-                                localStorage.setItem('use_fixed_endpoints', 'true');
-                                // Tambahkan juga cache bust timestamp
-                                localStorage.setItem('cache_bust_timestamp', Date.now().toString());
-                              }}
-                            >
-                              <CreditCard className="mr-1 h-3 w-3" />
-                              Transaksi
-                            </a>
+                            <CreditCard className="mr-1 h-3 w-3" />
+                            Transaksi
                           </Button>
                           
                           <DropdownMenu>
