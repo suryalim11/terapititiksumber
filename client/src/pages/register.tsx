@@ -809,12 +809,8 @@ export default function RegisterPage() {
                         return `${dayName}, ${date.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
                       })()} | {selectedSlot.timeSlot}
                     </div>
-                    <div className={`text-xs mt-1 ${
-                      (selectedSlot.maxQuota - selectedSlot.currentCount) > 2 
-                        ? "text-green-700" 
-                        : "text-amber-700"
-                    }`}>
-                      {selectedSlot.maxQuota - selectedSlot.currentCount} slot tersedia dari maksimal {selectedSlot.maxQuota}
+                    <div className="text-xs mt-1 text-green-700">
+                      Slot tersedia untuk pendaftaran
                     </div>
                   </div>
                 )}
