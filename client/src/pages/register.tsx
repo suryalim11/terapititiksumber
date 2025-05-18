@@ -902,45 +902,72 @@ export default function RegisterPage() {
                                 </div>
                               ) : therapySlots && therapySlots.length > 0 ? (
                                 <div className="grid gap-3 md:grid-cols-2">
-                                  {therapySlots.map((slot: any) => (
-                                    <div
-                                      key={slot.id}
-                                      className={`relative p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:border-blue-400 ${
-                                        field.value === slot.id 
-                                          ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500" 
-                                          : "bg-white"
-                                      }`}
-                                      onClick={() => {
-                                        field.onChange(slot.id);
-                                        setSelectedSlot(slot);
-                                      }}
-                                    >
-                                      {field.value === slot.id && (
-                                        <div className="absolute top-2 right-2">
-                                          <CheckCircle className="h-5 w-5 text-blue-600" />
+                                  {/* Filter slot yang sudah berlalu */}
+                                  {therapySlots
+                                    .filter((slot: any) => {
+                                      // Dapatkan tanggal dan waktu dari slot
+                                      const slotDate = new Date(slot.date);
+                                      
+                                      // Ekstrak waktu mulai dari format timeSlot (misalnya "15:00-17:00")
+                                      const timeRange = slot.timeSlot.split('-');
+                                      const startTime = timeRange[0].trim();
+                                      const [startHour, startMinute] = startTime.split(':').map(Number);
+                                      
+                                      // Set waktu ke waktu mulai slot
+                                      slotDate.setHours(startHour, startMinute, 0, 0);
+                                      
+                                      // Hanya tampilkan slot yang waktunya belum berlalu
+                                      return slotDate > new Date();
+                                    })
+                                    .map((slot: any) => {
+                                      // Mendapatkan hari dalam bahasa Indonesia
+                                      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                                      const slotDate = new Date(slot.date);
+                                      const dayName = days[slotDate.getDay()];
+                                      
+                                      // Format tanggal ke DD/MM/YYYY
+                                      const formattedDate = formatDateDDMMYYYY(slot.date);
+                                      
+                                      return (
+                                        <div
+                                          key={slot.id}
+                                          className={`relative p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:border-blue-400 ${
+                                            field.value === slot.id 
+                                              ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500" 
+                                              : "bg-white"
+                                          }`}
+                                          onClick={() => {
+                                            field.onChange(slot.id);
+                                            setSelectedSlot(slot);
+                                          }}
+                                        >
+                                          {field.value === slot.id && (
+                                            <div className="absolute top-2 right-2">
+                                              <CheckCircle className="h-5 w-5 text-blue-600" />
+                                            </div>
+                                          )}
+                                          <div className="flex flex-col">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <CalendarIcon className="h-4 w-4 text-blue-600" />
+                                              <span className="font-medium text-gray-900">
+                                                {dayName}, {formattedDate}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <Clock className="h-4 w-4 text-blue-600" />
+                                              <span className="text-sm text-gray-700">{slot.timeSlot}</span>
+                                            </div>
+                                            <div className={`text-sm font-medium rounded-full px-2 py-1 text-center mt-1 ${
+                                              (slot.maxQuota - slot.currentCount) > 3 
+                                                ? "bg-green-100 text-green-800" 
+                                                : "bg-amber-100 text-amber-800"
+                                            }`}>
+                                              {slot.maxQuota - slot.currentCount} slot tersedia
+                                            </div>
+                                          </div>
                                         </div>
-                                      )}
-                                      <div className="flex flex-col">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <CalendarIcon className="h-4 w-4 text-blue-600" />
-                                          <span className="font-medium text-gray-900">
-                                            {formatDateDDMMYYYY(slot.date)}
-                                          </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <Clock className="h-4 w-4 text-blue-600" />
-                                          <span className="text-sm text-gray-700">{slot.timeSlot}</span>
-                                        </div>
-                                        <div className={`text-sm font-medium rounded-full px-2 py-1 text-center mt-1 ${
-                                          (slot.maxQuota - slot.currentCount) > 3 
-                                            ? "bg-green-100 text-green-800" 
-                                            : "bg-amber-100 text-amber-800"
-                                        }`}>
-                                          {slot.maxQuota - slot.currentCount} slot tersedia
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
+                                      );
+                                    })}
                                 </div>
                               ) : (
                                 <div className="p-8 text-center bg-gray-50 border rounded-lg">
