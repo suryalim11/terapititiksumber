@@ -14,7 +14,12 @@ export function setupProductRoutes(app: Express) {
   // Mendapatkan semua produk
   app.get("/api/products", async (req: Request, res: Response) => {
     try {
+      console.log("Fetching all products from database");
       const products = await storage.getAllProducts();
+      console.log(`Retrieved ${products.length} products from database`);
+      
+      // Pastikan header diatur dengan jelas
+      res.setHeader('Content-Type', 'application/json');
       res.json(products);
     } catch (error) {
       console.error("Error getting products:", error);

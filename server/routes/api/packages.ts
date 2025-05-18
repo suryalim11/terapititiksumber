@@ -14,7 +14,12 @@ export function setupPackageRoutes(app: Express) {
   // Mendapatkan semua paket
   app.get("/api/packages", async (req: Request, res: Response) => {
     try {
+      console.log("Fetching all packages from database");
       const packages = await storage.getAllPackages();
+      console.log(`Retrieved ${packages.length} packages from database`);
+      
+      // Pastikan header diatur dengan jelas
+      res.setHeader('Content-Type', 'application/json');
       res.json(packages);
     } catch (error) {
       console.error("Error getting packages:", error);
