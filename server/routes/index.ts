@@ -359,6 +359,35 @@ export function setupRoutes(app: Express) {
         maxQuota: therapySlot.maxQuota
       });
       
+      // Verifikasi waktu slot terapi untuk pendaftaran walk-in
+      if (isWalkIn) {
+        // Periksa apakah slot sudah berlalu
+        const slotDate = new Date(therapySlot.date);
+        const slotTimeParts = therapySlot.timeSlot.split('-');
+        
+        if (slotTimeParts.length > 0) {
+          const [startHour, startMinute] = slotTimeParts[0].split(':').map(Number);
+          
+          if (!isNaN(startHour) && !isNaN(startMinute)) {
+            slotDate.setHours(startHour, startMinute);
+            
+            const now = new Date();
+            
+            if (slotDate < now) {
+              console.log("⚠️ Menolak pendaftaran walk-in karena slot sudah berlalu:", {
+                slotDate: slotDate.toISOString(),
+                now: now.toISOString()
+              });
+              
+              return res.status(400).json({
+                success: false,
+                message: "Pendaftaran walk-in tidak dapat dilakukan untuk slot waktu yang sudah berlalu"
+              });
+            }
+          }
+        }
+      }
+      
       // Cari pasien berdasarkan nomor telepon terlebih dahulu
       console.log("🔍 Mencari pasien dengan nomor telepon:", patientData.phoneNumber);
       const existingPatients = await storage.searchPatientByNameOrPhone(patientData.phoneNumber);
