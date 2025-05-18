@@ -1341,6 +1341,9 @@ export default function TransactionForm({
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogDescription className="sr-only">
+            Form transaksi untuk pembuatan transaksi baru atau pembayaran hutang
+          </DialogDescription>
           <DialogHeader>
             <DialogTitle>Buat Transaksi Baru</DialogTitle>
           </DialogHeader>
