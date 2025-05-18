@@ -107,12 +107,12 @@ export async function registerWalkinPatient(req: Request, res: Response) {
       appointment: verifyAppointment,
       currentQuota: verifySlot?.currentCount
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ API Walkin: Error pendaftaran walk-in:", error);
     return res.status(500).json({
       success: false,
       message: "Gagal mendaftarkan pasien walk-in",
-      error: error.message
+      error: error.message || "Unknown error"
     });
   }
 }
