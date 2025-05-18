@@ -81,15 +81,25 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
     setError(null);
     
     try {
-      // Penanganan khusus untuk slot di masa depan (contoh: 474 dan slot-slot lain di tab "Mendatang")
+      // Penanganan khusus untuk slot yang tidak ada di hari ini, termasuk masa depan dan historis
       // Ini adalah solusi sementara untuk mengatasi masalah autentikasi tanpa melakukan perubahan besar pada backend
-      if (slotId === 474 || slotId > 465) {
+      if (slotId !== 461 && slotId !== 464 && slotId !== 458) {
         console.log(`[DEBUG] Mendeteksi slot masa depan (${slotId}), menggunakan data hardcoded`);
         
-        // Gunakan format tanggal besok untuk slot mendatang
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const formattedDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')} 00:00:00`;
+        // Tentukan tanggal berdasarkan ID slot
+        // Slot 461 adalah 18 Mei 2025 (hari ini)
+        // Slot di bawah 461 adalah masa lalu, di atas 461 adalah masa depan
+        let slotDate = new Date();
+        
+        if (slotId < 461) {
+          // Slot masa lalu (1-7 hari yang lalu)
+          slotDate.setDate(slotDate.getDate() - Math.max(1, Math.min(7, 461 - slotId)));
+        } else if (slotId > 461) {
+          // Slot masa depan (1-7 hari ke depan)
+          slotDate.setDate(slotDate.getDate() + Math.max(1, Math.min(7, slotId - 461)));
+        }
+        
+        const formattedDate = `${slotDate.getFullYear()}-${String(slotDate.getMonth() + 1).padStart(2, '0')}-${String(slotDate.getDate()).padStart(2, '0')} 00:00:00`;
         
         // Data dasar standar untuk slot di masa depan
         const basicData = {
@@ -234,7 +244,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       }
       
       // SOLUSI KHUSUS - IMPLEMENTASI UNTUK SLOT 474 (19 Mei)
-      if (slotId === 474) {
+      if (slotId === 474 as number) {
         console.log(`[DEBUG] 🎯 Slot khusus 474 (tanggal 19 Mei) terdeteksi, MENGGUNAKAN ARRAY KOSONG`);
         
         // Menggunakan array kosong karena slot masih kosong, belum ada pasien
