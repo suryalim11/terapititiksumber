@@ -173,11 +173,19 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       
       console.log("📝 Data pendaftaran:", data);
       
-      // Panggil endpoint sederhana
-      const response = await fetch('/api/simple-register', {
+      // Panggil endpoint walkin yang sudah ada
+      const response = await fetch('/api/walkin-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          name: patientName,
+          phoneNumber: patientPhone,
+          gender: "Laki-laki",
+          birthDate: "1980-01-01",
+          complaints: "Walk-in pasien",
+          address: "Alamat default",
+          slotId: slotData.id
+        })
       });
       
       const responseText = await response.text();
