@@ -35,6 +35,7 @@ export interface SlotCorrectionData {
 
 // Pemetaan koreksi slot berdasarkan ID
 export const SLOT_CORRECTIONS: Record<number, SlotCorrectionData> = {
+  461: { date: "2025-05-18", timeSlot: "15:30-19:00", maxQuota: 5, currentCount: 4, patientCount: 4, isActive: true }, // Minggu, 18 Mei
   466: { date: "2025-05-20", timeSlot: "10:00-12:00", maxQuota: 6, currentCount: 0, patientCount: 0, isActive: true }, // Selasa, 20 Mei
   467: { date: "2025-05-21", timeSlot: "13:00-15:00", maxQuota: 4, currentCount: 0, patientCount: 0, isActive: true }, // Rabu, 21 Mei
   468: { date: "2025-05-22", timeSlot: "15:30-18:00", maxQuota: 6, currentCount: 0, patientCount: 0, isActive: true }, // Kamis, 22 Mei

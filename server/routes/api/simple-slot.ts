@@ -37,21 +37,7 @@ export async function getSimpleSlotBasic(req: Request, res: Response) {
     
     const slotId = parseInt(id);
     
-    // Penanganan khusus untuk slot ID tertentu
-    if (slotId === 461) {
-      console.log("🔴 Request untuk data dasar slot ID 461 (18 Mei) terdeteksi");
-      console.log("💯 OVERRIDE: Mengirim data basic terverifikasi untuk slot 461");
-      
-      // Data yang telah diverifikasi
-      return res.json({
-        id: 461,
-        date: "2025-05-18 00:00:00",
-        timeSlot: "15:30-19:00",
-        maxQuota: 5,
-        currentCount: 4,
-        isActive: true
-      });
-    }
+    // Slot 461 sudah diatur melalui SLOT_CORRECTIONS di slot-registry.ts
     
     // Slot 471 - Senin, 19 Mei, 13:00-15:00
     if (slotId === 471) {
@@ -167,67 +153,7 @@ export async function getSimpleSlotPatients(req: Request, res: Response) {
       ]);
     }
     
-    // Slot 461 (Minggu 18 Mei 15:30-19:00)
-    if (slotId === 461) {
-      console.log("🔴 Request untuk slot terapi ID 461 (18 Mei) terdeteksi");
-      console.log("💯 OVERRIDE: Mengirim data terverifikasi untuk slot 461 (4 pasien)");
-      
-      // Data pasien yang telah diverifikasi untuk slot 461
-      return res.json([
-        {
-          id: 369,
-          patientId: "P-2025-369",
-          name: "Anita",
-          phone: "081288779933",
-          email: null,
-          gender: "Female",
-          address: "Batam",
-          dateOfBirth: "1975-03-20",
-          appointmentStatus: "Scheduled",
-          appointmentId: 357,
-          walkin: false
-        },
-        {
-          id: 381,
-          patientId: "P-2025-381",
-          name: "Nurlela",
-          phone: "085233664488",
-          email: null,
-          gender: "Female",
-          address: "Batam Centre",
-          dateOfBirth: "1982-01-15",
-          appointmentStatus: "Scheduled",
-          appointmentId: 404,
-          walkin: false
-        },
-        {
-          id: 385,
-          patientId: "P-2025-385",
-          name: "Suherman",
-          phone: "081277889900",
-          email: null,
-          gender: "Male",
-          address: "Batam",
-          dateOfBirth: "1978-05-10",
-          appointmentStatus: "Scheduled",
-          appointmentId: 409,
-          walkin: false
-        },
-        {
-          id: 386,
-          patientId: "P-2025-386",
-          name: "Winarti",
-          phone: "085299887766",
-          email: null,
-          gender: "Female",
-          address: "Batam Kota",
-          dateOfBirth: "1980-11-22",
-          appointmentStatus: "Scheduled",
-          appointmentId: 410,
-          walkin: false
-        }
-      ]);
-    }
+    // Slot 461 sudah diatur melalui SLOT_CORRECTIONS di slot-registry.ts
     
     // Slot 474 (Senin 19 Mei 10:00-11:00)
     if (slotId === 474) {
