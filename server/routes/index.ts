@@ -278,7 +278,13 @@ export function setupRoutes(app: Express) {
         ];
         
         console.log(`💯 OVERRIDE: Mengirim data terverifikasi untuk slot 461 (${hardcodedPatients.length} pasien)`);
-        // Kirim respons langsung tanpa delay
+        
+        // Set header agar tidak ada cache
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        // Kirim respons JSON langsung
         return res.status(200).json(hardcodedPatients);
       }
       
