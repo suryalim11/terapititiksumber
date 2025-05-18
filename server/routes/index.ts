@@ -447,14 +447,11 @@ export function setupRoutes(app: Express) {
         });
       }
       
-      // Cari slot terapi langsung dengan SQL
+      // Cari slot terapi menggunakan storage interface
       console.log("🔍 Mencari slot terapi dengan ID:", patientData.therapySlotId);
+      const therapySlot = await storage.getTherapySlot(Number(patientData.therapySlotId));
       
-      const slotResult = await pool.query(`
-        SELECT * FROM therapy_slots WHERE id = $1
-      `, [patientData.therapySlotId]);
-      
-      if (!slotResult.rows || slotResult.rows.length === 0) {
+      if (!therapySlot) {
         console.log("❌ Slot terapi tidak ditemukan");
         return res.status(404).json({
           success: false,
@@ -462,41 +459,38 @@ export function setupRoutes(app: Express) {
         });
       }
       
-      const therapySlot = slotResult.rows[0];
       console.log("🔍 Slot terapi yang ditemukan:", therapySlot);
       
       // Cek apakah slot sudah penuh
-      if (therapySlot.current_count >= therapySlot.max_quota) {
+      if (therapySlot.currentCount >= therapySlot.maxQuota) {
         console.log("❌ Slot terapi sudah penuh");
         return res.status(400).json({
           success: false,
-          message: `Slot terapi sudah penuh (${therapySlot.current_count}/${therapySlot.max_quota})`
+          message: `Slot terapi sudah penuh (${therapySlot.currentCount}/${therapySlot.maxQuota})`
         });
       }
     
-      // Buat pasien baru menggunakan SQL langsung
-      console.log("👤 Membuat pasien baru dengan SQL langsung...");
-      const patientId = `P-${new Date().getFullYear()}-${Date.now()}`;
+      // Buat pasien baru menggunakan storage interface
+      console.log("👤 Membuat pasien baru dengan Drizzle ORM...");
+      const patientId = `P-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`;
       
-      // Gunakan SQL langsung untuk membuat pasien
-      const patientQuery = `
-        INSERT INTO patients (patient_id, name, phone_number, gender, birth_date, address, complaints, email)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING id
-      `;
+      // Persiapkan data pasien untuk storage interface
+      const patientInsertData = {
+        patientId: patientId,
+        name: patientData.name,
+        phoneNumber: patientData.phoneNumber,
+        gender: patientData.gender || "Laki-laki",
+        birthDate: patientData.birthDate || "1980-01-01",
+        address: patientData.address || "Alamat default walk-in",
+        complaints: patientData.complaints || "Pasien walk-in",
+        email: patientData.email || ""
+      };
       
-      const patientResult = await pool.query(patientQuery, [
-        patientId,
-        patientData.name,
-        patientData.phoneNumber,
-        patientData.gender || "Laki-laki",
-        patientData.birthDate || "1980-01-01",
-        patientData.address || "Alamat default walk-in",
-        patientData.complaints || "Pasien walk-in",
-        patientData.email || ""
-      ]);
+      // Simpan data pasien menggunakan storage interface
+      const newPatient = await storage.createPatient(patientInsertData);
+      console.log("✅ Pasien berhasil dibuat:", newPatient);
       
-      if (!patientResult.rows || patientResult.rows.length === 0) {
+      if (!newPatient || !newPatient.id) {
         console.log("❌ Gagal menyimpan data pasien");
         return res.status(500).json({
           success: false,
@@ -504,29 +498,26 @@ export function setupRoutes(app: Express) {
         });
       }
       
-      const newPatientId = patientResult.rows[0].id;
-      console.log("✅ Pasien berhasil dibuat dengan ID:", newPatientId);
-      
-      // Buat appointment dengan SQL langsung
-      console.log("📅 Membuat appointment dengan SQL langsung...");
-      const appointmentQuery = `
-        INSERT INTO appointments (patient_id, therapy_slot_id, date, time_slot, status, registration_number, notes)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id
-      `;
-      
+      // Buat appointment menggunakan storage interface
+      console.log("📅 Membuat appointment dengan Drizzle ORM...");
       const registrationNumber = `WI-${Date.now()}`;
-      const appointmentResult = await pool.query(appointmentQuery, [
-        newPatientId,
-        therapySlot.id,
-        therapySlot.date,
-        therapySlot.time_slot,
-        "Active", // Walk-in selalu active
-        registrationNumber,
-        patientData.complaints || ""
-      ]);
       
-      if (!appointmentResult.rows || appointmentResult.rows.length === 0) {
+      // Persiapkan data appointment untuk storage interface
+      const appointmentData = {
+        patientId: newPatient.id,
+        therapySlotId: therapySlot.id,
+        date: therapySlot.date,
+        timeSlot: therapySlot.timeSlot,
+        status: "Active", // Walk-in selalu status Active
+        registrationNumber: registrationNumber,
+        notes: patientData.complaints || "Pasien walk-in"
+      };
+      
+      // Simpan appointment menggunakan storage interface
+      const newAppointment = await storage.createAppointment(appointmentData);
+      console.log("✅ Appointment berhasil dibuat:", newAppointment);
+      
+      if (!newAppointment || !newAppointment.id) {
         console.log("❌ Gagal membuat appointment");
         return res.status(500).json({
           success: false,
@@ -534,26 +525,18 @@ export function setupRoutes(app: Express) {
         });
       }
       
-      const newAppointmentId = appointmentResult.rows[0].id;
-      console.log("✅ Appointment berhasil dibuat dengan ID:", newAppointmentId);
-      
-      // Update kuota slot dengan SQL langsung
+      // Update kuota slot terapi menggunakan storage interface
       console.log("🔄 Mengupdate kuota slot terapi...");
-      await pool.query(`
-        UPDATE therapy_slots
-        SET current_count = current_count + 1
-        WHERE id = $1
-      `, [therapySlot.id]);
+      await storage.incrementTherapySlotUsage(therapySlot.id);
       
-      // Respons sukses sederhana
+      // Respons sukses
       console.log("🎉 Pendaftaran walk-in berhasil!");
       
       return res.status(200).json({
         success: true,
         message: "Pendaftaran walk-in berhasil",
-        patientId: newPatientId,
-        patientIdString: patientId,
-        appointmentId: newAppointmentId
+        patient: newPatient,
+        appointment: newAppointment
       });
     } catch (error) {
       console.error("❌ Error pendaftaran walk-in:", error);
