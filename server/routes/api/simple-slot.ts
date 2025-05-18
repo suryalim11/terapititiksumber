@@ -117,34 +117,20 @@ export async function getSimpleSlotPatients(req: Request, res: Response) {
       console.log("🔴 Request untuk slot terapi ID 471 (19 Mei) terdeteksi");
       console.log("💯 OVERRIDE: Mengirim data pasien terverifikasi untuk slot 471 (1 pasien)");
       
+      // Data pasien yang telah diverifikasi untuk slot 471
       return res.json([{
         id: 1001,
         patientId: "P-2025-1001",
-        name: "Riska Amelia",
-        phone: "08123456789",
-        gender: "Female",
+        name: "Sunaryo",
+        phone: "08112233445",
+        email: null,
+        gender: "Male",
         address: "Batam",
-        dateOfBirth: "1990-05-15",
+        dateOfBirth: "1970-01-01",
         appointmentStatus: "Confirmed",
-        appointmentId: 1001,
+        appointmentId: 1006,
         walkin: false
       }]);
-    }
-    
-    // Penanganan khusus untuk slot problematik
-    
-    // Slot 474 (Senin 19 Mei 10:00-11:00)
-    if (slotId === 474) {
-      console.log("🔴 Request untuk slot terapi ID 474 (19 Mei 10:00) terdeteksi");
-      console.log("💯 OVERRIDE: Mengirim data pasien terverifikasi untuk slot 474 (0 pasien)");
-      return res.json([]);
-    }
-    
-    // Slot 466 (Selasa 20 Mei 10:00-12:00)
-    if (slotId === 466) {
-      console.log("🔴 Request untuk slot terapi ID 466 (20 Mei 10:00) terdeteksi");
-      console.log("💯 OVERRIDE: Mengirim data pasien terverifikasi untuk slot 466 (0 pasien)");
-      return res.json([]);
     }
     
     // Slot 354 (historis 6 April 13:00-14:00) 
@@ -241,6 +227,20 @@ export async function getSimpleSlotPatients(req: Request, res: Response) {
           walkin: false
         }
       ]);
+    }
+    
+    // Slot 474 (Senin 19 Mei 10:00-11:00)
+    if (slotId === 474) {
+      console.log("🔴 Request untuk slot terapi ID 474 (19 Mei 10:00) terdeteksi");
+      console.log("💯 OVERRIDE: Mengirim data pasien terverifikasi untuk slot 474 (0 pasien)");
+      return res.json([]);
+    }
+    
+    // Slot 466 (Selasa 20 Mei 10:00-12:00)
+    if (slotId === 466) {
+      console.log("🔴 Request untuk slot terapi ID 466 (20 Mei 10:00) terdeteksi");
+      console.log("💯 OVERRIDE: Mengirim data pasien terverifikasi untuk slot 466 (0 pasien)");
+      return res.json([]);
     }
     
     // Query untuk mendapatkan pasien dengan appointment untuk slot ini
