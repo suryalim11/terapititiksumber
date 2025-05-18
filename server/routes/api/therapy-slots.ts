@@ -8,6 +8,51 @@ import { z } from "zod";
 import { insertTherapySlotSchema } from "@shared/schema";
 import { getWIBDate } from "../../utils/date-utils";
 
+// Map untuk menyimpan koreksi tanggal dan waktu slot berdasarkan ID
+const SLOT_CORRECTIONS: Record<number, { date: string, timeSlot: string }> = {
+  466: { date: "2025-05-20", timeSlot: "10:00-12:00" }, // Selasa, 20 Mei
+  467: { date: "2025-05-21", timeSlot: "13:00-15:00" }, // Rabu, 21 Mei
+  468: { date: "2025-05-22", timeSlot: "15:30-18:00" }, // Kamis, 22 Mei
+  469: { date: "2025-05-23", timeSlot: "10:00-12:30" }, // Jumat, 23 Mei
+  470: { date: "2025-05-24", timeSlot: "10:00-12:30" }, // Sabtu, 24 Mei
+  471: { date: "2025-05-19", timeSlot: "13:00-15:00" }, // Senin, 19 Mei
+  474: { date: "2025-05-19", timeSlot: "10:00-11:00" }  // Senin, 19 Mei
+};
+
+// Format tanggal untuk ditampilkan kepada pengguna
+function formatDateForDisplay(dateStr: string): string {
+  const date = new Date(dateStr);
+  const options: Intl.DateTimeFormatOptions = { 
+    weekday: 'long', 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric' 
+  };
+  return date.toLocaleDateString('id-ID', options);
+}
+
+// Fungsi untuk memperbaiki data slot terapi
+function correctTherapySlotData(slot: any): any {
+  // Clone object untuk menghindari modifikasi objek asli
+  const correctedSlot = { ...slot };
+  
+  // Periksa apakah slot memerlukan koreksi
+  if (SLOT_CORRECTIONS[slot.id]) {
+    const correction = SLOT_CORRECTIONS[slot.id];
+    correctedSlot.date = correction.date;
+    correctedSlot.timeSlot = correction.timeSlot;
+    correctedSlot.timeSlotKey = `${correction.date}_${correction.timeSlot}`;
+    correctedSlot.displayDate = formatDateForDisplay(correction.date);
+    correctedSlot.corrected = true;
+  } else {
+    // Jika tidak ada koreksi, tetap tambahkan displayDate untuk konsistensi
+    correctedSlot.displayDate = formatDateForDisplay(slot.date);
+    correctedSlot.corrected = false;
+  }
+  
+  return correctedSlot;
+}
+
 /**
  * Mendaftarkan rute-rute untuk slot terapi
  */
@@ -24,6 +69,7 @@ export function setupTherapySlotsRoutes(app: Express) {
       // Cek parameter query untuk filtering
       const date = req.query.date as string | undefined;
       const activeOnly = req.query.activeOnly === 'true';
+      const applyCorrections = req.query.correct !== 'false'; // Default: lakukan koreksi
       
       // Log untuk monitoring
       console.log("Executing optimized getAllTherapySlots query");
@@ -36,7 +82,13 @@ export function setupTherapySlotsRoutes(app: Express) {
       
       // Gunakan cache jika tersedia dan masih valid
       if (allSlotsCache && !shouldRefresh && (now - allSlotsCache.timestamp) < MAX_CACHE_AGE && !date && !activeOnly) {
-        const therapySlots = allSlotsCache.data;
+        let therapySlots = allSlotsCache.data;
+        
+        // Terapkan koreksi jika diminta
+        if (applyCorrections) {
+          therapySlots = therapySlots.map(slot => correctTherapySlotData(slot));
+        }
+        
         console.log(`Query completed in ${Date.now() - startTime}ms, returning from cache ${therapySlots.length} slots`);
         return res.json(therapySlots);
       }
@@ -62,6 +114,11 @@ export function setupTherapySlotsRoutes(app: Express) {
         };
       }
       
+      // Terapkan koreksi jika diminta
+      if (applyCorrections) {
+        therapySlots = therapySlots.map(slot => correctTherapySlotData(slot));
+      }
+      
       console.log(`Query completed in ${Date.now() - startTime}ms, found ${therapySlots.length} slots`);
       res.json(therapySlots);
     } catch (error) {
@@ -85,16 +142,85 @@ export function setupTherapySlotsRoutes(app: Express) {
   app.get("/api/therapy-slots/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      const applyCorrections = req.query.correct !== 'false'; // Default: lakukan koreksi
+      
       const therapySlot = await storage.getTherapySlot(id);
       
       if (!therapySlot) {
         return res.status(404).json({ error: "Slot terapi tidak ditemukan" });
       }
       
-      res.json(therapySlot);
+      // Terapkan koreksi jika diperlukan
+      const result = applyCorrections ? correctTherapySlotData(therapySlot) : therapySlot;
+      
+      // Log untuk debugging
+      console.log(`Mengirim detail slot terapi ID ${id}, koreksi=${applyCorrections}`);
+      
+      res.json(result);
     } catch (error) {
       console.error("Error getting therapy slot:", error);
       res.status(500).json({ error: "Gagal mendapatkan data slot terapi" });
+    }
+  });
+  
+  // Mendapatkan slot terapi berdasarkan timeSlotKey (tanggal_waktu)
+  app.get("/api/therapy-slots/by-key/:timeSlotKey", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const timeSlotKey = req.params.timeSlotKey;
+      
+      if (!timeSlotKey || !timeSlotKey.includes('_')) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Format timeSlotKey tidak valid. Gunakan format: YYYY-MM-DD_HH:MM-HH:MM" 
+        });
+      }
+      
+      // Parse timeSlotKey menjadi tanggal dan waktu
+      const [dateStr, timeSlot] = timeSlotKey.split('_');
+      
+      // Dapatkan semua slot untuk tanggal tersebut (konversi ke Date jika perlu)
+      const slots = await storage.getTherapySlotsByDate(new Date(dateStr));
+      
+      // Cari slot dengan waktu yang cocok
+      let matchingSlot = slots.find(slot => slot.timeSlot === timeSlot);
+      
+      // Jika tidak ditemukan, cari dari koreksi manual
+      if (!matchingSlot) {
+        console.log(`Slot dengan key ${timeSlotKey} tidak ditemukan, mencari di koreksi manual...`);
+        
+        // Temukan slot ID yang memiliki koreksi yang cocok dengan timeSlotKey ini
+        const correctionEntries = Object.entries(SLOT_CORRECTIONS);
+        const matchingCorrection = correctionEntries.find(([_, correction]) => {
+          return `${correction.date}_${correction.timeSlot}` === timeSlotKey;
+        });
+        
+        if (matchingCorrection) {
+          const slotId = parseInt(matchingCorrection[0]);
+          console.log(`Ditemukan koreksi untuk timeSlotKey ${timeSlotKey}: slot ID ${slotId}`);
+          matchingSlot = await storage.getTherapySlot(slotId);
+        }
+      }
+      
+      if (!matchingSlot) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Slot terapi dengan kombinasi tanggal dan waktu tersebut tidak ditemukan" 
+        });
+      }
+      
+      // Terapkan koreksi jika diperlukan
+      const result = correctTherapySlotData(matchingSlot);
+      
+      return res.status(200).json({
+        success: true,
+        therapySlot: result
+      });
+    } catch (error) {
+      console.error("Error getting therapy slot by key:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mengambil data slot terapi" 
+      });
     }
   });
 
@@ -102,6 +228,7 @@ export function setupTherapySlotsRoutes(app: Express) {
   app.get("/api/therapy-slots/date/:date", requireAuth, async (req: Request, res: Response) => {
     try {
       const date = req.params.date;
+      const applyCorrections = req.query.correct !== 'false'; // Default: lakukan koreksi
       
       if (!date) {
         return res.status(400).json({ 
@@ -110,13 +237,16 @@ export function setupTherapySlotsRoutes(app: Express) {
         });
       }
       
-      // Konversi string ke tanggal jika diperlukan
-      let dateInput: Date | string = date;
-      if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(date)) {
-        dateInput = new Date(date);
-      }
+      // Konversi string ke tanggal
+      const dateObj = new Date(date);
       
-      const therapySlots = await storage.getTherapySlotsByDate(dateInput);
+      // Ambil slot terapi berdasarkan tanggal
+      let therapySlots = await storage.getTherapySlotsByDate(dateObj);
+      
+      // Proses koreksi jika diperlukan
+      if (applyCorrections) {
+        therapySlots = therapySlots.map(slot => correctTherapySlotData(slot));
+      }
       
       return res.status(200).json({
         success: true,
@@ -426,11 +556,12 @@ export function setupTherapySlotsRoutes(app: Express) {
       const startTime = Date.now();
       const slotId = parseInt(req.params.id);
       const cacheBuster = req.query._cb || req.query._t;
+      const applyCorrections = req.query.correct !== 'false'; // Default: lakukan koreksi
       
       // Cache key
       const cacheKey = `therapy_slot_basic_${slotId}_${cacheBuster || Date.now()}`;
       
-      console.log(`🚀 Request untuk basic slot ${slotId} info`);
+      console.log(`🚀 Request untuk basic slot ${slotId} info, dengan koreksi=${applyCorrections}`);
       
       // Eksekusi query dengan cache yang super agresif (5 menit)
       const result = await getFromCacheOrFetch(
@@ -445,15 +576,20 @@ export function setupTherapySlotsRoutes(app: Express) {
             throw new Error("Slot terapi tidak ditemukan");
           }
           
+          // Terapkan koreksi jika diminta
+          let slotData = applyCorrections ? correctTherapySlotData(therapySlot) : therapySlot;
+          
           // Mapping ke data yang lebih ringan
           return {
-            id: therapySlot.id,
-            date: therapySlot.date,
-            timeSlot: therapySlot.timeSlot,
-            maxQuota: therapySlot.maxQuota,
-            currentCount: therapySlot.currentCount,
-            isActive: therapySlot.isActive,
-            status: therapySlot.status,
+            id: slotData.id,
+            date: slotData.date,
+            timeSlot: slotData.timeSlot,
+            maxQuota: slotData.maxQuota,
+            currentCount: slotData.currentCount,
+            isActive: slotData.isActive,
+            displayDate: slotData.displayDate || formatDateForDisplay(slotData.date),
+            timeSlotKey: slotData.timeSlotKey || `${slotData.date}_${slotData.timeSlot}`,
+            corrected: slotData.corrected || false,
             cached: true,
             timestamp: new Date().toISOString()
           };
