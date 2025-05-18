@@ -171,49 +171,29 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
     
     try {
       // Tampilkan loading toast
-      toast({
+      const loadingToast = toast({
         title: "Mendaftarkan Pasien...",
         description: "Mohon tunggu sebentar",
       });
       
-      // Data pendaftaran 
-      const data = {
+      // Data pendaftaran yang akan dikirim
+      const patientData = {
         name: formPatientName,
         phoneNumber: formPatientPhone,
+        gender: "Laki-laki",
+        birthDate: "1980-01-01",
+        complaints: "Walk-in pasien",
+        address: "Alamat default",
         slotId: slotData.id
       };
       
-      console.log("📝 Data pendaftaran:", data);
+      console.log("📝 Data pendaftaran:", patientData);
       
-      // Panggil endpoint walkin
-      const response = await fetch('/api/walkin-register', {
+      // Gunakan apiRequest dari queryClient untuk menggunakan standar yang sama dengan halaman lain
+      const result = await apiRequest('/api/walkin-register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formPatientName,
-          phoneNumber: formPatientPhone,
-          gender: "Laki-laki",
-          birthDate: "1980-01-01",
-          complaints: "Walk-in pasien",
-          address: "Alamat default",
-          slotId: slotData.id
-        })
+        body: patientData
       });
-      
-      const responseText = await response.text();
-      console.log("Raw response:", responseText);
-      
-      if (!response.ok) {
-        throw new Error(`Gagal mendaftarkan pasien: ${responseText}`);
-      }
-      
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (e) {
-        console.log("Tidak dapat parse response sebagai JSON, menggunakan text response");
-        result = { message: responseText };
-      }
       
       console.log("✅ Hasil pendaftaran:", result);
       
@@ -229,12 +209,12 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       setFormPatientName("");
       setFormPatientPhone("");
       
-      // Reload data
+      // Reload data slot terapi
       await loadSlotData(slotData.id);
       
-      // Muat ulang data dashboard
+      // Invalidate query caches to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/appointments/date/2025-05-18'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments/date'] });
       
     } catch (error) {
       console.error("❌ Error pendaftaran walk-in:", error);
