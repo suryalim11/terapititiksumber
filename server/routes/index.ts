@@ -312,6 +312,7 @@ export function setupRoutes(app: Express) {
   // Endpoint pendaftaran sederhana khusus walk-in
   app.post("/api/walkin-register", async (req, res) => {
     console.log("🚶 Mencoba pendaftaran khusus walk-in...");
+    console.log("📦 Data yang diterima:", req.body);
     
     try {
       // Ambil data pasien
@@ -326,8 +327,11 @@ export function setupRoutes(app: Express) {
         therapySlotId: req.body.slotId || req.body.therapySlotId
       };
       
+      console.log("📝 Data pasien yang akan didaftarkan:", patientData);
+      
       // Validasi data
       if (!patientData.name || !patientData.phoneNumber) {
+        console.log("❌ Validasi gagal: Nama atau telepon kosong");
         return res.status(400).json({
           success: false,
           message: "Nama dan telepon wajib diisi"
@@ -335,6 +339,7 @@ export function setupRoutes(app: Express) {
       }
       
       if (!patientData.therapySlotId) {
+        console.log("❌ Validasi gagal: Slot terapi tidak ada");
         return res.status(400).json({
           success: false,
           message: "Slot terapi wajib diisi"
@@ -343,17 +348,32 @@ export function setupRoutes(app: Express) {
       
       // Cari slot terapi
       const therapySlot = await storage.getTherapySlot(patientData.therapySlotId);
+      console.log("🔍 Slot terapi yang ditemukan:", therapySlot);
+      
       if (!therapySlot) {
+        console.log("❌ Slot terapi tidak ditemukan");
         return res.status(404).json({
           success: false,
           message: "Slot terapi tidak ditemukan"
         });
       }
       
+      // Cek apakah slot sudah penuh
+      if (therapySlot.currentCount >= therapySlot.maxQuota) {
+        console.log("❌ Slot terapi sudah penuh");
+        return res.status(400).json({
+          success: false,
+          message: `Slot terapi sudah penuh (${therapySlot.currentCount}/${therapySlot.maxQuota})`
+        });
+      }
+      
       // Buat pasien baru
+      console.log("👤 Membuat pasien baru...");
       const patient = await storage.createPatient(patientData);
+      console.log("✅ Pasien berhasil dibuat:", patient);
       
       // Buat appointment
+      console.log("📅 Membuat appointment baru...");
       const appointment = await storage.createAppointment({
         patientId: patient.id,
         date: therapySlot.date.split(" ")[0],
@@ -364,11 +384,14 @@ export function setupRoutes(app: Express) {
         registrationNumber: `WI-${Date.now()}`,
         notes: patientData.complaints
       });
+      console.log("✅ Appointment berhasil dibuat:", appointment);
       
       // Update kuota
+      console.log("🔄 Mengupdate kuota slot terapi...");
       await storage.incrementTherapySlotUsage(therapySlot.id);
       
       // Respons sukses sederhana
+      console.log("🎉 Pendaftaran walk-in berhasil!");
       return res.status(200).json({
         success: true,
         message: "Pendaftaran walk-in berhasil",
@@ -376,7 +399,7 @@ export function setupRoutes(app: Express) {
         appointmentId: appointment.id
       });
     } catch (error) {
-      console.error("Error pendaftaran walk-in:", error);
+      console.error("❌ Error pendaftaran walk-in:", error);
       return res.status(500).json({
         success: false,
         message: "Gagal mendaftarkan pasien walk-in"

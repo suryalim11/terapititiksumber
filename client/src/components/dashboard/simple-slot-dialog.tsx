@@ -146,37 +146,58 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
     }
   }
   
-  // Versi Ultra-Sederhana untuk pendaftaran walk-in menggunakan endpoint baru
+  // Versi terbaru - Menggunakan slot alternatif jika slot utama sudah hampir penuh
   async function handleRegisterPatient() {
     if (!slotData) return;
     
     try {
-      // Tampilkan dialog konfirmasi terlebih dahulu
+      // Cek slot hampir penuh atau tidak
+      const isSlotAlmostFull = slotData.currentCount >= slotData.maxQuota - 1;
+      let selectedSlotId = slotData.id;
+      
+      if (isSlotAlmostFull) {
+        // Tanyakan apakah ingin menggunakan slot alternatif
+        const useAltSlot = confirm(
+          `Slot ini sudah hampir penuh (${slotData.currentCount}/${slotData.maxQuota} pasien).\n\n` +
+          `Gunakan slot terapi alternatif di hari yang berbeda?`
+        );
+        
+        if (useAltSlot) {
+          // Gunakan slot alternatif (hardcoded untuk contoh - 472 dari database)
+          selectedSlotId = 472; // Slot tanggal 25 Mei 2025
+          toast({
+            title: "Menggunakan Slot Alternatif",
+            description: "Pendaftaran akan menggunakan slot terapi 25 Mei 2025",
+          });
+        }
+      }
+      
+      // Basic input data
       const patientName = prompt("Nama Pasien:");
-      if (!patientName) return; // Batal jika tidak ada nama
+      if (!patientName) return;
       
       const patientPhone = prompt("Nomor Telepon Pasien:");
-      if (!patientPhone) return; // Batal jika tidak ada telepon
+      if (!patientPhone) return;
       
-      // Tampilkan loading message
+      // Loading toast
       toast({
         title: "Mendaftarkan Pasien...",
         description: "Mohon tunggu sebentar",
         className: "bg-blue-50 border-blue-200 text-blue-800",
       });
       
-      // Data pasien sederhana
+      // Data pasien
       const patientData = {
         name: patientName,
         phoneNumber: patientPhone,
-        gender: "Laki-laki", // Default
-        birthDate: "1980-01-01", // Default, bisa diubah nanti
-        complaints: "Walk-in", // Default
-        address: "-", // Default
-        slotId: slotData.id,
+        gender: "Laki-laki", 
+        birthDate: "1980-01-01",
+        complaints: "Walk-in pasien", 
+        address: "Alamat belum diisi",
+        slotId: selectedSlotId,
       };
       
-      // Panggil endpoint khusus walk-in
+      // Kirim permintaan pendaftaran
       const response = await fetch('/api/walkin-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -184,28 +205,29 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       });
       
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Gagal mendaftar: ${errorData}`);
+        const errorText = await response.text();
+        throw new Error(`Gagal mendaftar: ${errorText}`);
       }
       
       const result = await response.json();
       
-      // Tampilkan sukses dan reload daftar pasien
+      // Sukses toast
       toast({
-        title: "Pendaftaran Berhasil",
+        title: "Pendaftaran Berhasil!",
         description: `Pasien ${patientName} berhasil didaftarkan`,
         className: "bg-green-50 border-green-200 text-green-800",
       });
       
-      // Reload data setelah sukses
+      // Reload daftar pasien
       loadSlotData(slotData.id);
       
     } catch (error) {
-      console.error("Error pendaftaran cepat:", error);
+      console.error("Error pendaftaran walk-in:", error);
+      const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan saat mendaftarkan pasien";
       toast({
         variant: "destructive",
         title: "Gagal Mendaftar",
-        description: error.message || "Terjadi kesalahan",
+        description: errorMessage,
       });
     }
   }
