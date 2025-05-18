@@ -676,10 +676,10 @@ export default function RegisterPage() {
               <div className="p-4 rounded-lg border border-green-200 bg-green-50">
                 <h3 className="font-medium mb-2 flex items-center text-green-800">
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  Pendaftaran Walk-in untuk Hari Ini
+                  Pendaftaran Pasien Walk-in
                 </h3>
                 <p className="text-sm text-green-700 mb-1">
-                  Pasien ini datang langsung ke klinik pada:
+                  Pasien datang langsung ke klinik pada:
                 </p>
                 <div className="flex items-center gap-2 mt-2 mb-2 font-medium text-green-800">
                   <CalendarIcon className="h-4 w-4" />
@@ -697,6 +697,9 @@ export default function RegisterPage() {
                     })()}
                   </span>
                 </div>
+                <p className="text-xs text-green-700 mt-2">
+                  Pasien walk-in akan ditangani sesuai dengan slot terapi yang tersedia hari ini.
+                </p>
               </div>
             )}
           
