@@ -174,7 +174,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         birthDate: "1980-01-01",
         complaints: "Walk-in pasien sederhana",
         address: "Alamat default",
-        slotId: 472 // Slot 25 Mei 2025 (masih kosong)
+        slotId: slotData.id // Gunakan slot ID yang sedang aktif
       };
       
       console.log("📝 Data pendaftaran:", data);
@@ -196,7 +196,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       // Tampilkan sukses
       toast({
         title: "Pendaftaran Berhasil!",
-        description: `Pasien ${patientName} telah didaftarkan ke slot terapi tanggal 25 Mei 2025`,
+        description: `Pasien ${patientName} telah didaftarkan ke slot terapi ${formatAppointmentDate(slotData.date)}`,
         className: "bg-green-50 border-green-200 text-green-800",
       });
       
