@@ -86,17 +86,37 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       if (slotId !== 461 && slotId !== 464 && slotId !== 458) {
         console.log(`[DEBUG] Mendeteksi slot masa depan (${slotId}), menggunakan data hardcoded`);
         
-        // Tentukan tanggal berdasarkan ID slot
-        // Slot 461 adalah 18 Mei 2025 (hari ini)
-        // Slot di bawah 461 adalah masa lalu, di atas 461 adalah masa depan
-        let slotDate = new Date();
+        // Tetapkan tanggal berdasarkan ID slot dan data yang diketahui
+        // Data yang kita tahu:
+        // - Slot 461 adalah 18 Mei 2025 (hari ini)
+        // - Slot 474 adalah 19 Mei 2025 (besok)
+        // - ID yang lebih tinggi berarti waktu yang lebih jauh di masa depan
         
-        if (slotId < 461) {
-          // Slot masa lalu (1-7 hari yang lalu)
-          slotDate.setDate(slotDate.getDate() - Math.max(1, Math.min(7, 461 - slotId)));
-        } else if (slotId > 461) {
-          // Slot masa depan (1-7 hari ke depan)
-          slotDate.setDate(slotDate.getDate() + Math.max(1, Math.min(7, slotId - 461)));
+        let slotDate = new Date(2025, 4, 18); // 18 Mei 2025 (waktu dasar untuk slot 461)
+        
+        // Hardcoded date untuk beberapa slot
+        const knownSlots: Record<number, string> = {
+          461: "2025-05-18",  // 18 Mei 2025
+          474: "2025-05-19",  // 19 Mei 2025
+          466: "2025-05-20",  // 20 Mei 2025
+          467: "2025-05-21",  // 21 Mei 2025
+          468: "2025-05-22",  // 22 Mei 2025 
+          469: "2025-05-23",  // 23 Mei 2025
+          470: "2025-05-24",  // 24 Mei 2025
+          471: "2025-05-25",  // 25 Mei 2025
+          472: "2025-05-26",  // 26 Mei 2025
+        };
+        
+        // Gunakan tanggal yang sudah diketahui jika ada
+        if (knownSlots[slotId]) {
+          const [year, month, day] = knownSlots[slotId].split('-').map(num => parseInt(num));
+          slotDate = new Date(year, month - 1, day); // bulan dimulai dari 0 di JavaScript
+        } else if (slotId < 461) {
+          // Slot masa lalu (semakin kecil ID, semakin jauh di masa lalu)
+          slotDate.setDate(slotDate.getDate() - Math.max(1, Math.min(30, 461 - slotId)));
+        } else if (slotId > 472) {
+          // Slot masa depan di luar rentang yang sudah diketahui (estimasi)
+          slotDate.setDate(slotDate.getDate() + Math.max(8, Math.min(30, slotId - 461)));
         }
         
         const formattedDate = `${slotDate.getFullYear()}-${String(slotDate.getMonth() + 1).padStart(2, '0')}-${String(slotDate.getDate()).padStart(2, '0')} 00:00:00`;
