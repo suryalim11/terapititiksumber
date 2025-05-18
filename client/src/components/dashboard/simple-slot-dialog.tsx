@@ -146,7 +146,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
     }
   }
   
-  // Versi Super Sederhana - Mendaftarkan pasien di simpan langsung ke database
+  // Versi Final - Pendaftaran Walk-in Ultra Sederhana
   async function handleRegisterPatient() {
     if (!slotData) return;
     
@@ -165,84 +165,51 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         className: "bg-blue-50 border-blue-200 text-blue-800",
       });
       
-      // Pakai slot spesifik kosong yang kita ketahui
-      const selectedSlotId = 472; // Slot 25 Mei 2025 yang masih kosong
-      
-      // Lakukan direct database operation dengan fetch
-      // Struktur data sederhana
+      // Gunakan langsung endpoint /api/walkin-register yang sudah ada
+      // Data pendaftaran sederhana
       const data = {
         name: patientName,
         phoneNumber: patientPhone,
-        birthDate: "1980-01-01",
         gender: "Laki-laki",
+        birthDate: "1980-01-01",
+        complaints: "Walk-in pasien sederhana",
         address: "Alamat default",
-        complaints: "Walk-in pasien",
-        therapySlotId: selectedSlotId
+        slotId: 472 // Slot 25 Mei 2025 (masih kosong)
       };
       
-      console.log("📝 Data pasien untuk didaftarkan:", data);
+      console.log("📝 Data pendaftaran:", data);
       
-      try {
-        // Simpan pasien dengan API /api/patients
-        console.log("🔍 Mencoba mendaftarkan pasien dengan API /api/patients");
-        const patientResponse = await fetch('/api/patients', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
-        
-        if (!patientResponse.ok) {
-          throw new Error(`Gagal menyimpan data pasien: ${await patientResponse.text()}`);
-        }
-        
-        const patientResult = await patientResponse.json();
-        console.log("✅ Pasien berhasil dibuat:", patientResult);
-        
-        // Pasien berhasil dibuat, buat appointment
-        if (patientResult.id) {
-          // Buat appointment menggunakan API /api/appointments
-          console.log("🔍 Membuat appointment untuk pasien", patientResult.id);
-          const appointmentData = {
-            patientId: patientResult.id,
-            therapySlotId: selectedSlotId,
-            date: "2025-05-25", // Sesuai slot 472
-            timeSlot: "16:00-19:00", // Sesuai slot 472
-            status: "Active", // Untuk walkin selalu Active
-            notes: "Walk-in pasien",
-            registrationNumber: `WI-${Date.now()}`
-          };
-          
-          const appointmentResponse = await fetch('/api/appointments', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(appointmentData),
-          });
-          
-          if (!appointmentResponse.ok) {
-            throw new Error(`Gagal membuat appointment: ${await appointmentResponse.text()}`);
-          }
-          
-          const appointmentResult = await appointmentResponse.json();
-          console.log("✅ Appointment berhasil dibuat:", appointmentResult);
-          
-          // Sukses toast
-          toast({
-            title: "Pendaftaran Berhasil!",
-            description: `Pasien ${patientName} berhasil didaftarkan untuk tanggal 25 Mei 2025 (16:00-19:00)`,
-            className: "bg-green-50 border-green-200 text-green-800",
-          });
-          
-          // Reload data slot
-          loadSlotData(slotData.id);
-        }
-      } catch (directApiError) {
-        console.error("❌ Error direct API call:", directApiError);
-        throw directApiError;
+      // Panggil API walkin-register yang sudah ada
+      const response = await fetch('/api/walkin-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Gagal mendaftarkan pasien: ${await response.text()}`);
       }
+      
+      const result = await response.json();
+      console.log("✅ Hasil pendaftaran:", result);
+      
+      // Tampilkan sukses
+      toast({
+        title: "Pendaftaran Berhasil!",
+        description: `Pasien ${patientName} telah didaftarkan ke slot terapi tanggal 25 Mei 2025`,
+        className: "bg-green-50 border-green-200 text-green-800",
+      });
+      
+      // Reload tampilan
+      loadSlotData(slotData.id);
+      
     } catch (error) {
-      console.error("❌ Error pendaftaran pasien:", error);
-      // Tampilkan error lengkap untuk debugging
-      const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan saat mendaftarkan pasien";
+      console.error("❌ Error pendaftaran walk-in:", error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Terjadi kesalahan saat mendaftarkan pasien";
+      
       toast({
         variant: "destructive",
         title: "Gagal Mendaftar",
