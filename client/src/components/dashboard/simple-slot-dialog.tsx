@@ -311,9 +311,15 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                             asChild
                           >
                             <a 
-                              href={`/transactions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}&hideDropdown=true&delay=2000&source=optimized-dialog&timestamp=${Date.now()}`}
+                              href={`/transactions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}&hideDropdown=true&delay=2000&source=optimized-dialog&timestamp=${Date.now()}&useFixed=true`}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => {
+                                // Set localStorage flag untuk menggunakan endpoint fixed
+                                localStorage.setItem('use_fixed_endpoints', 'true');
+                                // Tambahkan juga cache bust timestamp
+                                localStorage.setItem('cache_bust_timestamp', Date.now().toString());
+                              }}
                             >
                               <CreditCard className="mr-1 h-3 w-3" />
                               Transaksi
