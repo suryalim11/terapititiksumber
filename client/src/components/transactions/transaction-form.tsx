@@ -258,7 +258,14 @@ const transactionFormSchema = z.object({
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
-export default function TransactionForm({ isOpen, onClose, selectedPatientId, hidePatientSearch = false }: TransactionFormProps) {
+export default function TransactionForm({ 
+  isOpen, 
+  onClose, 
+  selectedPatientId, 
+  hidePatientSearch = false,
+  useFixedEndpoints = false 
+}: TransactionFormProps) {
+  console.log("TransactionForm dirender dengan useFixedEndpoints:", useFixedEndpoints);
   console.log("TransactionForm initialized with:", { selectedPatientId, hidePatientSearch });
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<string>("");
