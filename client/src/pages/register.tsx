@@ -324,7 +324,8 @@ export default function RegisterPage() {
         return;
       }
       
-      const response = await fetch(`/api/registration-links/verify?code=${code}`, {
+      // Ubah untuk menggunakan path parameter yang benar sesuai API backend
+      const response = await fetch(`/api/registration-links/verify/${code}`, {
         credentials: 'include'
       });
       
