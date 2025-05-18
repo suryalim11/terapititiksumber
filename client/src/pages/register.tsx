@@ -920,14 +920,6 @@ export default function RegisterPage() {
                                       return slotDate > new Date();
                                     })
                                     .map((slot: any) => {
-                                      // Mendapatkan hari dalam bahasa Indonesia
-                                      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-                                      const slotDate = new Date(slot.date);
-                                      const dayName = days[slotDate.getDay()];
-                                      
-                                      // Format tanggal ke DD/MM/YYYY
-                                      const formattedDate = formatDateDDMMYYYY(slot.date);
-                                      
                                       return (
                                         <div
                                           key={slot.id}
@@ -950,7 +942,19 @@ export default function RegisterPage() {
                                             <div className="flex items-center gap-2 mb-2">
                                               <CalendarIcon className="h-4 w-4 text-blue-600" />
                                               <span className="font-medium text-gray-900">
-                                                {dayName}, {formattedDate}
+                                                {(() => {
+                                                  // Mendapatkan hari dalam bahasa Indonesia
+                                                  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                                                  const slotDate = new Date(slot.date);
+                                                  const dayName = days[slotDate.getDay()];
+                                                  
+                                                  // Format tanggal ke DD/MM/YYYY
+                                                  const date = slotDate.getDate();
+                                                  const month = slotDate.getMonth() + 1; // Januari = 0
+                                                  const year = slotDate.getFullYear();
+                                                  
+                                                  return `${dayName}, ${date.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+                                                })()}
                                               </span>
                                             </div>
                                             <div className="flex items-center gap-2 mb-2">
