@@ -155,8 +155,8 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
   async function handleRegisterPatient() {
     if (!slotData) return;
     
-    // Buka halaman slot tracker
-    window.location.href = `/slot-tracker?date=${format(new Date(slotData.date), "yyyy-MM-dd")}&slotId=${slotData.id}`;
+    // Buka halaman pendaftaran walk-in
+    window.location.href = `/dashboard/walkin?date=${format(new Date(slotData.date), "yyyy-MM-dd")}&slotId=${slotData.id}`;
   }
   
   async function handleSubmitRegistration() {
