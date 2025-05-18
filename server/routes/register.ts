@@ -387,10 +387,34 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       
       appointmentResponse = appointment;
       
+      // Siapkan data respons dengan informasi lengkap untuk halaman sukses
+      const registrationResponse = {
+        id: patientToUse.id,
+        name: patientToUse.name,
+        phoneNumber: patientToUse.phoneNumber,
+        email: patientToUse.email,
+        birthDate: patientToUse.birthDate, 
+        gender: patientToUse.gender,
+        address: patientToUse.address,
+        appointment: {
+          id: appointment.id,
+          therapySlotId: appointment.therapy_slot_id,
+          patientId: appointment.patient_id,
+          status: appointment.status,
+          registrationNumber: appointment.registration_number,
+          therapySlotDetails: {
+            date: therapySlot.date,
+            timeSlot: therapySlot.time_slot || therapySlot.timeSlot,
+            formattedDate: format(new Date(therapySlot.date), 'EEEE, dd MMMM yyyy', { locale: require('date-fns/locale/id') })
+          }
+        }
+      };
+      
       // Kirimkan respon sukses
       const endTime = Date.now();
       const processingTime = endTime - startTime;
       console.log(`⏱️ [PERF] Pendaftaran selesai dalam ${processingTime}ms`);
+      res.status(200).json(registrationResponse);
       
       // FITUR BARU: Jalankan verifikasi koneksi appointment secara otomatis setelah pendaftaran
       // Ini dibuat sebagai proses background agar tidak mempengaruhi waktu respon
