@@ -893,59 +893,66 @@ export default function RegisterPage() {
                             </div>
                           </div>
                           
-                          <Select 
-                            onValueChange={(value) => {
-                              field.onChange(parseInt(value))
-                              // Update selected slot
-                              const selected = therapySlots?.find((slot: any) => slot.id === parseInt(value));
-                              if (selected) {
-                                setSelectedSlot(selected);
-                              }
-                            }}
-                            defaultValue={field.value?.toString()}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="h-12 text-base border-gray-300 bg-white">
-                                <SelectValue placeholder="Pilih jadwal terapi" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="max-h-[300px]">
+                          <FormControl>
+                            <div className="space-y-4">
                               {isLoadingSlots ? (
-                                <div className="p-4 text-center">
-                                  <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-3 text-blue-600" />
-                                  <p className="text-sm">Memuat jadwal tersedia...</p>
+                                <div className="p-8 text-center bg-gray-50 border rounded-lg">
+                                  <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-600" />
+                                  <p className="text-sm font-medium">Memuat jadwal tersedia...</p>
                                 </div>
                               ) : therapySlots && therapySlots.length > 0 ? (
-                                <div className="py-1">
+                                <div className="grid gap-3 md:grid-cols-2">
                                   {therapySlots.map((slot: any) => (
-                                    <SelectItem 
-                                      key={slot.id} 
-                                      value={slot.id.toString()}
-                                      className="py-3 px-2 border-b border-gray-100 last:border-0"
+                                    <div
+                                      key={slot.id}
+                                      className={`relative p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:border-blue-400 ${
+                                        field.value === slot.id 
+                                          ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500" 
+                                          : "bg-white"
+                                      }`}
+                                      onClick={() => {
+                                        field.onChange(slot.id);
+                                        setSelectedSlot(slot);
+                                      }}
                                     >
+                                      {field.value === slot.id && (
+                                        <div className="absolute top-2 right-2">
+                                          <CheckCircle className="h-5 w-5 text-blue-600" />
+                                        </div>
+                                      )}
                                       <div className="flex flex-col">
-                                        <span className="font-medium text-gray-900">{formatDateDDMMYYYY(slot.date)}</span>
-                                        <div className="flex items-center mt-1">
-                                          <Clock className="h-3 w-3 text-gray-500 mr-1" />
-                                          <span className="text-sm text-gray-600">{slot.timeSlot}</span>
-                                          <span className="mx-2 text-gray-400">•</span>
-                                          <span className="text-sm text-green-600 font-medium">
-                                            {slot.maxQuota - slot.currentCount} slot tersedia
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <CalendarIcon className="h-4 w-4 text-blue-600" />
+                                          <span className="font-medium text-gray-900">
+                                            {formatDateDDMMYYYY(slot.date)}
                                           </span>
                                         </div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Clock className="h-4 w-4 text-blue-600" />
+                                          <span className="text-sm text-gray-700">{slot.timeSlot}</span>
+                                        </div>
+                                        <div className={`text-sm font-medium rounded-full px-2 py-1 text-center mt-1 ${
+                                          (slot.maxQuota - slot.currentCount) > 3 
+                                            ? "bg-green-100 text-green-800" 
+                                            : "bg-amber-100 text-amber-800"
+                                        }`}>
+                                          {slot.maxQuota - slot.currentCount} slot tersedia
+                                        </div>
                                       </div>
-                                    </SelectItem>
+                                    </div>
                                   ))}
                                 </div>
                               ) : (
-                                <div className="p-4 text-center">
-                                  <AlertTriangle className="h-6 w-6 mx-auto mb-3 text-amber-500" />
-                                  <p className="text-sm font-medium">Tidak ada jadwal tersedia</p>
-                                  <p className="text-xs text-gray-500 mt-1">Silakan coba lagi nanti</p>
+                                <div className="p-8 text-center bg-gray-50 border rounded-lg">
+                                  <AlertTriangle className="h-8 w-8 mx-auto mb-3 text-amber-500" />
+                                  <p className="font-medium">Tidak ada jadwal tersedia</p>
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    Silakan coba lagi nanti atau hubungi admin
+                                  </p>
                                 </div>
                               )}
-                            </SelectContent>
-                          </Select>
+                            </div>
+                          </FormControl>
                           
                           {/* Tampilkan informasi slot yang dipilih */}
                           {selectedSlot && (
