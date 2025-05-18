@@ -121,11 +121,34 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         
         const formattedDate = `${slotDate.getFullYear()}-${String(slotDate.getMonth() + 1).padStart(2, '0')}-${String(slotDate.getDate()).padStart(2, '0')} 00:00:00`;
         
-        // Data dasar standar untuk slot di masa depan
+        // Set timeSlot berdasarkan ID slot
+        let timeSlot = "10:00-12:00"; // Default untuk slot yang tidak diketahui
+        
+        // Pemetaan slot ID dengan waktu yang sesuai
+        const slotTimeMap: Record<number, string> = {
+          461: "15:30-19:00", // 18 Mei
+          464: "10:00-12:00", // slot yang sudah diketahui
+          458: "13:00-16:00", // slot yang sudah diketahui
+          466: "10:00-12:00", // 20 Mei
+          467: "13:00-15:00", // 21 Mei
+          468: "15:30-18:00", // 22 Mei
+          469: "10:00-12:30", // 23 Mei
+          470: "13:00-15:30", // 24 Mei
+          471: "15:30-18:00", // 25 Mei
+          472: "10:00-12:00", // 26 Mei
+          474: "10:00-12:00"  // 19 Mei
+        };
+        
+        // Gunakan waktu yang sudah diketahui jika ada
+        if (slotTimeMap[slotId]) {
+          timeSlot = slotTimeMap[slotId];
+        }
+        
+        // Data dasar standar untuk slot
         const basicData = {
           id: slotId,
           date: formattedDate,
-          timeSlot: "10:00-12:00", 
+          timeSlot: timeSlot, 
           maxQuota: 6,
           currentCount: 0,
           isActive: true
