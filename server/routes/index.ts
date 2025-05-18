@@ -448,6 +448,7 @@ export function setupRoutes(app: Express) {
       }
       
       // Cari slot terapi
+      console.log("🔍 Mencari slot terapi dengan ID:", patientData.therapySlotId);
       const therapySlot = await storage.getTherapySlot(patientData.therapySlotId);
       console.log("🔍 Slot terapi yang ditemukan:", therapySlot);
       
@@ -467,7 +468,7 @@ export function setupRoutes(app: Express) {
           message: `Slot terapi sudah penuh (${therapySlot.currentCount}/${therapySlot.maxQuota})`
         });
       }
-      
+    
       // Buat pasien baru menggunakan SQL langsung
       console.log("👤 Membuat pasien baru dengan SQL langsung...");
       const patientId = `P-${new Date().getFullYear()}-${Date.now()}`;
@@ -519,6 +520,7 @@ export function setupRoutes(app: Express) {
         registrationNumber,
         patientData.complaints || ""
       ]);
+      
       if (!appointmentResult.rows || appointmentResult.rows.length === 0) {
         console.log("❌ Gagal membuat appointment");
         return res.status(500).json({
