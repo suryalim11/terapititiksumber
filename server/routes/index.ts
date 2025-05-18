@@ -447,12 +447,14 @@ export function setupRoutes(app: Express) {
         });
       }
       
-      // Cari slot terapi
+      // Cari slot terapi langsung dengan SQL
       console.log("🔍 Mencari slot terapi dengan ID:", patientData.therapySlotId);
-      const therapySlot = await storage.getTherapySlot(patientData.therapySlotId);
-      console.log("🔍 Slot terapi yang ditemukan:", therapySlot);
       
-      if (!therapySlot) {
+      const slotResult = await pool.query(`
+        SELECT * FROM therapy_slots WHERE id = $1
+      `, [patientData.therapySlotId]);
+      
+      if (!slotResult.rows || slotResult.rows.length === 0) {
         console.log("❌ Slot terapi tidak ditemukan");
         return res.status(404).json({
           success: false,
@@ -460,12 +462,15 @@ export function setupRoutes(app: Express) {
         });
       }
       
+      const therapySlot = slotResult.rows[0];
+      console.log("🔍 Slot terapi yang ditemukan:", therapySlot);
+      
       // Cek apakah slot sudah penuh
-      if (therapySlot.currentCount >= therapySlot.maxQuota) {
+      if (therapySlot.current_count >= therapySlot.max_quota) {
         console.log("❌ Slot terapi sudah penuh");
         return res.status(400).json({
           success: false,
-          message: `Slot terapi sudah penuh (${therapySlot.currentCount}/${therapySlot.maxQuota})`
+          message: `Slot terapi sudah penuh (${therapySlot.current_count}/${therapySlot.max_quota})`
         });
       }
     
@@ -515,7 +520,7 @@ export function setupRoutes(app: Express) {
         newPatientId,
         therapySlot.id,
         therapySlot.date,
-        therapySlot.timeSlot,
+        therapySlot.time_slot,
         "Active", // Walk-in selalu active
         registrationNumber,
         patientData.complaints || ""
@@ -543,27 +548,18 @@ export function setupRoutes(app: Express) {
       // Respons sukses sederhana
       console.log("🎉 Pendaftaran walk-in berhasil!");
       
-      // Verifikasi bahwa appointment benar-benar dibuat
-      const verifyAppointment = await storage.getAppointment(newAppointmentId);
-      if (!verifyAppointment) {
-        console.log(`⚠️ Appointment tidak ditemukan setelah dibuat! ID: ${newAppointmentId}`);
-      } else {
-        console.log("✅ Appointment terverifikasi:", verifyAppointment);
-      }
-      
       return res.status(200).json({
         success: true,
         message: "Pendaftaran walk-in berhasil",
         patientId: newPatientId,
         patientIdString: patientId,
-        appointmentId: newAppointmentId,
-        appointmentDetail: verifyAppointment
+        appointmentId: newAppointmentId
       });
     } catch (error) {
       console.error("❌ Error pendaftaran walk-in:", error);
       return res.status(500).json({
         success: false,
-        message: "Gagal mendaftarkan pasien walk-in"
+        message: "Gagal mendaftarkan pasien walk-in: " + (error instanceof Error ? error.message : String(error))
       });
     }
   });
