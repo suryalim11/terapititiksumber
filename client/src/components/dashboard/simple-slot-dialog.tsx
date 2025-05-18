@@ -151,7 +151,13 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
     
     // Redirect ke halaman pendaftaran pasien dengan parameter walkin=true dan slot ID
     const slotId = slotData.id;
-    navigate(`/register?slotId=${slotId}&walkin=true&date=${encodeURIComponent(slotData.date)}&timeSlot=${encodeURIComponent(slotData.timeSlot || '')}`);
+    
+    // Gunakan full URL karena register berada di bagian PublicApp
+    const currentOrigin = window.location.origin;
+    const registerUrl = `${currentOrigin}/register?slotId=${slotId}&walkin=true&date=${encodeURIComponent(slotData.date)}&timeSlot=${encodeURIComponent(slotData.timeSlot || '')}`;
+    
+    // Navigasi dengan window.location untuk full redirect ke bagian PublicApp
+    window.location.href = registerUrl;
   }
   
   function formatAppointmentDate(dateString: string | Date): string {
