@@ -28,6 +28,7 @@ export function setupPatientRoutes(app: Express) {
       
       // Cek slot terapi
       const slotId = parseInt(req.body.slotId);
+      console.log("🔍 API Register Walk-in: Slot ID yang diterima:", slotId);
       const therapySlot = await storage.getTherapySlot(slotId);
       
       console.log("🔍 API Register Walk-in: Slot terapi:", therapySlot);
