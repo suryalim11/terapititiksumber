@@ -146,39 +146,32 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
     }
   }
   
-  function handleRegisterPatient() {
+  // Versi direct API - Register pasien tanpa redirect
+  async function handleRegisterPatient() {
     if (!slotData) return;
+    
+    // Tampilkan toast untuk memberi feedback
+    toast({
+      title: "Buka Form Pendaftaran",
+      description: "Membuka form pendaftaran pasien walk-in",
+      className: "bg-blue-50 border-blue-200 text-blue-800",
+    });
+    
+    // Simpan data slot untuk diambil oleh form pendaftaran
+    sessionStorage.setItem("selectedSlotId", String(slotData.id));
+    sessionStorage.setItem("selectedSlotDate", String(slotData.date));
+    sessionStorage.setItem("selectedSlotTime", slotData.timeSlot || "");
     
     // Redirect ke halaman pendaftaran pasien dengan parameter yang lengkap
     const slotId = slotData.id;
     
-    // Gunakan full URL dan pastikan semua parameter terenkode dengan benar
-    const currentOrigin = window.location.origin;
+    // Gunakan URL yang sederhana dan langsung
+    const registerUrl = `/register?slotId=${slotId}&walkin=true&date=${encodeURIComponent(String(slotData.date))}&timeSlot=${encodeURIComponent(slotData.timeSlot || '')}&t=${Date.now()}`;
     
-    // Buat URL dengan parameter yang lebih jelas dan lengkap
-    const registerUrl = new URL(`${currentOrigin}/register`);
+    console.log("📝 URL pendaftaran sederhana:", registerUrl);
     
-    // Tambahkan parameter dengan metode yang lebih aman dan jelas
-    registerUrl.searchParams.append('slotId', String(slotId));
-    registerUrl.searchParams.append('walkin', 'true');
-    registerUrl.searchParams.append('date', String(slotData.date));
-    registerUrl.searchParams.append('timeSlot', slotData.timeSlot || '');
-    
-    // Log untuk debugging
-    console.log("📝 URL pendaftaran walk-in:", registerUrl.toString());
-    
-    // Tambahkan timestamp untuk menghindari caching
-    registerUrl.searchParams.append('t', Date.now().toString());
-    
-    // Navigasi dengan window.location untuk full redirect ke bagian PublicApp
-    window.location.href = registerUrl.toString();
-    
-    // Tambahkan toast untuk feedback visual
-    toast({
-      title: "Membuka Form Pendaftaran",
-      description: "Mempersiapkan formulir pendaftaran pasien walk-in...",
-      className: "bg-blue-50 border-blue-200 text-blue-800",
-    });
+    // Navigasi langsung ke halaman pendaftaran
+    window.location.href = registerUrl;
   }
   
   function formatAppointmentDate(dateString: string | Date): string {
