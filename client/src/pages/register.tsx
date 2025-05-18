@@ -656,15 +656,7 @@ export default function RegisterPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-start space-x-2 col-span-2">
-                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Lokasi</p>
-                      <p className="font-medium">
-                        RSU Prof. W.Z. Johannes Kupang
-                      </p>
-                    </div>
-                  </div>
+
                 </div>
               </div>
             )}
