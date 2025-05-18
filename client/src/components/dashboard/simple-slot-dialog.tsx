@@ -162,46 +162,54 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
       toast({
         title: "Mendaftarkan Pasien...",
         description: "Mohon tunggu sebentar",
-        className: "bg-blue-50 border-blue-200 text-blue-800",
       });
       
-      // Gunakan API endpoint dari routes/api/walkin.ts yang lebih lengkap
-      // Data pendaftaran sederhana
+      // Data pendaftaran super sederhana
       const data = {
         name: patientName,
         phoneNumber: patientPhone,
-        gender: "Laki-laki",
-        birthDate: "1980-01-01",
-        complaints: "Walk-in pasien sederhana",
-        address: "Alamat default",
-        slotId: slotData.id // Gunakan slot ID yang sedang aktif
+        slotId: slotData.id
       };
       
       console.log("📝 Data pendaftaran:", data);
       
-      // Panggil API yang sudah terbukti berfungsi
-      const response = await fetch('/api/patients/register-walkin', {
+      // Panggil endpoint sederhana
+      const response = await fetch('/api/simple-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
       
+      const responseText = await response.text();
+      console.log("Raw response:", responseText);
+      
       if (!response.ok) {
-        throw new Error(`Gagal mendaftarkan pasien: ${await response.text()}`);
+        throw new Error(`Gagal mendaftarkan pasien: ${responseText}`);
       }
       
-      const result = await response.json();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.log("Tidak dapat parse response sebagai JSON, menggunakan text response");
+        result = { message: responseText };
+      }
+      
       console.log("✅ Hasil pendaftaran:", result);
       
       // Tampilkan sukses
       toast({
         title: "Pendaftaran Berhasil!",
-        description: `Pasien ${patientName} telah didaftarkan ke slot terapi ${formatAppointmentDate(slotData.date)}`,
+        description: `Pasien ${patientName} telah didaftarkan untuk terapi`,
         className: "bg-green-50 border-green-200 text-green-800",
       });
       
-      // Reload tampilan
-      loadSlotData(slotData.id);
+      // Reload data
+      await loadSlotData(slotData.id);
+      
+      // Muat ulang data dashboard
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments/date/2025-05-18'] });
       
     } catch (error) {
       console.error("❌ Error pendaftaran walk-in:", error);

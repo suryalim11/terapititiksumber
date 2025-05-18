@@ -309,6 +309,106 @@ export function setupRoutes(app: Express) {
   setupRegistrationLinkRoutes(app);
   setupDashboardRoutes(app);
   
+  // Endpoint pendaftaran sederhana 
+  app.post("/api/simple-register", async (req, res) => {
+    console.log("💎 SIMPLE REGISTER: Menerima permintaan pendaftaran sederhana");
+    console.log("💎 SIMPLE REGISTER: Data yang diterima:", req.body);
+    
+    try {
+      if (!req.body.name || !req.body.phoneNumber || !req.body.slotId) {
+        console.log("💎 SIMPLE REGISTER: Data tidak lengkap");
+        return res.status(400).send("Nama, nomor telepon, dan slot ID wajib diisi");
+      }
+      
+      const slotId = parseInt(req.body.slotId);
+      console.log("💎 SIMPLE REGISTER: Memeriksa slot dengan ID", slotId);
+      
+      // Periksa slot
+      const slot = await storage.getTherapySlot(slotId);
+      if (!slot) {
+        console.log("💎 SIMPLE REGISTER: Slot tidak ditemukan");
+        return res.status(404).send("Slot terapi tidak ditemukan");
+      }
+      
+      // Periksa kuota
+      if (slot.currentCount >= slot.maxQuota) {
+        console.log("💎 SIMPLE REGISTER: Slot penuh");
+        return res.status(400).send(`Slot terapi sudah penuh (${slot.currentCount}/${slot.maxQuota})`);
+      }
+      
+      console.log("💎 SIMPLE REGISTER: Mendaftarkan pasien...");
+      
+      // Gunakan ID unik untuk patient_id
+      const patientId = `P-${new Date().getFullYear()}-${Date.now()}`;
+      
+      // Insert langsung ke database dengan SQL untuk memastikan konsistensi
+      const patientQuery = `
+        INSERT INTO patients (patient_id, name, phone_number, gender, birth_date, address, complaints, email)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id
+      `;
+      
+      const patientResult = await storage.db.query(patientQuery, [
+        patientId,
+        req.body.name,
+        req.body.phoneNumber,
+        "Laki-laki",
+        "1980-01-01",
+        "Alamat default walk-in",
+        "Pasien walk-in",
+        ""
+      ]);
+      
+      if (!patientResult.rows || patientResult.rows.length === 0) {
+        console.log("💎 SIMPLE REGISTER: Gagal menyimpan data pasien");
+        return res.status(500).send("Gagal menyimpan data pasien");
+      }
+      
+      const newPatientId = patientResult.rows[0].id;
+      console.log("💎 SIMPLE REGISTER: Pasien berhasil dibuat dengan ID", newPatientId);
+      
+      // Buat appointment
+      const appointmentQuery = `
+        INSERT INTO appointments (patient_id, therapy_slot_id, date, time_slot, status, registration_number)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+      `;
+      
+      const appointmentResult = await storage.db.query(appointmentQuery, [
+        newPatientId,
+        slotId,
+        slot.date,
+        slot.timeSlot,
+        "Active", 
+        `WI-${Date.now()}`
+      ]);
+      
+      if (!appointmentResult.rows || appointmentResult.rows.length === 0) {
+        console.log("💎 SIMPLE REGISTER: Gagal membuat appointment");
+        return res.status(500).send("Gagal membuat appointment untuk pasien");
+      }
+      
+      const newAppointmentId = appointmentResult.rows[0].id;
+      console.log("💎 SIMPLE REGISTER: Appointment berhasil dibuat dengan ID", newAppointmentId);
+      
+      // Update kuota slot
+      await storage.db.query(`
+        UPDATE therapy_slots
+        SET current_count = current_count + 1
+        WHERE id = $1
+      `, [slotId]);
+      
+      console.log("💎 SIMPLE REGISTER: Kuota slot berhasil diupdate");
+      console.log("💎 SIMPLE REGISTER: Pendaftaran berhasil!");
+      
+      return res.status(200).send("Pendaftaran berhasil! Pasien telah didaftarkan ke slot terapi");
+      
+    } catch (error) {
+      console.error("💎 SIMPLE REGISTER ERROR:", error);
+      return res.status(500).send("Terjadi kesalahan saat mendaftarkan pasien");
+    }
+  });
+  
   // Endpoint pendaftaran sederhana khusus walk-in
   app.post("/api/walkin-register", async (req, res) => {
     console.log("🚶 Mencoba pendaftaran khusus walk-in...");
