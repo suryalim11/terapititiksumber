@@ -310,7 +310,8 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                             variant="outline"
                             onClick={() => {
                               // Navigasi ke halaman transaksi pasien dengan parameter untuk membuka form baru
-                              window.location.href = `/transactions?patient=${patient.id}&newTransaction=true&patientName=${encodeURIComponent(patient.name)}&patientId=${encodeURIComponent(patient.patientId || '')}`;
+                              // Gunakan parameter yang benar sesuai dengan kode di halaman transactions.tsx
+                              window.location.href = `/transactions?patientId=${patient.id}&hideDropdown=true&delay=2000&source=optimized-dialog&timestamp=${Date.now()}`;
                             }}
                           >
                             <CreditCard className="mr-1 h-3 w-3" />
