@@ -1658,9 +1658,16 @@ export class DatabaseStorage implements IStorage {
     }
     
     const mergedSessions = Array.from(groupedSessions.values());
+    
+    // Calculate progress for each merged session
+    const sessionsWithProgress = mergedSessions.map(session => ({
+      ...session,
+      progress: Math.round((session.sessionsUsed / session.totalSessions) * 100)
+    }));
+    
     console.log(`Merged ${allActiveSessions.length} sessions into ${mergedSessions.length} unique patient+package combinations`);
     
-    return mergedSessions as any;
+    return sessionsWithProgress as any;
   }
 
   async createSession(session: InsertSession): Promise<Session> {
