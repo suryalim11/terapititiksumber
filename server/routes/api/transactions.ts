@@ -111,4 +111,50 @@ export function setupTransactionsRoutes(app: Express) {
       res.status(500).json({ error: 'Gagal membuat transaksi' });
     }
   });
+
+  // DELETE transaction with session rollback
+  app.delete('/api/transactions/:id', async (req: Request, res: Response) => {
+    try {
+      const transactionId = parseInt(req.params.id);
+      
+      if (isNaN(transactionId)) {
+        return res.status(400).json({ error: 'ID transaksi tidak valid' });
+      }
+
+      // Get transaction details before deleting to check if it used an existing session
+      const transaction = await storage.getTransaction(transactionId);
+      
+      if (!transaction) {
+        return res.status(404).json({ error: 'Transaksi tidak ditemukan' });
+      }
+
+      // If transaction used existing session, rollback the sessionsUsed
+      if (transaction.items && Array.isArray(transaction.items)) {
+        for (const item of transaction.items) {
+          // Check if this item used an existing session
+          if (item.type === 'package' && item.sessionId && item.useExistingPackage) {
+            console.log(`Rolling back session ${item.sessionId} for deleted transaction ${transactionId}`);
+            const session = await storage.getSession(item.sessionId);
+            if (session && session.sessionsUsed > 0) {
+              await storage.updateSessionUsage(item.sessionId, session.sessionsUsed - 1);
+              console.log(`Rolled back session ${item.sessionId}: decremented sessionsUsed to ${session.sessionsUsed - 1}`);
+            }
+          }
+        }
+      }
+
+      // Now delete the transaction
+      const success = await storage.deleteTransaction(transactionId);
+      
+      if (!success) {
+        return res.status(404).json({ error: 'Transaksi tidak ditemukan' });
+      }
+      
+      res.status(200).json({ success: true, message: 'Transaksi berhasil dihapus' });
+
+    } catch (error) {
+      console.error(`Error menghapus transaksi ${req.params.id}:`, error);
+      res.status(500).json({ error: 'Gagal menghapus transaksi' });
+    }
+  });
 }
