@@ -11,12 +11,9 @@ import { insertProductSchema } from "@shared/schema";
  * Mendaftarkan rute-rute untuk produk
  */
 export function setupProductRoutes(app: Express) {
-  // Mendapatkan semua produk - ARAHKAN KE ENDPOINT FIXED
+  // Mendapatkan semua produk
   app.get("/api/products", async (req: Request, res: Response) => {
     try {
-      console.log("DEBUG-PRODUCTS: Redirecting to fixed endpoint");
-      
-      // Ambil dari fixed endpoint yang terbukti bekerja dengan baik
       const products = await storage.getAllProducts();
       
       // Pastikan header diatur dengan jelas
@@ -24,7 +21,7 @@ export function setupProductRoutes(app: Express) {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Pragma', 'no-cache');
       
-      // Format produk untuk keamanan, seperti di endpoint fixed
+      // Format produk untuk keamanan
       const safeProducts = products.map(p => ({
         id: p.id,
         name: p.name,
@@ -33,12 +30,11 @@ export function setupProductRoutes(app: Express) {
         description: p.description || ''
       }));
       
-      // Langsung gunakan res.json bukan string manual
       res.json(safeProducts);
       
     } catch (error) {
-      console.error("DEBUG-PRODUCTS: Error getting products:", error);
-      res.status(500).json({ error: "Failed to get products", message: "Please use /api/fixed/products instead" });
+      console.error("Error getting products:", error);
+      res.status(500).json({ error: "Failed to get products" });
     }
   });
 

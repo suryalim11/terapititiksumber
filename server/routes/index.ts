@@ -14,6 +14,8 @@ import { setupMedicalHistoriesRoutes } from "./api/medical-histories";
 import { setupTransactionsRoutes } from "./api/transactions";
 import { setupSessionsRoutes } from "./api/sessions";
 import { setupVerifyConnectionRoutes } from "./api/verify-connection";
+import { setupPackageRoutes } from "./api/packages";
+import { setupProductRoutes } from "./api/products";
 import { storage } from "../storage";
 import { getSimpleSlotBasic, getSimpleSlotPatients } from "./api/simple-slot";
 import { pool } from "../db";
@@ -32,6 +34,8 @@ export function setupRoutes(app: Express) {
   setupTransactionsRoutes(app);
   setupSessionsRoutes(app);
   setupVerifyConnectionRoutes(app);
+  setupPackageRoutes(app);
+  setupProductRoutes(app);
   
   // Daftarkan endpoint untuk simple-slot API tanpa autentikasi untuk akses cepat
   app.get('/api/simple-slot/:id/basic', getSimpleSlotBasic);

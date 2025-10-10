@@ -11,12 +11,9 @@ import { insertPackageSchema } from "@shared/schema";
  * Mendaftarkan rute-rute untuk paket terapi
  */
 export function setupPackageRoutes(app: Express) {
-  // Mendapatkan semua paket - ARAHKAN KE ENDPOINT FIXED
+  // Mendapatkan semua paket
   app.get("/api/packages", async (req: Request, res: Response) => {
     try {
-      console.log("[FIXED] API packages dipanggil");
-      
-      // Ambil dari fixed endpoint yang terbukti bekerja dengan baik
       const packages = await storage.getAllPackages();
       
       // Pastikan header diatur dengan jelas
@@ -24,7 +21,7 @@ export function setupPackageRoutes(app: Express) {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Pragma', 'no-cache');
       
-      // Format paket untuk keamanan, seperti di endpoint fixed
+      // Format paket untuk keamanan
       const safePackages = packages.map(p => ({
         id: p.id,
         name: p.name,
@@ -34,14 +31,11 @@ export function setupPackageRoutes(app: Express) {
         durationDays: p.durationDays
       }));
       
-      console.log(`[FIXED] Menemukan ${safePackages.length} paket`);
-      
-      // Langsung gunakan res.json bukan string manual
       res.json(safePackages);
       
     } catch (error) {
-      console.error("[FIXED] Error getting packages:", error);
-      res.status(500).json({ error: "Failed to get packages", message: "Please use /api/fixed/packages instead" });
+      console.error("Error getting packages:", error);
+      res.status(500).json({ error: "Failed to get packages" });
     }
   });
 
