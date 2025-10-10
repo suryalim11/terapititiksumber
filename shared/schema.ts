@@ -202,36 +202,8 @@ export const insertTherapySlotSchema = createInsertSchema(therapySlots)
     globalQuota: true,
   })
   .extend({
-    // Preprocessor untuk membuat timeSlotKey dari kombinasi date dan timeSlot
-    timeSlotKey: z.preprocess(
-      (val, ctx) => {
-        // Jika nilai timeSlotKey sudah diberikan, gunakan langsung
-        if (val && typeof val === 'string') {
-          return val;
-        }
-        
-        // Cari nilai date dan timeSlot dari konteks
-        const date = ctx.path.includes('date') 
-          ? ctx.data.date 
-          : (typeof ctx.data.date === 'string' ? ctx.data.date : new Date().toISOString().split('T')[0]);
-        
-        const timeSlot = ctx.path.includes('timeSlot')
-          ? ctx.data.timeSlot
-          : (typeof ctx.data.timeSlot === 'string' ? ctx.data.timeSlot : '00:00-00:00');
-        
-        // Format date menjadi YYYY-MM-DD jika masih dalam format lain
-        let formattedDate = date;
-        if (date instanceof Date) {
-          formattedDate = date.toISOString().split('T')[0];
-        } else if (typeof date === 'string' && /\d{4}-\d{2}-\d{2}/.test(date)) {
-          formattedDate = date.split(' ')[0]; // Ambil hanya bagian tanggal jika ada waktu
-        }
-        
-        // Buat timeSlotKey dengan format: YYYY-MM-DD_HH:MM-HH:MM
-        return `${formattedDate}_${timeSlot}`;
-      },
-      z.string()
-    ),
+    // timeSlotKey akan di-generate di server side jika tidak disediakan
+    timeSlotKey: z.string().optional(),
     // Preprocessor untuk mengkonversi string tanggal menjadi string format YYYY-MM-DD
     date: z.preprocess(
       (val) => {
