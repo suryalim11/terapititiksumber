@@ -1063,9 +1063,9 @@ export default function Dashboard() {
             <div className="flex justify-center items-center py-6">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : activePackages.length > 0 ? (
+          ) : activePackages.filter(pkg => pkg.sessionsUsed < pkg.totalSessions).length > 0 ? (
             <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
-              {activePackages.map((pkg) => (
+              {activePackages.filter(pkg => pkg.sessionsUsed < pkg.totalSessions).map((pkg) => (
                 <div 
                   key={pkg.id} 
                   className="border rounded-lg p-3 mobile-card hover:shadow-md transition-all hover:border-primary/60"
