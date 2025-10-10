@@ -69,26 +69,41 @@ export function setupTransactionsRoutes(app: Express) {
       if (transactionData.items && Array.isArray(transactionData.items)) {
         for (const item of transactionData.items) {
           if (item.type === 'package') {
-            // Check if there's already an active session for this patient+package
-            const existingSessions = await storage.getActiveSessionsByPatient(transactionData.patientId);
-            const existingSession = existingSessions.find(s => s.packageId === item.packageId);
-
-            if (existingSession) {
-              // Update existing session - add sessions to it
-              console.log(`Found existing session ${existingSession.id} for patient ${transactionData.patientId} and package ${item.packageId}`);
-              await storage.updateSession(existingSession.id, {
-                totalSessions: existingSession.totalSessions + (item.quantity || 1)
-              });
-              console.log(`Updated session ${existingSession.id}: increased total sessions`);
+            // Check if using existing session (when useExistingPackage=true)
+            if (item.sessionId) {
+              // Use existing session - increment sessionsUsed
+              console.log(`Using existing session ${item.sessionId} for patient ${transactionData.patientId}`);
+              const session = await storage.getSession(item.sessionId);
+              if (session) {
+                await storage.updateSession(item.sessionId, {
+                  sessionsUsed: session.sessionsUsed + 1
+                });
+                console.log(`Updated session ${item.sessionId}: incremented sessionsUsed to ${session.sessionsUsed + 1}`);
+              } else {
+                throw new Error(`Session ${item.sessionId} not found`);
+              }
             } else {
-              // Create new session
-              console.log(`Creating new session for patient ${transactionData.patientId} and package ${item.packageId}`);
-              await storage.createSession({
-                patientId: transactionData.patientId,
-                transactionId: newTransaction.id,
-                packageId: item.packageId,
-                totalSessions: item.quantity || 1
-              });
+              // Creating new package or adding to existing
+              const existingSessions = await storage.getActiveSessionsByPatient(transactionData.patientId);
+              const existingSession = existingSessions.find(s => s.packageId === item.packageId);
+
+              if (existingSession) {
+                // Update existing session - add sessions to it
+                console.log(`Found existing session ${existingSession.id} for patient ${transactionData.patientId} and package ${item.packageId}`);
+                await storage.updateSession(existingSession.id, {
+                  totalSessions: existingSession.totalSessions + (item.quantity || 1)
+                });
+                console.log(`Updated session ${existingSession.id}: increased total sessions`);
+              } else {
+                // Create new session
+                console.log(`Creating new session for patient ${transactionData.patientId} and package ${item.packageId}`);
+                await storage.createSession({
+                  patientId: transactionData.patientId,
+                  transactionId: newTransaction.id,
+                  packageId: item.packageId,
+                  totalSessions: item.quantity || 1
+                });
+              }
             }
           }
         }
