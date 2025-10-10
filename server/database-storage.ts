@@ -1577,39 +1577,9 @@ export class DatabaseStorage implements IStorage {
       where: eq(schema.sessions.status, "active")
     });
     
-    // Process to eliminate duplicate sessions (only keep the latest session for each patient+package combination)
-    const uniqueCombinations = new Map<string, Session>();
-    
-    for (const session of allActiveSessions) {
-      const key = `${session.patientId}_${session.packageId}`;
-      
-      if (!uniqueCombinations.has(key)) {
-        uniqueCombinations.set(key, session);
-      } else {
-        const existingSession = uniqueCombinations.get(key)!;
-        
-        // Keep the session with the most recent lastSessionDate, or if that's equal, the one with higher sessionsUsed
-        if (!existingSession.lastSessionDate && session.lastSessionDate) {
-          uniqueCombinations.set(key, session);
-        } else if (existingSession.lastSessionDate && session.lastSessionDate) {
-          const existingDate = new Date(existingSession.lastSessionDate);
-          const newDate = new Date(session.lastSessionDate);
-          
-          if (newDate > existingDate || 
-              (newDate.getTime() === existingDate.getTime() && session.sessionsUsed > existingSession.sessionsUsed)) {
-            uniqueCombinations.set(key, session);
-          }
-        } else if (session.sessionsUsed > existingSession.sessionsUsed) {
-          uniqueCombinations.set(key, session);
-        }
-      }
-    }
-    
-    const uniqueSessions = Array.from(uniqueCombinations.values());
-    
-    // Fetch patient and package data for each session
-    const enrichedSessions = await Promise.all(
-      uniqueSessions.map(async (session) => {
+    // Fetch patient and package data for each session first
+    const sessionsWithData = await Promise.all(
+      allActiveSessions.map(async (session) => {
         const patient = await db.query.patients.findFirst({
           where: eq(schema.patients.id, session.patientId)
         });
@@ -1618,20 +1588,79 @@ export class DatabaseStorage implements IStorage {
           where: eq(schema.packages.id, session.packageId)
         });
         
-        const result = {
-          ...session,
-          patient: patient || null,
-          package: packageData || null
+        return {
+          session,
+          patient,
+          packageData
         };
-        
-        console.log(`Session ${session.id}: patient=${patient?.name}, package=${packageData?.name}`);
-        
-        return result;
       })
     );
     
-    console.log(`Returning ${enrichedSessions.length} enriched sessions`);
-    return enrichedSessions as any;
+    // Group sessions by patient name + package name to merge duplicates
+    const groupedSessions = new Map<string, any>();
+    
+    for (const { session, patient, packageData } of sessionsWithData) {
+      // Skip if patient or package data is missing
+      if (!patient || !packageData) continue;
+      
+      // Create key based on patient name + package name
+      const key = `${patient.name.trim().toLowerCase()}_${packageData.name.trim().toLowerCase()}`;
+      
+      if (!groupedSessions.has(key)) {
+        // First session with this combination
+        groupedSessions.set(key, {
+          id: session.id, // Use first session ID
+          patientId: session.patientId,
+          transactionId: session.transactionId,
+          packageId: session.packageId,
+          totalSessions: session.totalSessions,
+          sessionsUsed: session.sessionsUsed,
+          status: session.status,
+          startDate: session.startDate,
+          lastSessionDate: session.lastSessionDate,
+          patient: patient,
+          package: packageData
+        });
+      } else {
+        // Merge with existing session
+        const existing = groupedSessions.get(key);
+        
+        // Add up total sessions and sessions used
+        existing.totalSessions += session.totalSessions;
+        existing.sessionsUsed += session.sessionsUsed;
+        
+        // Use the most recent lastSessionDate
+        if (session.lastSessionDate) {
+          if (!existing.lastSessionDate) {
+            existing.lastSessionDate = session.lastSessionDate;
+          } else {
+            const existingDate = new Date(existing.lastSessionDate);
+            const newDate = new Date(session.lastSessionDate);
+            if (newDate > existingDate) {
+              existing.lastSessionDate = session.lastSessionDate;
+            }
+          }
+        }
+        
+        // Use the earliest startDate
+        if (session.startDate) {
+          if (!existing.startDate) {
+            existing.startDate = session.startDate;
+          } else {
+            const existingDate = new Date(existing.startDate);
+            const newDate = new Date(session.startDate);
+            if (newDate < existingDate) {
+              existing.startDate = session.startDate;
+            }
+          }
+        }
+      }
+    }
+    
+    const mergedSessions = Array.from(groupedSessions.values());
+    console.log(`Merged ${allActiveSessions.length} sessions into ${mergedSessions.length} unique patient+package combinations`);
+    
+    return mergedSessions as any;
   }
 
   async createSession(session: InsertSession): Promise<Session> {
