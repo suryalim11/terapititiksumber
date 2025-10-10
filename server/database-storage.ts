@@ -1572,7 +1572,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getAllActiveSessions(): Promise<Session[]> {
-    // Get all active sessions first
+    // Get all active sessions
     const allActiveSessions = await db.query.sessions.findMany({
       where: eq(schema.sessions.status, "active")
     });
@@ -1605,7 +1605,28 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    return Array.from(uniqueCombinations.values());
+    const uniqueSessions = Array.from(uniqueCombinations.values());
+    
+    // Fetch patient and package data for each session
+    const enrichedSessions = await Promise.all(
+      uniqueSessions.map(async (session) => {
+        const patient = await db.query.patients.findFirst({
+          where: eq(schema.patients.id, session.patientId)
+        });
+        
+        const packageData = await db.query.packages.findFirst({
+          where: eq(schema.packages.id, session.packageId)
+        });
+        
+        return {
+          ...session,
+          patient: patient || null,
+          package: packageData || null
+        };
+      })
+    );
+    
+    return enrichedSessions as any;
   }
 
   async createSession(session: InsertSession): Promise<Session> {
