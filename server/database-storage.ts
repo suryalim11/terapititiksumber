@@ -1562,13 +1562,48 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getActiveSessionsByPatient(patientId: number): Promise<Session[]> {
-    return db.query.sessions.findMany({
-      where: and(
-        eq(schema.sessions.patientId, patientId),
-        eq(schema.sessions.status, "active")
-      )
-    });
+  async getActiveSessionsByPatient(patientId: number): Promise<any[]> {
+    // Use SQL JOIN to fetch all related data in ONE query
+    const result = await db
+      .select({
+        id: schema.sessions.id,
+        patientId: schema.sessions.patientId,
+        transactionId: schema.sessions.transactionId,
+        packageId: schema.sessions.packageId,
+        totalSessions: schema.sessions.totalSessions,
+        sessionsUsed: schema.sessions.sessionsUsed,
+        status: schema.sessions.status,
+        startDate: schema.sessions.startDate,
+        lastSessionDate: schema.sessions.lastSessionDate,
+        patient: schema.patients,
+        package: schema.packages
+      })
+      .from(schema.sessions)
+      .leftJoin(schema.patients, eq(schema.sessions.patientId, schema.patients.id))
+      .leftJoin(schema.packages, eq(schema.sessions.packageId, schema.packages.id))
+      .where(
+        and(
+          eq(schema.sessions.patientId, patientId),
+          eq(schema.sessions.status, "active")
+        )
+      );
+    
+    // Transform to ActiveSession format with calculated fields
+    return result.map(row => ({
+      id: row.id,
+      patientId: row.patientId,
+      transactionId: row.transactionId,
+      packageId: row.packageId,
+      totalSessions: row.totalSessions,
+      sessionsUsed: row.sessionsUsed,
+      remainingSessions: row.totalSessions - row.sessionsUsed, // CALCULATED FIELD
+      status: row.status,
+      startDate: row.startDate,
+      lastSessionDate: row.lastSessionDate,
+      package: row.package, // RELATION
+      owner: row.patient, // RELATION
+      isDirectOwner: true // All sessions belong to the patient queried
+    }));
   }
   
   async getAllActiveSessions(): Promise<Session[]> {
