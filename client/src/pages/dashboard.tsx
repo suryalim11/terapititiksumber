@@ -1045,37 +1045,10 @@ export default function Dashboard() {
                   refetchPackages();
                 }}
                 className="h-8 w-8 p-0 rounded-full"
+                title="Refresh data paket"
               >
                 <RefreshCw className="h-4 w-4" />
                 <span className="sr-only">Refresh Packages</span>
-              </Button>
-
-              <Button 
-                variant="outline"
-                size="sm" 
-                className="text-xs whitespace-nowrap flex items-center gap-1"
-                onClick={() => clearPatientDataCache()}
-              >
-                <Database className="h-3.5 w-3.5" />
-                <span>Bersihkan Cache</span>
-              </Button>
-
-              <Button 
-                variant="outline"
-                size="sm"
-                className="text-xs whitespace-nowrap flex items-center gap-1"
-                onClick={handleAutoConnectSessions}
-                disabled={isAutoConnecting}
-              >
-                <Link2 className="h-3.5 w-3.5" />
-                {isAutoConnecting ? (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    <span>Menghubungkan...</span>
-                  </>
-                ) : (
-                  <span>Auto-Connect Sessions</span>
-                )}
               </Button>
             </div>
           </div>
