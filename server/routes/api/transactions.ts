@@ -34,6 +34,28 @@ export function setupTransactionsRoutes(app: Express) {
     }
   });
 
+  // Mendapatkan detail transaksi berdasarkan ID
+  app.get('/api/transactions/:id', async (req: Request, res: Response) => {
+    try {
+      const transactionId = parseInt(req.params.id);
+      
+      if (isNaN(transactionId)) {
+        return res.status(400).json({ error: 'ID transaksi tidak valid' });
+      }
+      
+      const transaction = await storage.getTransaction(transactionId);
+      
+      if (!transaction) {
+        return res.status(404).json({ error: 'Transaksi tidak ditemukan' });
+      }
+      
+      res.status(200).json(transaction);
+    } catch (error) {
+      console.error(`Error saat mendapatkan detail transaksi ${req.params.id}:`, error);
+      res.status(500).json({ error: 'Gagal mendapatkan detail transaksi' });
+    }
+  });
+
   // CREATE transaction with duplicate prevention
   app.post('/api/transactions', async (req: Request, res: Response) => {
     try {
