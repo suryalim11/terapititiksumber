@@ -1618,14 +1618,19 @@ export class DatabaseStorage implements IStorage {
           where: eq(schema.packages.id, session.packageId)
         });
         
-        return {
+        const result = {
           ...session,
           patient: patient || null,
           package: packageData || null
         };
+        
+        console.log(`Session ${session.id}: patient=${patient?.name}, package=${packageData?.name}`);
+        
+        return result;
       })
     );
     
+    console.log(`Returning ${enrichedSessions.length} enriched sessions`);
     return enrichedSessions as any;
   }
 
