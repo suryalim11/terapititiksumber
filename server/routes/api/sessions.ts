@@ -36,4 +36,32 @@ export function setupSessionsRoutes(app: Express) {
       res.status(500).json({ error: 'Gagal mendapatkan data sesi terapi' });
     }
   });
+
+  // Endpoint untuk update jumlah sesi terpakai
+  app.post('/api/sessions/fix-usage-count', async (req: Request, res: Response) => {
+    try {
+      const { sessionId, sessionsUsed } = req.body;
+      
+      if (!sessionId || sessionsUsed === undefined) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'sessionId dan sessionsUsed harus disediakan' 
+        });
+      }
+      
+      // Update session dengan sessionsUsed baru
+      await storage.updateSession(sessionId, { sessionsUsed });
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Jumlah sesi berhasil diupdate' 
+        });
+    } catch (error) {
+      console.error('Error saat update session count:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Gagal update jumlah sesi' 
+      });
+    }
+  });
 }
