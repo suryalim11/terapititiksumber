@@ -477,25 +477,38 @@ export default function TransactionForm({
   });
 
   // Fetch active sessions for a patient and related patients
-  const { data: activeSessions = [], refetch: refetchActiveSessions } = useQuery<ActiveSession[]>({
-    queryKey: ["/api/sessions", form.watch("patientId"), "active"],
+  const watchedPatientId = form.watch("patientId");
+  
+  console.log("🔍 DEBUG activeSessions query - patientId:", watchedPatientId, "enabled:", !!watchedPatientId);
+  
+  const { data: activeSessions = [], refetch: refetchActiveSessions, isLoading: isLoadingActiveSessions } = useQuery<ActiveSession[]>({
+    queryKey: ["/api/sessions", watchedPatientId, "active"],
     queryFn: async () => {
-      const patientId = form.watch("patientId");
-      if (!patientId) return [];
+      if (!watchedPatientId) {
+        console.log("❌ activeSessions query - No patientId, returning empty array");
+        return [];
+      }
+      
+      console.log("🚀 Fetching active sessions for patient:", watchedPatientId);
       
       // Gunakan parameter API baru, API sudah otomatis menampilkan sesi terkait dengan pasien yang memiliki nomor telepon sama
       // includeRelated=true (default) akan membuat API menampilkan sesi dari pasien dengan nomor telepon yang sama
-      const response = await fetch(`/api/sessions?patientId=${patientId}&active=true&includeRelated=true`);
-      if (!response.ok) throw new Error("Failed to fetch active sessions");
+      const response = await fetch(`/api/sessions?patientId=${watchedPatientId}&active=true&includeRelated=true`);
+      if (!response.ok) {
+        console.error("❌ Failed to fetch active sessions, status:", response.status);
+        throw new Error("Failed to fetch active sessions");
+      }
       
       const data = await response.json();
-      console.log("Active sessions data (including related patients):", data);
+      console.log("✅ Active sessions data (including related patients):", data);
       
       // Data sudah termasuk sesi dari pasien terkait, dan sudah ada informasi isDirectOwner, owner, dll
       return data;
     },
-    enabled: !!form.watch("patientId"), // hanya jalankan jika patientId ada
+    enabled: !!watchedPatientId, // hanya jalankan jika patientId ada
   });
+  
+  console.log("📊 activeSessions result:", activeSessions, "isLoading:", isLoadingActiveSessions);
 
   // Kelompokkan pasien berdasarkan nomor telepon (setelah activeSessions tersedia)
   const patients = useMemo(() => {
