@@ -1609,7 +1609,7 @@ export class DatabaseStorage implements IStorage {
       if (!groupedSessions.has(key)) {
         // First session with this combination
         groupedSessions.set(key, {
-          id: session.id, // Use first session ID
+          id: session.id,
           patientId: session.patientId,
           transactionId: session.transactionId,
           packageId: session.packageId,
@@ -1622,38 +1622,32 @@ export class DatabaseStorage implements IStorage {
           package: packageData
         });
       } else {
-        // Merge with existing session
+        // If duplicate exists, keep the one with higher sessionsUsed or more recent lastSessionDate
         const existing = groupedSessions.get(key);
         
-        // Add up total sessions and sessions used
-        existing.totalSessions += session.totalSessions;
-        existing.sessionsUsed += session.sessionsUsed;
+        const shouldReplace = 
+          (session.sessionsUsed > existing.sessionsUsed) ||
+          (session.sessionsUsed === existing.sessionsUsed && 
+           session.lastSessionDate && 
+           (!existing.lastSessionDate || new Date(session.lastSessionDate) > new Date(existing.lastSessionDate)));
         
-        // Use the most recent lastSessionDate
-        if (session.lastSessionDate) {
-          if (!existing.lastSessionDate) {
-            existing.lastSessionDate = session.lastSessionDate;
-          } else {
-            const existingDate = new Date(existing.lastSessionDate);
-            const newDate = new Date(session.lastSessionDate);
-            if (newDate > existingDate) {
-              existing.lastSessionDate = session.lastSessionDate;
-            }
-          }
+        if (shouldReplace) {
+          // Replace with this session (it's more recent or has more sessions used)
+          groupedSessions.set(key, {
+            id: session.id,
+            patientId: session.patientId,
+            transactionId: session.transactionId,
+            packageId: session.packageId,
+            totalSessions: session.totalSessions,
+            sessionsUsed: session.sessionsUsed,
+            status: session.status,
+            startDate: session.startDate,
+            lastSessionDate: session.lastSessionDate,
+            patient: patient,
+            package: packageData
+          });
         }
-        
-        // Use the earliest startDate
-        if (session.startDate) {
-          if (!existing.startDate) {
-            existing.startDate = session.startDate;
-          } else {
-            const existingDate = new Date(existing.startDate);
-            const newDate = new Date(session.startDate);
-            if (newDate < existingDate) {
-              existing.startDate = session.startDate;
-            }
-          }
-        }
+        // Otherwise keep existing (don't modify)
       }
     }
     
