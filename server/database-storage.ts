@@ -1771,6 +1771,24 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async addSessionsToPackage(id: number, additionalSessions: number): Promise<Session | undefined> {
+    const existingSession = await this.getSession(id);
+    if (!existingSession) return undefined;
+    
+    const newTotalSessions = existingSession.totalSessions + additionalSessions;
+    const newStatus = existingSession.sessionsUsed >= newTotalSessions ? "completed" : "active";
+    
+    const result = await db
+      .update(schema.sessions)
+      .set({ 
+        totalSessions: newTotalSessions,
+        status: newStatus
+      })
+      .where(eq(schema.sessions.id, id))
+      .returning();
+    return result[0];
+  }
+
   // Therapy Slot methods
   async getTherapySlot(id: number): Promise<TherapySlot | undefined> {
     const result = await db.query.therapySlots.findFirst({

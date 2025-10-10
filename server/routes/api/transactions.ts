@@ -75,9 +75,7 @@ export function setupTransactionsRoutes(app: Express) {
               console.log(`Using existing session ${item.sessionId} for patient ${transactionData.patientId}`);
               const session = await storage.getSession(item.sessionId);
               if (session) {
-                await storage.updateSession(item.sessionId, {
-                  sessionsUsed: session.sessionsUsed + 1
-                });
+                await storage.updateSessionUsage(item.sessionId, session.sessionsUsed + 1);
                 console.log(`Updated session ${item.sessionId}: incremented sessionsUsed to ${session.sessionsUsed + 1}`);
               } else {
                 throw new Error(`Session ${item.sessionId} not found`);
@@ -90,9 +88,7 @@ export function setupTransactionsRoutes(app: Express) {
               if (existingSession) {
                 // Update existing session - add sessions to it
                 console.log(`Found existing session ${existingSession.id} for patient ${transactionData.patientId} and package ${item.packageId}`);
-                await storage.updateSession(existingSession.id, {
-                  totalSessions: existingSession.totalSessions + (item.quantity || 1)
-                });
+                await storage.addSessionsToPackage(existingSession.id, item.quantity || 1);
                 console.log(`Updated session ${existingSession.id}: increased total sessions`);
               } else {
                 // Create new session
