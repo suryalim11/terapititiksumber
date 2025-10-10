@@ -25,10 +25,9 @@ export function setupPackageRoutes(app: Express) {
       const safePackages = packages.map(p => ({
         id: p.id,
         name: p.name,
-        sessionCount: p.sessionCount,
+        sessions: p.sessions,
         price: p.price,
-        description: p.description || '',
-        durationDays: p.durationDays
+        description: p.description || ''
       }));
       
       res.json(safePackages);
