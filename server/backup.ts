@@ -576,26 +576,42 @@ export async function uploadAndRestoreBackup(req: Request, res: Response) {
       
       console.log("Restore data selesai!");
       
+      // Verifikasi data setelah restore
+      const verifyPatients = await db.select({ count: sql`count(*)` }).from(patients);
+      const verifyTransactions = await db.select({ count: sql`count(*)` }).from(transactions);
+      const verifyAppointments = await db.select({ count: sql`count(*)` }).from(appointments);
+      
+      const actualPatients = Number(verifyPatients[0]?.count || 0);
+      const actualTransactions = Number(verifyTransactions[0]?.count || 0);
+      const actualAppointments = Number(verifyAppointments[0]?.count || 0);
+      
+      console.log(`Verifikasi: ${actualPatients} pasien, ${actualTransactions} transaksi, ${actualAppointments} appointments di database`);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Data berhasil dipulihkan dari backup',
+        summary: {
+          users: data.users?.length || 0,
+          patients: data.patients?.length || 0,
+          products: data.products?.length || 0,
+          packages: data.packages?.length || 0,
+          transactions: data.transactions?.length || 0,
+          sessions: data.sessions?.length || 0,
+          therapySlots: data.therapySlots?.length || 0,
+          appointments: data.appointments?.length || 0,
+          registrationLinks: data.registrationLinks?.length || 0,
+        },
+        verification: {
+          actualPatients,
+          actualTransactions,
+          actualAppointments,
+        }
+      });
+      
     } catch (error) {
       console.error("Error saat restore data:", error);
       throw error;
     }
-    
-    return res.status(200).json({
-      success: true,
-      message: 'Data berhasil dipulihkan dari backup',
-      summary: {
-        users: data.users?.length || 0,
-        patients: data.patients?.length || 0,
-        products: data.products?.length || 0,
-        packages: data.packages?.length || 0,
-        transactions: data.transactions?.length || 0,
-        sessions: data.sessions?.length || 0,
-        therapySlots: data.therapySlots?.length || 0,
-        appointments: data.appointments?.length || 0,
-        registrationLinks: data.registrationLinks?.length || 0,
-      }
-    });
   } catch (error: any) {
     console.error('Error saat upload dan restore backup:', error);
     return res.status(500).json({
