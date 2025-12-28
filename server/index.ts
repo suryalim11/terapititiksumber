@@ -97,15 +97,30 @@ const setupPassport = () => {
 
 // Setup session
 const setupSession = () => {
+  // Deteksi production mode - Replit menggunakan REPL_SLUG untuk production
+  const isProduction = process.env.NODE_ENV === 'production' || 
+                       !!process.env.REPL_SLUG ||
+                       process.env.REPLIT_DEPLOYMENT === '1';
+  
+  console.log(`Session setup - isProduction: ${isProduction}, NODE_ENV: ${process.env.NODE_ENV}`);
+  
   app.use(session({
     secret: process.env.SESSION_SECRET || 'therapy-clinic-secret-key',
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction, // HTTPS only in production
+      httpOnly: true,
+      sameSite: isProduction ? 'none' : 'lax', // 'none' untuk cross-site cookies di production
       maxAge: 24 * 60 * 60 * 1000 // 24 jam
-    }
+    },
+    proxy: isProduction // Trust proxy di production (Replit uses reverse proxy)
   }));
+
+  // Trust proxy untuk production deployment
+  if (isProduction) {
+    app.set('trust proxy', 1);
+  }
 
   app.use(passport.initialize());
   app.use(passport.session());
