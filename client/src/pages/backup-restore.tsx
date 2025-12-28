@@ -217,7 +217,8 @@ export default function BackupRestorePage() {
       const formData = new FormData();
       formData.append("backupFile", fileToUpload);
       
-      const response = await fetch("/api/backup/upload", {
+      // Gunakan endpoint upload-and-restore yang langsung merestore data
+      const response = await fetch("/api/backup/upload-and-restore", {
         method: "POST",
         body: formData,
       });
@@ -226,17 +227,20 @@ export default function BackupRestorePage() {
       
       if (data.success) {
         toast({
-          title: "File backup berhasil diunggah",
-          description: `File: ${data.filename}`,
+          title: "Data berhasil dipulihkan dari backup",
+          description: `Berhasil memulihkan ${data.summary?.patients || 0} pasien, ${data.summary?.transactions || 0} transaksi`,
         });
         
         // Reset file input
         setFileToUpload(null);
         
+        // Tampilkan ringkasan data
+        setBackupSummary(data.summary);
+        
         // Perbarui daftar file
         fetchBackupFiles();
       } else {
-        throw new Error(data.message || "Gagal mengunggah file backup");
+        throw new Error(data.message || "Gagal mengunggah dan memulihkan data");
       }
     } catch (error: any) {
       console.error("Error uploading backup:", error);

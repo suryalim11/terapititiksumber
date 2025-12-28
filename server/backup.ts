@@ -366,7 +366,7 @@ export async function uploadBackup(req: Request, res: Response) {
       });
     }
     
-    const { originalname, path: tempPath } = req.file;
+    const { originalname, path: tempPath } = (req as any).file;
     
     // Pastikan file berekstensi .json
     if (!originalname.endsWith('.json')) {
@@ -417,6 +417,190 @@ export async function uploadBackup(req: Request, res: Response) {
     return res.status(500).json({
       success: false,
       message: 'Gagal mengunggah file backup: ' + error.message
+    });
+  }
+}
+
+// Fungsi untuk upload dan langsung restore data backup - lebih reliable untuk production
+export async function uploadAndRestoreBackup(req: Request, res: Response) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tidak ada file yang diunggah'
+      });
+    }
+    
+    const { originalname, path: tempPath } = (req as any).file;
+    
+    // Pastikan file berekstensi .json
+    if (!originalname.endsWith('.json')) {
+      try { fs.unlinkSync(tempPath); } catch (e) {}
+      return res.status(400).json({
+        success: false,
+        message: 'File harus berekstensi .json'
+      });
+    }
+    
+    // Baca dan parse file langsung
+    let rawData;
+    try {
+      const fileContent = fs.readFileSync(tempPath, 'utf-8');
+      rawData = JSON.parse(fileContent);
+      
+      // Validasi struktur minimal
+      if (!rawData.patients && !rawData.transactions && !rawData.products) {
+        try { fs.unlinkSync(tempPath); } catch (e) {}
+        return res.status(400).json({
+          success: false,
+          message: 'Format file backup tidak valid - tidak ada data'
+        });
+      }
+    } catch (error) {
+      try { fs.unlinkSync(tempPath); } catch (e) {}
+      return res.status(400).json({
+        success: false,
+        message: 'File JSON tidak valid'
+      });
+    }
+    
+    // Hapus file temporary
+    try { fs.unlinkSync(tempPath); } catch (e) {}
+    
+    // Process data untuk memastikan tanggal adalah Date objects
+    const data = {
+      ...rawData,
+      patients: rawData.patients?.map((p: any) => ({
+        ...p,
+        createdAt: new Date(p.createdAt)
+      })),
+      packages: rawData.packages?.map((p: any) => ({
+        ...p,
+        createdAt: new Date(p.createdAt)
+      })),
+      products: rawData.products?.map((p: any) => ({
+        ...p,
+        createdAt: new Date(p.createdAt)
+      })),
+      transactions: rawData.transactions?.map((t: any) => ({
+        ...t,
+        createdAt: new Date(t.createdAt)
+      })),
+      therapySlots: rawData.therapySlots?.map((t: any) => ({
+        ...t,
+        createdAt: new Date(t.createdAt),
+        date: new Date(t.date)
+      })),
+      sessions: rawData.sessions?.map((s: any) => ({
+        ...s,
+        startDate: new Date(s.startDate),
+        lastSessionDate: s.lastSessionDate ? new Date(s.lastSessionDate) : null
+      })),
+      appointments: rawData.appointments?.map((a: any) => ({
+        ...a,
+        date: new Date(a.date)
+      })),
+      registrationLinks: rawData.registrationLinks?.map((r: any) => ({
+        ...r,
+        createdAt: new Date(r.createdAt),
+        expiryTime: new Date(r.expiryTime),
+        specificDate: r.specificDate ? new Date(r.specificDate) : null
+      })),
+      users: rawData.users?.map((u: any) => ({
+        ...u,
+        createdAt: new Date(u.createdAt)
+      }))
+    };
+    
+    // Langsung restore data
+    try {
+      console.log("Memulai proses restore langsung dari file yang diupload...");
+      
+      if (data.packages?.length) {
+        console.log(`Memulihkan ${data.packages.length} data packages...`);
+        await db.delete(packages);
+        await db.insert(packages).values(data.packages);
+      }
+      
+      if (data.products?.length) {
+        console.log(`Memulihkan ${data.products.length} data products...`);
+        await db.delete(products);
+        await db.insert(products).values(data.products);
+      }
+      
+      if (data.patients?.length) {
+        console.log(`Memulihkan ${data.patients.length} data patients...`);
+        await db.delete(patients);
+        await db.insert(patients).values(data.patients);
+      }
+      
+      if (data.therapySlots?.length) {
+        console.log(`Memulihkan ${data.therapySlots.length} data therapySlots...`);
+        await db.delete(therapySlots);
+        await db.insert(therapySlots).values(data.therapySlots);
+      }
+      
+      if (data.transactions?.length) {
+        console.log(`Memulihkan ${data.transactions.length} data transactions...`);
+        await db.delete(transactions);
+        await db.insert(transactions).values(data.transactions);
+      }
+      
+      if (data.sessions?.length) {
+        console.log(`Memulihkan ${data.sessions.length} data sessions...`);
+        await db.delete(sessions);
+        await db.insert(sessions).values(data.sessions);
+      }
+      
+      if (data.registrationLinks?.length) {
+        console.log(`Memulihkan ${data.registrationLinks.length} data registrationLinks...`);
+        await db.delete(registrationLinks);
+        await db.insert(registrationLinks).values(data.registrationLinks);
+      }
+      
+      if (data.appointments?.length) {
+        console.log(`Memulihkan ${data.appointments.length} data appointments...`);
+        await db.delete(appointments);
+        await db.insert(appointments).values(data.appointments);
+      }
+      
+      // Hanya tambah user baru (jangan ganti yang sudah ada)
+      if (data.users?.length) {
+        for (const backupUser of data.users) {
+          const existingUser = await db.select().from(users).where(eq(users.id, backupUser.id));
+          if (existingUser.length === 0) {
+            await db.insert(users).values(backupUser);
+          }
+        }
+      }
+      
+      console.log("Restore data selesai!");
+      
+    } catch (error) {
+      console.error("Error saat restore data:", error);
+      throw error;
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Data berhasil dipulihkan dari backup',
+      summary: {
+        users: data.users?.length || 0,
+        patients: data.patients?.length || 0,
+        products: data.products?.length || 0,
+        packages: data.packages?.length || 0,
+        transactions: data.transactions?.length || 0,
+        sessions: data.sessions?.length || 0,
+        therapySlots: data.therapySlots?.length || 0,
+        appointments: data.appointments?.length || 0,
+        registrationLinks: data.registrationLinks?.length || 0,
+      }
+    });
+  } catch (error: any) {
+    console.error('Error saat upload dan restore backup:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal restore data: ' + error.message
     });
   }
 }

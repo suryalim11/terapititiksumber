@@ -26,7 +26,8 @@ import {
   downloadBackup, 
   deleteBackup, 
   restoreData,
-  uploadBackup
+  uploadBackup,
+  uploadAndRestoreBackup
 } from "../backup";
 import multer from "multer";
 
@@ -739,4 +740,5 @@ export function setupRoutes(app: Express) {
   app.delete("/api/backup/files/:filename", deleteBackup);
   app.post("/api/backup/restore/:filename", restoreData);
   app.post("/api/backup/upload", upload.single('backupFile'), uploadBackup);
+  app.post("/api/backup/upload-and-restore", upload.single('backupFile'), uploadAndRestoreBackup);
 }
