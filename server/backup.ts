@@ -512,55 +512,88 @@ export async function uploadAndRestoreBackup(req: Request, res: Response) {
       }))
     };
     
-    // Langsung restore data
+    // Langsung restore data dengan urutan yang benar untuk foreign key constraints
     try {
       console.log("Memulai proses restore langsung dari file yang diupload...");
       
+      // STEP 1: DELETE dalam urutan yang benar (child tables dulu, kemudian parent)
+      // Ini menghindari foreign key constraint errors
+      console.log("Menghapus data lama dengan urutan yang benar...");
+      
+      // Hapus appointments dulu (references patients, therapy_slots, sessions)
+      await db.delete(appointments);
+      console.log("- Appointments dihapus");
+      
+      // Hapus sessions (references patients, packages)
+      await db.delete(sessions);
+      console.log("- Sessions dihapus");
+      
+      // Hapus transactions (references patients)
+      await db.delete(transactions);
+      console.log("- Transactions dihapus");
+      
+      // Hapus registration links
+      await db.delete(registrationLinks);
+      console.log("- Registration links dihapus");
+      
+      // Hapus therapy slots
+      await db.delete(therapySlots);
+      console.log("- Therapy slots dihapus");
+      
+      // Hapus patients
+      await db.delete(patients);
+      console.log("- Patients dihapus");
+      
+      // Hapus products
+      await db.delete(products);
+      console.log("- Products dihapus");
+      
+      // Hapus packages
+      await db.delete(packages);
+      console.log("- Packages dihapus");
+      
+      console.log("Semua data lama berhasil dihapus!");
+      
+      // STEP 2: INSERT dalam urutan yang benar (parent tables dulu, kemudian child)
+      console.log("Memasukkan data baru dengan urutan yang benar...");
+      
       if (data.packages?.length) {
         console.log(`Memulihkan ${data.packages.length} data packages...`);
-        await db.delete(packages);
         await db.insert(packages).values(data.packages);
       }
       
       if (data.products?.length) {
         console.log(`Memulihkan ${data.products.length} data products...`);
-        await db.delete(products);
         await db.insert(products).values(data.products);
       }
       
       if (data.patients?.length) {
         console.log(`Memulihkan ${data.patients.length} data patients...`);
-        await db.delete(patients);
         await db.insert(patients).values(data.patients);
       }
       
       if (data.therapySlots?.length) {
         console.log(`Memulihkan ${data.therapySlots.length} data therapySlots...`);
-        await db.delete(therapySlots);
         await db.insert(therapySlots).values(data.therapySlots);
-      }
-      
-      if (data.transactions?.length) {
-        console.log(`Memulihkan ${data.transactions.length} data transactions...`);
-        await db.delete(transactions);
-        await db.insert(transactions).values(data.transactions);
-      }
-      
-      if (data.sessions?.length) {
-        console.log(`Memulihkan ${data.sessions.length} data sessions...`);
-        await db.delete(sessions);
-        await db.insert(sessions).values(data.sessions);
       }
       
       if (data.registrationLinks?.length) {
         console.log(`Memulihkan ${data.registrationLinks.length} data registrationLinks...`);
-        await db.delete(registrationLinks);
         await db.insert(registrationLinks).values(data.registrationLinks);
+      }
+      
+      if (data.sessions?.length) {
+        console.log(`Memulihkan ${data.sessions.length} data sessions...`);
+        await db.insert(sessions).values(data.sessions);
+      }
+      
+      if (data.transactions?.length) {
+        console.log(`Memulihkan ${data.transactions.length} data transactions...`);
+        await db.insert(transactions).values(data.transactions);
       }
       
       if (data.appointments?.length) {
         console.log(`Memulihkan ${data.appointments.length} data appointments...`);
-        await db.delete(appointments);
         await db.insert(appointments).values(data.appointments);
       }
       
