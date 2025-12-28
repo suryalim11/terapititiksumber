@@ -226,10 +226,23 @@ export default function BackupRestorePage() {
       const data = await response.json();
       
       if (data.success) {
+        // Tampilkan verification jika ada (data aktual di database)
+        const verifyInfo = data.verification 
+          ? `\n\nVerifikasi Database:\n- Pasien aktual: ${data.verification.actualPatients}\n- Transaksi aktual: ${data.verification.actualTransactions}\n- Janji temu aktual: ${data.verification.actualAppointments}`
+          : '';
+        
         toast({
           title: "Data berhasil dipulihkan dari backup",
-          description: `Berhasil memulihkan ${data.summary?.patients || 0} pasien, ${data.summary?.transactions || 0} transaksi`,
+          description: `Berhasil memulihkan ${data.summary?.patients || 0} pasien, ${data.summary?.transactions || 0} transaksi${verifyInfo}`,
         });
+        
+        // Log verification untuk debugging
+        console.log("Restore verification:", data.verification);
+        
+        // Alert jika ada perbedaan antara summary dan verification
+        if (data.verification && data.verification.actualPatients !== data.summary?.patients) {
+          alert(`PERHATIAN: Data tidak sinkron!\n\nDari file backup: ${data.summary?.patients} pasien\nDi database: ${data.verification.actualPatients} pasien\n\nSilakan hubungi administrator.`);
+        }
         
         // Reset file input
         setFileToUpload(null);
