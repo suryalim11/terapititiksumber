@@ -18,7 +18,9 @@ import { setupPackageRoutes } from "./api/packages";
 import { setupProductRoutes } from "./api/products";
 import { storage } from "../storage";
 import { getSimpleSlotBasic, getSimpleSlotPatients } from "./api/simple-slot";
-import { pool } from "../db";
+import { pool, db } from "../db";
+import { patients, transactions, appointments, sessions, products, packages } from "@shared/schema";
+import { sql } from "drizzle-orm";
 import { 
   exportData, 
   downloadDirectBackup,
@@ -728,6 +730,7 @@ export function setupRoutes(app: Express) {
       message: 'Server berjalan dengan baik'
     });
   });
+  
   
   // Setup multer untuk upload file backup
   const upload = multer({ dest: 'uploads/' });
