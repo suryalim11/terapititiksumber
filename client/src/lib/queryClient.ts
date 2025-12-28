@@ -46,6 +46,15 @@ export async function apiRequest<T = Record<string, unknown>>(
         "Accept": "application/json"
       }
     };
+  } else if (options && options.body && typeof options.body === 'string') {
+    // Jika body sudah diset sebagai string (JSON), tambahkan Content-Type jika belum ada
+    finalOptions = {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      }
+    };
   }
   
   // Paksakan selalu menggunakan credentials include
