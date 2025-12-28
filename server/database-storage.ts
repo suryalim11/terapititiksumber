@@ -349,15 +349,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPatient(patient: InsertPatient): Promise<Patient> {
-    // Generate patient ID
-    const existingPatients = await db.query.patients.findMany({
-      columns: { id: true }
-    });
+    // Generate patient ID - optimized dengan MAX query langsung
+    const maxResult = await db.select({ maxId: sql<number>`COALESCE(MAX(id), 0)` })
+      .from(schema.patients);
     
-    const nextId = existingPatients.length > 0 
-      ? Math.max(...existingPatients.map(p => p.id)) + 1
-      : 1;
-    
+    const nextId = (maxResult[0]?.maxId || 0) + 1;
     const patientId = `P-${new Date().getFullYear()}-${String(nextId).padStart(3, '0')}`;
     
     const result = await db.insert(schema.patients)
