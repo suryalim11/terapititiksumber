@@ -597,9 +597,8 @@ export function setupRoutes(app: Express) {
       }
       
       // 5. Proses Pendaftaran - Pasien
-      const patientId = `P-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`;
+      console.log("📝 Membuat data pasien baru...");
       const patient = await storage.createPatient({
-        patientId: patientId,
         name: req.body.name,
         phoneNumber: req.body.phoneNumber,
         email: req.body.email || null,
