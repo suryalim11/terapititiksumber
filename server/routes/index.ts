@@ -19,6 +19,16 @@ import { setupProductRoutes } from "./api/products";
 import { storage } from "../storage";
 import { getSimpleSlotBasic, getSimpleSlotPatients } from "./api/simple-slot";
 import { pool } from "../db";
+import { 
+  exportData, 
+  downloadDirectBackup,
+  getBackupFiles, 
+  downloadBackup, 
+  deleteBackup, 
+  restoreData,
+  uploadBackup
+} from "../backup";
+import multer from "multer";
 
 
 /**
@@ -717,4 +727,16 @@ export function setupRoutes(app: Express) {
       message: 'Server berjalan dengan baik'
     });
   });
+  
+  // Setup multer untuk upload file backup
+  const upload = multer({ dest: 'uploads/' });
+  
+  // Backup routes
+  app.get("/api/backup/files", getBackupFiles);
+  app.post("/api/backup/export", exportData);
+  app.get("/api/backup/download/:filename", downloadBackup);
+  app.get("/api/backup/download-direct", downloadDirectBackup);
+  app.delete("/api/backup/files/:filename", deleteBackup);
+  app.post("/api/backup/restore/:filename", restoreData);
+  app.post("/api/backup/upload", upload.single('backupFile'), uploadBackup);
 }

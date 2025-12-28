@@ -41,10 +41,14 @@ export async function exportData(req: Request, res: Response) {
     
     // Buat nama file dengan format tertentu
     const filename = `backup-${getFormattedDate()}.json`;
-    const filePath = path.join(BACKUP_DIR, filename);
     
-    // Tulis data ke file
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    // Coba simpan ke file jika memungkinkan
+    try {
+      const filePath = path.join(BACKUP_DIR, filename);
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    } catch (fsError) {
+      console.log('Could not write to file system, sending direct response');
+    }
     
     // Kembalikan informasi file dan data summary
     return res.status(200).json({
@@ -65,6 +69,40 @@ export async function exportData(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error('Error saat membuat backup:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal membuat backup: ' + error.message
+    });
+  }
+}
+
+// Fungsi untuk download langsung data backup sebagai file JSON
+export async function downloadDirectBackup(req: Request, res: Response) {
+  try {
+    const data: any = {};
+    
+    // Ekspor semua tabel
+    data.users = await db.select().from(users);
+    data.patients = await db.select().from(patients);
+    data.products = await db.select().from(products);
+    data.packages = await db.select().from(packages);
+    data.transactions = await db.select().from(transactions);
+    data.sessions = await db.select().from(sessions);
+    data.therapySlots = await db.select().from(therapySlots);
+    data.appointments = await db.select().from(appointments);
+    data.registrationLinks = await db.select().from(registrationLinks);
+    
+    // Buat nama file dengan format tertentu
+    const filename = `backup-${getFormattedDate()}.json`;
+    
+    // Set headers untuk download file
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    
+    // Kirim data langsung sebagai response
+    return res.send(JSON.stringify(data, null, 2));
+  } catch (error: any) {
+    console.error('Error saat membuat backup langsung:', error);
     return res.status(500).json({
       success: false,
       message: 'Gagal membuat backup: ' + error.message
