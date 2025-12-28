@@ -24,9 +24,10 @@ function Calendar({
     "Juli", "Agustus", "September", "Oktober", "November", "Desember"
   ];
 
-  // Menghasilkan array tahun dari 1940 sampai tahun sekarang
+  // Menghasilkan array tahun dari 1940 sampai 5 tahun kedepan
+  const currentYear = new Date().getFullYear();
   const years = Array.from(
-    { length: new Date().getFullYear() - 1939 },
+    { length: (currentYear + 5) - 1939 },
     (_, i) => 1940 + i
   );
 
