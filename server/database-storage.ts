@@ -1793,14 +1793,18 @@ export class DatabaseStorage implements IStorage {
     
     if (!result) return undefined;
     
-    // Untuk memastikan kuota appointment yang akurat,
-    // ambil jumlah appointment aktif yang terkait dengan slot
-    const appointments = await this.getAppointmentsByTherapySlot(id);
+    // Optimized: Count active appointments langsung dengan SQL query
+    const countResult = await db.select({ 
+      count: sql<number>`count(*)::int` 
+    })
+      .from(schema.appointments)
+      .where(and(
+        eq(schema.appointments.therapySlotId, id),
+        ne(schema.appointments.status, 'Cancelled')
+      ));
     
-    // Hitung appointment yang tidak dibatalkan saja
-    const activeCount = appointments.filter(app => app.status !== 'Cancelled').length;
+    const activeCount = countResult[0]?.count || 0;
     
-    // Return hasil dengan currentCount diperbarui berdasarkan jumlah appointment aktif
     return {
       ...result,
       currentCount: activeCount
@@ -2870,8 +2874,10 @@ export class DatabaseStorage implements IStorage {
 
   async getAppointmentsByTherapySlot(therapySlotId: number): Promise<Appointment[]> {
     try {
-      // Dapatkan data slot terapi untuk identifikasi tanggal dan waktu
-      const therapySlot = await this.getTherapySlot(therapySlotId);
+      // Optimized: Query slot terapi langsung tanpa memanggil getTherapySlot (avoid circular dependency)
+      const therapySlot = await db.query.therapySlots.findFirst({
+        where: eq(schema.therapySlots.id, therapySlotId)
+      });
       
       if (!therapySlot) {
         console.error(`Therapy slot ${therapySlotId} not found`);
