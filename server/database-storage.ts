@@ -1011,20 +1011,26 @@ export class DatabaseStorage implements IStorage {
       const debtAmount = Math.max(0, totalAmount - paidAmount);
       
       // Pastikan metadata adalah objek dan memiliki nilai displayName
-      let metadata = transaction.metadata;
-      if (!metadata) {
-        metadata = { displayName: "original" };
-      } else if (typeof metadata === 'string') {
-        try {
-          metadata = JSON.parse(metadata);
+      let metadata: Record<string, any> = { displayName: "original" };
+      if (transaction.metadata) {
+        if (typeof transaction.metadata === 'string') {
+          try {
+            const parsed = JSON.parse(transaction.metadata);
+            if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+              metadata = parsed;
+              if (!metadata.displayName) {
+                metadata.displayName = "original";
+              }
+            }
+          } catch (e) {
+            metadata = { displayName: "original" };
+          }
+        } else if (typeof transaction.metadata === 'object' && !Array.isArray(transaction.metadata)) {
+          metadata = transaction.metadata as Record<string, any>;
           if (!metadata.displayName) {
             metadata.displayName = "original";
           }
-        } catch (e) {
-          metadata = { displayName: "original" };
         }
-      } else if (typeof metadata === 'object' && !metadata.displayName) {
-        metadata.displayName = "original";
       }
       
       const transactionData = {
@@ -2194,7 +2200,7 @@ export class DatabaseStorage implements IStorage {
         console.log(`Ditemukan ${uniqueTimeSlotKeys.size} timeSlotKey unik`);
         
         // Untuk setiap timeSlotKey, hitung total appointment aktif
-        for (const timeSlotKey of uniqueTimeSlotKeys) {
+        for (const timeSlotKey of Array.from(uniqueTimeSlotKeys)) {
           try {
             // Dapatkan semua slot dengan timeSlotKey yang sama
             const slotsWithSameKey = allSlots.filter(s => s.timeSlotKey === timeSlotKey);
@@ -2460,11 +2466,12 @@ export class DatabaseStorage implements IStorage {
       
       // Handle tanggal dengan benar - Terima string apa adanya
       if (slot.date !== undefined) {
-        updateValues.date = typeof slot.date === 'string' 
-          ? slot.date 
-          : typeof slot.date === 'object' && slot.date instanceof Date
-            ? `${slot.date.getFullYear()}-${String(slot.date.getMonth() + 1).padStart(2, '0')}-${String(slot.date.getDate()).padStart(2, '0')}`
-            : String(slot.date);
+        const dateValue = slot.date as string | Date;
+        updateValues.date = typeof dateValue === 'string' 
+          ? dateValue 
+          : dateValue instanceof Date
+            ? `${dateValue.getFullYear()}-${String(dateValue.getMonth() + 1).padStart(2, '0')}-${String(dateValue.getDate()).padStart(2, '0')}`
+            : String(dateValue);
         
         console.log(`Using date: ${updateValues.date}`);
       }
@@ -3092,9 +3099,9 @@ export class DatabaseStorage implements IStorage {
           // Asumsikan sudah dalam format YYYY-MM-DD
           dateStr = appointment.date;
         }
-      } else if (appointment.date instanceof Date) {
+      } else if ((appointment.date as any) instanceof Date) {
         // Jika tanggal adalah Date object
-        dateStr = format(appointment.date, 'yyyy-MM-dd');
+        dateStr = format(appointment.date as Date, 'yyyy-MM-dd');
       } else {
         // Fallback ke tanggal hari ini jika tidak ada
         dateStr = format(currentWibDate, 'yyyy-MM-dd');
@@ -3171,8 +3178,8 @@ export class DatabaseStorage implements IStorage {
     // Konversi appointmentDate ke string jika masih berupa Date
     let dateStr = typeof appointmentDate === 'string' 
       ? appointmentDate 
-      : appointmentDate instanceof Date 
-        ? format(appointmentDate, 'yyyy-MM-dd')
+      : (appointmentDate as any) instanceof Date 
+        ? format(appointmentDate as Date, 'yyyy-MM-dd')
         : format(new Date(), 'yyyy-MM-dd'); // Fallback ke hari ini jika tidak ada
     
     // Log untuk debugging
@@ -3839,7 +3846,7 @@ export class DatabaseStorage implements IStorage {
         
         // Update statistik hutang
         // Lakukan pengecekan apakah transaksi ini memiliki hutang yang belum dibayar
-        const isPaid = transaction.isPaid === true || transaction.isPaid === 1;
+        const isPaid = transaction.isPaid === true || (transaction.isPaid as any) === 1;
         const transactionPaidAmount = Number(transaction.paidAmount) || 0;
         let debtAmount = Number(transaction.debtAmount) || 0;
         
@@ -4113,7 +4120,7 @@ export class DatabaseStorage implements IStorage {
       console.log(`Found ${appointments.length} visits in the report period`);
       
       // Mendapatkan data unik pasien untuk menentukan pasien baru vs lama
-      const patientIds = [...new Set(appointments.map(app => app.patientId))];
+      const patientIds = Array.from(new Set(appointments.map(app => app.patientId))) as number[];
       
       // Mengambil info pasien untuk semua appointments di bulan ini
       const patients = await db.query.patients.findMany({
@@ -4184,7 +4191,7 @@ export class DatabaseStorage implements IStorage {
         if (!patient) continue;
         
         // Mendapatkan tanggal kunjungan
-        const visitDate = new Date(appointment.date);
+        const visitDate = new Date(appointment.date as string | number | Date);
         
         // Menentukan apakah pasien baru atau lama
         const firstVisitDate = patientFirstVisits.get(patient.id);
@@ -4446,11 +4453,11 @@ export class DatabaseStorage implements IStorage {
           }
           // String sudah valid, gunakan apa adanya
           return record;
-        } else if (record.treatmentDate instanceof Date) {
+        } else if ((record.treatmentDate as any) instanceof Date) {
           // Jika Date object, konversi ke string
           return {
             ...record,
-            treatmentDate: record.treatmentDate.toISOString().split('T')[0]
+            treatmentDate: (record.treatmentDate as Date).toISOString().split('T')[0]
           };
         }
         
@@ -4740,12 +4747,11 @@ export class DatabaseStorage implements IStorage {
     fromDate?: Date,
     toDate?: Date
   }): Promise<SystemLog[]> {
-    let query = db.select().from(systemLogs);
+    // Build conditions array
+    const conditions: any[] = [];
     
     // Tambahkan filter jika ada
     if (filters) {
-      const conditions = [];
-      
       if (filters.userId !== undefined) {
         conditions.push(eq(systemLogs.userId, filters.userId));
       }
@@ -4765,17 +4771,22 @@ export class DatabaseStorage implements IStorage {
       if (filters.toDate) {
         conditions.push(lte(systemLogs.createdAt, filters.toDate));
       }
-      
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions));
-      }
     }
     
     // Tambahkan pengurutan dan paginasi
-    const logs = await query
-      .orderBy(desc(systemLogs.createdAt))
-      .limit(limit)
-      .offset(offset);
+    let logs: SystemLog[];
+    if (conditions.length > 0) {
+      logs = await db.select().from(systemLogs)
+        .where(and(...conditions))
+        .orderBy(desc(systemLogs.createdAt))
+        .limit(limit)
+        .offset(offset);
+    } else {
+      logs = await db.select().from(systemLogs)
+        .orderBy(desc(systemLogs.createdAt))
+        .limit(limit)
+        .offset(offset);
+    }
     
     return logs;
   }
