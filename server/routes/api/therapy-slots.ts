@@ -374,15 +374,19 @@ export function setupTherapySlotsRoutes(app: Express) {
       const therapySlotData = insertTherapySlotSchema.parse(req.body);
       
       // Pastikan format date adalah string (YYYY-MM-DD)
-      if (therapySlotData.date instanceof Date) {
-        therapySlotData.date = therapySlotData.date.toISOString().split('T')[0];
+      let dateString: string;
+      if (typeof therapySlotData.date === 'object' && therapySlotData.date !== null) {
+        dateString = (therapySlotData.date as Date).toISOString().split('T')[0];
+      } else {
+        dateString = String(therapySlotData.date).split('T')[0].split(' ')[0];
       }
+      therapySlotData.date = dateString;
       
       // Buat timeSlotKey (kombinasi date dan timeSlot)
-      therapySlotData.timeSlotKey = `${therapySlotData.date}_${therapySlotData.timeSlot}`;
+      therapySlotData.timeSlotKey = `${dateString}_${therapySlotData.timeSlot}`;
       
       // Periksa apakah slot terapi dengan date dan timeSlot yang sama sudah ada
-      const existingSlots = await storage.getTherapySlotsByDate(therapySlotData.date);
+      const existingSlots = await storage.getTherapySlotsByDate(new Date(dateString));
       const existingSlot = existingSlots.find(slot => slot.timeSlot === therapySlotData.timeSlot);
       
       if (existingSlot) {
