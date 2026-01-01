@@ -422,6 +422,96 @@ export function setupTherapySlotsRoutes(app: Express) {
     }
   });
 
+  // Membuat batch slot terapi baru (multiple slots at once)
+  app.post("/api/therapy-slots/batch", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { slots } = req.body;
+      
+      if (!Array.isArray(slots) || slots.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Data slots harus berupa array dan tidak boleh kosong"
+        });
+      }
+      
+      console.log(`Batch creating ${slots.length} therapy slots...`);
+      
+      const createdSlots = [];
+      const skippedSlots = [];
+      const errors = [];
+      
+      for (const slotData of slots) {
+        try {
+          // Pastikan format date adalah string (YYYY-MM-DD)
+          let dateString: string;
+          if (typeof slotData.date === 'object' && slotData.date !== null) {
+            dateString = (slotData.date as Date).toISOString().split('T')[0];
+          } else {
+            dateString = String(slotData.date).split('T')[0].split(' ')[0];
+          }
+          
+          // Buat timeSlotKey
+          const timeSlotKey = `${dateString}_${slotData.timeSlot}`;
+          
+          // Periksa apakah slot sudah ada
+          const existingSlots = await storage.getTherapySlotsByDate(new Date(dateString));
+          const existingSlot = existingSlots.find(slot => slot.timeSlot === slotData.timeSlot);
+          
+          if (existingSlot) {
+            skippedSlots.push({
+              date: dateString,
+              timeSlot: slotData.timeSlot,
+              reason: "Slot sudah ada"
+            });
+            continue;
+          }
+          
+          // Buat slot baru
+          const newSlot = await storage.createTherapySlot({
+            date: dateString,
+            timeSlot: slotData.timeSlot,
+            timeSlotKey: timeSlotKey,
+            maxQuota: slotData.maxQuota || 5,
+            currentCount: 0,
+            isActive: slotData.isActive !== undefined ? slotData.isActive : true
+          });
+          
+          createdSlots.push(newSlot);
+        } catch (slotError) {
+          console.error("Error creating single slot in batch:", slotError);
+          errors.push({
+            date: slotData.date,
+            timeSlot: slotData.timeSlot,
+            error: slotError instanceof Error ? slotError.message : "Unknown error"
+          });
+        }
+      }
+      
+      console.log(`Batch complete: ${createdSlots.length} created, ${skippedSlots.length} skipped, ${errors.length} errors`);
+      
+      // Invalidate cache
+      allSlotsCache = null;
+      slotRegistryCache = null;
+      
+      return res.status(201).json({
+        success: true,
+        createdCount: createdSlots.length,
+        skippedCount: skippedSlots.length,
+        errorCount: errors.length,
+        created: createdSlots,
+        skipped: skippedSlots,
+        errors: errors,
+        message: `${createdSlots.length} slot terapi berhasil dibuat`
+      });
+    } catch (error) {
+      console.error("Error in batch create therapy slots:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat membuat slot terapi batch"
+      });
+    }
+  });
+
   // Memperbarui slot terapi
   app.put("/api/therapy-slots/:id", requireAdmin, async (req: Request, res: Response) => {
     try {

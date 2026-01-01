@@ -142,6 +142,7 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
       const res = await fetch("/api/therapy-slots/batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ slots: requests }),
       });
       
