@@ -58,57 +58,87 @@ export function setupTransactionsRoutes(app: Express) {
 
   // CREATE transaction with duplicate prevention
   app.post('/api/transactions', async (req: Request, res: Response) => {
+    let newTransaction = null;
+    const sessionWarnings: string[] = [];
+    
     try {
       const transactionData = req.body;
-      console.log('Creating transaction:', transactionData);
+      console.log('Creating transaction:', JSON.stringify(transactionData, null, 2));
 
-      // Create the transaction
-      const newTransaction = await storage.createTransaction(transactionData);
+      // Create the transaction first
+      newTransaction = await storage.createTransaction(transactionData);
+      console.log('Transaction created successfully:', newTransaction.id);
 
       // If transaction includes packages, create or update sessions
+      // This is done in a separate try-catch to not fail the entire transaction
       if (transactionData.items && Array.isArray(transactionData.items)) {
         for (const item of transactionData.items) {
           if (item.type === 'package') {
-            // Check if using existing session (when useExistingPackage=true)
-            if (item.sessionId) {
-              // Use existing session - increment sessionsUsed
-              console.log(`Using existing session ${item.sessionId} for patient ${transactionData.patientId}`);
-              const session = await storage.getSession(item.sessionId);
-              if (session) {
-                await storage.updateSessionUsage(item.sessionId, session.sessionsUsed + 1);
-                console.log(`Updated session ${item.sessionId}: incremented sessionsUsed to ${session.sessionsUsed + 1}`);
+            try {
+              // Check if using existing session (when useExistingPackage=true)
+              if (item.sessionId) {
+                // Use existing session - increment sessionsUsed
+                console.log(`Using existing session ${item.sessionId} for patient ${transactionData.patientId}`);
+                const session = await storage.getSession(item.sessionId);
+                if (session) {
+                  await storage.updateSessionUsage(item.sessionId, session.sessionsUsed + 1);
+                  console.log(`Updated session ${item.sessionId}: incremented sessionsUsed to ${session.sessionsUsed + 1}`);
+                } else {
+                  sessionWarnings.push(`Session ${item.sessionId} tidak ditemukan`);
+                  console.warn(`Session ${item.sessionId} not found, skipping`);
+                }
               } else {
-                throw new Error(`Session ${item.sessionId} not found`);
-              }
-            } else {
-              // Creating new package or adding to existing
-              const existingSessions = await storage.getActiveSessionsByPatient(transactionData.patientId);
-              const existingSession = existingSessions.find(s => s.packageId === item.packageId);
+                // Creating new package or adding to existing
+                const existingSessions = await storage.getActiveSessionsByPatient(transactionData.patientId);
+                const existingSession = existingSessions.find(s => s.packageId === item.packageId);
 
-              if (existingSession) {
-                // Update existing session - add sessions to it
-                console.log(`Found existing session ${existingSession.id} for patient ${transactionData.patientId} and package ${item.packageId}`);
-                await storage.addSessionsToPackage(existingSession.id, item.quantity || 1);
-                console.log(`Updated session ${existingSession.id}: increased total sessions`);
-              } else {
-                // Create new session
-                console.log(`Creating new session for patient ${transactionData.patientId} and package ${item.packageId}`);
-                await storage.createSession({
-                  patientId: transactionData.patientId,
-                  transactionId: newTransaction.id,
-                  packageId: item.packageId,
-                  totalSessions: item.quantity || 1
-                });
+                if (existingSession) {
+                  // Update existing session - add sessions to it
+                  console.log(`Found existing session ${existingSession.id} for patient ${transactionData.patientId} and package ${item.packageId}`);
+                  await storage.addSessionsToPackage(existingSession.id, item.quantity || 1);
+                  console.log(`Updated session ${existingSession.id}: increased total sessions`);
+                } else {
+                  // Create new session
+                  console.log(`Creating new session for patient ${transactionData.patientId} and package ${item.packageId}`);
+                  await storage.createSession({
+                    patientId: transactionData.patientId,
+                    transactionId: newTransaction.id,
+                    packageId: item.packageId,
+                    totalSessions: item.quantity || 1
+                  });
+                }
               }
+            } catch (sessionError) {
+              console.error('Error processing session for item:', item, sessionError);
+              sessionWarnings.push(`Error saat memproses paket: ${sessionError instanceof Error ? sessionError.message : 'Unknown error'}`);
             }
           }
         }
       }
 
-      res.status(201).json(newTransaction);
+      // Return success with any warnings
+      const response: any = { ...newTransaction };
+      if (sessionWarnings.length > 0) {
+        response.warnings = sessionWarnings;
+      }
+      
+      res.status(201).json(response);
     } catch (error) {
       console.error('Error creating transaction:', error);
-      res.status(500).json({ error: 'Gagal membuat transaksi' });
+      
+      // If transaction was created but something failed after, still return it
+      if (newTransaction) {
+        console.log('Transaction was created but post-processing failed. Returning transaction with warning.');
+        res.status(201).json({
+          ...newTransaction,
+          warnings: [`Transaksi tersimpan, tapi ada error: ${error instanceof Error ? error.message : 'Unknown error'}`]
+        });
+      } else {
+        res.status(500).json({ 
+          error: 'Gagal membuat transaksi',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
     }
   });
 
