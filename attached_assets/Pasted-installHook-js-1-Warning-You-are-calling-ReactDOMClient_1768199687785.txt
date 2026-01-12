@@ -1,0 +1,215 @@
+installHook.js:1 Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it.
+overrideMethod @ installHook.js:1
+printWarning @ chunk-RPCDYKBN.js?v=b839a6d3:521
+error @ chunk-RPCDYKBN.js?v=b839a6d3:505
+warnIfReactDOMContainerInDEV @ chunk-RPCDYKBN.js?v=b839a6d3:21240
+createRoot @ chunk-RPCDYKBN.js?v=b839a6d3:21143
+createRoot$1 @ chunk-RPCDYKBN.js?v=b839a6d3:21522
+exports.createRoot @ react-dom_client.js?v=b839a6d3:21
+(anonymous) @ main.tsx:40
+theme-provider.tsx:73 Tema diterapkan langsung: light
+theme-provider.tsx:73 Tema diterapkan langsung: light
+auth.tsx:75 Mencoba login dengan username: aguslim, rememberMe: false
+queryClient.ts:28 API Request to /api/login with credentials included
+queryClient.ts:90 API data from /api/login: object
+auth.tsx:86 Login response: {success: true, message: 'Login berhasil', user: {…}}
+auth.tsx:89 Login berhasil, user: {id: 1, username: 'aguslim', name: 'Agus Lim', role: 'admin', createdAt: '2025-04-02T01:34:24.874Z'}
+auth.tsx:96 Status autentikasi setelah login: {authenticated: true, user: {…}}
+queryClient.ts:131 Fetching data with getQueryFn: /api/dashboard/stats
+queryClient.ts:131 Fetching data with getQueryFn: /api/appointments/date/2026-01-12
+queryClient.ts:131 Fetching data with getQueryFn: /api/dashboard/active-packages
+queryClient.ts:131 Fetching data with getQueryFn: /api/patients
+queryClient.ts:141 Response for /api/dashboard/stats: status=200
+queryClient.ts:155 Successfully parsed data from /api/dashboard/stats: object
+queryClient.ts:141 Response for /api/appointments/date/2026-01-12: status=200
+queryClient.ts:155 Successfully parsed data from /api/appointments/date/2026-01-12: object
+queryClient.ts:141 Response for /api/dashboard/active-packages: status=200
+queryClient.ts:141 Response for /api/patients: status=200
+queryClient.ts:155 Successfully parsed data from /api/dashboard/active-packages: Array with 155 items
+queryClient.ts:155 Successfully parsed data from /api/patients: Array with 688 items
+queryClient.ts:28 API Request to /api/patients/913 with credentials included
+queryClient.ts:28 API Request to /api/transactions?patientId=913&includeRelated=true with credentials included
+queryClient.ts:28 API Request to /api/sessions?patientId=913&active=true&includeRelated=true with credentials included
+queryClient.ts:28 API Request to /api/appointments?patientId=913 with credentials included
+queryClient.ts:28 API Request to /api/medical-histories/patient/913 with credentials included
+queryClient.ts:90 API data from /api/patients/913: object
+queryClient.ts:90 API data from /api/transactions?patientId=913&includeRelated=true: Array with 0 items
+queryClient.ts:90 API data from /api/sessions?patientId=913&active=true&includeRelated=true: Array with 0 items
+queryClient.ts:90 API data from /api/medical-histories/patient/913: Array with 0 items
+queryClient.ts:90 API data from /api/appointments?patientId=913: Array with 1 items
+medical-history-list.tsx:127 DEBUG: Raw data from /api/patients/913/all-medical-histories: undefined
+medical-history-list.tsx:130 MedicalHistoryList: No medical histories found for patient 913
+queryClient.ts:131 Fetching data with getQueryFn: /api/patients/913/all-medical-histories
+queryClient.ts:141 Response for /api/patients/913/all-medical-histories: status=200
+installHook.js:1 Failed to parse query response from /api/patients/913/all-medical-histories as JSON: SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
+overrideMethod @ installHook.js:1
+(anonymous) @ queryClient.ts:169
+await in (anonymous)
+fetchFn @ @tanstack_react-query.js?v=b839a6d3:840
+run @ @tanstack_react-query.js?v=b839a6d3:494
+start @ @tanstack_react-query.js?v=b839a6d3:536
+fetch @ @tanstack_react-query.js?v=b839a6d3:926
+executeFetch_fn @ @tanstack_react-query.js?v=b839a6d3:2211
+onSubscribe @ @tanstack_react-query.js?v=b839a6d3:1898
+subscribe @ @tanstack_react-query.js?v=b839a6d3:24
+(anonymous) @ @tanstack_react-query.js?v=b839a6d3:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=b839a6d3:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b839a6d3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b839a6d3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b839a6d3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b839a6d3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=b839a6d3:18627
+installHook.js:1 Response status: 200, statusText: OK
+overrideMethod @ installHook.js:1
+(anonymous) @ queryClient.ts:170
+await in (anonymous)
+fetchFn @ @tanstack_react-query.js?v=b839a6d3:840
+run @ @tanstack_react-query.js?v=b839a6d3:494
+start @ @tanstack_react-query.js?v=b839a6d3:536
+fetch @ @tanstack_react-query.js?v=b839a6d3:926
+executeFetch_fn @ @tanstack_react-query.js?v=b839a6d3:2211
+onSubscribe @ @tanstack_react-query.js?v=b839a6d3:1898
+subscribe @ @tanstack_react-query.js?v=b839a6d3:24
+(anonymous) @ @tanstack_react-query.js?v=b839a6d3:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=b839a6d3:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b839a6d3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b839a6d3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b839a6d3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b839a6d3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=b839a6d3:18627
+installHook.js:1 Failed to read response text: TypeError: Failed to execute 'text' on 'Response': body stream already read
+    at queryClient.ts:174:32
+overrideMethod @ installHook.js:1
+(anonymous) @ queryClient.ts:182
+await in (anonymous)
+fetchFn @ @tanstack_react-query.js?v=b839a6d3:840
+run @ @tanstack_react-query.js?v=b839a6d3:494
+start @ @tanstack_react-query.js?v=b839a6d3:536
+fetch @ @tanstack_react-query.js?v=b839a6d3:926
+executeFetch_fn @ @tanstack_react-query.js?v=b839a6d3:2211
+onSubscribe @ @tanstack_react-query.js?v=b839a6d3:1898
+subscribe @ @tanstack_react-query.js?v=b839a6d3:24
+(anonymous) @ @tanstack_react-query.js?v=b839a6d3:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=b839a6d3:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b839a6d3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b839a6d3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b839a6d3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b839a6d3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=b839a6d3:18627
+queryClient.ts:227 Returning empty object for /api/patients/913/all-medical-histories
+medical-history-list.tsx:127 DEBUG: Raw data from /api/patients/913/all-medical-histories: {}
+medical-history-list.tsx:136 MedicalHistoryList: Found 0 medical histories for patient 913
+queryClient.ts:28 API Request to /api/patients/909 with credentials included
+queryClient.ts:28 API Request to /api/transactions?patientId=909&includeRelated=true with credentials included
+queryClient.ts:28 API Request to /api/sessions?patientId=909&active=true&includeRelated=true with credentials included
+queryClient.ts:28 API Request to /api/appointments?patientId=909 with credentials included
+queryClient.ts:28 API Request to /api/medical-histories/patient/909 with credentials included
+queryClient.ts:90 API data from /api/patients/909: object
+queryClient.ts:90 API data from /api/transactions?patientId=909&includeRelated=true: Array with 1 items
+queryClient.ts:90 API data from /api/sessions?patientId=909&active=true&includeRelated=true: Array with 0 items
+queryClient.ts:90 API data from /api/medical-histories/patient/909: Array with 0 items
+queryClient.ts:90 API data from /api/appointments?patientId=909: Array with 1 items
+medical-history-list.tsx:127 DEBUG: Raw data from /api/patients/909/all-medical-histories: undefined
+medical-history-list.tsx:130 MedicalHistoryList: No medical histories found for patient 909
+queryClient.ts:131 Fetching data with getQueryFn: /api/patients/909/all-medical-histories
+queryClient.ts:141 Response for /api/patients/909/all-medical-histories: status=200
+installHook.js:1 Failed to parse query response from /api/patients/909/all-medical-histories as JSON: SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
+overrideMethod @ installHook.js:1
+(anonymous) @ queryClient.ts:169
+await in (anonymous)
+fetchFn @ @tanstack_react-query.js?v=b839a6d3:840
+run @ @tanstack_react-query.js?v=b839a6d3:494
+start @ @tanstack_react-query.js?v=b839a6d3:536
+fetch @ @tanstack_react-query.js?v=b839a6d3:926
+executeFetch_fn @ @tanstack_react-query.js?v=b839a6d3:2211
+onSubscribe @ @tanstack_react-query.js?v=b839a6d3:1898
+subscribe @ @tanstack_react-query.js?v=b839a6d3:24
+(anonymous) @ @tanstack_react-query.js?v=b839a6d3:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=b839a6d3:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b839a6d3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b839a6d3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b839a6d3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b839a6d3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=b839a6d3:18627
+installHook.js:1 Response status: 200, statusText: OK
+overrideMethod @ installHook.js:1
+(anonymous) @ queryClient.ts:170
+await in (anonymous)
+fetchFn @ @tanstack_react-query.js?v=b839a6d3:840
+run @ @tanstack_react-query.js?v=b839a6d3:494
+start @ @tanstack_react-query.js?v=b839a6d3:536
+fetch @ @tanstack_react-query.js?v=b839a6d3:926
+executeFetch_fn @ @tanstack_react-query.js?v=b839a6d3:2211
+onSubscribe @ @tanstack_react-query.js?v=b839a6d3:1898
+subscribe @ @tanstack_react-query.js?v=b839a6d3:24
+(anonymous) @ @tanstack_react-query.js?v=b839a6d3:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=b839a6d3:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b839a6d3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b839a6d3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b839a6d3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b839a6d3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=b839a6d3:18627
+installHook.js:1 Failed to read response text: TypeError: Failed to execute 'text' on 'Response': body stream already read
+    at queryClient.ts:174:32
+overrideMethod @ installHook.js:1
+(anonymous) @ queryClient.ts:182
+await in (anonymous)
+fetchFn @ @tanstack_react-query.js?v=b839a6d3:840
+run @ @tanstack_react-query.js?v=b839a6d3:494
+start @ @tanstack_react-query.js?v=b839a6d3:536
+fetch @ @tanstack_react-query.js?v=b839a6d3:926
+executeFetch_fn @ @tanstack_react-query.js?v=b839a6d3:2211
+onSubscribe @ @tanstack_react-query.js?v=b839a6d3:1898
+subscribe @ @tanstack_react-query.js?v=b839a6d3:24
+(anonymous) @ @tanstack_react-query.js?v=b839a6d3:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=b839a6d3:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b839a6d3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b839a6d3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b839a6d3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b839a6d3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b839a6d3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b839a6d3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=b839a6d3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=b839a6d3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b839a6d3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b839a6d3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=b839a6d3:18627
+queryClient.ts:227 Returning empty object for /api/patients/909/all-medical-histories
+medical-history-list.tsx:127 DEBUG: Raw data from /api/patients/909/all-medical-histories: {}
+medical-history-list.tsx:136 MedicalHistoryList: Found 0 medical histories for patient 909

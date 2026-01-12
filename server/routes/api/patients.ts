@@ -384,6 +384,60 @@ export function setupPatientRoutes(app: Express) {
     }
   });
   
+  // Mendapatkan semua riwayat medis pasien (termasuk dari pasien dengan nomor telepon yang sama)
+  app.get("/api/patients/:id/all-medical-histories", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      
+      // Verifikasi pasien
+      const patient = await storage.getPatient(patientId);
+      
+      if (!patient) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Pasien tidak ditemukan" 
+        });
+      }
+      
+      // Ambil riwayat medis pasien ini
+      const medicalHistories = await storage.getMedicalHistoriesByPatient(patientId);
+      
+      // Cari pasien lain dengan nomor telepon yang sama
+      let allHistories = [...medicalHistories];
+      
+      if (patient.phoneNumber) {
+        const relatedPatients = await storage.getPatientsByPhoneNumber(patient.phoneNumber);
+        
+        for (const relatedPatient of relatedPatients) {
+          if (relatedPatient.id !== patientId) {
+            const relatedHistories = await storage.getMedicalHistoriesByPatient(relatedPatient.id);
+            allHistories = [...allHistories, ...relatedHistories];
+          }
+        }
+      }
+      
+      // Hapus duplikat dan urutkan berdasarkan tanggal
+      const uniqueHistoriesMap = new Map();
+      allHistories.forEach(history => {
+        uniqueHistoriesMap.set(history.id, history);
+      });
+      
+      const uniqueHistories = Array.from(uniqueHistoriesMap.values()).sort((a, b) => {
+        const dateA = new Date(a.treatmentDate).getTime();
+        const dateB = new Date(b.treatmentDate).getTime();
+        return dateB - dateA;
+      });
+      
+      return res.status(200).json(uniqueHistories);
+    } catch (error) {
+      console.error("Error getting all medical histories:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mengambil riwayat medis" 
+      });
+    }
+  });
+  
   // Mendapatkan appointment pasien
   app.get("/api/patients/:id/appointments", requireAuth, async (req: Request, res: Response) => {
     try {
