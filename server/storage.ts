@@ -147,6 +147,7 @@ export interface IStorage {
   getAllActiveSessions(): Promise<Session[]>;
   createSession(session: InsertSession): Promise<Session>;
   updateSessionUsage(id: number, sessionsUsed?: number): Promise<Session | undefined>;
+  addSessionsToPackage(id: number, additionalSessions: number): Promise<Session | undefined>;
   
   // Therapy Slots
   getTherapySlot(id: number): Promise<TherapySlot | undefined>;

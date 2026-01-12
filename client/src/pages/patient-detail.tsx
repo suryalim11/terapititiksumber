@@ -40,11 +40,14 @@ import { VerifyAppointmentButton } from "@/components/patient/verify-appointment
 
 // Add formats for Indonesia locale
 // Menggunakan formatBirthDate dari utils untuk tanggal lahir
-const formatDate = (date: string | Date) => {
+const formatDate = (date: string | Date | null | undefined) => {
+  if (!date) return "-";
   try {
-    return format(new Date(date), "dd/MM/yyyy", { locale: localeId });
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "-";
+    return format(d, "dd/MM/yyyy", { locale: localeId });
   } catch (e) {
-    return "Invalid date";
+    return "-";
   }
 };
 
@@ -391,8 +394,10 @@ export default function PatientDetail() {
     }
   };
 
-  const calculateAge = (birthDate: string) => {
+  const calculateAge = (birthDate: string | null | undefined) => {
+    if (!birthDate) return null;
     const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return null;
     const now = new Date();
     let age = now.getFullYear() - birth.getFullYear();
     const monthDiff = now.getMonth() - birth.getMonth();
@@ -455,12 +460,14 @@ export default function PatientDetail() {
               <div className="mb-4 pb-3 border-b">
                 <h3 className="text-lg font-bold mb-1">{patient.name}</h3>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="flex items-center gap-1 px-2 py-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#777" className="mr-1">
-                      <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 22c-5.514 0-10-4.486-10-10s4.486-10 10-10 10 4.486 10 10-4.486 10-10 10zm-1-10v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/>
-                    </svg>
-                    {calculateAge(patient.birthDate)} tahun
-                  </Badge>
+                  {calculateAge(patient.birthDate) !== null && (
+                    <Badge variant="outline" className="flex items-center gap-1 px-2 py-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#777" className="mr-1">
+                        <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 22c-5.514 0-10-4.486-10-10s4.486-10 10-10 10 4.486 10 10-4.486 10-10 10zm-1-10v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/>
+                      </svg>
+                      {calculateAge(patient.birthDate)} tahun
+                    </Badge>
+                  )}
                   <Badge variant="outline" className="flex items-center gap-1 px-2 py-1">
                     {patient.gender}
                   </Badge>
