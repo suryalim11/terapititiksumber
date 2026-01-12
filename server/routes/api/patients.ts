@@ -623,4 +623,35 @@ export function setupPatientRoutes(app: Express) {
       });
     }
   });
+
+  // Mendapatkan pasien berdasarkan ID (harus di akhir agar tidak menangkap route lain)
+  app.get("/api/patients/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "ID pasien tidak valid" 
+        });
+      }
+      
+      const patient = await storage.getPatient(id);
+      
+      if (!patient) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Pasien tidak ditemukan" 
+        });
+      }
+      
+      return res.status(200).json(patient);
+    } catch (error) {
+      console.error("Error getting patient:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Terjadi kesalahan saat mengambil data pasien"
+      });
+    }
+  });
 }
