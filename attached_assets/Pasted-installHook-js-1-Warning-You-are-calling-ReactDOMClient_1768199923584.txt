@@ -1,0 +1,64 @@
+installHook.js:1 Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it.
+overrideMethod @ installHook.js:1
+theme-provider.tsx:73 Tema diterapkan langsung: light
+theme-provider.tsx:73 Tema diterapkan langsung: light
+queryClient.ts:28 API Request to /api/patients/911 with credentials included
+queryClient.ts:28 API Request to /api/transactions?patientId=911&includeRelated=true with credentials included
+queryClient.ts:28 API Request to /api/sessions?patientId=911&active=true&includeRelated=true with credentials included
+queryClient.ts:28 API Request to /api/appointments?patientId=911 with credentials included
+queryClient.ts:28 API Request to /api/medical-histories/patient/911 with credentials included
+queryClient.ts:90 API data from /api/patients/911: object
+queryClient.ts:90 API data from /api/sessions?patientId=911&active=true&includeRelated=true: Array with 0 items
+queryClient.ts:90 API data from /api/transactions?patientId=911&includeRelated=true: Array with 1 items
+queryClient.ts:90 API data from /api/medical-histories/patient/911: Array with 0 items
+queryClient.ts:90 API data from /api/appointments?patientId=911: Array with 1 items
+medical-history-list.tsx:127 DEBUG: Raw data from /api/patients/911/all-medical-histories: undefined
+medical-history-list.tsx:130 MedicalHistoryList: No medical histories found for patient 911
+queryClient.ts:131 Fetching data with getQueryFn: /api/patients/911/all-medical-histories
+queryClient.ts:141 Response for /api/patients/911/all-medical-histories: status=200
+queryClient.ts:155 Successfully parsed data from /api/patients/911/all-medical-histories: Array with 6 items
+medical-history-list.tsx:127 DEBUG: Raw data from /api/patients/911/all-medical-histories: Array(6)
+medical-history-list.tsx:136 MedicalHistoryList: Found 6 medical histories for patient 911
+medical-history-list.tsx:140 Medical history 1 DETAIL: Object
+medical-history-list.tsx:141 Medical history 1 SUMMARY: Object
+medical-history-list.tsx:140 Medical history 2 DETAIL: Object
+medical-history-list.tsx:141 Medical history 2 SUMMARY: Object
+medical-history-list.tsx:140 Medical history 3 DETAIL: Object
+medical-history-list.tsx:141 Medical history 3 SUMMARY: Object
+medical-history-list.tsx:140 Medical history 4 DETAIL: Object
+medical-history-list.tsx:141 Medical history 4 SUMMARY: Object
+medical-history-list.tsx:140 Medical history 5 DETAIL: Object
+medical-history-list.tsx:141 Medical history 5 SUMMARY: Object
+medical-history-list.tsx:140 Medical history 6 DETAIL: Object
+medical-history-list.tsx:141 Medical history 6 SUMMARY: Object
+queryClient.ts:131 Fetching data with getQueryFn: /api/patients
+queryClient.ts:141 Response for /api/patients: status=200
+queryClient.ts:155 Successfully parsed data from /api/patients: Array with 688 items
+queryClient.ts:28 API Request to /api/patients/913 with credentials included
+queryClient.ts:28 API Request to /api/transactions?patientId=913&includeRelated=true with credentials included
+queryClient.ts:28 API Request to /api/sessions?patientId=913&active=true&includeRelated=true with credentials included
+queryClient.ts:28 API Request to /api/appointments?patientId=913 with credentials included
+queryClient.ts:28 API Request to /api/medical-histories/patient/913 with credentials included
+queryClient.ts:90 API data from /api/transactions?patientId=913&includeRelated=true: Array with 0 items
+queryClient.ts:90 API data from /api/patients/913: object
+queryClient.ts:90 API data from /api/sessions?patientId=913&active=true&includeRelated=true: Array with 0 items
+queryClient.ts:90 API data from /api/appointments?patientId=913: Array with 1 items
+queryClient.ts:90 API data from /api/medical-histories/patient/913: Array with 0 items
+medical-history-list.tsx:127 DEBUG: Raw data from /api/patients/913/all-medical-histories: undefined
+medical-history-list.tsx:130 MedicalHistoryList: No medical histories found for patient 913
+queryClient.ts:131 Fetching data with getQueryFn: /api/patients/913/all-medical-histories
+queryClient.ts:141 Response for /api/patients/913/all-medical-histories: status=200
+queryClient.ts:155 Successfully parsed data from /api/patients/913/all-medical-histories: Array with 0 items
+medical-history-list.tsx:127 DEBUG: Raw data from /api/patients/913/all-medical-histories: []
+medical-history-list.tsx:136 MedicalHistoryList: Found 0 medical histories for patient 913
+medical-history-form.tsx:135 Tanggal terapi original: Mon Jan 12 2026 13:38:01 GMT+0700 (Western Indonesia Time)
+medical-history-form.tsx:144 Tanggal terapi setelah validasi: Mon Jan 12 2026 13:38:01 GMT+0700 (Western Indonesia Time)
+medical-history-form.tsx:145 ISO String: 2026-01-12T06:38:01.665Z
+medical-history-form.tsx:160 Payload yang dikirim ke server: {patientId: 913, appointmentId: undefined, complaint: 'susah bab', beforeBloodPressure: '157/97', afterBloodPressure: '', …}
+queryClient.ts:131 Fetching data with getQueryFn: /api/patients/913/all-medical-histories
+queryClient.ts:141 Response for /api/patients/913/all-medical-histories: status=200
+queryClient.ts:155 Successfully parsed data from /api/patients/913/all-medical-histories: Array with 1 items
+medical-history-list.tsx:127 DEBUG: Raw data from /api/patients/913/all-medical-histories: [{…}]
+medical-history-list.tsx:136 MedicalHistoryList: Found 1 medical histories for patient 913
+medical-history-list.tsx:140 Medical history 1 DETAIL: {id: 791, patientId: 913, appointmentId: null, complaint: 'susah bab', beforeBloodPressure: null, …}
+medical-history-list.tsx:141 Medical history 1 SUMMARY: {id: 791, patientId: 913, complaint: 'susah bab...', treatmentDate: '2026-01-12', heartRate: null, …}
