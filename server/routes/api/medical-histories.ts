@@ -52,17 +52,36 @@ export function setupMedicalHistoriesRoutes(app: Express) {
   // Membuat riwayat medis baru
   app.post('/api/medical-histories', async (req: Request, res: Response) => {
     try {
-      const { patientId, treatmentDate, complaint, notes } = req.body;
+      const { 
+        patientId, 
+        treatmentDate, 
+        complaint, 
+        notes,
+        appointmentId,
+        beforeBloodPressure,
+        afterBloodPressure,
+        heartRate,
+        pulseRate,
+        weight
+      } = req.body;
       
       if (!patientId || !treatmentDate || !complaint) {
         return res.status(400).json({ error: 'Data riwayat medis tidak lengkap' });
       }
       
+      console.log('Creating medical history with treatment date:', treatmentDate, typeof treatmentDate === 'string' ? '(string)' : '(other)');
+      
       const newMedicalHistory = await storage.createMedicalHistory({
         patientId,
-        treatmentDate: new Date(treatmentDate),
+        treatmentDate: typeof treatmentDate === 'string' ? treatmentDate : new Date(treatmentDate).toISOString().split('T')[0],
         complaint,
-        notes
+        notes: notes || null,
+        appointmentId: appointmentId || null,
+        beforeBloodPressure: beforeBloodPressure || null,
+        afterBloodPressure: afterBloodPressure || null,
+        heartRate: heartRate || null,
+        pulseRate: pulseRate || null,
+        weight: weight || null
       });
       
       res.status(201).json(newMedicalHistory);
@@ -80,7 +99,18 @@ export function setupMedicalHistoriesRoutes(app: Express) {
         return res.status(400).json({ error: 'ID riwayat medis tidak valid' });
       }
       
-      const { patientId, treatmentDate, complaint, notes } = req.body;
+      const { 
+        patientId, 
+        treatmentDate, 
+        complaint, 
+        notes,
+        appointmentId,
+        beforeBloodPressure,
+        afterBloodPressure,
+        heartRate,
+        pulseRate,
+        weight
+      } = req.body;
       
       if (!patientId || !treatmentDate || !complaint) {
         return res.status(400).json({ error: 'Data riwayat medis tidak lengkap' });
@@ -88,9 +118,15 @@ export function setupMedicalHistoriesRoutes(app: Express) {
       
       const updatedMedicalHistory = await storage.updateMedicalHistory(id, {
         patientId,
-        treatmentDate: new Date(treatmentDate),
+        treatmentDate: typeof treatmentDate === 'string' ? treatmentDate : new Date(treatmentDate).toISOString().split('T')[0],
         complaint,
-        notes
+        notes: notes || null,
+        appointmentId: appointmentId || null,
+        beforeBloodPressure: beforeBloodPressure || null,
+        afterBloodPressure: afterBloodPressure || null,
+        heartRate: heartRate || null,
+        pulseRate: pulseRate || null,
+        weight: weight || null
       });
       
       if (!updatedMedicalHistory) {
