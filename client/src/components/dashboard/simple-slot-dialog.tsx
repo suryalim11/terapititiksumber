@@ -270,7 +270,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         onClose();
       }
     }}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarIcon className="h-5 w-5" />
@@ -314,9 +314,10 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                   />
                 </div>
               </div>
-              <div className="flex justify-end space-x-2 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
                 <Button 
-                  variant="outline" 
+                  variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     setShowRegisterForm(false);
                     setFormPatientName("");
@@ -325,7 +326,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                 >
                   Batal
                 </Button>
-                <Button onClick={handleSubmitRegistration}>
+                <Button onClick={handleSubmitRegistration} className="w-full sm:w-auto">
                   Daftarkan
                 </Button>
               </div>
@@ -382,12 +383,13 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
             </div>
             
             <div className="mt-6 border-t pt-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold">Daftar Pasien</h2>
                 <Button 
                   onClick={handleRegisterPatient}
                   disabled={!slotData.isActive}
-                  className={slotData.currentCount >= slotData.maxQuota ? "bg-yellow-500 hover:bg-yellow-600" : ""}
+                  size="sm"
+                  className={`w-full sm:w-auto ${slotData.currentCount >= slotData.maxQuota ? "bg-yellow-500 hover:bg-yellow-600" : ""}`}
                 >
                   <User className="mr-2 h-4 w-4" />
                   {slotData.currentCount >= slotData.maxQuota 
@@ -435,7 +437,7 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                         </div>
                         
                         {/* Tindakan cepat untuk pasien */}
-                        <div className="mt-2 flex items-center justify-end space-x-2">
+                        <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
                           {patient.phone && (
                             <Button
                               variant="outline"
