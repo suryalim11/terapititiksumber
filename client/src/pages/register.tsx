@@ -52,11 +52,15 @@ import {
   AlertTriangle,
   CalendarIcon, 
   CheckCircle, 
+  ClipboardPaste,
   Clock, 
   MapPin,
   RefreshCw,
   Search, 
-  User
+  User,
+  ChevronDown,
+  ChevronUp,
+  Sparkles
 } from "lucide-react";
 
 // Form validation schema
@@ -146,6 +150,8 @@ export default function RegisterPage() {
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWalkInMode, setIsWalkInMode] = useState(false);
+  const [showPasteSection, setShowPasteSection] = useState(false);
+  const [pasteText, setPasteText] = useState("");
   
   // Form handling
   const form = useForm<RegisterFormValues>({
@@ -162,6 +168,142 @@ export default function RegisterPage() {
       therapySlotId: undefined,
     },
   });
+
+  const parseIndonesianDate = (dateStr: string): string | null => {
+    const monthMap: Record<string, number> = {
+      'jan': 0, 'januari': 0, 'january': 0,
+      'feb': 1, 'februari': 1, 'february': 1,
+      'mar': 2, 'maret': 2, 'march': 2,
+      'apr': 3, 'april': 3,
+      'mei': 4, 'may': 4,
+      'jun': 5, 'juni': 5, 'june': 5,
+      'jul': 6, 'juli': 6, 'july': 6,
+      'agu': 7, 'agust': 7, 'agustus': 7, 'august': 7, 'aug': 7,
+      'sep': 8, 'sept': 8, 'september': 8,
+      'okt': 9, 'oktober': 9, 'oct': 9, 'october': 9,
+      'nop': 10, 'nov': 10, 'november': 10, 'nopember': 10,
+      'des': 11, 'desember': 11, 'dec': 11, 'december': 11,
+    };
+
+    const cleaned = dateStr.trim().replace(/[.,]/g, '').toLowerCase();
+    const match = cleaned.match(/(\d{1,2})\s+([a-z]+)\s+(\d{4})/);
+    if (match) {
+      const day = parseInt(match[1]);
+      const monthKey = match[2];
+      const year = parseInt(match[3]);
+      const month = monthMap[monthKey];
+      if (month !== undefined) {
+        const date = new Date(year, month, day);
+        return date.toISOString();
+      }
+    }
+    return null;
+  };
+
+  const parseWhatsAppText = (text: string) => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    let name = '';
+    let gender = '';
+    let birthDate = '';
+    let address = '';
+    let phone = '';
+    let complaints: string[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lower = line.toLowerCase();
+      
+      if (lower.startsWith('nama ') || lower === 'nama') {
+        name = line.replace(/^nama\s*/i, '').trim();
+        if (!name && i + 1 < lines.length) {
+          name = lines[i + 1].trim();
+        }
+      } else if (lower.includes('jenis kelamin') || lower.match(/^(laki[- ]?laki|perempuan)$/i)) {
+        const genderText = line.replace(/^jenis\s*kelamin\s*/i, '').trim().toLowerCase();
+        if (genderText.includes('laki')) {
+          gender = 'Laki-laki';
+        } else if (genderText.includes('perempuan')) {
+          gender = 'Perempuan';
+        }
+      } else if (lower.startsWith('tgl lahir') || lower.startsWith('tgl') || lower.startsWith('lahir')) {
+        let dateText = line.replace(/^(tgl\s*lahir|tgl|lahir)\s*/i, '').trim();
+        if (!dateText && i + 1 < lines.length) {
+          dateText = lines[i + 1].trim();
+          if (dateText.match(/^\d{1,2}\s+[a-z]/i)) {
+            i++;
+          } else {
+            dateText = '';
+          }
+        }
+        if (dateText) {
+          const parsed = parseIndonesianDate(dateText);
+          if (parsed) birthDate = parsed;
+        }
+      } else if (lower.startsWith('alamat')) {
+        address = line.replace(/^alamat\s*/i, '').trim();
+      } else if (lower.match(/^(no\.?\s*hp\.?|hp\.?|no\.?\s*telp\.?|telp\.?|telepon|no\.?\s*wa|wa)\s/i)) {
+        phone = line.replace(/^(no\.?\s*hp\.?|hp\.?|no\.?\s*telp\.?|telp\.?|telepon|no\.?\s*wa|wa)\s*/i, '').trim().replace(/[^0-9+]/g, '');
+      } else if (lower.startsWith('keluhan')) {
+        const keluhanText = line.replace(/^keluhan\s*/i, '').trim();
+        if (keluhanText) complaints.push(keluhanText);
+      } else if (name && !gender && !birthDate && !address && !phone && lower.match(/^(laki|perempuan)/i)) {
+        const parts = line.match(/^(laki[- ]?laki|perempuan)\s+(.+)/i);
+        if (parts) {
+          gender = parts[1].toLowerCase().includes('laki') ? 'Laki-laki' : 'Perempuan';
+          const rest = parts[2].trim();
+          const parsed = parseIndonesianDate(rest);
+          if (parsed) birthDate = parsed;
+        }
+      } else if (!name && !lower.match(/^(no|hp|wa|tgl|alamat|keluhan|jenis)/i)) {
+        name = line.trim();
+      } else if (name && gender && birthDate && !address && !lower.match(/^(no|hp|wa|tgl|keluhan|jenis)/i) && !phone) {
+        address = line.trim();
+      } else if (name && gender && birthDate && address && phone && !lower.match(/^(no|hp|wa|tgl|alamat|jenis)/i)) {
+        complaints.push(line.trim());
+      }
+    }
+
+    return {
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      gender,
+      birthDate,
+      address,
+      phone,
+      complaints: complaints.join(', '),
+    };
+  };
+
+  const handlePasteAndParse = () => {
+    if (!pasteText.trim()) return;
+    
+    const parsed = parseWhatsAppText(pasteText);
+    
+    if (parsed.name) form.setValue('name', parsed.name);
+    if (parsed.gender === 'Laki-laki' || parsed.gender === 'Perempuan') {
+      form.setValue('gender', parsed.gender);
+    }
+    if (parsed.birthDate) form.setValue('birthDate', parsed.birthDate);
+    if (parsed.address) form.setValue('address', parsed.address);
+    if (parsed.phone) form.setValue('phoneNumber', parsed.phone);
+    if (parsed.complaints) form.setValue('complaints', parsed.complaints);
+    
+    const filled: string[] = [];
+    if (parsed.name) filled.push('Nama');
+    if (parsed.gender) filled.push('Jenis Kelamin');
+    if (parsed.birthDate) filled.push('Tgl Lahir');
+    if (parsed.address) filled.push('Alamat');
+    if (parsed.phone) filled.push('No HP');
+    if (parsed.complaints) filled.push('Keluhan');
+    
+    toast({
+      title: `${filled.length} data berhasil diisi`,
+      description: filled.length > 0 ? `Terisi: ${filled.join(', ')}` : 'Tidak dapat mengenali data dari teks',
+      variant: filled.length > 0 ? 'default' : 'destructive',
+    });
+    
+    setShowPasteSection(false);
+  };
 
   // Mendapatkan data slot terapi yang tersedia
   const { data: therapySlots, isLoading: isLoadingSlots, refetch: refetchTherapySlots } = useQuery({
@@ -872,6 +1014,62 @@ export default function RegisterPage() {
               </div>
             )}
           
+            {/* Paste dari WhatsApp */}
+            {isWalkInMode && (
+              <div className="p-4 rounded-lg border border-purple-200 bg-purple-50">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between"
+                  onClick={() => setShowPasteSection(!showPasteSection)}
+                >
+                  <h3 className="font-medium flex items-center text-purple-800">
+                    <ClipboardPaste className="mr-2 h-4 w-4" />
+                    Input Cepat dari WhatsApp
+                  </h3>
+                  {showPasteSection ? (
+                    <ChevronUp className="h-4 w-4 text-purple-600" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-purple-600" />
+                  )}
+                </button>
+                {showPasteSection && (
+                  <div className="mt-3 space-y-3">
+                    <p className="text-sm text-purple-700">
+                      Paste data pasien dari WhatsApp, lalu klik "Isi Otomatis" untuk mengisi form secara otomatis.
+                    </p>
+                    <Textarea
+                      placeholder={"Contoh:\nNama Ely\nJenis kelamin Perempuan\nTgl lahir 05 Nop 1984\nAlamat Oriana Blok B16-06\nNo HP. 081268910633\nKeluhan sakit pinggang"}
+                      className="bg-white min-h-[140px] text-sm"
+                      value={pasteText}
+                      onChange={(e) => setPasteText(e.target.value)}
+                    />
+                    <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setPasteText('');
+                        }}
+                      >
+                        Bersihkan
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handlePasteAndParse}
+                        disabled={!pasteText.trim()}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Isi Otomatis
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Pencarian Pasien Lama */}
             <div className="p-4 rounded-lg border border-blue-200 bg-blue-50">
               <h3 className="font-medium mb-2 flex items-center text-blue-800">
