@@ -784,19 +784,16 @@ export default function Reports() {
       format(new Date(2023, i), "MMMM", { locale: id })
     );
 
-    // Initialize data with zero amounts
     const monthlyData = monthNames.map(month => ({
       month,
       amount: 0,
     }));
 
-    // Fill in actual data
     if (transactions && Array.isArray(transactions)) {
       transactions.forEach((transaction: any) => {
-        // Menggunakan addHours(-7) untuk menyesuaikan ke zona waktu WIB (UTC+7)
         const adjustedDate = addHours(new Date(transaction.createdAt), -7);
+        if (adjustedDate.getFullYear() !== selectedYear) return;
         const monthIndex = adjustedDate.getMonth();
-        // Gunakan paidAmount untuk menghitung uang yang benar-benar masuk
         const actualPaid = parseFloat(transaction.paidAmount || transaction.totalAmount.toString());
         monthlyData[monthIndex].amount += actualPaid;
       });
@@ -1143,38 +1140,36 @@ export default function Reports() {
                   </Button>
                   
                   {reportPeriod === "monthly" && (
-                    <Button
-                      variant={detailedView ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setDetailedView(!detailedView)}
-                      className="ml-auto"
-                    >
-                      {detailedView ? "Tampilan Sederhana" : "Tampilan Detail"}
-                    </Button>
-                  )}
-                </div>
-                
-                {reportPeriod === "monthly" && detailedView && (
-                  <div className="flex flex-wrap items-center gap-2 mt-4">
-                    <div className="flex items-center">
-                      <span className="mr-2">Tahun:</span>
+                    <>
                       <Select
                         value={selectedYear.toString()}
                         onValueChange={(value) => setSelectedYear(parseInt(value))}
                       >
-                        <SelectTrigger className="w-36">
-                          <SelectValue placeholder="Pilih Tahun" />
+                        <SelectTrigger className="w-28">
+                          <SelectValue placeholder="Tahun" />
                         </SelectTrigger>
                         <SelectContent>
-                          {[2024, 2025, 2026].map((year) => (
+                          {[2024, 2025, 2026, 2027].map((year) => (
                             <SelectItem key={year} value={year.toString()}>
                               {year}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                    
+                      <Button
+                        variant={detailedView ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setDetailedView(!detailedView)}
+                        className="ml-auto"
+                      >
+                        {detailedView ? "Tampilan Sederhana" : "Tampilan Detail"}
+                      </Button>
+                    </>
+                  )}
+                </div>
+                
+                {reportPeriod === "monthly" && detailedView && (
+                  <div className="flex flex-wrap items-center gap-2 mt-4">
                     <div className="flex items-center">
                       <span className="mr-2">Bulan:</span>
                       <Select
@@ -1474,18 +1469,27 @@ export default function Reports() {
                         </LineChart>
                       ) : (
                         <BarChart
-                          data={generateMonthlyFinancialData()}
+                          data={generateMonthlyFinancialData().map((d, i) => ({
+                            ...d,
+                            shortMonth: d.month.substring(0, 3),
+                          }))}
                           margin={{
                             top: 20,
-                            right: 30,
-                            left: 20,
+                            right: 10,
+                            left: 10,
                             bottom: 5,
                           }}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
+                          <XAxis 
+                            dataKey="shortMonth" 
+                            tick={{ fontSize: 11 }}
+                            interval={0}
+                          />
                           <YAxis 
-                            tickFormatter={(value) => `Rp${value.toLocaleString('id-ID')}`} 
+                            tickFormatter={(value) => value >= 1000000 ? `${(value/1000000).toFixed(0)}jt` : value >= 1000 ? `${(value/1000).toFixed(0)}rb` : `${value}`}
+                            tick={{ fontSize: 11 }}
+                            width={50}
                           />
                           <Tooltip 
                             formatter={(value) => [`Rp${(value as number).toLocaleString('id-ID')}`, "Pendapatan"]}
@@ -1494,7 +1498,7 @@ export default function Reports() {
                           <Legend />
                           <Bar
                             dataKey="amount"
-                            name="Pendapatan"
+                            name={`Pendapatan ${selectedYear}`}
                             fill="#4F7CAC"
                             barSize={30}
                           />
