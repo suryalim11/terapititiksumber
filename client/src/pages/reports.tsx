@@ -1139,6 +1139,84 @@ export default function Reports() {
                     Bulanan
                   </Button>
                   
+                  {reportPeriod === "daily" && (
+                    <div className="flex flex-wrap items-center gap-2 w-full">
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7 px-2"
+                          onClick={() => setCurrentReport(prev => ({
+                            ...prev,
+                            startDate: format(subDays(new Date(), 7), "yyyy-MM-dd"),
+                            endDate: format(new Date(), "yyyy-MM-dd"),
+                          }))}
+                        >
+                          7 Hari
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7 px-2"
+                          onClick={() => setCurrentReport(prev => ({
+                            ...prev,
+                            startDate: format(subDays(new Date(), 14), "yyyy-MM-dd"),
+                            endDate: format(new Date(), "yyyy-MM-dd"),
+                          }))}
+                        >
+                          14 Hari
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7 px-2"
+                          onClick={() => setCurrentReport(prev => ({
+                            ...prev,
+                            startDate: format(subDays(new Date(), 30), "yyyy-MM-dd"),
+                            endDate: format(new Date(), "yyyy-MM-dd"),
+                          }))}
+                        >
+                          30 Hari
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7 px-2"
+                          onClick={() => {
+                            const now = new Date();
+                            setCurrentReport(prev => ({
+                              ...prev,
+                              startDate: format(startOfMonth(now), "yyyy-MM-dd"),
+                              endDate: format(endOfMonth(now), "yyyy-MM-dd"),
+                            }));
+                          }}
+                        >
+                          Bulan Ini
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">Dari:</span>
+                          <input
+                            type="date"
+                            value={currentReport.startDate}
+                            onChange={(e) => setCurrentReport(prev => ({ ...prev, startDate: e.target.value }))}
+                            className="border rounded-md px-2 py-1 text-sm w-[140px]"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">s/d:</span>
+                          <input
+                            type="date"
+                            value={currentReport.endDate}
+                            onChange={(e) => setCurrentReport(prev => ({ ...prev, endDate: e.target.value }))}
+                            className="border rounded-md px-2 py-1 text-sm w-[140px]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {reportPeriod === "monthly" && (
                     <>
                       <Select
@@ -1443,15 +1521,24 @@ export default function Reports() {
                           data={generateDailyFinancialData()}
                           margin={{
                             top: 20,
-                            right: 30,
-                            left: 20,
+                            right: 10,
+                            left: 10,
                             bottom: 5,
                           }}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="formattedDate" />
+                          <XAxis 
+                            dataKey="formattedDate" 
+                            tick={{ fontSize: 11 }}
+                            interval={generateDailyFinancialData().length > 14 ? Math.floor(generateDailyFinancialData().length / 10) : 0}
+                            angle={generateDailyFinancialData().length > 10 ? -45 : 0}
+                            textAnchor={generateDailyFinancialData().length > 10 ? "end" : "middle"}
+                            height={generateDailyFinancialData().length > 10 ? 60 : 30}
+                          />
                           <YAxis 
-                            tickFormatter={(value) => `Rp${value.toLocaleString('id-ID')}`} 
+                            tickFormatter={(value) => value >= 1000000 ? `${(value/1000000).toFixed(0)}jt` : value >= 1000 ? `${(value/1000).toFixed(0)}rb` : `${value}`}
+                            tick={{ fontSize: 11 }}
+                            width={50}
                           />
                           <Tooltip 
                             formatter={(value) => [`Rp${(value as number).toLocaleString('id-ID')}`, "Pendapatan"]}
