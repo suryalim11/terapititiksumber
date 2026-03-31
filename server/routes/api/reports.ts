@@ -29,10 +29,15 @@ export function setupReportsRoutes(app: Express) {
       // Dapatkan semua appointment dalam bulan tersebut
       const allAppointments = await storage.getAllAppointments();
 
-      // Filter appointment berdasarkan bulan dan tahun
+      // Filter appointment berdasarkan bulan dan tahun (langsung dari string untuk hindari timezone issue)
       const appointmentsInMonth = allAppointments.filter(apt => {
-        const aptDate = new Date(apt.date);
-        return aptDate >= firstDay && aptDate <= lastDay;
+        try {
+          const rawDate = typeof apt.date === 'string'
+            ? apt.date.split(' ')[0].split('T')[0]
+            : new Date(apt.date).toISOString().split('T')[0];
+          const parts = rawDate.split('-');
+          return parseInt(parts[0]) === year && parseInt(parts[1]) === month;
+        } catch { return false; }
       });
 
       // Kelompokkan per hari
@@ -95,10 +100,19 @@ export function setupReportsRoutes(app: Express) {
       // Buat map patient by id untuk akses cepat
       const patientMap = new Map(allPatients.map(p => [p.id, p]));
 
-      // Filter appointment dalam bulan yang dipilih
+      // Filter appointment dalam bulan yang dipilih (langsung dari string untuk hindari timezone issue)
       const appointmentsInMonth = allAppointments.filter(apt => {
-        const aptDate = new Date(apt.date);
-        return aptDate >= firstDay && aptDate <= lastDay;
+        try {
+          const rawDate = typeof apt.date === 'string'
+            ? apt.date.split(' ')[0].split('T')[0]  // ambil "YYYY-MM-DD"
+            : new Date(apt.date).toISOString().split('T')[0];
+          const parts = rawDate.split('-');
+          const aptYear = parseInt(parts[0]);
+          const aptMonth = parseInt(parts[1]);
+          return aptYear === year && aptMonth === month;
+        } catch {
+          return false;
+        }
       });
 
       // Tentukan kunjungan pertama setiap pasien (untuk menentukan pasien baru vs lama)
@@ -151,8 +165,8 @@ export function setupReportsRoutes(app: Express) {
       // Urutkan berdasarkan tanggal
       visits.sort((a, b) => a.date.localeCompare(b.date));
 
-      const newPatients = visits.filter(v => v.status === 'Baru').length;
-      const returningPatients = visits.filter(v => v.status === 'Lama').length;
+      const newPatients = visits.filter(v => v.visitType === 'BARU').length;
+      const returningPatients = visits.filter(v => v.visitType === 'LAMA').length;
 
       return res.status(200).json({
         success: true,
@@ -193,8 +207,13 @@ export function setupReportsRoutes(app: Express) {
 
       const allAppointments = await storage.getAllAppointments();
       const appointmentsInMonth = allAppointments.filter(apt => {
-        const aptDate = new Date(apt.date);
-        return aptDate >= firstDay && aptDate <= lastDay;
+        try {
+          const rawDate = typeof apt.date === 'string'
+            ? apt.date.split(' ')[0].split('T')[0]
+            : new Date(apt.date).toISOString().split('T')[0];
+          const parts = rawDate.split('-');
+          return parseInt(parts[0]) === year && parseInt(parts[1]) === month;
+        } catch { return false; }
       });
 
       // Format CSV
@@ -240,10 +259,15 @@ export function setupReportsRoutes(app: Express) {
       // Dapatkan semua transaksi
       const allTransactions = await storage.getAllTransactions();
 
-      // Filter transaksi berdasarkan bulan dan tahun
+      // Filter transaksi berdasarkan bulan dan tahun (langsung dari string untuk hindari timezone issue)
       const transactionsInMonth = allTransactions.filter(txn => {
-        const txnDate = new Date(txn.createdAt);
-        return txnDate >= firstDay && txnDate <= lastDay;
+        try {
+          const rawDate = typeof txn.createdAt === 'string'
+            ? txn.createdAt.split(' ')[0].split('T')[0]
+            : new Date(txn.createdAt).toISOString().split('T')[0];
+          const parts = rawDate.split('-');
+          return parseInt(parts[0]) === year && parseInt(parts[1]) === month;
+        } catch { return false; }
       });
 
       // Hitung total pendapatan dan pengeluaran
