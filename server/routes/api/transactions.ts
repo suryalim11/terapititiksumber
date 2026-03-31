@@ -77,15 +77,19 @@ export function setupTransactionsRoutes(app: Express) {
             try {
               // Check if using existing session (when useExistingPackage=true)
               if (item.sessionId) {
-                // Use existing session - increment sessionsUsed
-                console.log(`Using existing session ${item.sessionId} for patient ${transactionData.patientId}`);
+                // BUG FIX #3: Jangan increment sessionsUsed di sini.
+                // Session increment sudah ditangani oleh appointment creation (POST /api/appointments)
+                // yang auto-increment ketika appointment dibuat untuk pasien yang punya sesi aktif.
+                // Melakukan increment di sini juga menyebabkan double-count:
+                //   1x saat appointment dibuat → appointments.ts auto-increment
+                //   1x saat transaksi dibuat  → transactions.ts (kode lama, sudah dihapus)
+                // Transaksi dengan useExistingPackage hanya mencatat billing/pembayaran,
+                // bukan menambah penggunaan sesi baru.
+                console.log(`[useExistingPackage] Transaksi menggunakan sesi ${item.sessionId} untuk pasien ${transactionData.patientId}. Session increment ditangani oleh appointment.`);
                 const session = await storage.getSession(item.sessionId);
-                if (session) {
-                  await storage.updateSessionUsage(item.sessionId, session.sessionsUsed + 1);
-                  console.log(`Updated session ${item.sessionId}: incremented sessionsUsed to ${session.sessionsUsed + 1}`);
-                } else {
+                if (!session) {
                   sessionWarnings.push(`Session ${item.sessionId} tidak ditemukan`);
-                  console.warn(`Session ${item.sessionId} not found, skipping`);
+                  console.warn(`Session ${item.sessionId} not found`);
                 }
               } else {
                 // Creating new package or adding to existing
@@ -94,17 +98,23 @@ export function setupTransactionsRoutes(app: Express) {
 
                 if (existingSession) {
                   // Update existing session - add sessions to it
+                  // BUG FIX #2: Gunakan item.totalSessions (jumlah sesi dalam paket), bukan item.quantity (jumlah item dibeli)
+                  const sessionsToAdd = item.totalSessions || item.quantity || 1;
                   console.log(`Found existing session ${existingSession.id} for patient ${transactionData.patientId} and package ${item.packageId}`);
-                  await storage.addSessionsToPackage(existingSession.id, item.quantity || 1);
-                  console.log(`Updated session ${existingSession.id}: increased total sessions`);
+                  console.log(`Adding ${sessionsToAdd} sessions (totalSessions=${item.totalSessions}, quantity=${item.quantity})`);
+                  await storage.addSessionsToPackage(existingSession.id, sessionsToAdd);
+                  console.log(`Updated session ${existingSession.id}: increased total sessions by ${sessionsToAdd}`);
                 } else {
                   // Create new session
+                  // BUG FIX #1: Gunakan item.totalSessions (jumlah sesi dalam paket), bukan item.quantity (jumlah item dibeli)
+                  const totalSessions = item.totalSessions || item.quantity || 1;
                   console.log(`Creating new session for patient ${transactionData.patientId} and package ${item.packageId}`);
+                  console.log(`Total sessions: ${totalSessions} (totalSessions=${item.totalSessions}, quantity=${item.quantity})`);
                   await storage.createSession({
                     patientId: transactionData.patientId,
                     transactionId: newTransaction.id,
                     packageId: item.packageId,
-                    totalSessions: item.quantity || 1
+                    totalSessions: totalSessions
                   });
                 }
               }
@@ -158,17 +168,15 @@ export function setupTransactionsRoutes(app: Express) {
         return res.status(404).json({ error: 'Transaksi tidak ditemukan' });
       }
 
-      // If transaction used existing session, rollback the sessionsUsed
+      // BUG FIX #3 (rollback): Transaksi dengan useExistingPackage tidak lagi melakukan
+      // increment sessionsUsed saat dibuat (lihat POST handler di atas).
+      // Oleh karena itu, saat transaksi dihapus, TIDAK perlu rollback sessionsUsed.
+      // Session decrement ditangani oleh appointment cancellation (PATCH /api/appointments/:id/status).
+      // Kode rollback lama dihapus untuk menghindari decrement yang salah.
       if (transaction.items && Array.isArray(transaction.items)) {
         for (const item of transaction.items) {
-          // Check if this item used an existing session
           if (item.type === 'package' && item.sessionId && item.useExistingPackage) {
-            console.log(`Rolling back session ${item.sessionId} for deleted transaction ${transactionId}`);
-            const session = await storage.getSession(item.sessionId);
-            if (session && session.sessionsUsed > 0) {
-              await storage.updateSessionUsage(item.sessionId, session.sessionsUsed - 1);
-              console.log(`Rolled back session ${item.sessionId}: decremented sessionsUsed to ${session.sessionsUsed - 1}`);
-            }
+            console.log(`[DELETE TX] Transaksi ${transactionId} menggunakan sesi ${item.sessionId} (useExistingPackage). Tidak ada rollback sessionsUsed karena increment ditangani oleh appointment.`);
           }
         }
       }
