@@ -78,7 +78,10 @@ export default function Transactions() {
   
   // Extract patient ID from URL if present
   const urlParams = new URLSearchParams(location.split("?")[1] || "");
+  // patientIdFromUrl: dipakai untuk BUAT TRANSAKSI BARU (dari header pasien)
+  // viewHistoryId: dipakai untuk LIHAT RIWAYAT saja (dari tombol Riwayat halaman Pasien)
   const patientIdFromUrl = urlParams.get("patientId");
+  const viewHistoryId = urlParams.get("viewHistory");
   
   // States
   const [searchTerm, setSearchTerm] = useState("");
@@ -697,15 +700,20 @@ export default function Transactions() {
   // Log data yang diterima
   // Pemeriksaan data dilakukan tanpa logging untuk performa yang lebih baik
   
-  const filteredTransactions = transactions 
+  const filteredTransactions = transactions
     ? transactions
         .filter((transaction: Transaction) => {
+          // Filter by viewHistory dari URL (tombol Riwayat di halaman Pasien)
+          if (viewHistoryId) {
+            const historyPatientId = parseInt(viewHistoryId);
+            if (transaction.patientId !== historyPatientId) return false;
+          }
           // Filter by search term
           if (searchTerm) {
             const patientName = getPatientName(transaction.patientId, transaction).toLowerCase();
             const txId = transaction.transactionId.toLowerCase();
-            
-            return patientName.includes(searchTerm.toLowerCase()) || 
+
+            return patientName.includes(searchTerm.toLowerCase()) ||
                   txId.includes(searchTerm.toLowerCase());
           }
           return true;

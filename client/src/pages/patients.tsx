@@ -451,7 +451,7 @@ export default function Patients() {
                     variant="ghost"
                     size="sm"
                     className="touch-target h-12 md:h-10 text-sm justify-center text-primary hover:text-primary"
-                    onClick={() => navigate(`/transactions?patientId=${patient.id}`)}
+                    onClick={() => navigate(`/transactions?viewHistory=${patient.id}`)}
                   >
                     <Receipt className="md:mr-1 h-3.5 w-3.5" />
                     <span className="md:inline-block ml-1">Riwayat</span>
