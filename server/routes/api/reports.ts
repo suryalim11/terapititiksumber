@@ -140,11 +140,11 @@ export function setupReportsRoutes(app: Express) {
         visits.push({
           patientName: patient.name,
           date: dateStr,
-          address: patient.address || '',
-          age,
-          gender: patient.gender || '',
-          status: isNew ? 'Baru' : 'Lama',
-          complaints: (patient as any).complaints || ''
+          patientAddress: patient.address || '',
+          patientAge: age,
+          patientGender: patient.gender || '',
+          visitType: isNew ? 'BARU' : 'LAMA',
+          complaint: (patient as any).complaints || ''
         });
       }
 
