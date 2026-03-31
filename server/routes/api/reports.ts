@@ -6,6 +6,7 @@ import { Express, Request, Response } from "express";
 import { requireAuth } from "../../middleware/auth";
 import { storage } from "../../storage";
 import { startOfMonth, endOfMonth, eachDayOfInterval, format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 export function setupReportsRoutes(app: Express) {
   // Endpoint untuk laporan pasien per hari
@@ -50,7 +51,7 @@ export function setupReportsRoutes(app: Express) {
       const reportData = Array.from(appointmentsByDay.entries()).map(([date, count]) => ({
         date,
         count,
-        dayName: format(new Date(date), 'EEEE', { locale: { code: 'id' } })
+        dayName: format(new Date(date), 'EEEE', { locale: idLocale })
       })).sort((a, b) => a.date.localeCompare(b.date));
 
       return res.status(200).json({
@@ -152,7 +153,7 @@ export function setupReportsRoutes(app: Express) {
           const dateStr = typeof apt.date === 'string'
             ? apt.date.split(' ')[0]
             : new Date(apt.date).toISOString().split('T')[0];
-          return [dateStr, "1", format(new Date(apt.date), 'EEEE')];
+          return [dateStr, "1", format(new Date(apt.date), 'EEEE', { locale: idLocale })];
         })
       ].map(row => row.join(",")).join("\n");
 
