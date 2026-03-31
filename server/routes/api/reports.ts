@@ -44,28 +44,40 @@ export function setupReportsRoutes(app: Express) {
       const appointmentsByDay = new Map<string, number>();
 
       appointmentsInMonth.forEach(apt => {
-        const dateStr = typeof apt.date === 'string'
-          ? apt.date.split(' ')[0]
+        const rawDate = typeof apt.date === 'string'
+          ? apt.date.split(' ')[0].split('T')[0]
           : new Date(apt.date).toISOString().split('T')[0];
 
-        const count = appointmentsByDay.get(dateStr) || 0;
-        appointmentsByDay.set(dateStr, count + 1);
+        const patientCount = appointmentsByDay.get(rawDate) || 0;
+        appointmentsByDay.set(rawDate, patientCount + 1);
       });
 
-      // Format untuk response
-      const reportData = Array.from(appointmentsByDay.entries()).map(([date, count]) => ({
-        date,
-        count,
-        dayName: format(new Date(date), 'EEEE', { locale: idLocale })
-      })).sort((a, b) => a.date.localeCompare(b.date));
+      // Buat array semua hari dalam bulan (termasuk yang 0 kunjungan)
+      const allDays = eachDayOfInterval({ start: firstDay, end: lastDay });
+      const dailyData = allDays.map(day => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const patientCount = appointmentsByDay.get(dateStr) || 0;
+        return {
+          date: dateStr,
+          patientCount,
+          dayName: format(day, 'EEEE', { locale: idLocale })
+        };
+      });
+
+      const totalPatients = appointmentsInMonth.length;
+      const daysInMonth = allDays.length;
+      const averagePatientsPerDay = daysInMonth > 0
+        ? (totalPatients / daysInMonth).toFixed(1)
+        : '0.0';
 
       return res.status(200).json({
         success: true,
         month,
         year,
-        totalDays: reportData.length,
-        totalAppointments: appointmentsInMonth.length,
-        data: reportData
+        totalDays: daysInMonth,
+        totalPatients,
+        averagePatientsPerDay,
+        dailyData
       });
     } catch (error) {
       console.error("Error fetching patients per day report:", error);
