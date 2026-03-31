@@ -71,48 +71,99 @@ export function setupReportsRoutes(app: Express) {
     }
   });
 
-  // Endpoint untuk laporan kunjungan bulanan
+  // Endpoint untuk laporan kunjungan bulanan (detail per pasien)
   app.get("/api/reports/monthly-visits", requireAuth, async (req: Request, res: Response) => {
     try {
       const year = parseInt(req.query.year as string);
+      const month = parseInt(req.query.month as string);
 
-      if (isNaN(year)) {
+      if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
         return res.status(400).json({
           success: false,
-          message: "Tahun tidak valid"
+          message: "Tahun dan bulan tidak valid"
         });
       }
 
-      // Dapatkan semua appointment dalam tahun tersebut
+      // Buat tanggal awal dan akhir bulan
+      const firstDay = startOfMonth(new Date(year, month - 1, 1));
+      const lastDay = endOfMonth(new Date(year, month - 1, 1));
+
+      // Dapatkan semua appointment dan pasien
       const allAppointments = await storage.getAllAppointments();
+      const allPatients = await storage.getAllPatients();
 
-      // Filter dan kelompokkan per bulan
-      const visitsByMonth = new Array(12).fill(0);
+      // Buat map patient by id untuk akses cepat
+      const patientMap = new Map(allPatients.map(p => [p.id, p]));
 
+      // Filter appointment dalam bulan yang dipilih
+      const appointmentsInMonth = allAppointments.filter(apt => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= firstDay && aptDate <= lastDay;
+      });
+
+      // Tentukan kunjungan pertama setiap pasien (untuk menentukan pasien baru vs lama)
+      const patientFirstVisitMap = new Map<number, Date>();
       allAppointments.forEach(apt => {
         const aptDate = new Date(apt.date);
-        if (aptDate.getFullYear() === year) {
-          const month = aptDate.getMonth();
-          visitsByMonth[month]++;
+        const existing = patientFirstVisitMap.get(apt.patientId);
+        if (!existing || aptDate < existing) {
+          patientFirstVisitMap.set(apt.patientId, aptDate);
         }
       });
 
-      const months = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-      ];
+      // Bangun daftar kunjungan dengan detail pasien
+      const visits = [];
+      for (const apt of appointmentsInMonth) {
+        const patient = patientMap.get(apt.patientId);
+        if (!patient) continue;
 
-      const reportData = visitsByMonth.map((count, index) => ({
-        month: months[index],
-        monthNumber: index + 1,
-        visits: count
-      }));
+        // Tentukan apakah pasien baru (kunjungan pertama ada di bulan ini)
+        const firstVisit = patientFirstVisitMap.get(apt.patientId);
+        const isNew = firstVisit && firstVisit >= firstDay && firstVisit <= lastDay;
+
+        // Hitung usia
+        let age = 0;
+        if (patient.birthDate) {
+          const birthDate = new Date(patient.birthDate);
+          const today = new Date();
+          age = today.getFullYear() - birthDate.getFullYear();
+          const monthDiff = today.getMonth() - birthDate.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+          }
+        }
+
+        const dateStr = typeof apt.date === 'string'
+          ? apt.date.split(' ')[0]
+          : new Date(apt.date).toISOString().split('T')[0];
+
+        visits.push({
+          patientName: patient.name,
+          date: dateStr,
+          address: patient.address || '',
+          age,
+          gender: patient.gender || '',
+          status: isNew ? 'Baru' : 'Lama',
+          complaints: (patient as any).complaints || ''
+        });
+      }
+
+      // Urutkan berdasarkan tanggal
+      visits.sort((a, b) => a.date.localeCompare(b.date));
+
+      const newPatients = visits.filter(v => v.status === 'Baru').length;
+      const returningPatients = visits.filter(v => v.status === 'Lama').length;
 
       return res.status(200).json({
         success: true,
+        month,
         year,
-        data: reportData,
-        totalVisits: visitsByMonth.reduce((a, b) => a + b, 0)
+        summary: {
+          totalVisits: visits.length,
+          newPatients,
+          returningPatients
+        },
+        visits
       });
     } catch (error) {
       console.error("Error fetching monthly visits report:", error);
