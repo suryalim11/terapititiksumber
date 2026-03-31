@@ -6,6 +6,7 @@ import { requireAuth, requireAdmin } from "../../middleware/auth";
 import { storage } from "../../storage";
 import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
+import { comparePasswords } from "../../auth";
 
 /**
  * Mendaftarkan rute-rute untuk pengguna
@@ -194,12 +195,28 @@ export function setupUserRoutes(app: Express) {
         });
       }
       
-      // Verifikasi password lama (kecuali admin)
-      if (!isAdmin && existingUser.password !== currentPassword) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Password saat ini tidak sesuai" 
-        });
+      // BUG FIX #10: Verifikasi password dengan benar (plaintext atau hashed)
+      if (!isAdmin) {
+        let passwordValid = false;
+        if (existingUser.password.includes('.')) {
+          try {
+            // Password sudah dihash
+            passwordValid = await comparePasswords(currentPassword, existingUser.password);
+          } catch (err) {
+            console.error('Error comparing hashed password:', err);
+            passwordValid = false;
+          }
+        } else {
+          // Password masih plaintext (backward compatibility)
+          passwordValid = existingUser.password === currentPassword;
+        }
+
+        if (!passwordValid) {
+          return res.status(400).json({
+            success: false,
+            message: "Password saat ini tidak sesuai"
+          });
+        }
       }
       
       // Perbarui password

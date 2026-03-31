@@ -9,13 +9,9 @@ export function setupSessionsRoutes(app: Express) {
   // Mendapatkan semua sesi terapi (filter by patientId jika diberikan)
   app.get('/api/sessions', async (req: Request, res: Response) => {
     try {
-      // Endpoint khusus untuk pasien 369 - return array kosong untuk menghindari error
+      // BUG FIX #11: Hapus hardcode pasien ID 369
       const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : null;
-      if (patientId === 369) {
-        console.log(`Mengembalikan array sesi terapi kosong untuk pasien ID 369`);
-        return res.status(200).json([]);
-      }
-      
+
       let sessions;
       
       if (patientId) {

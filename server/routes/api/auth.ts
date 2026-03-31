@@ -5,6 +5,7 @@ import { Express, Request, Response, NextFunction } from "express";
 import { storage } from "../../storage";
 import { requireAuth } from "../../middleware/auth";
 import passport from "passport";
+import { comparePasswords } from "../../auth";
 
 /**
  * Mendaftarkan rute-rute untuk autentikasi
@@ -173,8 +174,22 @@ export function setupAuthRoutes(app: Express) {
         });
       }
       
-      // Verifikasi password saat ini
-      if (user.password !== currentPassword) {
+      // BUG FIX #10: Verifikasi password dengan benar (plaintext atau hashed)
+      let passwordValid = false;
+      if (user.password.includes('.')) {
+        try {
+          // Password sudah dihash
+          passwordValid = await comparePasswords(currentPassword, user.password);
+        } catch (err) {
+          console.error('Error comparing hashed password:', err);
+          passwordValid = false;
+        }
+      } else {
+        // Password masih plaintext (backward compatibility)
+        passwordValid = user.password === currentPassword;
+      }
+
+      if (!passwordValid) {
         return res.status(400).json({
           success: false,
           message: "Password saat ini tidak sesuai"

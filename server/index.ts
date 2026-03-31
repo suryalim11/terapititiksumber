@@ -5,6 +5,7 @@ import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { storage } from "./storage";
+import { comparePasswords } from "./auth";
 // Import endpoint JSON mentah
 import { setupRawJsonEndpoints } from "./raw-json-endpoint";
 import { setupRawProductRoutes } from "./routes/api/raw-products";
@@ -61,17 +62,31 @@ const setupPassport = () => {
     async (username, password, done) => {
       try {
         const user = await storage.getUserByUsername(username);
-        
+
         if (!user) {
           return done(null, false, { message: 'Nama pengguna tidak ditemukan' });
         }
-        
-        // Di produksi, gunakan hashPassword dan comparePasswords
-        // untuk saat ini, gunakan perbandingan langsung untuk sederhana
-        if (user.password !== password) {
+
+        // BUG FIX #10: Verifikasi password dengan benar
+        // Cek dulu apakah password sudah dihash (format: hash.salt)
+        let passwordValid = false;
+        if (user.password.includes('.')) {
+          try {
+            // Password sudah dihash, gunakan comparePasswords
+            passwordValid = await comparePasswords(password, user.password);
+          } catch (err) {
+            console.error('Error comparing hashed password:', err);
+            passwordValid = false;
+          }
+        } else {
+          // Password masih plaintext (untuk backward compatibility dengan data lama)
+          passwordValid = user.password === password;
+        }
+
+        if (!passwordValid) {
           return done(null, false, { message: 'Password salah' });
         }
-        
+
         return done(null, user);
       } catch (error) {
         return done(error);

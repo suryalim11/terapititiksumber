@@ -1,11 +1,11 @@
-import { 
+import {
   User, InsertUser, Patient, InsertPatient,
   Product, InsertProduct, Package, InsertPackage, Transaction,
   InsertTransaction, Session, InsertSession,
   Appointment, InsertAppointment, TherapySlot, InsertTherapySlot,
   RegistrationLink, InsertRegistrationLink, ConfirmationToken, InsertConfirmationToken,
   MedicalHistory, InsertMedicalHistory, SystemLog, InsertSystemLog,
-  medicalHistories, patients, users, products, packages, transactions, 
+  medicalHistories, patients, users, products, packages, transactions,
   sessions, appointments, therapySlots, registrationLinks, confirmationTokens, systemLogs
 } from "@shared/schema";
 import { db, pool } from "./db";
@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { IStorage } from "./storage";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import { hashPassword } from "./auth";
 
 // Utility functions for formatting
 function formatRupiah(amount: number): string {
@@ -92,10 +93,13 @@ export class DatabaseStorage implements IStorage {
 
       if (existingUsers.length === 0) {
         console.log("Initializing default admin users...");
+        // BUG FIX #10: Hash admin passwords sebelum menyimpan
+        const hashedAdminPassword = await hashPassword("admin123456");
+
         // Create default admin user
         await db.insert(schema.users).values({
           username: "admin",
-          password: "admin123456",
+          password: hashedAdminPassword,
           name: "Administrator",
           role: "admin"
         });
@@ -103,7 +107,7 @@ export class DatabaseStorage implements IStorage {
         // Create second admin user
         await db.insert(schema.users).values({
           username: "suryalim11",
-          password: "admin123456", 
+          password: hashedAdminPassword,
           name: "Surya Lim",
           role: "admin"
         });
@@ -309,14 +313,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const result = await db.insert(schema.users).values(user).returning();
+    // BUG FIX #10: Hash password sebelum menyimpan
+    const hashedUser = {
+      ...user,
+      password: await hashPassword(user.password)
+    };
+    const result = await db.insert(schema.users).values(hashedUser).returning();
     return result[0];
   }
 
   async updateUserPassword(id: number, newPassword: string): Promise<User | undefined> {
+    // BUG FIX #10: Hash password sebelum menyimpan
+    const hashedPassword = await hashPassword(newPassword);
     const result = await db
       .update(schema.users)
-      .set({ password: newPassword })
+      .set({ password: hashedPassword })
       .where(eq(schema.users.id, id))
       .returning();
     return result[0];
@@ -349,17 +360,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPatient(patient: InsertPatient): Promise<Patient> {
-    // Generate patient ID - optimized dengan MAX query langsung
-    const maxResult = await db.select({ maxId: sql<number>`COALESCE(MAX(id), 0)` })
-      .from(schema.patients);
-    
-    const nextId = (maxResult[0]?.maxId || 0) + 1;
-    const patientId = `P-${new Date().getFullYear()}-${String(nextId).padStart(3, '0')}`;
-    
-    const result = await db.insert(schema.patients)
-      .values({ ...patient, patientId })
+    // BUG FIX #14: Gunakan numeric ID yang auto-generated dari database untuk patientId
+    // Ini memastikan patientId selalu konsisten dengan numeric id, dan tidak ada duplikasi
+    // setelah patient deletion
+
+    // Pertama, insert patient tanpa patientId
+    const tempResult = await db.insert(schema.patients)
+      .values({ ...patient, patientId: '' })  // placeholder yang akan diupdate
       .returning();
-      
+
+    const insertedPatient = tempResult[0];
+    const generatedId = insertedPatient.id;
+
+    // Sekarang generate patientId dengan numeric ID yang sudah ditetapkan database
+    const patientId = `P-${new Date().getFullYear()}-${String(generatedId).padStart(3, '0')}`;
+
+    // Update patientId dengan yang baru
+    const result = await db
+      .update(schema.patients)
+      .set({ patientId })
+      .where(eq(schema.patients.id, generatedId))
+      .returning();
+
     // BUG FIX #8: DIHAPUS — increment slot usage di sini menyebabkan double-count.
     // Slot usage sudah di-increment secara eksplisit oleh:
     //   1. POST /api/patients/register-walkin (patients.ts)
@@ -480,11 +502,8 @@ export class DatabaseStorage implements IStorage {
         processedName: patient.name.toLowerCase().replace(/\s+/g, ' ').trim()
       }));
       
-      // Tambahkan nama alternatif untuk pasien tertentu (kasus khusus)
-      const alternativeNames: Record<number, string[]> = {
-        // ID pasien: [nama alternatif1, nama alternatif2, ...]
-        115: ['syaflina', 'syafliana', 'syahlina', 'aqeela', 'queenzky', 'zahwa', 'queen'] // Queenzky Zahwa Aqeela
-      };
+      // BUG FIX #13: Hapus hardcode nama alternatif untuk pasien tertentu
+      // Pencarian seharusnya hanya menggunakan nama pasien yang sebenarnya di database
       
       // Jika query lebih dari 3 karakter, coba lakukan pencarian "fuzzy" sederhana
       // dengan memisahkan query menjadi bagian-bagian dan memeriksa apakah setiap bagian cocok
@@ -522,20 +541,7 @@ export class DatabaseStorage implements IStorage {
           return true;
         }
         
-        // 5. Cek nama alternatif untuk pasien tertentu (kasus khusus)
-        const alternativeNamesForPatient = alternativeNames[patient.id];
-        if (alternativeNamesForPatient) {
-          // Cek apakah query cocok dengan salah satu nama alternatif
-          const alternativeMatch = alternativeNamesForPatient.some(altName => {
-            return queryNoExtraSpaces.includes(altName) || altName.includes(queryNoExtraSpaces);
-          });
-          
-          if (alternativeMatch) {
-            console.log(`Matched via alternative name for patient ${patient.id}: ${patient.name}`);
-            return true;
-          }
-        }
-        
+        // BUG FIX #13: Hapus pengecekan nama alternatif hardcode
         return false;
       });
       

@@ -9,13 +9,9 @@ export function setupTransactionsRoutes(app: Express) {
   // Mendapatkan semua transaksi (filter by patientId jika diberikan)
   app.get('/api/transactions', async (req: Request, res: Response) => {
     try {
-      // Endpoint khusus untuk pasien 369 - return array kosong untuk menghindari error
+      // BUG FIX #11: Hapus hardcode pasien ID 369
       const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : null;
-      if (patientId === 369) {
-        console.log(`Mengembalikan array transaksi kosong untuk pasien ID 369`);
-        return res.status(200).json([]);
-      }
-      
+
       let transactions;
       if (patientId) {
         const includeRelated = req.query.includeRelated === 'true';

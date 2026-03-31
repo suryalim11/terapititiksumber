@@ -17,13 +17,8 @@ export function setupMedicalHistoriesRoutes(app: Express) {
       if (isNaN(patientId)) {
         return res.status(400).json({ error: 'ID pasien tidak valid' });
       }
-      
-      // Penanganan khusus untuk pasien 369 (Anita)
-      if (patientId === 369) {
-        console.log('Mengembalikan data riwayat medis kosong untuk pasien 369 (Anita)');
-        return res.status(200).json([]);
-      }
-      
+
+      // BUG FIX #11: Hapus hardcode pasien ID 369
       const medicalHistories = await storage.getMedicalHistoriesByPatient(patientId);
       res.status(200).json(medicalHistories);
     } catch (error) {

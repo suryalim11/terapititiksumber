@@ -8,23 +8,8 @@ import { z } from "zod";
 import { insertTherapySlotSchema } from "@shared/schema";
 import { getWIBDate } from "../../utils/date-utils";
 
-// Map untuk menyimpan koreksi data slot berdasarkan ID
-// Ini adalah tabel yang komprehensif mencakup tanggal, waktu, kuota, jumlah pasien, dll.
-const SLOT_CORRECTIONS: Record<number, { 
-  date: string, 
-  timeSlot: string,
-  maxQuota?: number,
-  currentCount?: number,
-  patientCount?: number  // Jumlah pasien aktual (appointment aktif)
-}> = {
-  466: { date: "2025-05-20", timeSlot: "10:00-12:00", maxQuota: 6, currentCount: 0, patientCount: 0 }, // Selasa, 20 Mei
-  467: { date: "2025-05-21", timeSlot: "13:00-15:00", maxQuota: 4, currentCount: 0, patientCount: 0 }, // Rabu, 21 Mei
-  468: { date: "2025-05-22", timeSlot: "15:30-18:00", maxQuota: 6, currentCount: 0, patientCount: 0 }, // Kamis, 22 Mei
-  469: { date: "2025-05-23", timeSlot: "10:00-12:30", maxQuota: 6, currentCount: 0, patientCount: 0 }, // Jumat, 23 Mei
-  470: { date: "2025-05-24", timeSlot: "10:00-12:30", maxQuota: 6, currentCount: 0, patientCount: 0 }, // Sabtu, 24 Mei
-  471: { date: "2025-05-19", timeSlot: "13:00-15:00", maxQuota: 4, currentCount: 1, patientCount: 1 }, // Senin, 19 Mei
-  474: { date: "2025-05-19", timeSlot: "10:00-11:00", maxQuota: 3, currentCount: 0, patientCount: 0 }  // Senin, 19 Mei
-};
+// BUG FIX #12: Hapus hardcode SLOT_CORRECTIONS data dari Mei 2025
+// Data slot seharusnya diambil langsung dari database, bukan dari hardcode
 
 // Format tanggal untuk ditampilkan kepada pengguna
 function formatDateForDisplay(dateStr: string): string {
@@ -38,44 +23,15 @@ function formatDateForDisplay(dateStr: string): string {
   return date.toLocaleDateString('id-ID', options);
 }
 
-// Fungsi untuk memperbaiki data slot terapi
-function correctTherapySlotData(slot: any): any {
+// Fungsi untuk format data slot terapi (tanpa koreksi hardcode)
+function formatTherapySlotData(slot: any): any {
   // Clone object untuk menghindari modifikasi objek asli
-  const correctedSlot = { ...slot };
-  
-  // Periksa apakah slot memerlukan koreksi
-  if (SLOT_CORRECTIONS[slot.id]) {
-    const correction = SLOT_CORRECTIONS[slot.id];
-    
-    // Koreksi tanggal dan waktu
-    correctedSlot.date = correction.date;
-    correctedSlot.timeSlot = correction.timeSlot;
-    correctedSlot.timeSlotKey = `${correction.date}_${correction.timeSlot}`;
-    correctedSlot.displayDate = formatDateForDisplay(correction.date);
-    
-    // Koreksi data kuota jika tersedia
-    if (correction.maxQuota !== undefined) {
-      correctedSlot.maxQuota = correction.maxQuota;
-    }
-    
-    // Koreksi jumlah pasien jika tersedia
-    if (correction.currentCount !== undefined) {
-      correctedSlot.currentCount = correction.currentCount;
-    }
-    
-    // Tambahkan jumlah pasien aktual (appointment aktif) jika tersedia
-    if (correction.patientCount !== undefined) {
-      correctedSlot.patientCount = correction.patientCount;
-    }
-    
-    correctedSlot.corrected = true;
-  } else {
-    // Jika tidak ada koreksi, tetap tambahkan displayDate untuk konsistensi
-    correctedSlot.displayDate = formatDateForDisplay(slot.date);
-    correctedSlot.corrected = false;
-  }
-  
-  return correctedSlot;
+  const formattedSlot = { ...slot };
+
+  // Tambahkan displayDate untuk konsistensi
+  formattedSlot.displayDate = formatDateForDisplay(slot.date);
+
+  return formattedSlot;
 }
 
 /**
@@ -125,28 +81,16 @@ export function setupTherapySlotsRoutes(app: Express) {
       // Buat registry mapping dari timeSlotKey ke ID
       const registry: Record<string, number> = {};
       
-      // Proses setiap slot
+      // BUG FIX #12: Gunakan data slot dari database (tanpa hardcode koreksi)
       for (const slot of allSlots) {
-        // Periksa apakah slot memerlukan koreksi
-        if (SLOT_CORRECTIONS[slot.id]) {
-          const correction = SLOT_CORRECTIONS[slot.id];
-          const key = `${correction.date}_${correction.timeSlot}`;
-          registry[key] = slot.id;
-        } else {
-          // Jika tidak ada koreksi, gunakan data slot asli
-          const dateStr = typeof slot.date === 'string' ? slot.date.split(' ')[0] : new Date(slot.date).toISOString().split('T')[0];
-          const key = slot.timeSlotKey || `${dateStr}_${slot.timeSlot}`;
-          registry[key] = slot.id;
-        }
+        // Gunakan data slot asli dari database
+        const dateStr = typeof slot.date === 'string' ? slot.date.split(' ')[0] : new Date(slot.date).toISOString().split('T')[0];
+        const key = slot.timeSlotKey || `${dateStr}_${slot.timeSlot}`;
+        registry[key] = slot.id;
       }
-      
-      // Tambahkan semua koreksi manual ke registry (untuk kasus dimana slot mungkin tidak aktif)
-      for (const [idStr, correction] of Object.entries(SLOT_CORRECTIONS)) {
-        const key = `${correction.date}_${correction.timeSlot}`;
-        const id = parseInt(idStr);
-        registry[key] = id;
-      }
-      
+
+      // BUG FIX #12: Hapus penambahan koreksi manual hardcode
+
       // Update cache
       slotRegistryCache = {
         data: registry,
@@ -193,7 +137,7 @@ export function setupTherapySlotsRoutes(app: Express) {
         
         // Terapkan koreksi jika diminta
         if (applyCorrections) {
-          therapySlots = therapySlots.map(slot => correctTherapySlotData(slot));
+          therapySlots = therapySlots.map(slot => formatTherapySlotData(slot));
         }
         
         console.log(`Query completed in ${Date.now() - startTime}ms, returning from cache ${therapySlots.length} slots`);
@@ -223,7 +167,7 @@ export function setupTherapySlotsRoutes(app: Express) {
       
       // Terapkan koreksi jika diminta
       if (applyCorrections) {
-        therapySlots = therapySlots.map(slot => correctTherapySlotData(slot));
+        therapySlots = therapySlots.map(slot => formatTherapySlotData(slot));
       }
       
       console.log(`Query completed in ${Date.now() - startTime}ms, found ${therapySlots.length} slots`);
@@ -258,7 +202,7 @@ export function setupTherapySlotsRoutes(app: Express) {
       }
       
       // Terapkan koreksi jika diperlukan
-      const result = applyCorrections ? correctTherapySlotData(therapySlot) : therapySlot;
+      const result = applyCorrections ? formatTherapySlotData(therapySlot) : therapySlot;
       
       // Log untuk debugging
       console.log(`Mengirim detail slot terapi ID ${id}, koreksi=${applyCorrections}`);
@@ -291,23 +235,7 @@ export function setupTherapySlotsRoutes(app: Express) {
       // Cari slot dengan waktu yang cocok
       let matchingSlot = slots.find(slot => slot.timeSlot === timeSlot);
       
-      // Jika tidak ditemukan, cari dari koreksi manual
-      if (!matchingSlot) {
-        console.log(`Slot dengan key ${timeSlotKey} tidak ditemukan, mencari di koreksi manual...`);
-        
-        // Temukan slot ID yang memiliki koreksi yang cocok dengan timeSlotKey ini
-        const correctionEntries = Object.entries(SLOT_CORRECTIONS);
-        const matchingCorrection = correctionEntries.find(([_, correction]) => {
-          return `${correction.date}_${correction.timeSlot}` === timeSlotKey;
-        });
-        
-        if (matchingCorrection) {
-          const slotId = parseInt(matchingCorrection[0]);
-          console.log(`Ditemukan koreksi untuk timeSlotKey ${timeSlotKey}: slot ID ${slotId}`);
-          matchingSlot = await storage.getTherapySlot(slotId);
-        }
-      }
-      
+      // BUG FIX #12: Hapus pencarian di koreksi manual hardcode
       if (!matchingSlot) {
         return res.status(404).json({ 
           success: false, 
@@ -316,7 +244,7 @@ export function setupTherapySlotsRoutes(app: Express) {
       }
       
       // Terapkan koreksi jika diperlukan
-      const result = correctTherapySlotData(matchingSlot);
+      const result = formatTherapySlotData(matchingSlot);
       
       return res.status(200).json({
         success: true,
@@ -352,7 +280,7 @@ export function setupTherapySlotsRoutes(app: Express) {
       
       // Proses koreksi jika diperlukan
       if (applyCorrections) {
-        therapySlots = therapySlots.map(slot => correctTherapySlotData(slot));
+        therapySlots = therapySlots.map(slot => formatTherapySlotData(slot));
       }
       
       return res.status(200).json({
@@ -778,7 +706,7 @@ export function setupTherapySlotsRoutes(app: Express) {
           }
           
           // Terapkan koreksi jika diminta
-          let slotData = applyCorrections ? correctTherapySlotData(therapySlot) : therapySlot;
+          let slotData = applyCorrections ? formatTherapySlotData(therapySlot) : therapySlot;
           
           // Mapping ke data yang lebih ringan
           return {
