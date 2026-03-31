@@ -147,9 +147,12 @@ export function setupReportsRoutes(app: Express) {
           }
         }
 
-        const dateStr = typeof apt.date === 'string'
-          ? apt.date.split(' ')[0]
+        // Format tanggal DD-MM-YYYY sesuai ekspektasi client
+        const rawDateStr = typeof apt.date === 'string'
+          ? apt.date.split(' ')[0].split('T')[0]
           : new Date(apt.date).toISOString().split('T')[0];
+        const [yr, mo, dy] = rawDateStr.split('-');
+        const dateStr = `${dy}-${mo}-${yr}`;  // DD-MM-YYYY
 
         visits.push({
           patientName: patient.name,
