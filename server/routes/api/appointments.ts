@@ -37,46 +37,33 @@ export function setupAppointmentRoutes(app: Express) {
     }
   });
 
-  // Mendapatkan appointment berdasarkan ID
-  app.get("/api/appointments/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const appointment = await storage.getAppointment(id);
-      
-      if (!appointment) {
-        return res.status(404).json({ error: "Appointment tidak ditemukan" });
-      }
-      
-      res.json(appointment);
-    } catch (error) {
-      console.error("Error getting appointment:", error);
-      res.status(500).json({ error: "Gagal mendapatkan data appointment" });
-    }
-  });
+  // BUG FIX #5: Route spesifik HARUS didaftarkan SEBELUM route /:id
+  // karena Express mencocokkan route secara berurutan.
+  // Sebelumnya /:id menyerap request ke /date/xxx, /patient/xxx, /slot/xxx
 
   // Mendapatkan appointment berdasarkan tanggal
   app.get("/api/appointments/date/:date", requireAuth, async (req: Request, res: Response) => {
     try {
       const date = req.params.date;
-      
+
       if (!date) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Parameter tanggal diperlukan" 
+        return res.status(400).json({
+          success: false,
+          message: "Parameter tanggal diperlukan"
         });
       }
-      
+
       const appointments = await storage.getAppointmentsByDate(date);
-      
+
       return res.status(200).json({
         success: true,
         appointments
       });
     } catch (error) {
       console.error("Error getting appointments by date:", error);
-      return res.status(500).json({ 
-        success: false, 
-        message: "Terjadi kesalahan saat mengambil data appointment" 
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil data appointment"
       });
     }
   });
@@ -85,25 +72,25 @@ export function setupAppointmentRoutes(app: Express) {
   app.get("/api/appointments/patient/:patientId", requireAuth, async (req: Request, res: Response) => {
     try {
       const patientId = parseInt(req.params.patientId);
-      
+
       if (isNaN(patientId)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "ID pasien tidak valid" 
+        return res.status(400).json({
+          success: false,
+          message: "ID pasien tidak valid"
         });
       }
-      
+
       const appointments = await storage.getAppointmentsByPatient(patientId);
-      
+
       return res.status(200).json({
         success: true,
         appointments
       });
     } catch (error) {
       console.error("Error getting appointments by patient:", error);
-      return res.status(500).json({ 
-        success: false, 
-        message: "Terjadi kesalahan saat mengambil data appointment" 
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil data appointment"
       });
     }
   });
@@ -112,16 +99,16 @@ export function setupAppointmentRoutes(app: Express) {
   app.get("/api/appointments/slot/:slotId", requireAuth, async (req: Request, res: Response) => {
     try {
       const slotId = parseInt(req.params.slotId);
-      
+
       if (isNaN(slotId)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "ID slot terapi tidak valid" 
+        return res.status(400).json({
+          success: false,
+          message: "ID slot terapi tidak valid"
         });
       }
-      
+
       const appointments = await storage.getAppointmentsByTherapySlot(slotId);
-      
+
       return res.status(200).json({
         success: true,
         appointments
@@ -132,6 +119,24 @@ export function setupAppointmentRoutes(app: Express) {
         success: false, 
         message: "Terjadi kesalahan saat mengambil data appointment" 
       });
+    }
+  });
+
+  // Mendapatkan appointment berdasarkan ID
+  // BUG FIX #5: Dipindahkan ke SETELAH route spesifik (/date, /patient, /slot)
+  app.get("/api/appointments/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const appointment = await storage.getAppointment(id);
+
+      if (!appointment) {
+        return res.status(404).json({ error: "Appointment tidak ditemukan" });
+      }
+
+      res.json(appointment);
+    } catch (error) {
+      console.error("Error getting appointment:", error);
+      res.status(500).json({ error: "Gagal mendapatkan data appointment" });
     }
   });
 

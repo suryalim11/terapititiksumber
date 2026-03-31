@@ -360,11 +360,15 @@ export class DatabaseStorage implements IStorage {
       .values({ ...patient, patientId })
       .returning();
       
-    // Increment therapy slot usage if assigned
-    if (patient.therapySlotId) {
-      await this.incrementTherapySlotUsage(patient.therapySlotId);
-    }
-    
+    // BUG FIX #8: DIHAPUS — increment slot usage di sini menyebabkan double-count.
+    // Slot usage sudah di-increment secara eksplisit oleh:
+    //   1. POST /api/patients/register-walkin (patients.ts)
+    //   2. registerWalkinPatient (walkin.ts)
+    // Melakukan increment di sini JUGA menyebabkan kuota bertambah 2x.
+    // if (patient.therapySlotId) {
+    //   await this.incrementTherapySlotUsage(patient.therapySlotId);
+    // }
+
     return result[0];
   }
 
@@ -1765,36 +1769,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSessionUsage(id: number, sessionsUsed?: number): Promise<Session | undefined> {
-    // Get existing session first to check totalSessions
-    const existingSession = await this.getSession(id);
-    if (!existingSession) return undefined;
-    
-    // If sessionsUsed is provided, use it, otherwise increment the current value
+    // BUG FIX #9: Gunakan atomic SQL increment/set untuk menghindari race condition.
+    // Sebelumnya: baca sessionsUsed → hitung di JS → tulis kembali.
+    // Jika 2 request bersamaan, keduanya baca nilai lama yang sama → salah satu update hilang.
+    // Sekarang: langsung update di SQL tanpa read-modify-write di JS.
+
     if (sessionsUsed !== undefined) {
+      // Set ke nilai spesifik — gunakan SQL CASE untuk menentukan status secara atomic
       const result = await db
         .update(schema.sessions)
-        .set({ 
+        .set({
           sessionsUsed: sessionsUsed,
           lastSessionDate: new Date(),
-          status: sessionsUsed >= existingSession.totalSessions ? "completed" : "active"
+          status: sql`CASE WHEN ${sessionsUsed} >= total_sessions THEN 'completed' ELSE 'active' END`
         })
         .where(eq(schema.sessions.id, id))
         .returning();
       return result[0];
     } else {
-      // Get current session to increment
-      const currentSession = await this.getSession(id);
-      if (!currentSession) return undefined;
-      
-      const newSessionsUsed = currentSession.sessionsUsed + 1;
-      const newStatus = newSessionsUsed >= currentSession.totalSessions ? "completed" : "active";
-      
+      // Atomic increment: sessions_used = sessions_used + 1
       const result = await db
         .update(schema.sessions)
-        .set({ 
-          sessionsUsed: newSessionsUsed,
+        .set({
+          sessionsUsed: sql`sessions_used + 1`,
           lastSessionDate: new Date(),
-          status: newStatus
+          status: sql`CASE WHEN sessions_used + 1 >= total_sessions THEN 'completed' ELSE 'active' END`
         })
         .where(eq(schema.sessions.id, id))
         .returning();

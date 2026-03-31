@@ -11,25 +11,8 @@ import { insertUserSchema } from "@shared/schema";
  * Mendaftarkan rute-rute untuk pengguna
  */
 export function setupUserRoutes(app: Express) {
-  // Mendapatkan pengguna berdasarkan ID (hanya admin)
-  app.get("/api/users/:id", requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const user = await storage.getUser(id);
-      
-      if (!user) {
-        return res.status(404).json({ error: "Pengguna tidak ditemukan" });
-      }
-      
-      // Hapus password dari response
-      const { password, ...userWithoutPassword } = user;
-      
-      res.json(userWithoutPassword);
-    } catch (error) {
-      console.error("Error getting user:", error);
-      res.status(500).json({ error: "Gagal mendapatkan data pengguna" });
-    }
-  });
+  // BUG FIX #6: Route /me HARUS didaftarkan SEBELUM /:id
+  // agar Express tidak menangkap "me" sebagai nilai :id
 
   // Mendapatkan data pengguna yang sedang login
   app.get("/api/users/me", requireAuth, async (req: Request, res: Response) => {
@@ -51,6 +34,27 @@ export function setupUserRoutes(app: Express) {
       res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error getting current user:", error);
+      res.status(500).json({ error: "Gagal mendapatkan data pengguna" });
+    }
+  });
+
+  // Mendapatkan pengguna berdasarkan ID (hanya admin)
+  // BUG FIX #6: Dipindahkan ke SETELAH /me agar tidak menyerap request /api/users/me
+  app.get("/api/users/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = await storage.getUser(id);
+
+      if (!user) {
+        return res.status(404).json({ error: "Pengguna tidak ditemukan" });
+      }
+
+      // Hapus password dari response
+      const { password, ...userWithoutPassword } = user;
+
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error getting user:", error);
       res.status(500).json({ error: "Gagal mendapatkan data pengguna" });
     }
   });

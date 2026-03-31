@@ -2,33 +2,16 @@
  * API untuk mengelola data riwayat medis pasien
  */
 import { Express, Request, Response } from "express";
+import { requireAuth } from "../../middleware/auth";
 import { storage } from "../../storage";
 
 // Setup rute untuk riwayat medis
 export function setupMedicalHistoriesRoutes(app: Express) {
-  // Mendapatkan riwayat medis berdasarkan ID
-  app.get('/api/medical-histories/:id', async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ error: 'ID riwayat medis tidak valid' });
-      }
-      
-      const medicalHistory = await storage.getMedicalHistory(id);
-      
-      if (!medicalHistory) {
-        return res.status(404).json({ error: 'Riwayat medis tidak ditemukan' });
-      }
-      
-      res.status(200).json(medicalHistory);
-    } catch (error) {
-      console.error('Error saat mendapatkan riwayat medis:', error);
-      res.status(500).json({ error: 'Gagal mendapatkan riwayat medis' });
-    }
-  });
-  
+  // BUG FIX #7: Route spesifik /patient/:patientId harus didaftarkan SEBELUM /:id
+  // agar Express tidak menangkap "patient" sebagai nilai :id
+
   // Mendapatkan semua riwayat medis untuk pasien tertentu
-  app.get('/api/medical-histories/patient/:patientId', async (req: Request, res: Response) => {
+  app.get('/api/medical-histories/patient/:patientId', requireAuth, async (req: Request, res: Response) => {
     try {
       const patientId = parseInt(req.params.patientId);
       if (isNaN(patientId)) {
@@ -48,9 +31,32 @@ export function setupMedicalHistoriesRoutes(app: Express) {
       res.status(500).json({ error: 'Gagal mendapatkan riwayat medis' });
     }
   });
-  
+
+  // Mendapatkan riwayat medis berdasarkan ID
+  // BUG FIX #7: Didaftarkan SETELAH /patient/:patientId agar tidak konflik
+  app.get('/api/medical-histories/:id', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'ID riwayat medis tidak valid' });
+      }
+
+      const medicalHistory = await storage.getMedicalHistory(id);
+
+      if (!medicalHistory) {
+        return res.status(404).json({ error: 'Riwayat medis tidak ditemukan' });
+      }
+
+      res.status(200).json(medicalHistory);
+    } catch (error) {
+      console.error('Error saat mendapatkan riwayat medis:', error);
+      res.status(500).json({ error: 'Gagal mendapatkan riwayat medis' });
+    }
+  });
+
+  // BUG FIX #4: Tambah requireAuth ke semua endpoint berikut
   // Membuat riwayat medis baru
-  app.post('/api/medical-histories', async (req: Request, res: Response) => {
+  app.post('/api/medical-histories', requireAuth, async (req: Request, res: Response) => {
     try {
       const { 
         patientId, 
@@ -92,7 +98,8 @@ export function setupMedicalHistoriesRoutes(app: Express) {
   });
   
   // Memperbarui riwayat medis
-  app.put('/api/medical-histories/:id', async (req: Request, res: Response) => {
+  // BUG FIX #4: Tambah requireAuth — endpoint ini sebelumnya bisa diakses tanpa login
+  app.put('/api/medical-histories/:id', requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -141,7 +148,8 @@ export function setupMedicalHistoriesRoutes(app: Express) {
   });
   
   // Menghapus riwayat medis
-  app.delete('/api/medical-histories/:id', async (req: Request, res: Response) => {
+  // BUG FIX #4: Tambah requireAuth — endpoint ini sebelumnya bisa diakses tanpa login
+  app.delete('/api/medical-histories/:id', requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
