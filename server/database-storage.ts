@@ -1565,46 +1565,75 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveSessionsByPatient(patientId: number): Promise<any[]> {
-    // Use SQL JOIN to fetch all related data in ONE query
-    const result = await db
-      .select({
-        id: schema.sessions.id,
-        patientId: schema.sessions.patientId,
-        transactionId: schema.sessions.transactionId,
-        packageId: schema.sessions.packageId,
-        totalSessions: schema.sessions.totalSessions,
-        sessionsUsed: schema.sessions.sessionsUsed,
-        status: schema.sessions.status,
-        startDate: schema.sessions.startDate,
-        lastSessionDate: schema.sessions.lastSessionDate,
-        patient: schema.patients,
-        package: schema.packages
-      })
-      .from(schema.sessions)
-      .leftJoin(schema.patients, eq(schema.sessions.patientId, schema.patients.id))
-      .leftJoin(schema.packages, eq(schema.sessions.packageId, schema.packages.id))
-      .where(
-        and(
-          eq(schema.sessions.patientId, patientId),
-          eq(schema.sessions.status, "active")
-        )
-      );
-    
-    // Transform to ActiveSession format with calculated fields
-    return result.map(row => ({
+    // Helper query untuk ambil sesi aktif berdasarkan patientId
+    const fetchSessions = async (pid: number) => {
+      return db
+        .select({
+          id: schema.sessions.id,
+          patientId: schema.sessions.patientId,
+          transactionId: schema.sessions.transactionId,
+          packageId: schema.sessions.packageId,
+          totalSessions: schema.sessions.totalSessions,
+          sessionsUsed: schema.sessions.sessionsUsed,
+          status: schema.sessions.status,
+          startDate: schema.sessions.startDate,
+          lastSessionDate: schema.sessions.lastSessionDate,
+          patient: schema.patients,
+          package: schema.packages
+        })
+        .from(schema.sessions)
+        .leftJoin(schema.patients, eq(schema.sessions.patientId, schema.patients.id))
+        .leftJoin(schema.packages, eq(schema.sessions.packageId, schema.packages.id))
+        .where(
+          and(
+            eq(schema.sessions.patientId, pid),
+            eq(schema.sessions.status, "active")
+          )
+        );
+    };
+
+    // 1. Ambil sesi milik pasien sendiri
+    const ownSessions = await fetchSessions(patientId);
+
+    // 2. Ambil sesi milik anggota keluarga (nomor HP sama)
+    const relatedPatients = await this.getRelatedPatients(patientId);
+    let familySessions: any[] = [];
+
+    for (const relatedPatient of relatedPatients) {
+      const relatedSessions = await fetchSessions(relatedPatient.id);
+      const marked = relatedSessions.map(s => ({
+        ...s,
+        isSharedFromFamily: true,
+        ownerName: relatedPatient.name,
+        ownerPatientId: relatedPatient.patientId
+      }));
+      familySessions = [...familySessions, ...marked];
+    }
+
+    // 3. Gabungkan, hapus duplikat berdasarkan ID sesi
+    const allSessions = [...ownSessions, ...familySessions];
+    const uniqueMap = new Map();
+    allSessions.forEach(s => uniqueMap.set(s.id, s));
+    const uniqueSessions = Array.from(uniqueMap.values());
+
+    // 4. Format output
+    return uniqueSessions.map(row => ({
       id: row.id,
       patientId: row.patientId,
       transactionId: row.transactionId,
       packageId: row.packageId,
       totalSessions: row.totalSessions,
       sessionsUsed: row.sessionsUsed,
-      remainingSessions: row.totalSessions - row.sessionsUsed, // CALCULATED FIELD
+      remainingSessions: row.totalSessions - row.sessionsUsed,
       status: row.status,
       startDate: row.startDate,
       lastSessionDate: row.lastSessionDate,
-      package: row.package, // RELATION
-      owner: row.patient, // RELATION
-      isDirectOwner: true // All sessions belong to the patient queried
+      package: row.package,
+      owner: row.patient,
+      isDirectOwner: !row.isSharedFromFamily,
+      isSharedFromFamily: row.isSharedFromFamily || false,
+      ownerName: row.ownerName || null,
+      ownerPatientId: row.ownerPatientId || null
     }));
   }
   
