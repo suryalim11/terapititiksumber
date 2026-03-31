@@ -63,12 +63,36 @@ export function setupProductRoutes(app: Express) {
       res.status(201).json(newProduct);
     } catch (error) {
       console.error("Error creating product:", error);
-      
+
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid product data", details: error.errors });
       }
-      
+
       res.status(500).json({ error: "Failed to create product" });
+    }
+  });
+
+  // BUG FIX #15: Update stok produk - HARUS SEBELUM generic /:id route
+  // Karena /api/products/:id/stock lebih spesifik dari /api/products/:id
+  app.patch("/api/products/:id/stock", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { stockChange } = req.body;
+
+      if (typeof stockChange !== 'number') {
+        return res.status(400).json({ error: "Stock change must be a number" });
+      }
+
+      const updatedProduct = await storage.updateProductStock(id, stockChange);
+
+      if (!updatedProduct) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      res.json(updatedProduct);
+    } catch (error) {
+      console.error("Error updating product stock:", error);
+      res.status(500).json({ error: "Failed to update product stock" });
     }
   });
 
@@ -93,29 +117,6 @@ export function setupProductRoutes(app: Express) {
       }
       
       res.status(500).json({ error: "Failed to update product" });
-    }
-  });
-
-  // Update stok produk
-  app.patch("/api/products/:id/stock", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const { stockChange } = req.body;
-      
-      if (typeof stockChange !== 'number') {
-        return res.status(400).json({ error: "Stock change must be a number" });
-      }
-      
-      const updatedProduct = await storage.updateProductStock(id, stockChange);
-      
-      if (!updatedProduct) {
-        return res.status(404).json({ error: "Product not found" });
-      }
-      
-      res.json(updatedProduct);
-    } catch (error) {
-      console.error("Error updating product stock:", error);
-      res.status(500).json({ error: "Failed to update product stock" });
     }
   });
 

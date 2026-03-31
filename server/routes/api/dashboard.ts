@@ -9,30 +9,32 @@ import { storage } from "../../storage";
  * Mendaftarkan rute-rute untuk dashboard
  */
 export function setupDashboardRoutes(app: Express) {
+  // BUG FIX #16: Tambah requireAuth ke endpoint stats
   // Mendapatkan statistik dashboard
-  app.get("/api/dashboard/stats", async (req: Request, res: Response) => {
+  app.get("/api/dashboard/stats", requireAuth, async (req: Request, res: Response) => {
     try {
       const stats = await storage.getDailyStats();
       return res.json(stats);
     } catch (error) {
       console.error("Error getting dashboard stats:", error);
-      return res.status(500).json({ 
-        success: false, 
-        message: "Terjadi kesalahan saat mengambil statistik dashboard" 
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil statistik dashboard"
       });
     }
   });
 
+  // BUG FIX #17: Tambah requireAuth ke endpoint active-packages
   // Mendapatkan daftar paket terapi aktif
-  app.get("/api/dashboard/active-packages", async (req: Request, res: Response) => {
+  app.get("/api/dashboard/active-packages", requireAuth, async (req: Request, res: Response) => {
     try {
       const activeSessions = await storage.getAllActiveSessions();
       return res.json(activeSessions);
     } catch (error) {
       console.error("Error getting active packages:", error);
-      return res.status(500).json({ 
-        success: false, 
-        message: "Terjadi kesalahan saat mengambil daftar paket aktif" 
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil daftar paket aktif"
       });
     }
   });
