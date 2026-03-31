@@ -55,10 +55,8 @@ export function setupAppointmentRoutes(app: Express) {
 
       const appointments = await storage.getAppointmentsByDate(date);
 
-      return res.status(200).json({
-        success: true,
-        appointments
-      });
+      // Return array langsung (bukan object) agar client bisa langsung .map()
+      return res.status(200).json(appointments);
     } catch (error) {
       console.error("Error getting appointments by date:", error);
       return res.status(500).json({
