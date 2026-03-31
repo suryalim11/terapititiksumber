@@ -454,11 +454,9 @@ export function setupPatientRoutes(app: Express) {
       }
       
       const appointments = await storage.getAppointmentsByPatient(patientId);
-      
-      return res.status(200).json({
-        success: true,
-        appointments
-      });
+
+      // Return array langsung agar client bisa langsung .map() tanpa unwrap
+      return res.status(200).json(appointments);
     } catch (error) {
       console.error("Error getting patient appointments:", error);
       return res.status(500).json({ 

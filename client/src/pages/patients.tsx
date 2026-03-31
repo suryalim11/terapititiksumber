@@ -461,7 +461,7 @@ export default function Patients() {
                 {/* WhatsApp quick link for all devices */}
                 <div className="mt-3">
                   <a 
-                    href={`https://wa.me/${patient.phoneNumber.replace(/^0/, '62')}`}
+                    href={`https://wa.me/${patient.phoneNumber.replace(/^\+/, '').replace(/^0/, '62')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center w-full p-2 text-sm text-green-600 bg-green-50 hover:bg-green-100 rounded-md"
