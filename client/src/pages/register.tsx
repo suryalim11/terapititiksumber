@@ -185,18 +185,38 @@ export default function RegisterPage() {
       'des': 11, 'desember': 11, 'dec': 11, 'december': 11,
     };
 
+    const pad = (n: number) => String(n).padStart(2, '0');
     const cleaned = dateStr.trim().replace(/[.,]/g, '').toLowerCase();
-    const match = cleaned.match(/(\d{1,2})\s+([a-z]+)\s+(\d{4})/);
-    if (match) {
-      const day = parseInt(match[1]);
-      const monthKey = match[2];
-      const year = parseInt(match[3]);
+
+    // Format 1: "DD Mon YYYY" atau "DD MonthName YYYY" (spasi)
+    const matchNamed = cleaned.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})$/);
+    if (matchNamed) {
+      const day = parseInt(matchNamed[1]);
+      const monthKey = matchNamed[2];
+      const year = parseInt(matchNamed[3]);
       const month = monthMap[monthKey];
       if (month !== undefined) {
-        const date = new Date(year, month, day);
-        return date.toISOString();
+        return `${year}-${pad(month + 1)}-${pad(day)}`;
       }
     }
+
+    // Format 2: DD-MM-YYYY atau DD/MM/YYYY
+    const matchNumeric = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (matchNumeric) {
+      const day = parseInt(matchNumeric[1]);
+      const month = parseInt(matchNumeric[2]);
+      const year = parseInt(matchNumeric[3]);
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        return `${year}-${pad(month)}-${pad(day)}`;
+      }
+    }
+
+    // Format 3: YYYY-MM-DD (ISO tanpa waktu)
+    const matchISO = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (matchISO) {
+      return `${matchISO[1]}-${matchISO[2]}-${matchISO[3]}`;
+    }
+
     return null;
   };
 
@@ -279,14 +299,15 @@ export default function RegisterPage() {
     
     const parsed = parseWhatsAppText(pasteText);
     
-    if (parsed.name) form.setValue('name', parsed.name);
+    const setOpts = { shouldValidate: true, shouldDirty: true };
+    if (parsed.name) form.setValue('name', parsed.name, setOpts);
     if (parsed.gender === 'Laki-laki' || parsed.gender === 'Perempuan') {
-      form.setValue('gender', parsed.gender);
+      form.setValue('gender', parsed.gender, setOpts);
     }
-    if (parsed.birthDate) form.setValue('birthDate', parsed.birthDate);
-    if (parsed.address) form.setValue('address', parsed.address);
-    if (parsed.phone) form.setValue('phoneNumber', parsed.phone);
-    if (parsed.complaints) form.setValue('complaints', parsed.complaints);
+    if (parsed.birthDate) form.setValue('birthDate', parsed.birthDate, setOpts);
+    if (parsed.address) form.setValue('address', parsed.address, setOpts);
+    if (parsed.phone) form.setValue('phoneNumber', parsed.phone, setOpts);
+    if (parsed.complaints) form.setValue('complaints', parsed.complaints, setOpts);
     
     const filled: string[] = [];
     if (parsed.name) filled.push('Nama');
@@ -473,13 +494,20 @@ export default function RegisterPage() {
   // Isi data form ketika pasien ditemukan dari pencarian
   useEffect(() => {
     if (foundPatient) {
-      form.setValue("name", foundPatient.name || "");
-      form.setValue("phoneNumber", foundPatient.phoneNumber || "");
-      form.setValue("email", foundPatient.email || "");
-      form.setValue("birthDate", foundPatient.birthDate || "");
-      form.setValue("gender", foundPatient.gender || "Laki-laki");
-      form.setValue("address", foundPatient.address || "");
-      form.setValue("complaints", foundPatient.complaints || "");
+      const setOpts2 = { shouldValidate: true, shouldDirty: true };
+      form.setValue("name", foundPatient.name || "", setOpts2);
+      form.setValue("phoneNumber", foundPatient.phoneNumber || "", setOpts2);
+      form.setValue("email", foundPatient.email || "", setOpts2);
+      // Normalize birthDate ke format YYYY-MM-DD
+      const rawBirth = foundPatient.birthDate || "";
+      const normBirth = rawBirth ? rawBirth.split('T')[0] : "";
+      form.setValue("birthDate", normBirth, setOpts2);
+      // Normalize gender - pastikan sesuai enum
+      const rawGender = (foundPatient.gender || "").toLowerCase();
+      const normGender = rawGender.includes('perem') ? 'Perempuan' : 'Laki-laki';
+      form.setValue("gender", normGender, setOpts2);
+      form.setValue("address", foundPatient.address || "", setOpts2);
+      form.setValue("complaints", foundPatient.complaints || "", setOpts2);
     }
   }, [foundPatient, form]);
 
@@ -1180,7 +1208,17 @@ export default function RegisterPage() {
                             <Calendar
                               mode="single"
                               selected={field.value ? new Date(field.value) : undefined}
-                              onSelect={(date) => field.onChange(date ? date.toISOString() : "")}
+                              onSelect={(date) => {
+                                if (date) {
+                                  // Simpan sebagai YYYY-MM-DD (bukan ISO) untuk hindari timezone shift
+                                  const y = date.getFullYear();
+                                  const m = String(date.getMonth() + 1).padStart(2, '0');
+                                  const d = String(date.getDate()).padStart(2, '0');
+                                  field.onChange(`${y}-${m}-${d}`);
+                                } else {
+                                  field.onChange("");
+                                }
+                              }}
                               disabled={(date) => date > new Date()}
                               initialFocus
                             />
@@ -1201,7 +1239,7 @@ export default function RegisterPage() {
                         <FormControl>
                           <RadioGroup
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
+                            value={field.value}
                             className="flex space-x-4"
                           >
                             <FormItem className="flex items-center space-x-2 space-y-0">
