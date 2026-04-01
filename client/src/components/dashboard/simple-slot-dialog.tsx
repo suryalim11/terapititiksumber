@@ -67,6 +67,14 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
   const [patients, setPatients] = useState<PatientData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  // State untuk fitur Pindah Jadwal
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [reschedulePatient, setReschedulePatient] = useState<PatientData | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<SlotData[]>([]);
+  const [selectedNewSlotId, setSelectedNewSlotId] = useState<number | null>(null);
+  const [isRescheduling, setIsRescheduling] = useState(false);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   
   useEffect(() => {
     if (isOpen && slotId !== null) {
@@ -252,15 +260,81 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
   function formatAppointmentDate(dateString: string | Date): string {
     try {
       const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-      
+
       return format(date, "EEEE, d MMMM yyyy", { locale: localeId });
     } catch (e) {
       console.error(`Error formatting date: ${dateString}`, e);
       return String(dateString);
     }
   }
+
+  async function openRescheduleDialog(patient: PatientData) {
+    setReschedulePatient(patient);
+    setSelectedNewSlotId(null);
+    setShowRescheduleDialog(true);
+    setIsLoadingSlots(true);
+
+    try {
+      const response = await fetch(`/api/therapy-slots/active`);
+      if (!response.ok) throw new Error("Gagal memuat daftar slot tersedia");
+      const slots: SlotData[] = await response.json();
+      // Filter agar tidak menampilkan slot saat ini
+      const filtered = slots.filter(s => s.id !== slotId);
+      setAvailableSlots(filtered);
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Gagal memuat slot",
+        description: String(err)
+      });
+      setAvailableSlots([]);
+    } finally {
+      setIsLoadingSlots(false);
+    }
+  }
+
+  async function handleConfirmReschedule() {
+    if (!reschedulePatient?.appointmentId || !selectedNewSlotId) return;
+    setIsRescheduling(true);
+
+    try {
+      const response = await apiRequest(`/api/appointments/${reschedulePatient.appointmentId}/reschedule`, {
+        method: 'POST',
+        body: JSON.stringify({ newSlotId: selectedNewSlotId })
+      });
+
+      if (response.ok) {
+        const selectedSlot = availableSlots.find(s => s.id === selectedNewSlotId);
+        toast({
+          title: "Jadwal berhasil dipindahkan",
+          description: `${reschedulePatient.name} dipindahkan ke ${selectedSlot ? `${formatAppointmentDate(selectedSlot.date)} ${selectedSlot.timeSlot}` : "jadwal baru"}.`,
+        });
+        setShowRescheduleDialog(false);
+        setReschedulePatient(null);
+        setSelectedNewSlotId(null);
+        loadSlotData(slotId!);
+        queryClient.invalidateQueries({ queryKey: ['/api/therapy-slots'] });
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        toast({
+          variant: "destructive",
+          title: "Gagal memindahkan jadwal",
+          description: errData.message || "Terjadi kesalahan."
+        });
+      }
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Gagal memindahkan jadwal",
+        description: String(err)
+      });
+    } finally {
+      setIsRescheduling(false);
+    }
+  }
   
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
         // Reset form saat dialog ditutup
@@ -573,6 +647,15 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
                                 <XCircle className="mr-2 h-4 w-4 text-red-600" />
                                 Batalkan
                               </DropdownMenuItem>
+
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuItem
+                                onClick={() => openRescheduleDialog(patient)}
+                              >
+                                <CalendarRange className="mr-2 h-4 w-4 text-blue-600" />
+                                Pindah Jadwal
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -603,5 +686,109 @@ export function SimpleSlotDialog({ slotId, isOpen, onClose }: SimpleSlotDialogPr
         )}
       </DialogContent>
     </Dialog>
+
+    {/* Dialog Pindah Jadwal */}
+    <Dialog open={showRescheduleDialog} onOpenChange={(open) => {
+      if (!open) {
+        setShowRescheduleDialog(false);
+        setReschedulePatient(null);
+        setSelectedNewSlotId(null);
+      }
+    }}>
+      <DialogContent className="max-w-lg w-[95vw] sm:w-full">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarRange className="h-5 w-5 text-blue-600" />
+            Pindah Jadwal
+          </DialogTitle>
+          <DialogDescription>
+            {reschedulePatient
+              ? `Pilih jadwal baru untuk ${reschedulePatient.name}`
+              : "Pilih jadwal baru"}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
+          {isLoadingSlots ? (
+            <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Memuat slot tersedia...</span>
+            </div>
+          ) : availableSlots.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <CalendarIcon className="h-8 w-8 mb-2" />
+              <p className="text-sm">Tidak ada slot tersedia lainnya saat ini.</p>
+            </div>
+          ) : (
+            availableSlots.map((slot) => {
+              const isSelected = selectedNewSlotId === slot.id;
+              const remaining = slot.maxQuota - slot.currentCount;
+              return (
+                <button
+                  key={slot.id}
+                  type="button"
+                  onClick={() => setSelectedNewSlotId(slot.id)}
+                  className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-blue-50 ${
+                    isSelected
+                      ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
+                      : "border-border"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {formatAppointmentDate(slot.date)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {slot.timeSlot}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={remaining <= 2 ? "destructive" : "secondary"} className="text-xs">
+                        Sisa {remaining} kursi
+                      </Badge>
+                      {isSelected && (
+                        <Check className="h-4 w-4 text-blue-600" />
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowRescheduleDialog(false);
+              setReschedulePatient(null);
+              setSelectedNewSlotId(null);
+            }}
+            disabled={isRescheduling}
+          >
+            Batal
+          </Button>
+          <Button
+            onClick={handleConfirmReschedule}
+            disabled={!selectedNewSlotId || isRescheduling}
+          >
+            {isRescheduling ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Memindahkan...
+              </>
+            ) : (
+              <>
+                <CalendarRange className="mr-2 h-4 w-4" />
+                Konfirmasi Pindah
+              </>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 }

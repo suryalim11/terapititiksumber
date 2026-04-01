@@ -458,6 +458,84 @@ export function setupAppointmentRoutes(app: Express) {
     }
   });
 
+  // Pindah jadwal (reschedule) appointment ke slot terapi lain
+  app.post("/api/appointments/:id/reschedule", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { newSlotId } = req.body;
+
+      if (isNaN(id) || !newSlotId) {
+        return res.status(400).json({ success: false, message: "appointmentId dan newSlotId diperlukan" });
+      }
+
+      // Dapatkan appointment yang akan dipindahkan
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ success: false, message: "Appointment tidak ditemukan" });
+      }
+
+      // Pastikan appointment masih aktif (belum selesai/dibatalkan)
+      if (appointment.status === 'Completed' || appointment.status === 'Cancelled') {
+        return res.status(400).json({
+          success: false,
+          message: `Tidak dapat memindahkan jadwal appointment yang sudah ${appointment.status === 'Completed' ? 'selesai' : 'dibatalkan'}`
+        });
+      }
+
+      // Dapatkan slot baru yang dituju
+      const newSlot = await storage.getTherapySlot(newSlotId);
+      if (!newSlot) {
+        return res.status(404).json({ success: false, message: "Slot terapi tujuan tidak ditemukan" });
+      }
+
+      // Pastikan slot baru masih punya kuota
+      if (newSlot.currentCount >= newSlot.maxQuota) {
+        return res.status(400).json({ success: false, message: "Slot terapi tujuan sudah penuh" });
+      }
+
+      // Pastikan slot baru aktif
+      if (!newSlot.isActive) {
+        return res.status(400).json({ success: false, message: "Slot terapi tujuan tidak aktif" });
+      }
+
+      const oldSlotId = appointment.therapySlotId;
+
+      // Update appointment: pindahkan ke slot baru, update tanggal & waktu
+      const updatedAppointment = await storage.updateAppointment(id, {
+        ...appointment,
+        therapySlotId: newSlotId,
+        date: newSlot.date,
+        timeSlot: newSlot.timeSlot,
+      });
+
+      // Update kuota slot lama: kurangi 1
+      if (oldSlotId) {
+        const oldSlot = await storage.getTherapySlot(oldSlotId);
+        if (oldSlot) {
+          await storage.updateTherapySlot(oldSlotId, {
+            currentCount: Math.max(0, (oldSlot.currentCount || 0) - 1)
+          });
+        }
+      }
+
+      // Update kuota slot baru: tambah 1
+      await storage.updateTherapySlot(newSlotId, {
+        currentCount: (newSlot.currentCount || 0) + 1
+      });
+
+      console.log(`✅ Reschedule berhasil: appointment ${id} dari slot ${oldSlotId} → slot ${newSlotId}`);
+
+      return res.status(200).json({
+        success: true,
+        appointment: updatedAppointment,
+        message: `Jadwal berhasil dipindahkan ke ${newSlot.timeSlot}`
+      });
+    } catch (error) {
+      console.error("Error rescheduling appointment:", error);
+      return res.status(500).json({ success: false, message: "Terjadi kesalahan saat memindahkan jadwal" });
+    }
+  });
+
   // Menyinkronkan tanggal appointment dengan tanggal therapy slot
   app.post("/api/appointments/sync-dates", requireAdmin, async (req: Request, res: Response) => {
     try {
