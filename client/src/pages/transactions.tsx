@@ -115,6 +115,9 @@ export default function Transactions() {
   // Ref untuk memastikan form hanya dibuka sekali per sesi navigasi
   const hasOpenedFormRef = useRef(false);
 
+  // Selalu gunakan fixed endpoints (true permanen)
+  const useFixedEndpoints = true;
+
   // Satu useEffect terpadu untuk auto-buka form transaksi
   // Menangani 2 kasus: (1) patientId di URL, (2) pendingPatientId di localStorage
   useEffect(() => {
