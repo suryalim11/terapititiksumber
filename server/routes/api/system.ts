@@ -130,4 +130,15 @@ export function setupSystemRoutes(app: Express) {
       res.status(500).json({ error: "Failed to resync appointment dates" });
     }
   });
+
+  // Alias untuk admin page: konsolidasi appointment ke slot utama
+  app.post("/api/maintenance/consolidate-appointments", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const result = await consolidateSlots();
+      res.json({ success: true, result });
+    } catch (error) {
+      console.error("Error consolidating appointments:", error);
+      res.status(500).json({ error: "Failed to consolidate appointments" });
+    }
+  });
 }

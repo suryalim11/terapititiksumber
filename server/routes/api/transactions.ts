@@ -268,6 +268,34 @@ export function setupTransactionsRoutes(app: Express) {
     }
   });
 
+  // Admin: Perbaiki status isPaid/paidAmount/debtAmount untuk semua transaksi
+  app.post('/api/transactions/fix-paid-status', async (req: Request, res: Response) => {
+    try {
+      const allTransactions = await storage.getAllTransactions();
+      let fixed = 0;
+      let errors = 0;
+
+      for (const tx of allTransactions) {
+        try {
+          await storage.updateTransactionPaidStatus(tx.id);
+          fixed++;
+        } catch {
+          errors++;
+        }
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `Selesai: ${fixed} transaksi diperbarui, ${errors} gagal`,
+        fixed,
+        errors
+      });
+    } catch (error) {
+      console.error('Error fixing paid status:', error);
+      res.status(500).json({ error: 'Gagal memperbaiki status pembayaran' });
+    }
+  });
+
   // DELETE transaction with session rollback
   app.delete('/api/transactions/:id', async (req: Request, res: Response) => {
     try {
