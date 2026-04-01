@@ -1081,11 +1081,6 @@ export default function Invoice({ isOpen, onClose, data }: InvoiceProps) {
               {/* Informasi pembayaran utang jika ini adalah transaksi pembayaran utang */}
               {data?.transaction?.metadata && (
                 <>
-                  {console.log("===== INVOICE DEBUGGING =====")};
-                  {console.log("Metadata type:", typeof data.transaction.metadata)}
-                  {console.log("Metadata content:", data.transaction.metadata)}
-                  {console.log("Metadata stringified:", JSON.stringify(data.transaction.metadata))}
-                  
                   {/* Cek apakah transaksi ini adalah pembayaran utang */}
                   {(() => {
                     // Format data metadata berdasarkan tipenya
