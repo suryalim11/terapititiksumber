@@ -77,7 +77,8 @@ export default function Transactions() {
   const { toast } = useToast();
   
   // Extract patient ID from URL if present
-  const urlParams = new URLSearchParams(location.split("?")[1] || "");
+  // Gunakan window.location.search karena Wouter useLocation() hanya return path tanpa query string
+  const urlParams = new URLSearchParams(window.location.search);
   // patientIdFromUrl: dipakai untuk BUAT TRANSAKSI BARU (dari header pasien)
   // viewHistoryId: dipakai untuk LIHAT RIWAYAT saja (dari tombol Riwayat halaman Pasien)
   const patientIdFromUrl = urlParams.get("patientId");
