@@ -6,6 +6,80 @@ import { storage } from "../../storage";
 
 // Setup rute untuk transaksi
 export function setupTransactionsRoutes(app: Express) {
+  // Mendapatkan semua transaksi yang belum lunas (isPaid = false)
+  app.get('/api/transactions/unpaid', async (req: Request, res: Response) => {
+    try {
+      const unpaidTransactions = await storage.getUnpaidTransactions();
+      res.status(200).json(unpaidTransactions);
+    } catch (error) {
+      console.error('Error saat mendapatkan transaksi belum lunas:', error);
+      res.status(500).json({ error: 'Gagal mendapatkan transaksi belum lunas' });
+    }
+  });
+
+  // Mendapatkan transaksi belum lunas berdasarkan pasien
+  app.get('/api/transactions/unpaid-by-patient/:patientId', async (req: Request, res: Response) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      if (isNaN(patientId)) {
+        return res.status(400).json({ error: 'ID pasien tidak valid' });
+      }
+      const unpaidTransactions = await storage.getUnpaidTransactionsByPatient(patientId);
+      res.status(200).json(unpaidTransactions);
+    } catch (error) {
+      console.error('Error saat mendapatkan transaksi belum lunas pasien:', error);
+      res.status(500).json({ error: 'Gagal mendapatkan transaksi belum lunas pasien' });
+    }
+  });
+
+  // Membuat pembayaran hutang
+  app.post('/api/transactions/debt-payment', async (req: Request, res: Response) => {
+    try {
+      const { transactionId, amount, paymentMethod, notes } = req.body;
+
+      if (!transactionId || !amount || !paymentMethod) {
+        return res.status(400).json({ error: 'transactionId, amount, dan paymentMethod wajib diisi' });
+      }
+
+      const transaction = await storage.getTransaction(parseInt(transactionId));
+      if (!transaction) {
+        return res.status(404).json({ error: 'Transaksi tidak ditemukan' });
+      }
+
+      const paymentAmount = parseFloat(amount);
+      if (isNaN(paymentAmount) || paymentAmount <= 0) {
+        return res.status(400).json({ error: 'Jumlah pembayaran tidak valid' });
+      }
+
+      const totalAmount = parseFloat(transaction.totalAmount as string);
+      const paidAmount = parseFloat((transaction.paidAmount as string) || '0');
+      const remainingDebt = Math.max(0, totalAmount - paidAmount);
+
+      if (paymentAmount > remainingDebt) {
+        return res.status(400).json({
+          error: `Jumlah pembayaran (${paymentAmount}) melebihi sisa hutang (${remainingDebt})`
+        });
+      }
+
+      // Simpan data pembayaran hutang ke tabel debt_payments
+      const debtPayment = await storage.createDebtPayment({
+        transactionId: parseInt(transactionId),
+        amount: paymentAmount.toString(),
+        paymentMethod,
+        notes: notes || 'Pembayaran hutang'
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Pembayaran hutang berhasil dicatat',
+        debtPayment
+      });
+    } catch (error) {
+      console.error('Error saat membuat pembayaran hutang:', error);
+      res.status(500).json({ error: 'Gagal memproses pembayaran hutang' });
+    }
+  });
+
   // Mendapatkan semua transaksi (filter by patientId jika diberikan)
   app.get('/api/transactions', async (req: Request, res: Response) => {
     try {
