@@ -112,375 +112,101 @@ export default function Transactions() {
     staleTime: 30000,
   });
   
-  // Effect untuk auto-show form jika ada patientId di URL
-  // Buat ref untuk melacak apakah form sudah pernah dibuka untuk patientId ini
+  // Ref untuk memastikan form hanya dibuka sekali per sesi navigasi
   const hasOpenedFormRef = useRef(false);
-  const localStorageCheckedRef = useRef(false);
-  
-  // Dapatkan parameter delay dari URL jika ada
-  const delayParamFromUrl = urlParams.get("delay");
-  
-  // State untuk menandai penggunaan fixed endpoints
-  const [useFixedEndpoints, setUseFixedEndpoints] = useState(false);
 
-  // Effect untuk langsung membuka form transaksi saat patientId ada di URL
+  // Satu useEffect terpadu untuk auto-buka form transaksi
+  // Menangani 2 kasus: (1) patientId di URL, (2) pendingPatientId di localStorage
   useEffect(() => {
-    // PERBAIKAN: Paksa selalu menggunakan endpoint fixed untuk form transaksi
-    setUseFixedEndpoints(true);
-    localStorage.setItem('use_fixed_endpoints', 'true');
-    
-    // Selalu cek localStorage dulu setiap kali komponen dimounting
-    if (!localStorageCheckedRef.current) {
-      // Paksa selalu true
-      setUseFixedEndpoints(true);
-      
-      // Tidak perlu cek URL parameter lagi karena kita selalu gunakan true
-      
-      const storedPatientId = localStorage.getItem('pendingTransactionPatientId');
-      const storedPatientName = localStorage.getItem('pendingTransactionPatientName');
-      const shouldOpenForm = localStorage.getItem('openTransactionFormDirectly');
-      
-      if (storedPatientId && shouldOpenForm === 'true') {
-        const patientIdNumber = parseInt(storedPatientId);
-        setSelectedPatientId(patientIdNumber);
-        setIsTransactionFormOpen(true);
-        
-        toast({
-          title: "Form transaksi dibuka",
-          description: `Silahkan lengkapi data transaksi untuk ${storedPatientName || 'pasien'}`
-        });
-        
-        // Hapus data dari localStorage setelah digunakan
-        localStorage.removeItem('pendingTransactionPatientId');
-        localStorage.removeItem('pendingTransactionPatientName');
-        localStorage.removeItem('openTransactionFormDirectly');
-      }
-      
-      localStorageCheckedRef.current = true;
-    }
-    
-    // Tetap memproses URL parameter seperti sebelumnya
-    // Gunakan hasOpenedFormRef agar form hanya dibuka SEKALI, tidak loop saat ditutup
-    if (patientIdFromUrl && patients.length > 0 && !hasOpenedFormRef.current) {
-      const patientIdNumber = parseInt(patientIdFromUrl);
-      const patient = patients.find((p: any) => p.id === patientIdNumber);
+    // Tunggu sampai data patients tersedia
+    if (!patients || patients.length === 0) return;
+    // Jangan buka lagi jika sudah pernah dibuka
+    if (hasOpenedFormRef.current) return;
 
-      if (patient) {
-        // Tandai sudah dibuka agar tidak re-trigger saat form ditutup
-        hasOpenedFormRef.current = true;
+    const openFormForPatient = (patientId: number, patientName: string) => {
+      hasOpenedFormRef.current = true;
+      setSelectedPatientId(patientId);
+      setIsTransactionFormOpen(true);
+      toast({
+        title: "Transaksi",
+        description: `Form transaksi untuk ${patientName} telah dibuka.`,
+      });
+    };
 
-        // Set ID pasien
-        setSelectedPatientId(patientIdNumber);
-
-        // Buka form transaksi langsung
-        setIsTransactionFormOpen(true);
-
-        // Notifikasi
-        toast({
-          title: "Form transaksi dibuka",
-          description: `Silahkan lengkapi data transaksi untuk ${patient.name}`
-        });
-      }
-    }
-  }, [patientIdFromUrl, patients, toast]);
-  
-  // Effect untuk memeriksa localStorage (recovery mechanism)
-  useEffect(() => {
-    // Skip jika form sudah dibuka dari URL param atau localStorage sudah diperiksa
-    if (patientIdFromUrl || localStorageCheckedRef.current) {
-      return;
-    }
-    
-    // Tandai bahwa localStorage sudah diperiksa
-    localStorageCheckedRef.current = true;
-    
-    // Cek apakah ada pending patient ID dari localStorage
-    const pendingPatientId = localStorage.getItem('pendingTransactionPatientId');
-    const pendingPatientName = localStorage.getItem('pendingTransactionPatientName');
-    
-    if (pendingPatientId) {
-      console.log("Menemukan pending patient ID di localStorage:", pendingPatientId);
-      const patientIdNumber = parseInt(pendingPatientId);
-      
-      // Tunggu data patients tersedia
-      if (patients && patients.length > 0) {
-        // Cari pasien dalam data dengan pendekatan yang lebih fleksibel
-        const patient = patients.find((p: any) => {
-          // Konversi ID untuk perbandingan string-to-string
-          const pIdStr = p.id.toString();
-          const searchIdStr = patientIdNumber.toString();
-          return p.id === patientIdNumber || pIdStr === searchIdStr;
-        });
-        
-        if (patient) {
-          console.log("Pasien dari localStorage ditemukan:", patient.name);
-          
-          // Hapus dari localStorage
-          localStorage.removeItem('pendingTransactionPatientId');
-          localStorage.removeItem('pendingTransactionPatientName');
-          
-          // Set selectedPatientId
-          setSelectedPatientId(patientIdNumber);
-          
-          // Tampilkan feedback
-          toast({
-            title: "Data pasien ditemukan",
-            description: `Memuat data pasien: ${patient.name}`,
-          });
-          
-          // Buka form transaksi dengan delay
-          setTimeout(() => {
-            setIsTransactionFormOpen(true);
-            toast({
-              title: "Form transaksi dibuka",
-              description: `Silahkan lengkapi transaksi untuk ${patient.name}`,
-            });
-          }, 500);
-        } else {
-          console.log("Pasien dengan ID", patientIdNumber, "tidak ditemukan dalam data lokal");
-          
-          // Coba ambil langsung dari API
-          apiRequest<any>(`/api/patients/${patientIdNumber}`)
-            .then(patient => {
-              if (patient && patient.id) {
-                console.log("Berhasil mengambil data pasien dari API:", patient);
-                
-                // Hapus dari localStorage 
-                localStorage.removeItem('pendingTransactionPatientId');
-                localStorage.removeItem('pendingTransactionPatientName');
-                
-                // Set selectedPatientId
-                setSelectedPatientId(patientIdNumber);
-                
-                // Buka form transaksi
-                setTimeout(() => {
-                  setIsTransactionFormOpen(true);
-                  toast({
-                    title: "Form transaksi dibuka",
-                    description: `Silahkan lengkapi transaksi untuk ${patient.name}`,
-                  });
-                }, 500);
-              } else {
-                console.error("Pasien tidak ditemukan di API");
-                toast({
-                  title: "Pasien tidak ditemukan",
-                  description: "Tidak dapat menemukan data pasien yang tersimpan",
-                  variant: "destructive"
-                });
-                
-                // Hapus data yang tidak valid dari localStorage
-                localStorage.removeItem('pendingTransactionPatientId');
-                localStorage.removeItem('pendingTransactionPatientName');
-              }
-            })
-            .catch(err => {
-              console.error("Error fetching patient from API:", err);
-              toast({
-                title: "Terjadi kesalahan",
-                description: "Gagal memuat data pasien dari server",
-                variant: "destructive"
-              });
-              
-              // Hapus data dari localStorage
-              localStorage.removeItem('pendingTransactionPatientId');
-              localStorage.removeItem('pendingTransactionPatientName');
-            });
-        }
-      }
-    }
-  }, [patients, toast, apiRequest]);
-  
-  useEffect(() => {
+    // Kasus 1: patientId dari URL (?patientId=xxx)
     if (patientIdFromUrl) {
       const patientIdNumber = parseInt(patientIdFromUrl);
-      // Ditemukan patientId di URL
-      
-      // Jangan lakukan apa-apa sampai patients sudah terload
-      if (!patients || patients.length === 0) {
-        // Menunggu data pasien tersedia
-        // Kirim toast untuk memberitahu pengguna
-        toast({
-          title: "Membuat transaksi baru",
-          description: `Form transaksi untuk ${patientIdFromUrl ? "pasien ini" : ""} akan segera dibuka`
-        });
-        return;
-      }
-      
-      // Jika form sudah pernah dibuka untuk patientId ini, jangan buka lagi
-      if (hasOpenedFormRef.current) {
-        // Form sudah pernah dibuka untuk patientId ini
-        return;
-      }
-      
-      // Verifikasi pasien ada dalam data
-      const patientExists = patients.some((p: any) => p.id === patientIdNumber);
-      
-      if (patientExists) {
-        // Set flag bahwa form sudah pernah dibuka
-        hasOpenedFormRef.current = true;
-        
-        // Set selected patient ID
-        setSelectedPatientId(patientIdNumber);
-        
-        // Buka form transaksi dengan delay yang didapat dari URL atau default 500ms
-        const delayTime = delayParamFromUrl ? parseInt(delayParamFromUrl) : 500;
-        console.log(`Membuka form transaksi dalam ${delayTime}ms...`);
-        
-        // Tampilkan toast untuk memberitahu pengguna
-        toast({
-          title: "Menyiapkan transaksi",
-          description: `Form transaksi akan dibuka dalam ${delayTime}ms`,
-        });
-        
-        // Buka form transaksi dengan delay untuk memastikan komponen sudah siap
-        setTimeout(() => {
-          setIsTransactionFormOpen(true);
-          console.log("Form transaksi dibuka untuk pasien ID:", patientIdNumber);
-          
-          // Tampilkan toast notifikasi untuk membantu pengguna
-          toast({
-            title: "Form transaksi dibuka",
-            description: `Silahkan lengkapi data transaksi untuk pasien ini`,
-          });
-        }, delayTime);
+      const patient = patients.find((p: any) => p.id === patientIdNumber);
+      if (patient) {
+        openFormForPatient(patientIdNumber, patient.name);
       } else {
-        toast({
-          title: "Pasien tidak ditemukan",
-          description: `Tidak dapat menemukan pasien dengan ID ${patientIdNumber}`,
-          variant: "destructive"
+        // Coba ambil langsung dari API jika tidak ada di cache lokal
+        apiRequest<any>(`/api/patients/${patientIdNumber}`).then(p => {
+          if (p?.id) openFormForPatient(p.id, p.name);
+        }).catch(() => {
+          toast({ variant: "destructive", title: "Pasien tidak ditemukan" });
         });
       }
+      return;
     }
-  }, [patientIdFromUrl, patients, toast, delayParamFromUrl]);
+
+    // Kasus 2: pendingPatientId dari localStorage (dari tombol Transaksi di dialog slot)
+    const pendingId = localStorage.getItem('pendingTransactionPatientId');
+    const pendingName = localStorage.getItem('pendingTransactionPatientName');
+    const shouldOpen = localStorage.getItem('openTransactionFormDirectly');
+    if (pendingId && shouldOpen === 'true') {
+      const patientIdNumber = parseInt(pendingId);
+      localStorage.removeItem('pendingTransactionPatientId');
+      localStorage.removeItem('pendingTransactionPatientName');
+      localStorage.removeItem('openTransactionFormDirectly');
+      const patient = patients.find((p: any) => p.id === patientIdNumber);
+      const name = patient?.name || pendingName || 'pasien';
+      openFormForPatient(patientIdNumber, name);
+    }
+  }, [patientIdFromUrl, patients]);
   
-  // Custom Event Listener untuk menerima notifikasi dari sidebar atau komponen lain
+  // Custom event listener: openTransactionForm (dikirim dari sidebar atau komponen lain)
   useEffect(() => {
     const handleOpenTransactionForm = (event: CustomEvent) => {
       const patientId = event.detail?.patientId;
-      const patientName = event.detail?.patientName;
       const eventTimestamp = event.detail?.timestamp || Date.now();
-      
-      console.log("Event openTransactionForm diterima:", {
-        rawPatientId: patientId,
-        patientIdType: typeof patientId,
-        patientName,
-        timestamp: eventTimestamp
-      });
-      
-      // Periksa timestamp terakhir untuk mencegah event duplikat atau basi diterima
-      const lastEventTimestamp = localStorage.getItem('lastProcessedTransactionPageEvent');
-      if (lastEventTimestamp && parseInt(lastEventTimestamp) >= eventTimestamp) {
-        console.log("Mengabaikan event duplikat atau basi:", {
-          lastProcessed: lastEventTimestamp,
-          currentEvent: eventTimestamp
-        });
-        return; // Event lebih lama atau sama, abaikan
-      }
-      
-      // Update timestamp terakhir
+
+      // Cegah event duplikat
+      const lastTs = localStorage.getItem('lastProcessedTransactionPageEvent');
+      if (lastTs && parseInt(lastTs) >= eventTimestamp) return;
       localStorage.setItem('lastProcessedTransactionPageEvent', String(eventTimestamp));
-      
-      if (patientId) {
-        // Parse patientId ke number untuk memastikan tipe data
-        const patientIdNumber = typeof patientId === 'string' ? parseInt(patientId) : patientId;
-        
-        console.log("Event openTransactionForm diterima dengan patientId:", patientIdNumber, "type:", typeof patientIdNumber);
-        
-        // Bersihkan localStorage karena event sudah diterima dengan baik
-        if (localStorage.getItem('pendingTransactionPatientId')) {
-          console.log("Menghapus data pendingTransactionPatientId dari localStorage");
-          localStorage.removeItem('pendingTransactionPatientId');
-          localStorage.removeItem('pendingTransactionPatientName');
-        }
-        
-        // Verifikasi pasien ada dalam data
-        // Memeriksa ketersediaan data pasien
-        if (patients && patients.length > 0) {
-          // Pasien tersedia dalam sistem
-        }
-        
-        // Gunakan pendekatan yang lebih fleksibel untuk menemukan pasien
-        const patient = patients.find((p: any) => {
-          // Konversi ID untuk perbandingan string-to-string
-          const pIdStr = p.id.toString();
-          const searchIdStr = patientIdNumber.toString();
-          return p.id === patientIdNumber || pIdStr === searchIdStr;
-        });
-        
-        if (patient) {
-          console.log("Pasien ditemukan:", patient.name, "dengan ID:", patient.id);
-          
-          // Set selected patient ID hanya jika belum diset atau berbeda
-          if (!selectedPatientId || selectedPatientId !== patientIdNumber) {
-            setSelectedPatientId(patientIdNumber);
-            
-            // Segera buka form transaksi
-            console.log("Segera membuka form transaksi untuk pasien ID:", patientIdNumber);
-            
-            // Gunakan setTimeout untuk memastikan bahwa state selectedPatientId sudah terupdate
-            setTimeout(() => {
-              setIsTransactionFormOpen(true);
-              
-              // Log debugging
-              console.log("Form transaksi seharusnya sudah terbuka sekarang");
-              
-              // Tampilkan toast untuk konfirmasi hanya sekali
-              toast({
-                title: "Form transaksi dibuka",
-                description: `Silahkan lengkapi data transaksi untuk ${patient.name}`,
-              });
-            }, 300);
-          } else {
-            console.log("Patient ID sudah diset, tidak perlu update ulang:", patientIdNumber);
-          }
-        } else {
-          console.error("Pasien dengan ID", patientIdNumber, "tidak ditemukan dalam data");
-          console.log("Mencoba memuat data pasien secara langsung...");
-          
-          // Coba ambil data pasien secara langsung dari server
-          apiRequest<any>(`/api/patients/${patientIdNumber}`)
-            .then(directPatient => {
-              if (directPatient && directPatient.id) {
-                console.log("Pasien berhasil dimuat langsung dari API:", directPatient.name);
-                setSelectedPatientId(directPatient.id);
-                
-                setTimeout(() => {
-                  setIsTransactionFormOpen(true);
-                  toast({
-                    title: "Form transaksi dibuka",
-                    description: `Silahkan lengkapi data transaksi untuk ${directPatient.name}`,
-                  });
-                }, 300);
-              } else {
-                throw new Error("Pasien tidak ditemukan di API");
-              }
-            })
-            .catch(err => {
-              console.error("Gagal mendapatkan data pasien langsung:", err);
-              toast({
-                title: "Pasien tidak ditemukan",
-                description: `Tidak dapat menemukan pasien dengan ID ${patientIdNumber}`,
-                variant: "destructive"
-              });
-            });
-        }
-      } else {
-        // Jika tidak ada patientId, buka form kosong
+
+      if (!patientId) {
         setSelectedPatientId(null);
         setIsTransactionFormOpen(true);
+        return;
+      }
+
+      const patientIdNumber = typeof patientId === 'string' ? parseInt(patientId) : patientId;
+      const patient = patients.find((p: any) => p.id === patientIdNumber);
+
+      if (patient) {
+        setSelectedPatientId(patientIdNumber);
+        setIsTransactionFormOpen(true);
+      } else {
+        apiRequest<any>(`/api/patients/${patientIdNumber}`)
+          .then(p => {
+            if (p?.id) {
+              setSelectedPatientId(p.id);
+              setIsTransactionFormOpen(true);
+            }
+          })
+          .catch(() => {
+            toast({ variant: "destructive", title: "Pasien tidak ditemukan" });
+          });
       }
     };
-    
-    // Pasang event listener untuk menangkap event openTransactionForm
-    window.addEventListener('openTransactionForm' as any, (event: Event) => {
-      handleOpenTransactionForm(event as unknown as CustomEvent);
-    });
-    
+
+    window.addEventListener('openTransactionForm' as any, handleOpenTransactionForm as EventListener);
     return () => {
-      // Cabut event listener saat komponen unmount
-      window.removeEventListener('openTransactionForm' as any, handleOpenTransactionForm);
+      window.removeEventListener('openTransactionForm' as any, handleOpenTransactionForm as EventListener);
     };
-  }, [patients, toast, apiRequest]); // Tambahkan dependensi yang diperlukan
+  }, [patients, apiRequest, toast]);
   
   // Fetch data transactions
   const { 
