@@ -701,13 +701,26 @@ export default function Transactions() {
   // Log data yang diterima
   // Pemeriksaan data dilakukan tanpa logging untuk performa yang lebih baik
   
+  // Kumpulkan semua patient ID yang terkait dengan viewHistoryId
+  // (pasien duplikat / terdaftar lebih dari sekali dengan nomor telepon sama)
+  const relatedPatientIds: Set<number> = (() => {
+    if (!viewHistoryId) return new Set<number>();
+    const historyPatientId = parseInt(viewHistoryId);
+    const historyPatient = patients.find((p: any) => p.id === historyPatientId);
+    if (!historyPatient) return new Set([historyPatientId]);
+    // Sertakan semua pasien dengan nomor telepon yang sama
+    const related = patients
+      .filter((p: any) => p.phoneNumber && p.phoneNumber === historyPatient.phoneNumber)
+      .map((p: any) => p.id);
+    return new Set(related.length > 0 ? related : [historyPatientId]);
+  })();
+
   const filteredTransactions = transactions
     ? transactions
         .filter((transaction: Transaction) => {
-          // Filter by viewHistory dari URL (tombol Riwayat di halaman Pasien)
+          // Filter by viewHistory dari URL - sertakan semua ID terkait (nomor telepon sama)
           if (viewHistoryId) {
-            const historyPatientId = parseInt(viewHistoryId);
-            if (transaction.patientId !== historyPatientId) return false;
+            if (!relatedPatientIds.has(transaction.patientId)) return false;
           }
           // Filter by search term
           if (searchTerm) {
