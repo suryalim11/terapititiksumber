@@ -242,8 +242,11 @@ export function setupAppointmentRoutes(app: Express) {
           sessionId: session.id
         });
         
-        // Update penggunaan sesi
-        await storage.updateSessionUsage(session.id, session.sessionsUsed + 1);
+        // Update penggunaan sesi - gunakan atomic increment (tanpa parameter kedua)
+        // BUG FIX: Sebelumnya menggunakan session.sessionsUsed + 1 yang rentan race condition.
+        // Jika 2 appointment dibuat bersamaan, keduanya bisa baca nilai lama yang sama.
+        // Atomic SQL increment (sessions_used + 1) menghindari masalah ini.
+        await storage.updateSessionUsage(session.id);
         
         if (updatedAppointment) {
           return res.status(201).json({
@@ -344,7 +347,8 @@ export function setupAppointmentRoutes(app: Express) {
           const session = await storage.getSession(existingAppointment.sessionId);
           
           if (session && session.sessionsUsed > 0) {
-            await storage.updateSessionUsage(session.id, session.sessionsUsed - 1);
+            // Gunakan atomic decrement: GREATEST(sessions_used - 1, 0) untuk hindari negatif
+            await storage.decrementSessionUsage(session.id);
           }
         }
       }

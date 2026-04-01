@@ -1807,6 +1807,20 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async decrementSessionUsage(id: number): Promise<Session | undefined> {
+    // Atomic decrement: GREATEST(sessions_used - 1, 0) untuk mencegah nilai negatif
+    const result = await db
+      .update(schema.sessions)
+      .set({
+        sessionsUsed: sql`GREATEST(sessions_used - 1, 0)`,
+        lastSessionDate: new Date(),
+        status: sql`CASE WHEN GREATEST(sessions_used - 1, 0) >= total_sessions THEN 'completed' ELSE 'active' END`
+      })
+      .where(eq(schema.sessions.id, id))
+      .returning();
+    return result[0];
+  }
+
   async addSessionsToPackage(id: number, additionalSessions: number): Promise<Session | undefined> {
     const existingSession = await this.getSession(id);
     if (!existingSession) return undefined;

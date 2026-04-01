@@ -1077,8 +1077,8 @@ export function setupTherapySlotsRoutes(app: Express) {
           [session.id, appointment.id]
         );
         
-        // Update penggunaan sesi
-        await storage.updateSessionUsage(session.id, session.sessionsUsed + 1);
+        // Update penggunaan sesi - atomic increment (tanpa parameter kedua)
+        await storage.updateSessionUsage(session.id);
       }
       
       return res.status(201).json({

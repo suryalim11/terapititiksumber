@@ -147,6 +147,7 @@ export interface IStorage {
   getAllActiveSessions(): Promise<Session[]>;
   createSession(session: InsertSession): Promise<Session>;
   updateSessionUsage(id: number, sessionsUsed?: number): Promise<Session | undefined>;
+  decrementSessionUsage(id: number): Promise<Session | undefined>;
   addSessionsToPackage(id: number, additionalSessions: number): Promise<Session | undefined>;
   
   // Therapy Slots
@@ -912,28 +913,43 @@ export class MemStorage implements IStorage {
   async updateSessionUsage(id: number, sessionsUsed?: number): Promise<Session | undefined> {
     const session = this.therapySessions.get(id);
     if (!session) return undefined;
-    
+
     let updatedSessionsUsed = session.sessionsUsed;
     if (sessionsUsed !== undefined) {
       updatedSessionsUsed = sessionsUsed;
     } else {
       updatedSessionsUsed += 1;
     }
-    
+
     const lastSessionDate = new Date();
     const status = updatedSessionsUsed >= session.totalSessions ? 'completed' : 'active';
-    
+
     const updatedSession: Session = {
       ...session,
       sessionsUsed: updatedSessionsUsed,
       lastSessionDate,
       status
     };
-    
+
     this.therapySessions.set(id, updatedSession);
     return updatedSession;
   }
-  
+
+  async decrementSessionUsage(id: number): Promise<Session | undefined> {
+    const session = this.therapySessions.get(id);
+    if (!session) return undefined;
+    const updatedSessionsUsed = Math.max(0, session.sessionsUsed - 1);
+    const status = updatedSessionsUsed >= session.totalSessions ? 'completed' : 'active';
+    const updatedSession: Session = {
+      ...session,
+      sessionsUsed: updatedSessionsUsed,
+      lastSessionDate: new Date(),
+      status
+    };
+    this.therapySessions.set(id, updatedSession);
+    return updatedSession;
+  }
+
   // Therapy Slot methods
   async getTherapySlot(id: number): Promise<TherapySlot | undefined> {
     return this.therapySlots.get(id);

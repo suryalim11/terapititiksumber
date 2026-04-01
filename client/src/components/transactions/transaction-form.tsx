@@ -275,6 +275,7 @@ export default function TransactionForm({
   const [invoiceData, setInvoiceData] = useState<any>(null);
   const [selectedSession, setSelectedSession] = useState<ActiveSession | null>(null);
   const [useExistingPackage, setUseExistingPackage] = useState(false);
+  const [autoAppliedSession, setAutoAppliedSession] = useState(false); // guard agar auto-apply hanya sekali per buka form
   const [isSubmitting, setIsSubmitting] = useState(false); // State untuk mengontrol pemrosesan ganda
   const [formKey, setFormKey] = useState(Date.now()); // Kunci unik untuk me-reset form
   const [debtOnlyPayment, setDebtOnlyPayment] = useState(false); // State untuk mode bayar utang saja
@@ -581,6 +582,7 @@ export default function TransactionForm({
       setSelectedPackage("");
       setSelectedSession(null);
       setUseExistingPackage(false);
+      setAutoAppliedSession(false); // reset guard saat form ditutup
       setPayDebt(false);
       setSelectedDebtTransaction(null);
       setPaymentAmount("0");
@@ -592,6 +594,20 @@ export default function TransactionForm({
       refetchUnpaidTransactions();
     }
   }, [isOpen, form, refetchActiveSessions, refetchUnpaidTransactions]);
+
+  // Auto-aktifkan "Gunakan sesi" ketika pasien punya paket aktif dengan sesi tersisa
+  // Guard: hanya auto-apply SEKALI per buka form (tidak overwrite pilihan manual user)
+  useEffect(() => {
+    if (activeSessions.length > 0 && !autoAppliedSession) {
+      const firstAvailable = activeSessions.find(s => s.remainingSessions > 0);
+      if (firstAvailable) {
+        setAutoAppliedSession(true); // tandai sudah auto-apply
+        setUseExistingPackage(true);
+        useSessionFromPackage(firstAvailable);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSessions, autoAppliedSession]);
 
   // Effect to update form value for items when cart changes
   useEffect(() => {
@@ -988,9 +1004,11 @@ export default function TransactionForm({
     setCartItems([...newCart, cartItem]);
     
     // Provide feedback
+    // Catatan: sessionsUsed sudah dihitung saat appointment dibuat,
+    // sehingga remainingSessions yang ditampilkan sudah merupakan sisa yang benar
     toast({
       title: "Menggunakan sesi dari paket",
-      description: `Menggunakan 1 sesi dari paket ${pkg.name}. Tersisa ${session.remainingSessions - 1} sesi.`,
+      description: `Paket ${pkg.name} dipilih. Sesi tersisa: ${session.remainingSessions}.`,
     });
   };
   
@@ -1658,14 +1676,19 @@ export default function TransactionForm({
                         {/* Only show the switch if there are multi-session packages */}
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground">Gunakan sesi?</span>
-                          <Switch 
-                            checked={useExistingPackage} 
+                          <Switch
+                            checked={useExistingPackage}
                             onCheckedChange={(checked) => {
                               // When disabling, also clear the selectedSession to prevent it from being reused
                               if (!checked && selectedSession) {
                                 setSelectedSession(null);
+                                // Hapus item paket dari cart
+                                setCartItems(prev => prev.filter(i => i.type !== "package"));
                               }
                               setUseExistingPackage(checked);
+                              // Tandai bahwa user sudah mengatur switch secara manual
+                              // sehingga auto-apply tidak akan mengaktifkan kembali
+                              setAutoAppliedSession(true);
                             }}
                           />
                         </div>
