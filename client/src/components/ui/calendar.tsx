@@ -47,71 +47,70 @@ function Calendar({
   // Custom caption component with dropdowns + nav arrows
   const CustomCaption = (captionProps: { displayMonth: Date }) => {
     return (
-      <div className="flex items-center justify-between gap-1 px-1 pb-2">
+      <div className="flex items-center justify-center gap-1 pb-2">
         {/* Tombol bulan sebelumnya */}
         <button
           onClick={goToPrevMonth}
           type="button"
           className={cn(
-            buttonVariants({ variant: "outline" }),
-            "h-7 w-7 p-0 shrink-0 opacity-70 hover:opacity-100"
+            buttonVariants({ variant: "ghost" }),
+            "h-7 w-7 p-0 shrink-0 opacity-60 hover:opacity-100"
           )}
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
 
-        {/* Dropdown bulan & tahun */}
-        <div className="flex items-center gap-1">
-          <Select
-            value={captionProps.displayMonth.getMonth().toString()}
-            onValueChange={(value) => {
-              const newMonth = new Date(month);
-              newMonth.setMonth(parseInt(value));
-              setMonth(newMonth);
-              if (props.onMonthChange) props.onMonthChange(newMonth);
-            }}
-          >
-            <SelectTrigger className="h-8 w-[110px] text-sm font-medium border-0 bg-transparent focus:ring-0 px-2">
-              <SelectValue placeholder="Bulan" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((monthName, i) => (
-                <SelectItem key={i} value={i.toString()}>
-                  {monthName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Dropdown bulan */}
+        <Select
+          value={captionProps.displayMonth.getMonth().toString()}
+          onValueChange={(value) => {
+            const newMonth = new Date(month);
+            newMonth.setMonth(parseInt(value));
+            setMonth(newMonth);
+            if (props.onMonthChange) props.onMonthChange(newMonth);
+          }}
+        >
+          <SelectTrigger className="h-8 w-[100px] text-sm font-semibold border-0 bg-transparent focus:ring-0 px-1 shadow-none">
+            <SelectValue placeholder="Bulan" />
+          </SelectTrigger>
+          <SelectContent>
+            {months.map((monthName, i) => (
+              <SelectItem key={i} value={i.toString()}>
+                {monthName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-          <Select
-            value={captionProps.displayMonth.getFullYear().toString()}
-            onValueChange={(value) => {
-              const newMonth = new Date(month);
-              newMonth.setFullYear(parseInt(value));
-              setMonth(newMonth);
-              if (props.onMonthChange) props.onMonthChange(newMonth);
-            }}
-          >
-            <SelectTrigger className="h-8 w-[80px] text-sm font-medium border-0 bg-transparent focus:ring-0 px-2">
-              <SelectValue placeholder="Tahun" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[200px] overflow-y-auto">
-              {years.map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Dropdown tahun */}
+        <Select
+          value={captionProps.displayMonth.getFullYear().toString()}
+          onValueChange={(value) => {
+            const newMonth = new Date(month);
+            newMonth.setFullYear(parseInt(value));
+            setMonth(newMonth);
+            if (props.onMonthChange) props.onMonthChange(newMonth);
+          }}
+        >
+          <SelectTrigger className="h-8 w-[72px] text-sm font-semibold border-0 bg-transparent focus:ring-0 px-1 shadow-none">
+            <SelectValue placeholder="Tahun" />
+          </SelectTrigger>
+          <SelectContent className="max-h-[200px] overflow-y-auto">
+            {years.map((year) => (
+              <SelectItem key={year} value={year.toString()}>
+                {year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* Tombol bulan berikutnya */}
         <button
           onClick={goToNextMonth}
           type="button"
           className={cn(
-            buttonVariants({ variant: "outline" }),
-            "h-7 w-7 p-0 shrink-0 opacity-70 hover:opacity-100"
+            buttonVariants({ variant: "ghost" }),
+            "h-7 w-7 p-0 shrink-0 opacity-60 hover:opacity-100"
           )}
         >
           <ChevronRight className="h-4 w-4" />
