@@ -506,7 +506,7 @@ function PatientsDaily() {
       
       {/* Dialog untuk menampilkan detail pasien per tanggal */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>
               Detail Pasien Tanggal {selectedDate ? `${selectedDate.split('-')[2]} ${getMonthName(parseInt(selectedDate.split('-')[1]))} ${selectedDate.split('-')[0]}` : ''} 
@@ -2077,7 +2077,7 @@ export default function Reports() {
       
       {/* Dialog untuk detail transaksi */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-xl">{dialogTitle}</DialogTitle>
             <DialogDescription>

@@ -270,10 +270,11 @@ export default function CreditPaymentForm({
                 variant="outline"
                 onClick={onClose}
                 disabled={isSubmitting}
+                className="h-12 sm:h-10"
               >
                 Batal
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} className="h-12 sm:h-10">
                 {isSubmitting ? "Memproses..." : "Bayar"}
               </Button>
             </DialogFooter>

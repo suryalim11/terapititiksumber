@@ -241,12 +241,12 @@ export function AppointmentForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Pasien</FormLabel>
-              <Select 
+              <Select
                 onValueChange={(value) => field.onChange(parseInt(value))}
                 defaultValue={field.value ? String(field.value) : undefined}
               >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-12 sm:h-10">
                     <SelectValue placeholder="Pilih pasien" />
                   </SelectTrigger>
                 </FormControl>
@@ -271,10 +271,10 @@ export function AppointmentForm({
               <FormItem>
                 <FormLabel>Tanggal</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="date" 
+                  <Input
+                    type="date"
+                    className="h-12 sm:h-10"
                     {...field}
-                    // Format untuk input date tetap yyyy-MM-dd, format tampilan yang akan diubah
                   />
                 </FormControl>
                 <FormMessage />
@@ -294,7 +294,7 @@ export function AppointmentForm({
                   disabled={!selectedDate || availableTimes.length === 0}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 sm:h-10">
                       <SelectValue placeholder={
                         !selectedDate ? "Pilih tanggal terlebih dahulu" : 
                         availableTimes.length === 0 ? "Tidak ada slot tersedia" : 
@@ -361,13 +361,13 @@ export function AppointmentForm({
           )}
         />
         
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-2">
           <DialogClose asChild>
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" className="h-12 sm:h-10">
               Batal
             </Button>
           </DialogClose>
-          <Button type="submit" disabled={form.formState.isSubmitting}>
+          <Button type="submit" disabled={form.formState.isSubmitting} className="h-12 sm:h-10">
             {form.formState.isSubmitting ? "Menyimpan..." : isEditing ? "Perbarui" : "Jadwalkan"}
           </Button>
         </div>

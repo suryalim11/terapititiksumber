@@ -213,7 +213,7 @@ export function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Buat Slot Terapi Baru</DialogTitle>
           <DialogDescription>

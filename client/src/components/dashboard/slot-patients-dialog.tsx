@@ -69,7 +69,7 @@ export function SlotPatientsDialog({ slotId, slotDate, slotTimeSlot, isOpen, onC
   // Render dialog
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarIcon className="h-5 w-5" />

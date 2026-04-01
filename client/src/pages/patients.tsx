@@ -490,19 +490,19 @@ export default function Patients() {
 
       {/* Add Patient Dialog */}
       <Dialog open={isAddPatientOpen} onOpenChange={setIsAddPatientOpen}>
-        <DialogContent className="w-[95vw] max-w-[600px] p-4 md:p-6">
+        <DialogContent className="w-[95vw] max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="text-xl">Tambah Pasien Baru</DialogTitle>
           </DialogHeader>
-          <PatientForm 
-            onSuccess={() => setIsAddPatientOpen(false)} 
+          <PatientForm
+            onSuccess={() => setIsAddPatientOpen(false)}
           />
         </DialogContent>
       </Dialog>
 
       {/* Edit Patient Dialog */}
       <Dialog open={isEditPatientOpen} onOpenChange={setIsEditPatientOpen}>
-        <DialogContent className="w-[95vw] max-w-[600px] p-4 md:p-6">
+        <DialogContent className="w-[95vw] max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="text-xl">Edit Data Pasien</DialogTitle>
           </DialogHeader>
@@ -527,7 +527,7 @@ export default function Patients() {
 
       {/* View Patient Dialog */}
       <Dialog open={isViewPatientOpen} onOpenChange={setIsViewPatientOpen}>
-        <DialogContent className="w-[95vw] max-w-[600px] p-4 md:p-6">
+        <DialogContent className="w-[95vw] max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="text-xl">Detail Pasien</DialogTitle>
           </DialogHeader>
@@ -642,7 +642,7 @@ export default function Patients() {
       
       {/* Appointments Dialog */}
       <Dialog open={isAppointmentsOpen} onOpenChange={setIsAppointmentsOpen}>
-        <DialogContent className="w-[95vw] max-w-[600px] p-4 md:p-6">
+        <DialogContent className="w-[95vw] max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="text-xl">Janji Temu Pasien</DialogTitle>
             <DialogDescription>

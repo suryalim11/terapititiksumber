@@ -135,20 +135,22 @@ export function SessionEditorDialog({
               <Input
                 id="sessionsUsed"
                 type="number"
+                inputMode="numeric"
                 min={0}
                 max={session?.totalSessions || 0}
                 value={sessionsUsed}
                 onChange={(e) => setSessionsUsed(parseInt(e.target.value) || 0)}
+                className="h-12 sm:h-10"
               />
               {error && <div className="text-xs text-red-500 mt-1">{error}</div>}
             </div>
           </div>
-          
+
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="h-12 sm:h-10">
               Batal
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="h-12 sm:h-10">
               {isSubmitting ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses</>
               ) : (
