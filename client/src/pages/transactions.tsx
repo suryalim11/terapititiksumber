@@ -160,17 +160,21 @@ export default function Transactions() {
     }
     
     // Tetap memproses URL parameter seperti sebelumnya
-    if (patientIdFromUrl && patients.length > 0 && !isTransactionFormOpen) {
+    // Gunakan hasOpenedFormRef agar form hanya dibuka SEKALI, tidak loop saat ditutup
+    if (patientIdFromUrl && patients.length > 0 && !hasOpenedFormRef.current) {
       const patientIdNumber = parseInt(patientIdFromUrl);
       const patient = patients.find((p: any) => p.id === patientIdNumber);
-      
+
       if (patient) {
+        // Tandai sudah dibuka agar tidak re-trigger saat form ditutup
+        hasOpenedFormRef.current = true;
+
         // Set ID pasien
         setSelectedPatientId(patientIdNumber);
-        
+
         // Buka form transaksi langsung
         setIsTransactionFormOpen(true);
-        
+
         // Notifikasi
         toast({
           title: "Form transaksi dibuka",
@@ -178,7 +182,7 @@ export default function Transactions() {
         });
       }
     }
-  }, [patientIdFromUrl, patients, isTransactionFormOpen, toast]);
+  }, [patientIdFromUrl, patients, toast]);
   
   // Effect untuk memeriksa localStorage (recovery mechanism)
   useEffect(() => {
