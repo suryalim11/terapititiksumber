@@ -267,49 +267,15 @@ export function setupReportsRoutes(app: Express) {
         });
       }
 
-      // Buat tanggal awal dan akhir bulan
-      const firstDay = startOfMonth(new Date(year, month - 1, 1));
-      const lastDay = endOfMonth(new Date(year, month - 1, 1));
-
-      // Dapatkan semua transaksi
-      const allTransactions = await storage.getAllTransactions();
-
-      // Filter transaksi berdasarkan bulan dan tahun (langsung dari string untuk hindari timezone issue)
-      const transactionsInMonth = allTransactions.filter(txn => {
-        try {
-          const rawDate = typeof txn.createdAt === 'string'
-            ? txn.createdAt.split(' ')[0].split('T')[0]
-            : new Date(txn.createdAt).toISOString().split('T')[0];
-          const parts = rawDate.split('-');
-          return parseInt(parts[0]) === year && parseInt(parts[1]) === month;
-        } catch { return false; }
-      });
-
-      // Hitung total pendapatan dan pengeluaran
-      let totalIncome = 0;
-      let totalExpense = 0;
-
-      transactionsInMonth.forEach(txn => {
-        const amount = parseFloat(txn.amount);
-        if (txn.type === "income" || txn.type === "pembayaran") {
-          totalIncome += amount;
-        } else if (txn.type === "expense" || txn.type === "pengeluaran") {
-          totalExpense += amount;
-        }
-      });
-
-      const netIncome = totalIncome - totalExpense;
+      // Gunakan method getMonthlyFinancialReport yang lengkap dari storage
+      const report = await storage.getMonthlyFinancialReport(year, month);
 
       return res.status(200).json({
         success: true,
         month,
         year,
-        financial: {
-          totalIncome,
-          totalExpense,
-          netIncome,
-          transactionCount: transactionsInMonth.length
-        }
+        summary: report.summary,
+        dailyData: report.dailyData
       });
     } catch (error) {
       console.error("Error fetching monthly financial report:", error);

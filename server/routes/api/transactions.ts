@@ -32,10 +32,10 @@ export function setupTransactionsRoutes(app: Express) {
     }
   });
 
-  // Membuat pembayaran hutang
+  // Membuat pembayaran hutang (bisa dikombinasikan dengan transaksi baru)
   app.post('/api/transactions/debt-payment', async (req: Request, res: Response) => {
     try {
-      const { transactionId, amount, paymentMethod, notes } = req.body;
+      const { transactionId, amount, paymentMethod, notes, newTransactionData } = req.body;
 
       if (!transactionId || !amount || !paymentMethod) {
         return res.status(400).json({ error: 'transactionId, amount, dan paymentMethod wajib diisi' });
@@ -69,10 +69,56 @@ export function setupTransactionsRoutes(app: Express) {
         notes: notes || 'Pembayaran hutang'
       });
 
+      // Jika ada data transaksi baru (pembelian sekaligus bayar hutang), buat transaksi baru juga
+      let newTransaction = null;
+      if (newTransactionData) {
+        try {
+          console.log('Creating combined new transaction alongside debt payment');
+          newTransaction = await storage.createTransaction(newTransactionData);
+          console.log('Combined new transaction created:', newTransaction.id);
+
+          // Proses sesi paket jika ada
+          if (newTransactionData.items && Array.isArray(newTransactionData.items)) {
+            for (const item of newTransactionData.items) {
+              if (item.type === 'package') {
+                try {
+                  if (item.sessionId) {
+                    console.log(`[debtPayment+new] useExistingPackage sesi ${item.sessionId}`);
+                  } else {
+                    const existingSessions = await storage.getActiveSessionsByPatient(newTransactionData.patientId);
+                    const existingSession = existingSessions.find((s: any) => s.packageId === item.packageId);
+                    if (existingSession) {
+                      const sessionsToAdd = item.totalSessions || item.quantity || 1;
+                      await storage.addSessionsToPackage(existingSession.id, sessionsToAdd);
+                    } else {
+                      const totalSessions = item.totalSessions || item.quantity || 1;
+                      await storage.createSession({
+                        patientId: newTransactionData.patientId,
+                        transactionId: newTransaction.id,
+                        packageId: item.packageId,
+                        totalSessions: totalSessions
+                      });
+                    }
+                  }
+                } catch (sessionError) {
+                  console.error('Error processing session for debt+new transaction:', sessionError);
+                }
+              }
+            }
+          }
+        } catch (newTxError) {
+          console.error('Error creating new transaction in debt payment:', newTxError);
+          // Debt payment sudah berhasil, kembalikan sukses meski transaksi baru gagal
+        }
+      }
+
       res.status(201).json({
         success: true,
-        message: 'Pembayaran hutang berhasil dicatat',
-        debtPayment
+        message: newTransaction
+          ? 'Pembayaran hutang dan transaksi baru berhasil dicatat'
+          : 'Pembayaran hutang berhasil dicatat',
+        debtPayment,
+        newTransaction
       });
     } catch (error) {
       console.error('Error saat membuat pembayaran hutang:', error);
