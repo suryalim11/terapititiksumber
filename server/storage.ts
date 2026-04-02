@@ -19,6 +19,7 @@ export interface RegistrationLink {
   expiryTime: Date;
   dailyLimit: number;
   currentRegistrations: number;
+  lastResetDate: string | null; // Format YYYY-MM-DD, untuk reset harian
   createdAt: Date;
   isActive: boolean;
   createdBy: number; // User ID who created the link
@@ -333,6 +334,7 @@ export class MemStorage implements IStorage {
       expiryTime,
       dailyLimit: 10, // Ditingkatkan dari 5 menjadi 10
       currentRegistrations: 0, // Direset ke 0
+      lastResetDate: null,
       createdAt: now,
       isActive: true, // Memastikan aktif
       createdBy: 1, // Admin user ID
@@ -1752,6 +1754,7 @@ export class MemStorage implements IStorage {
       expiryTime,
       dailyLimit,
       currentRegistrations: 0,
+      lastResetDate: null,
       createdAt,
       isActive: true,
       createdBy: userId,
@@ -1773,12 +1776,14 @@ export class MemStorage implements IStorage {
   async incrementRegistrationCount(code: string): Promise<RegistrationLink | undefined> {
     const link = await this.getRegistrationLinkByCode(code);
     if (!link) return undefined;
-    
+
+    const today = new Date().toISOString().split('T')[0];
     const updatedLink: RegistrationLink = {
       ...link,
-      currentRegistrations: link.currentRegistrations + 1
+      currentRegistrations: (link.lastResetDate === today) ? link.currentRegistrations + 1 : 1,
+      lastResetDate: today
     };
-    
+
     this.registrationLinks.set(link.id, updatedLink);
     return updatedLink;
   }
@@ -2004,12 +2009,13 @@ export class MemStorage implements IStorage {
       expiryTime,
       dailyLimit,
       currentRegistrations: 0,
+      lastResetDate: null,
       createdAt,
       isActive: true,
       createdBy: userId,
       specificDate: null
     };
-    
+
     // Simpan ke Map
     this.registrationLinks.set(id, registrationLink);
     console.log("Link pendaftaran default dibuat:", registrationLink);

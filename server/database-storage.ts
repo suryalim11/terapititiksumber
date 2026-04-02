@@ -86,6 +86,18 @@ export class DatabaseStorage implements IStorage {
   // Initialize default data
   private async initDefaultData() {
     try {
+      // Auto-migration: Tambahkan kolom last_reset_date jika belum ada
+      try {
+        await pool.query(`
+          ALTER TABLE registration_links
+          ADD COLUMN IF NOT EXISTS last_reset_date TEXT;
+        `);
+        console.log("[MIGRATION] Kolom last_reset_date berhasil dipastikan ada");
+      } catch (migrationError) {
+        console.error("[MIGRATION] Error saat menambahkan kolom last_reset_date:", migrationError);
+        // Lanjutkan meskipun gagal — jangan crash server
+      }
+
       // Check if users table is empty
       const existingUsers = await db.query.users.findMany({
         limit: 1
@@ -3525,45 +3537,60 @@ export class DatabaseStorage implements IStorage {
   }
 
   async incrementRegistrationCount(code: string): Promise<RegistrationLink | undefined> {
-    // Get current link to increment count
-    console.log(`[REGISTRATION] Mengambil link dengan kode ${code} untuk increment...`);
-    const link = await this.getRegistrationLinkByCode(code);
-    
-    if (!link) {
-      console.log(`[REGISTRATION] Link dengan kode ${code} tidak ditemukan`);
-      return undefined;
-    }
-    
-    console.log(`[REGISTRATION] Status link sebelum increment: ID=${link.id}, kode=${link.code}, currentRegistrations=${link.currentRegistrations}, dailyLimit=${link.dailyLimit}`);
-    
-    // Dengan transaction dan locking optimistic, ini akan menghindari race condition
+    console.log(`[REGISTRATION] Increment count untuk kode ${code}...`);
+
+    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+
     try {
-      const result = await db
-        .update(schema.registrationLinks)
-        .set({ 
-          currentRegistrations: link.currentRegistrations + 1
-        })
-        .where(eq(schema.registrationLinks.code, code))
-        .returning();
-      
+      // Ambil link terlebih dahulu untuk cek lastResetDate
+      const link = await this.getRegistrationLinkByCode(code);
+      if (!link) {
+        console.log(`[REGISTRATION] Link dengan kode ${code} tidak ditemukan`);
+        return undefined;
+      }
+
+      console.log(`[REGISTRATION] Status sebelum increment: ID=${link.id}, currentRegistrations=${link.currentRegistrations}, lastResetDate=${link.lastResetDate}, today=${today}`);
+
+      let result;
+      if (link.lastResetDate !== today) {
+        // Hari baru — reset counter ke 1 dan perbarui lastResetDate
+        result = await db
+          .update(schema.registrationLinks)
+          .set({
+            currentRegistrations: 1,
+            lastResetDate: today
+          })
+          .where(eq(schema.registrationLinks.code, code))
+          .returning();
+        console.log(`[REGISTRATION] Counter direset untuk hari baru (${today})`);
+      } else {
+        // Hari yang sama — atomic increment untuk mencegah race condition
+        result = await db
+          .update(schema.registrationLinks)
+          .set({
+            currentRegistrations: sql`${schema.registrationLinks.currentRegistrations} + 1`,
+            lastResetDate: today
+          })
+          .where(eq(schema.registrationLinks.code, code))
+          .returning();
+        console.log(`[REGISTRATION] Counter di-increment secara atomik`);
+      }
+
       if (result.length === 0) {
         console.log(`[REGISTRATION] Gagal memperbarui link, tidak ada baris yang terpengaruh`);
         return undefined;
       }
-      
-      console.log(`[REGISTRATION] Link berhasil diperbarui: ID=${result[0].id}, currentRegistrations=${result[0].currentRegistrations}, dailyLimit=${result[0].dailyLimit}`);
-      
-      // Konversi timestamp ke WIB untuk hasil
-      const updatedLink = {
+
+      console.log(`[REGISTRATION] Berhasil: ID=${result[0].id}, currentRegistrations=${result[0].currentRegistrations}`);
+
+      return {
         ...result[0],
         expiryTime: getWIBDate(result[0].expiryTime),
         createdAt: getWIBDate(result[0].createdAt)
       };
-      
-      return updatedLink;
     } catch (error) {
-      console.error(`[REGISTRATION] Error saat memperbarui jumlah pendaftaran untuk kode ${code}:`, error);
-      throw error; // Rethrow untuk penanganan di layer atas
+      console.error(`[REGISTRATION] Error saat increment kode ${code}:`, error);
+      throw error;
     }
   }
 

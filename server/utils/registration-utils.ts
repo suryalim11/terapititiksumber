@@ -118,8 +118,10 @@ export async function validateRegistrationLink(code: string): Promise<{
   }
   
   // Periksa apakah batas harian belum tercapai
+  // Reset counter jika hari ini berbeda dari lastResetDate
   const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
-  const registrationsToday = registrationLink.dailyUsage || 0;
+  const lastResetDate = registrationLink.lastResetDate;
+  const registrationsToday = (lastResetDate === today) ? (registrationLink.currentRegistrations || 0) : 0;
   
   if (registrationsToday >= registrationLink.dailyLimit) {
     return {

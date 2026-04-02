@@ -62,6 +62,36 @@ export function setupRegistrationLinkRoutes(app: Express) {
     }
   });
 
+  // Membuat link registrasi permanen (hanya admin)
+  // Link permanen: berlaku 10 tahun, batas harian 9999
+  app.post("/api/registration-links/permanent", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const userId = (req.user as any).id;
+      const PERMANENT_EXPIRY_HOURS = 87600; // 10 tahun
+      const PERMANENT_DAILY_LIMIT = 9999;
+
+      const registrationLink = await storage.createRegistrationLink(
+        userId,
+        PERMANENT_EXPIRY_HOURS,
+        PERMANENT_DAILY_LIMIT,
+        undefined // no specificDate for permanent links
+      );
+
+      return res.status(201).json({
+        success: true,
+        ...registrationLink,
+        code: registrationLink.code,
+        message: "Link permanen berhasil dibuat (berlaku 10 tahun, 9999 pendaftaran/hari)"
+      });
+    } catch (error) {
+      console.error("Error creating permanent registration link:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat membuat link registrasi permanen"
+      });
+    }
+  });
+
   // Mendapatkan semua link registrasi (hanya admin)
   app.get("/api/registration-links", requireAdmin, async (req: Request, res: Response) => {
     try {
@@ -115,19 +145,21 @@ export function setupRegistrationLinkRoutes(app: Express) {
       
       // Periksa apakah link belum kedaluwarsa
       const now = new Date();
-      const expiryDate = new Date(registrationLink.expiryDate);
-      
-      if (now > expiryDate) {
+      const expiryTime = new Date(registrationLink.expiryTime);
+
+      if (now > expiryTime) {
         return res.status(400).json({
           success: false,
           valid: false,
           message: "Link registrasi telah kedaluwarsa"
         });
       }
-      
+
       // Periksa apakah batas harian belum tercapai
+      // Reset counter jika hari ini berbeda dari lastResetDate
       const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
-      const registrationsToday = registrationLink.dailyRegistrationCount || 0;
+      const lastResetDate = registrationLink.lastResetDate;
+      const registrationsToday = (lastResetDate === today) ? (registrationLink.currentRegistrations || 0) : 0;
       
       if (registrationsToday >= registrationLink.dailyLimit) {
         return res.status(400).json({

@@ -4,7 +4,7 @@ import { db, pool } from "../db";
 import { InsertPatient, insertPatientSchema } from "@shared/schema";
 import { format } from "date-fns";
 import crypto from "crypto";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import * as schema from "../../shared/schema";
 import { verifyAppointmentConnectionForPatient } from "../verify-appointment-connection";
 
@@ -99,12 +99,15 @@ export async function handlePatientRegistration(req: Request, res: Response) {
         }
         
         // Periksa apakah kuota harian sudah tercapai
-        if (link.currentRegistrations >= link.dailyLimit) {
-          return res.status(400).json({ 
+        // Reset counter jika hari ini berbeda dari lastResetDate
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayCount = (link.lastResetDate === todayStr) ? link.currentRegistrations : 0;
+        if (todayCount >= link.dailyLimit) {
+          return res.status(400).json({
             message: "Kuota pendaftaran untuk hari ini sudah penuh. Silakan coba lagi besok.",
             dailyLimit: link.dailyLimit,
-            currentRegistrations: link.currentRegistrations,
-            code: "QUOTA_REACHED" 
+            currentRegistrations: todayCount,
+            code: "QUOTA_REACHED"
           });
         }
       } catch (error) {
@@ -181,14 +184,19 @@ export async function handlePatientRegistration(req: Request, res: Response) {
       try {
         console.log("Incrementing registration count for code:", registrationCode);
         
-        // Update langsung ke database untuk kecepatan
+        // Update langsung ke database dengan atomic increment dan daily reset
+        const today = new Date().toISOString().split('T')[0];
+        const isNewDay = registrationLink.lastResetDate !== today;
         await db.update(schema.registrationLinks)
-          .set({ 
-            currentRegistrations: registrationLink.currentRegistrations + 1
+          .set({
+            currentRegistrations: isNewDay
+              ? 1
+              : sql`${schema.registrationLinks.currentRegistrations} + 1`,
+            lastResetDate: today
           })
           .where(eq(schema.registrationLinks.code, registrationCode));
-        
-        console.log("Updated registration count:", registrationLink.currentRegistrations + 1);
+
+        console.log("Updated registration count:", isNewDay ? 1 : (registrationLink.currentRegistrations + 1));
       } catch (error) {
         console.error("Error saat increment registration count:", error);
         return res.status(500).json({ 

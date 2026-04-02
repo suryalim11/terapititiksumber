@@ -30,6 +30,7 @@ export const registrationLinks = pgTable("registration_links", {
   expiryTime: timestamp("expiry_time").notNull(),
   dailyLimit: integer("daily_limit").notNull(),
   currentRegistrations: integer("current_registrations").notNull().default(0),
+  lastResetDate: text("last_reset_date"), // Format YYYY-MM-DD, untuk reset harian
   createdAt: timestamp("created_at").defaultNow().notNull(),
   isActive: boolean("is_active").notNull().default(true),
   createdBy: integer("created_by").notNull(),
