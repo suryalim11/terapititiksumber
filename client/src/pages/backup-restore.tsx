@@ -91,28 +91,38 @@ export default function BackupRestorePage() {
 
   const createBackup = async () => {
     setIsCreatingBackup(true);
-    
+
     try {
-      const response = await fetch("/api/backup/export", {
-        method: "POST",
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        toast({
-          title: "Backup berhasil dibuat",
-          description: `File: ${data.filename}`,
-        });
-        
-        // Perbarui daftar file
-        fetchBackupFiles();
-        
-        // Tampilkan ringkasan data
-        setBackupSummary(data.summary);
-      } else {
-        throw new Error(data.message || "Gagal membuat backup");
+      // Gunakan download-direct: backup langsung diunduh ke browser user
+      // (tidak disimpan ke server Railway yang ephemeral dan hilang saat redeploy)
+      const response = await fetch("/api/backup/download-direct");
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
       }
+
+      // Ambil nama file dari header Content-Disposition
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      const now = new Date();
+      const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
+      const filename = match?.[1] || `backup-${ts}.json`;
+
+      // Trigger download ke browser
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Backup berhasil diunduh",
+        description: `File ${filename} tersimpan di komputer Anda. Simpan file ini di tempat yang aman!`,
+      });
     } catch (error: any) {
       console.error("Error creating backup:", error);
       toast({
@@ -303,6 +313,13 @@ export default function BackupRestorePage() {
               <li>Produk dan paket</li>
               <li>Slot terapi dan janji temu</li>
             </ul>
+            <Alert className="bg-amber-50 border-amber-200 text-amber-800">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertTitle className="text-amber-800 text-sm font-semibold">Simpan file backup!</AlertTitle>
+              <AlertDescription className="text-amber-700 text-xs">
+                File akan langsung diunduh ke komputer Anda. Simpan di tempat yang aman — backup di server dapat hilang saat update aplikasi.
+              </AlertDescription>
+            </Alert>
           </CardContent>
           <CardFooter>
             <Button onClick={createBackup} disabled={isCreatingBackup} className="w-full">
@@ -312,7 +329,7 @@ export default function BackupRestorePage() {
                   Membuat Backup...
                 </>
               ) : (
-                "Buat Backup Sekarang"
+                <><Download className="mr-2 h-4 w-4" />Buat & Unduh Backup</>
               )}
             </Button>
           </CardFooter>
