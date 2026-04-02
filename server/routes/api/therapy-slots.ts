@@ -119,57 +119,69 @@ export function setupTherapySlotsRoutes(app: Express) {
     try {
       // Cek parameter query untuk filtering
       const date = req.query.date as string | undefined;
-      const activeOnly = req.query.activeOnly === 'true';
+      // Terima semua varian parameter aktif: activeOnly=true, active=true, available=true
+      const activeOnly = req.query.activeOnly === 'true'
+        || req.query.active === 'true'
+        || req.query.available === 'true';
       const applyCorrections = req.query.correct !== 'false'; // Default: lakukan koreksi
-      
+
       // Log untuk monitoring
       console.log("Executing optimized getAllTherapySlots query");
       const startTime = Date.now();
-      
+
       // Cache valid untuk 5 menit, kecuali diminta refresh
+      // Cache hanya digunakan untuk request tanpa filter aktif (admin view)
       const shouldRefresh = req.query.refresh === 'true';
       const now = Date.now();
       const MAX_CACHE_AGE = 5 * 60 * 1000; // 5 menit
-      
-      // Gunakan cache jika tersedia dan masih valid
+
+      // Gunakan cache hanya jika tidak ada filter aktif
       if (allSlotsCache && !shouldRefresh && (now - allSlotsCache.timestamp) < MAX_CACHE_AGE && !date && !activeOnly) {
         let therapySlots = allSlotsCache.data;
-        
-        // Terapkan koreksi jika diminta
+
         if (applyCorrections) {
           therapySlots = therapySlots.map(slot => formatTherapySlotData(slot));
         }
-        
+
         console.log(`Query completed in ${Date.now() - startTime}ms, returning from cache ${therapySlots.length} slots`);
         return res.json(therapySlots);
       }
-      
+
       // Jika tidak, ambil data baru
       let therapySlots;
-      
+
       if (date) {
         // Jika ada parameter tanggal, gunakan query berdasarkan tanggal
         const dateObj = new Date(date);
         therapySlots = await storage.getTherapySlotsByDate(dateObj);
       } else if (activeOnly) {
-        // Jika diminta hanya slot aktif
+        // Jika diminta hanya slot aktif — ambil slot aktif dan filter tanggal mendatang
         therapySlots = await storage.getActiveTherapySlots();
+
+        // Filter: hanya tampilkan slot yang tanggalnya hari ini atau ke depan
+        const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        therapySlots = therapySlots.filter((slot: any) => {
+          const slotDate = typeof slot.date === 'string' ? slot.date : new Date(slot.date).toISOString().split('T')[0];
+          return slotDate >= todayStr;
+        });
+
+        console.log(`[REGISTER] Slot aktif & mendatang: ${therapySlots.length} slot (filter tanggal >= ${todayStr})`);
       } else {
-        // Jika tidak ada filter, ambil semua slot
+        // Jika tidak ada filter, ambil semua slot (admin view)
         therapySlots = await storage.getAllTherapySlots();
-        
+
         // Update cache
         allSlotsCache = {
           data: therapySlots,
           timestamp: now
         };
       }
-      
+
       // Terapkan koreksi jika diminta
       if (applyCorrections) {
         therapySlots = therapySlots.map(slot => formatTherapySlotData(slot));
       }
-      
+
       console.log(`Query completed in ${Date.now() - startTime}ms, found ${therapySlots.length} slots`);
       res.json(therapySlots);
     } catch (error) {
@@ -529,14 +541,17 @@ export function setupTherapySlotsRoutes(app: Express) {
       
       // Nonaktifkan slot terapi
       const success = await storage.deactivateTherapySlot(id);
-      
+
       if (!success) {
-        return res.status(500).json({ 
-          success: false, 
-          message: "Gagal menonaktifkan slot terapi" 
+        return res.status(500).json({
+          success: false,
+          message: "Gagal menonaktifkan slot terapi"
         });
       }
-      
+
+      // Invalidate cache agar halaman registrasi langsung ter-update
+      allSlotsCache = null;
+
       return res.status(200).json({
         success: true,
         message: "Slot terapi berhasil dinonaktifkan"
@@ -578,14 +593,17 @@ export function setupTherapySlotsRoutes(app: Express) {
       
       // Hapus slot terapi
       const success = await storage.deleteTherapySlot(id);
-      
+
       if (!success) {
-        return res.status(500).json({ 
-          success: false, 
-          message: "Gagal menghapus slot terapi" 
+        return res.status(500).json({
+          success: false,
+          message: "Gagal menghapus slot terapi"
         });
       }
-      
+
+      // Invalidate cache agar halaman registrasi langsung ter-update
+      allSlotsCache = null;
+
       return res.status(200).json({
         success: true,
         message: "Slot terapi berhasil dihapus"
